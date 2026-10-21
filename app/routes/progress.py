@@ -5,6 +5,7 @@ from app.models import User, Progress, LessonCompletion, QuizResult
 from flask_login import current_user, login_required
 from app.user_subjects import get_effective_subjects_for_user
 from app.learning import curriculum_days, next_unlocked_day, day_is_available
+from app.request_data import get_json_object
 from datetime import datetime, date, timezone
 
 progress_bp = Blueprint('progress', __name__)
@@ -77,7 +78,9 @@ def get_dashboard():
 @progress_bp.route('/update', methods=['POST'])
 @login_required
 def update_progress():
-    data = request.get_json(silent=True) or {}
+    data = get_json_object()
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Request body must be a JSON object'}), 400
     user = current_user
     
     subject_id = data.get('subject_id')

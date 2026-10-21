@@ -158,6 +158,7 @@ class CalendarEvent(db.Model):
     subject_ids = db.Column(db.Text)  # JSON
     day_number = db.Column(db.Integer)
     block_name = db.Column(db.String(100))
+    time_zone = db.Column(db.String(64))
     created_at = db.Column(db.DateTime, default=utcnow)
     synced_to_google = db.Column(db.Boolean, default=False)
     __table_args__ = (
@@ -270,6 +271,7 @@ class SubjectCurriculum(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     subject_id = db.Column(db.String(50), nullable=False)
     starting_proficiency = db.Column(db.String(20), nullable=False)
+    source_signature = db.Column(db.String(64))
     plan = db.Column(db.Text, nullable=False)
     is_ai_generated = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime, default=utcnow)

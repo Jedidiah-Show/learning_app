@@ -9,6 +9,7 @@ from app import db
 from app.curriculum import get_curriculum_day
 from app.gemini import GeminiError, GeminiNotConfigured, generate_json
 from app.learning import curriculum_days
+from app.request_data import get_json_object
 from app.models import LearningProject, Progress
 from app.user_subjects import get_effective_config_for_user, get_effective_subjects_for_user
 
@@ -199,7 +200,7 @@ def get_weekly_project(week_number):
 @projects_bp.route('/api/projects/weekly/<int:week_number>/submit', methods=['POST'])
 @login_required
 def submit_weekly_project(week_number):
-    data = request.get_json(silent=True)
+    data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'error': 'Request body must be a JSON object'}), 400
     submission = data.get('submission')

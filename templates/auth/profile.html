@@ -41,15 +41,17 @@
         </div>
         
         <div class="mt-6 flex space-x-3">
-            <a href="{{ url_for('auth.logout') }}" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700">
-                Logout
-            </a>
+            <form method="POST" action="{{ url_for('auth.logout') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg text-sm font-semibold hover:bg-red-700">Logout</button>
+            </form>
         </div>
     </div>
 
     <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <h3 class="text-lg font-bold text-slate-800 mb-4">Update Account</h3>
         <form method="POST" action="{{ url_for('auth.update_account') }}" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">Email</label>
@@ -82,9 +84,13 @@
         <p class="text-sm text-slate-600 mb-4">These actions are irreversible. Please proceed with caution.</p>
         <div class="flex flex-col sm:flex-row gap-3">
             <form method="POST" action="{{ url_for('auth.reset_account') }}" onsubmit="return confirm('Are you sure you want to reset your account? This will delete all your progress, lessons, quizzes, and configurations.');">
+                <label class="block text-sm text-slate-600">Confirm current password<input type="password" name="current_password" required class="mt-1 border rounded px-2 py-1"></label>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit" class="px-4 py-2 bg-amber-600 text-white rounded-lg text-sm font-semibold hover:bg-amber-700">Reset Account</button>
             </form>
             <form method="POST" action="{{ url_for('auth.delete_account') }}" onsubmit="return confirm('Are you sure you want to permanently delete your account? This action CANNOT be undone.');">
+                <label class="block text-sm text-slate-600">Confirm current password<input type="password" name="current_password" required class="mt-1 border rounded px-2 py-1"></label>
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                 <button type="submit" class="px-4 py-2 bg-rose-600 text-white rounded-lg text-sm font-semibold hover:bg-rose-700">Delete Account Permanently</button>
             </form>
         </div>

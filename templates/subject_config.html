@@ -12,6 +12,7 @@
         </div>
 
         <form method="POST" class="space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             {% for subject in subjects %}
             <div class="border border-slate-200 rounded-lg p-5">
                 <div class="flex items-center gap-3 mb-4">

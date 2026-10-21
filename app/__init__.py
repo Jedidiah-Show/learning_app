@@ -1,10 +1,12 @@
-from flask import Flask, jsonify, request, redirect, url_for
+from flask import Flask, jsonify, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from datetime import date, time
+import hmac
 import os
 import re
+import secrets
 from copy import deepcopy
 import yaml
 
@@ -51,8 +53,18 @@ def validate_app_config(config):
         if not isinstance(topics, list) or any(not isinstance(topic, str) for topic in topics):
             raise ValueError(f'Subject {subject_id} topics must be a list')
     schedule = config.get('schedule')
-    if not isinstance(schedule, dict) or not isinstance(schedule.get('daily_blocks'), list):
-        raise ValueError('schedule.daily_blocks must be a list')
+    if (
+        not isinstance(schedule, dict)
+        or not isinstance(schedule.get('daily_blocks'), list)
+        or not isinstance(schedule.get('unlock_rules'), dict)
+        or not isinstance(schedule['unlock_rules'].get('allow_continue_after_day_complete'), bool)
+    ):
+        raise ValueError('schedule must contain daily_blocks and valid unlock_rules')
+    if schedule.get('start_date') is not None:
+        try:
+            date.fromisoformat(schedule['start_date'])
+        except (TypeError, ValueError) as error:
+            raise ValueError('schedule.start_date must be a valid ISO date') from error
     for block in schedule['daily_blocks']:
         if not isinstance(block, dict) or not isinstance(block.get('name'), str) or not block['name'].strip():
             raise ValueError('Every schedule block must have a name')
@@ -206,6 +218,13 @@ def create_app(config_override=None):
 
     @app.before_request
     def require_subject_setup():
+        if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'} and not app.testing:
+            token = session.get('_csrf_token')
+            supplied = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
+            if not token or not supplied or not hmac.compare_digest(token, supplied):
+                if request.path.startswith('/api/'):
+                    return jsonify({'error': 'CSRF validation failed'}), 400
+                return 'CSRF validation failed', 400
         from flask import request
         from flask_login import current_user
         if not current_user.is_authenticated:
@@ -254,8 +273,13 @@ def create_app(config_override=None):
     # Make config available to all templates
     @app.context_processor
     def inject_config():
+        token = session.get('_csrf_token')
+        if not token:
+            token = secrets.token_urlsafe(32)
+            session['_csrf_token'] = token
         return {
             'config': app.config.get('APP_CONFIG', {}),
+            'csrf_token': token,
             'google_calendar_oauth_configured': bool(
                 app.config.get('GOOGLE_CLIENT_ID')
                 and app.config.get('GOOGLE_CLIENT_SECRET')

@@ -8,12 +8,16 @@ from flask import Blueprint, current_app, jsonify, request
 from flask_login import current_user, login_required
 
 from app import db, validate_app_config
-from app.models import UserConfig, UserSchedule, UserSubject
+from app.models import (
+    UserConfig, UserSchedule, UserSubject, UserSubjectConfig,
+    ProficiencyTest, Progress, LessonCompletion, SubjectCurriculum,
+)
 from app.user_subjects import (
     get_effective_config_for_user,
     get_effective_subjects_for_user,
     update_user_extra_config,
 )
+from app.request_data import get_json_object
 
 admin_bp = Blueprint('admin', __name__)
 
@@ -52,7 +56,7 @@ def get_subjects():
 @admin_bp.route('/subjects', methods=['POST'])
 @login_required
 def create_or_update_subject():
-    data = request.get_json(silent=True)
+    data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'error': 'Subject must be a JSON object'}), 400
     subject_id = data.get('id') or data.get('subject_id') or ''
@@ -111,6 +115,11 @@ def delete_subject(subject_id):
         return jsonify({'error': 'Keep at least one subject in your curriculum'}), 409
     if subject:
         db.session.delete(subject)
+    for model in (
+        UserSubjectConfig, ProficiencyTest, Progress,
+        LessonCompletion, SubjectCurriculum,
+    ):
+        model.query.filter_by(user_id=current_user.id, subject_id=subject_id).delete()
     preferences = UserConfig.query.filter_by(user_id=current_user.id).first()
     if is_shared_subject:
         extra = preferences.get_extra_config() if preferences else {}
@@ -130,7 +139,7 @@ def get_schedule():
 @admin_bp.route('/schedule', methods=['POST'])
 @login_required
 def update_schedule():
-    data = request.get_json(silent=True)
+    data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'error': 'Schedule must be a JSON object'}), 400
     blocks = data.get('daily_blocks')
@@ -153,7 +162,7 @@ def update_config():
     supplied_token = request.headers.get('X-Admin-Token', '')
     if not admin_token or not hmac.compare_digest(supplied_token, admin_token):
         return jsonify({'error': 'Administrator access required'}), 403
-    data = request.get_json(silent=True)
+    data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'error': 'Configuration must be a JSON object'}), 400
     config = dict(current_app.config['APP_CONFIG'])

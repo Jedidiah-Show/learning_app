@@ -6,6 +6,7 @@ from flask_login import current_user, login_required
 from app.learning import curriculum_days, day_is_available, next_unlocked_day
 from app.curriculum import get_curriculum_day
 from app.gemini import GeminiError, GeminiNotConfigured, generate_json
+from app.request_data import get_json_object
 import hashlib
 import json
 
@@ -18,7 +19,7 @@ def get_daily_quiz(day_number):
     if not day_is_available(current_user, config, day_number):
         return jsonify({'error': 'Day is locked', 'next_unlocked_day': next_unlocked_day(current_user, config)}), 403
     subjects = get_effective_subjects_for_user(current_user)
-    quiz_id = _quiz_id('daily', day_number, subjects)
+    quiz_id = _quiz_id('daily', day_number, subjects, current_user.id)
     # A quiz must be backed by that day's actual lesson checks.
     from app.routes.lessons import generate_lesson, get_lesson_id
     try:
@@ -105,7 +106,7 @@ def get_weekly_quiz(week_number):
         return jsonify({'error': 'Complete every lesson in this week before taking its quiz', 'incomplete_day': incomplete_day}), 409
 
     subjects = get_effective_subjects_for_user(current_user)
-    quiz_id = _quiz_id('weekly', week_number, subjects)
+    quiz_id = _quiz_id('weekly', week_number, subjects, current_user.id)
     quiz = Quiz.query.filter_by(quiz_id=quiz_id).first()
     if not quiz:
         questions = []
@@ -224,12 +225,12 @@ def _lesson_questions(lesson, subject, day_number, limit):
     return questions
 
 
-def _quiz_id(quiz_type, number, subjects):
+def _quiz_id(quiz_type, number, subjects, user_id):
     signature = json.dumps(
-        sorted((
-            subject.get('id'), subject.get('name'), subject.get('topics', []),
-            subject.get('proficiency', 'Novice'),
-        ) for subject in subjects),
+        {
+            'user_id': user_id,
+            'subjects': sorted(subjects, key=lambda subject: subject.get('id', '')),
+        },
         ensure_ascii=False,
         separators=(',', ':'),
     )
@@ -340,7 +341,9 @@ def generate_ai_quiz_questions(subjects, lesson_sources, per_subject, quiz_type)
 @quizzes_bp.route('/submit', methods=['POST'])
 @login_required
 def submit_quiz():
-    data = request.get_json(silent=True) or {}
+    data = get_json_object()
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Request body must be a JSON object'}), 400
     user = current_user
     
     quiz_id = data.get('quiz_id')
@@ -358,7 +361,9 @@ def submit_quiz():
         return jsonify({'error': 'Quiz type does not match quiz'}), 400
     subjects = get_effective_subjects_for_user(user)
     quiz_number = quiz.day_number if quiz.quiz_type == 'daily' else quiz.week_number
-    if quiz_number is None or quiz.quiz_id != _quiz_id(quiz.quiz_type, quiz_number, subjects):
+    if quiz_number is None or quiz.quiz_id != _quiz_id(
+        quiz.quiz_type, quiz_number, subjects, user.id
+    ):
         return jsonify({'error': 'Quiz not found'}), 404
     config = get_effective_config_for_user(user)
     if quiz.quiz_type == 'daily' and not day_is_available(user, config, quiz.day_number):

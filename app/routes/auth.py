@@ -76,7 +76,7 @@ def register():
     
     return render_template('auth/register.html')
 
-@auth_bp.route('/logout')
+@auth_bp.route('/logout', methods=['POST'])
 @login_required
 def logout():
     logout_user()
@@ -93,11 +93,20 @@ def profile():
 @login_required
 def update_account():
     from werkzeug.security import generate_password_hash, check_password_hash
-    data = request.get_json(silent=True) or request.form
-    email = (data.get('email') or '').strip().lower() if data.get('email') is not None else None
-    phone = (data.get('phone') or '').strip() if data.get('phone') is not None else None
+    data = request.get_json(silent=True) if request.is_json else request.form
+    if not hasattr(data, 'get'):
+        return jsonify({'error': 'Request body must be an object'}), 400
+    raw_email = data.get('email')
+    raw_phone = data.get('phone')
     current_password = data.get('current_password')
     new_password = data.get('new_password')
+    if any(
+        value is not None and not isinstance(value, str)
+        for value in (raw_email, raw_phone, current_password, new_password)
+    ):
+        return jsonify({'error': 'Account fields must be strings'}), 400
+    email = (raw_email or '').strip().lower() if raw_email is not None else None
+    phone = (raw_phone or '').strip() if raw_phone is not None else None
     
     # Update email
     if email is not None and email != (current_user.email or ''):
@@ -138,6 +147,18 @@ def update_account():
 @login_required
 def delete_account():
     user = current_user
+    current_password = request.form.get('current_password')
+    if request.is_json:
+        data = request.get_json(silent=True)
+        current_password = data.get('current_password') if isinstance(data, dict) else None
+    if (
+        not user.password_hash or not isinstance(current_password, str)
+        or not check_password_hash(user.password_hash, current_password)
+    ):
+        if request.is_json:
+            return {'error': 'Current password is incorrect'}, 400
+        flash('Current password is incorrect', 'error')
+        return redirect(url_for('auth.profile'))
     # Delete all related data explicitly for safety
     try:
         # Relationships have cascade, but be thorough
@@ -150,10 +171,10 @@ def delete_account():
         if request.is_json:
             return {'status': 'success'}
         return redirect(url_for('auth.login'))
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         if request.is_json:
-            return {'error': str(e)}, 500
+            return {'error': 'Could not delete account'}, 500
         flash('Failed to delete account', 'error')
         return redirect(url_for('auth.profile'))
 
@@ -162,11 +183,24 @@ def delete_account():
 @login_required
 def reset_account():
     user = current_user
+    current_password = request.form.get('current_password')
+    if request.is_json:
+        data = request.get_json(silent=True)
+        current_password = data.get('current_password') if isinstance(data, dict) else None
+    if (
+        not user.password_hash or not isinstance(current_password, str)
+        or not check_password_hash(user.password_hash, current_password)
+    ):
+        if request.is_json:
+            return {'error': 'Current password is incorrect'}, 400
+        flash('Current password is incorrect', 'error')
+        return redirect(url_for('auth.profile'))
     try:
         # Delete all user data but keep the user account
         from app.models import (Progress, LessonCompletion, QuizResult, StudySession, 
                                 UserSubjectConfig, ProficiencyTest, CalendarEvent,
-                                UserSubject, UserSchedule, UserConfig)
+                                UserSubject, UserSchedule, UserConfig,
+                                SubjectCurriculum, LearningProject)
         Progress.query.filter_by(user_id=user.id).delete()
         LessonCompletion.query.filter_by(user_id=user.id).delete()
         QuizResult.query.filter_by(user_id=user.id).delete()
@@ -174,18 +208,23 @@ def reset_account():
         UserSubjectConfig.query.filter_by(user_id=user.id).delete()
         ProficiencyTest.query.filter_by(user_id=user.id).delete()
         CalendarEvent.query.filter_by(user_id=user.id).delete()
+        SubjectCurriculum.query.filter_by(user_id=user.id).delete()
+        LearningProject.query.filter_by(user_id=user.id).delete()
         UserSubject.query.filter_by(user_id=user.id).delete()
         UserSchedule.query.filter_by(user_id=user.id).delete()
         UserConfig.query.filter_by(user_id=user.id).delete()
+        user.google_access_token = None
+        user.google_refresh_token = None
+        user.token_expiry = None
         user.subjects_configured = False
         db.session.commit()
         flash('Account reset successfully', 'success')
         if request.is_json:
             return {'status': 'success'}
         return redirect(url_for('main.index'))
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         if request.is_json:
-            return {'error': str(e)}, 500
+            return {'error': 'Could not reset account'}, 500
         flash('Failed to reset account', 'error')
         return redirect(url_for('auth.profile'))

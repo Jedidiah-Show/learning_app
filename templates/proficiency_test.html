@@ -12,6 +12,7 @@
         </div>
 
         <form method="POST" class="space-y-6">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             {% for q in questions %}
             <div class="border border-slate-200 rounded-lg p-5">
                 <h3 class="font-semibold text-slate-800 mb-4">{{ loop.index }}. {{ q.question }}</h3>

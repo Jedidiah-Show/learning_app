@@ -1,5 +1,21 @@
 // Core app JavaScript
 
+(() => {
+    const token = document.querySelector('meta[name="csrf-token"]')?.content;
+    const nativeFetch = window.fetch.bind(window);
+    window.fetch = (input, init = {}) => {
+        const method = (init.method || input?.method || 'GET').toUpperCase();
+        const url = new URL(typeof input === 'string' ? input : input.url, window.location.href);
+        if (token && url.origin === window.location.origin &&
+            ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)) {
+            const headers = new Headers(init.headers || (input instanceof Request ? input.headers : undefined));
+            headers.set('X-CSRF-Token', token);
+            init = {...init, headers};
+        }
+        return nativeFetch(input, init);
+    };
+})();
+
 function updateCountdown(assessmentDate) {
     try {
         const examDate = new Date(assessmentDate + ' 09:00:00').getTime();

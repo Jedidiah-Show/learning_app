@@ -4,6 +4,7 @@ from app.user_subjects import get_effective_config_for_user, get_effective_subje
 from app.learning import day_is_available, next_unlocked_day
 from app.curriculum import get_curriculum_day
 from app.gemini import GeminiError, GeminiNotConfigured, generate_json
+from app.request_data import get_json_object
 from app import db
 from app.models import Lesson, LessonCompletion, Progress
 from datetime import datetime, timezone
@@ -135,13 +136,12 @@ def generate_lesson(subject, day_number, config, user=None, curriculum_day=None)
 
 
 def get_lesson_id(subject, day_number, curriculum_day=None):
-    topics = subject.get('topics') or []
     subject_signature = json.dumps(
         [
-            subject.get('id'), subject.get('name'), topics,
-            subject.get('proficiency', 'Novice'),
+            subject,
             curriculum_day.get('topic') if curriculum_day else None,
             curriculum_day.get('objective') if curriculum_day else None,
+            curriculum_day.get('difficulty') if curriculum_day else None,
         ],
         ensure_ascii=False,
         separators=(',', ':'),
@@ -531,7 +531,9 @@ def get_comprehensive_lesson_content(subject, day_number, topic, config, curricu
 @lessons_bp.route('/complete', methods=['POST'])
 @login_required
 def complete_lesson():
-    data = request.get_json(silent=True) or {}
+    data = get_json_object()
+    if data is None:
+        return jsonify({'error': 'Request body must be a JSON object'}), 400
     user = current_user
     
     lesson_id = data.get('lesson_id')
@@ -626,7 +628,7 @@ def complete_lesson():
         'all_subjects_complete_for_day': all_complete,
         'can_progress_to_next_day': (
             all_complete
-            and config['schedule']['unlock_rules']['allow_continue_after_day_complete']
+            and config['schedule']['unlock_rules'].get('allow_continue_after_day_complete', True)
             and next_unlocked_day(user, config) > day_number
         )
     })
@@ -635,7 +637,7 @@ def complete_lesson():
 @lessons_bp.route('/ask', methods=['POST'])
 @login_required
 def ask_lesson_question():
-    data = request.get_json(silent=True)
+    data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'error': 'Request body must be a JSON object'}), 400
     lesson_id = data.get('lesson_id')

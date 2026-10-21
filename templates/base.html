@@ -3,10 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}Daily Deep-Dive Learning App{% endblock %}</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_head %}{% endblock %}
 </head>
@@ -56,7 +56,10 @@
                             <span>👤</span>
                             <span>{{ current_user.username or current_user.full_name or 'User' }}</span>
                         </a>
-                        <a href="{{ url_for('auth.logout') }}" class="text-xs text-slate-500 hover:text-red-600">Logout</a>
+                        <form method="POST" action="{{ url_for('auth.logout') }}" class="inline">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                            <button type="submit" class="text-xs text-slate-500 hover:text-red-600">Logout</button>
+                        </form>
                     </div>
                     {% else %}
                     <div class="flex items-center space-x-2">

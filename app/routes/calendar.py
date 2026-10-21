@@ -8,7 +8,9 @@ from app.user_subjects import (
 from app import db
 from app.models import CalendarEvent
 from app.learning import day_is_available, next_unlocked_day
+from app.request_data import get_json_object
 from datetime import date, datetime, time, timedelta, timezone
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 import hashlib
 import hmac
 import json
@@ -59,10 +61,19 @@ def _parse_day_number(data, config):
     return day_number
 
 
+def _parse_timezone(value):
+    if not isinstance(value, str) or len(value) > 64:
+        return None
+    try:
+        return ZoneInfo(value)
+    except (ZoneInfoNotFoundError, ValueError):
+        return None
+
+
 @calendar_bp.route('/schedule', methods=['POST'])
 @login_required
 def schedule_study_sessions():
-    data = request.get_json(silent=True)
+    data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'error': 'Request body must be a JSON object'}), 400
     user = current_user
@@ -73,14 +84,24 @@ def schedule_study_sessions():
     if not day_is_available(user, config, day_number):
         return jsonify({'error': 'Day is locked', 'next_unlocked_day': next_unlocked_day(user, config)}), 403
 
+    zone = _parse_timezone(data.get('time_zone', 'UTC'))
+    if zone is None:
+        return jsonify({'error': 'time_zone must be a valid IANA timezone'}), 400
     subjects = get_effective_subjects_for_user(user)
-    target_date = date.today() + timedelta(days=day_number - 1)
+    configured_start = config.get('schedule', {}).get('start_date')
+    try:
+        start_date = date.fromisoformat(configured_start) if configured_start else datetime.now(zone).date()
+    except (TypeError, ValueError):
+        return jsonify({'error': 'Configured schedule.start_date must be a valid ISO date'}), 400
+    target_date = start_date + timedelta(days=day_number - 1)
     events_created = []
     for block in get_effective_schedule_for_user(user):
-        start_time = datetime.combine(target_date, time.fromisoformat(block['start_time']))
-        end_time = datetime.combine(target_date, time.fromisoformat(block['end_time']))
+        start_time = datetime.combine(target_date, time.fromisoformat(block['start_time']), tzinfo=zone)
+        end_time = datetime.combine(target_date, time.fromisoformat(block['end_time']), tzinfo=zone)
         if end_time <= start_time:
             end_time += timedelta(days=1)
+        start_time = start_time.astimezone(timezone.utc).replace(tzinfo=None)
+        end_time = end_time.astimezone(timezone.utc).replace(tzinfo=None)
         title = f"{config['google_calendar']['event_prefix']} {block['name'].title()} Session - Day {day_number}"
         existing = CalendarEvent.query.filter_by(
             user_id=user.id,
@@ -98,6 +119,7 @@ def schedule_study_sessions():
             subject_ids=json.dumps([subject['id'] for subject in subjects]),
             day_number=day_number,
             block_name=block['name'],
+            time_zone=zone.key,
             synced_to_google=False
         )
         db.session.add(event)
@@ -121,13 +143,20 @@ def get_events():
     
     result = []
     for e in events:
+        if e.time_zone:
+            zone = _parse_timezone(e.time_zone) or timezone.utc
+            start_time = e.start_time.replace(tzinfo=timezone.utc).astimezone(zone)
+            end_time = e.end_time.replace(tzinfo=timezone.utc).astimezone(zone)
+        else:
+            start_time = e.start_time.astimezone()
+            end_time = e.end_time.astimezone()
         result.append({
             'id': e.id,
             'event_id': e.event_id,
             'title': e.title,
             'description': e.description,
-            'start_time': e.start_time.isoformat(),
-            'end_time': e.end_time.isoformat(),
+            'start_time': start_time.isoformat(),
+            'end_time': end_time.isoformat(),
             'synced_to_google': e.synced_to_google
         })
     
@@ -236,7 +265,7 @@ def sync_to_google():
     if not user.google_access_token:
         return jsonify({'status': 'error', 'message': 'Google Calendar not connected. Please authorize first.'}), 401
     
-    data = request.get_json(silent=True)
+    data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'status': 'error', 'message': 'Request body must be a JSON object'}), 400
     app_config = get_effective_config_for_user(user)
@@ -288,8 +317,13 @@ def sync_to_google():
         service = build('calendar', 'v3', credentials=creds)
         event_ids = []
         for local_event in local_events:
-            start_time = local_event.start_time.astimezone()
-            end_time = local_event.end_time.astimezone()
+            if local_event.time_zone:
+                zone = _parse_timezone(local_event.time_zone) or timezone.utc
+                start_time = local_event.start_time.replace(tzinfo=timezone.utc).astimezone(zone)
+                end_time = local_event.end_time.replace(tzinfo=timezone.utc).astimezone(zone)
+            else:
+                start_time = local_event.start_time.astimezone()
+                end_time = local_event.end_time.astimezone()
             body = {
                 'id': hashlib.sha256(f'learning-app:{user.id}:{local_event.id}'.encode()).hexdigest(),
                 'summary': local_event.title,

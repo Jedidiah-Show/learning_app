@@ -423,6 +423,14 @@ class LearningFlowTests(unittest.TestCase):
         progress = self.client.get('/api/progress/dashboard').get_json()
         self.assertEqual(progress['days_completed'], 0)
 
+    def test_daily_quiz_cache_is_isolated_per_account(self):
+        self.register('quizalice')
+        alice_quiz = self.client.get('/api/quizzes/daily/1').get_json()
+        self.client.post('/logout')
+        self.register('quizbob')
+        bob_quiz = self.client.get('/api/quizzes/daily/1').get_json()
+        self.assertNotEqual(alice_quiz['quiz_id'], bob_quiz['quiz_id'])
+
     def test_curriculum_length_and_personal_settings_are_isolated(self):
         alice = self.client
         bob = self.app.test_client()
@@ -523,6 +531,83 @@ class LearningFlowTests(unittest.TestCase):
         self.assertEqual(second.get_json()['events_created'], [])
         with self.app.app_context():
             self.assertEqual(CalendarEvent.query.count(), 2)
+
+    def test_reset_removes_personalized_curricula_projects_and_calendar_tokens(self):
+        self.register('resetlearner')
+        with self.app.app_context():
+            user = User.query.filter_by(username='resetlearner').one()
+            user.google_access_token = 'access-token'
+            user.google_refresh_token = 'refresh-token'
+            db.session.add(SubjectCurriculum(
+                user_id=user.id, subject_id='python', starting_proficiency='Novice',
+                plan='[]', source_signature='old-signature',
+            ))
+            db.session.add(LearningProject(
+                user_id=user.id, week_number=1, project='{}', completed=True,
+            ))
+            db.session.commit()
+
+        response = self.client.post('/account/reset', json={
+            'current_password': 'secure-pass-123',
+        })
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            user = User.query.filter_by(username='resetlearner').one()
+            self.assertEqual(SubjectCurriculum.query.filter_by(user_id=user.id).count(), 0)
+            self.assertEqual(LearningProject.query.filter_by(user_id=user.id).count(), 0)
+            self.assertIsNone(user.google_access_token)
+            self.assertIsNone(user.google_refresh_token)
+
+    def test_malformed_progress_json_returns_bad_request(self):
+        self.register('malformedlearner')
+        response = self.client.post(
+            '/api/progress/update', data='[]', content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_curriculum_respects_configured_length_and_refreshes_on_subject_change(self):
+        self.register('shortcourse')
+        self.app.config['APP_CONFIG']['app']['curriculum_days'] = 2
+        subject = self.app.config['APP_CONFIG']['subjects'][0]
+        with self.app.app_context():
+            user = User.query.filter_by(username='shortcourse').one()
+            stored, days = get_subject_curriculum(
+                user, subject, self.app.config['APP_CONFIG']
+            )
+            self.assertEqual(len(days), 2)
+            self.assertEqual(days[-1]['day'], 2)
+            subject['description'] = 'Changed source material'
+            generated = {'days': [
+                {'day': day, 'topic': f'Updated {day}', 'objective': f'Objective {day}', 'difficulty': 2}
+                for day in (1, 2)
+            ]}
+            with patch('app.curriculum.generate_json', return_value=generated) as generate:
+                refreshed, updated_days = get_subject_curriculum(
+                    user, subject, self.app.config['APP_CONFIG']
+                )
+            self.assertEqual(generate.call_count, 1)
+            self.assertTrue(refreshed.is_ai_generated)
+            self.assertEqual(updated_days[0]['topic'], 'Updated 1')
+
+    def test_calendar_events_use_course_start_date_and_learner_timezone(self):
+        self.register('timezonelearner')
+        self.app.config['APP_CONFIG']['schedule']['start_date'] = '2030-01-01'
+        response = self.client.post('/api/calendar/schedule', json={
+            'day_number': 1, 'time_zone': 'Asia/Kolkata',
+        })
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            event = CalendarEvent.query.order_by(CalendarEvent.id).first()
+            self.assertEqual(event.time_zone, 'Asia/Kolkata')
+            self.assertEqual(event.start_time.isoformat(), '2030-01-01T05:30:00')
+
+    def test_schedule_config_requires_unlock_rule_used_by_completion(self):
+        from copy import deepcopy
+        from app import validate_app_config
+        config = deepcopy(self.app.config['APP_CONFIG'])
+        config['schedule'].pop('unlock_rules')
+        with self.assertRaisesRegex(ValueError, 'unlock_rules'):
+            validate_app_config(config)
 
 
 if __name__ == '__main__':

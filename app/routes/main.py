@@ -7,6 +7,7 @@ from app.learning import curriculum_days, next_unlocked_day
 from app.user_subjects import get_effective_config_for_user, get_effective_subjects_for_user
 from app.curriculum import PROFICIENCY_LEVELS
 from app.gemini import GeminiError, GeminiNotConfigured, generate_json
+from app.request_data import get_json_object
 import json
 
 main_bp = Blueprint('main', __name__)
@@ -476,7 +477,7 @@ def settings():
 @main_bp.route('/api/settings/assessment', methods=['POST'])
 @login_required
 def update_assessment_date():
-    data = request.get_json(silent=True)
+    data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'error': 'Request body must be a JSON object'}), 400
     assessment_date = data.get('assessment_date')

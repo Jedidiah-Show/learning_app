@@ -1,9 +1,7 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap');
-
 :root { color-scheme: light; --ink:#172033; --muted:#697386; --line:#e8ebf2; --purple:#635bdb; --mint:#dff8ef; }
 * { box-sizing:border-box; }
-body { color:var(--ink); font-family:'DM Sans',Inter,system-ui,sans-serif; background:#f7f8fc !important; }
-h1,h2,h3,h4,.section-title { font-family:Manrope,'DM Sans',sans-serif; }
+body { color:var(--ink); font-family:Inter,system-ui,-apple-system,'Segoe UI',sans-serif; background:#f7f8fc !important; }
+h1,h2,h3,h4,.section-title { font-family:Inter,system-ui,-apple-system,'Segoe UI',sans-serif; }
 .app-nav { overflow-x:auto; scrollbar-width:none; }
 .app-nav::-webkit-scrollbar { display:none; }
 .nav-link { transition:background .18s ease,color .18s ease,transform .18s ease; white-space:nowrap; }

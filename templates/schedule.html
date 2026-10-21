@@ -59,7 +59,10 @@
         fetch('/api/calendar/schedule', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({day_number: Number(document.getElementById('schedule-day').value)})
+            body: JSON.stringify({
+                day_number: Number(document.getElementById('schedule-day').value),
+                time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'UTC'
+            })
         })
         .then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.error || data.message || 'Could not schedule this day.'); return data; })
         .then(data => {
