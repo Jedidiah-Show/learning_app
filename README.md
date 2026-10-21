@@ -7,20 +7,20 @@ A Flask and SQLite learning app with account-specific progress, Gemini-generated
 ```bash
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-.venv/bin/flask --app app.py db upgrade
-SECRET_KEY='replace-with-a-long-random-value' .venv/bin/python app.py
+.venv/bin/flask --app index.py db upgrade
+SECRET_KEY='replace-with-a-long-random-value' .venv/bin/python index.py
 ```
 
 Open `http://127.0.0.1:8080`. The default database URL is `sqlite:///../data/learning_app.db`; set `DATABASE_URL` to use a different database. Configure a persistent `SECRET_KEY` anywhere sessions must survive restarts.
 
-The app does not create or alter database tables at startup. For a new database, apply the migrations with `flask --app app.py db upgrade`. If upgrading a database created by the previous `db.create_all()` version, first mark its existing schema as the baseline, then apply the calendar metadata migration:
+The app does not create or alter database tables at startup. For a new database, apply the migrations with `flask --app index.py db upgrade`. If upgrading a database created by the previous `db.create_all()` version, first mark its existing schema as the baseline, then apply the calendar metadata migration:
 
 ```bash
-.venv/bin/flask --app app.py db stamp b5855622047f
-.venv/bin/flask --app app.py db upgrade
+.venv/bin/flask --app index.py db stamp b5855622047f
+.venv/bin/flask --app index.py db upgrade
 ```
 
-Only stamp an existing database after confirming it contains the original application schema. Then apply all outstanding migrations with `flask --app app.py db upgrade`. Back up production data before applying migrations.
+Only stamp an existing database after confirming it contains the original application schema. Then apply all outstanding migrations with `flask --app index.py db upgrade`. Back up production data before applying migrations.
 
 ## Configuration and account data
 
