@@ -1,12 +1,16 @@
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session, current_app
+from flask import (
+    Blueprint, current_app, render_template, request, redirect, url_for,
+    flash, jsonify,
+)
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
-from app.models import User
-from datetime import datetime, timezone
-from urllib.parse import urljoin, urlsplit
-import json
+from app.models import PasswordResetToken, User
+from datetime import datetime, timedelta, timezone
+import hashlib
 import os
+import secrets
+from urllib.parse import urljoin, urlsplit
 
 auth_bp = Blueprint('auth', __name__)
 
@@ -27,7 +31,11 @@ def login():
         password = request.form.get('password')
         
         user = User.query.filter((User.username == username) | (User.email == username)).first()
-        if user and user.password_hash and check_password_hash(user.password_hash, password):
+        if (
+            user and user.password_hash
+            and isinstance(password, str)
+            and check_password_hash(user.password_hash, password)
+        ):
             login_user(user)
             user.last_active = datetime.now(timezone.utc)
             db.session.commit()
@@ -36,6 +44,104 @@ def login():
         flash('Invalid username or password', 'error')
     
     return render_template('auth/login.html')
+
+
+@auth_bp.route('/forgot-password', methods=['GET', 'POST'])
+def forgot_password():
+    if request.method == 'GET':
+        return render_template('auth/forgot_password.html')
+    if not current_app.config.get('TESTING'):
+        from app.mail import password_reset_mail_configured
+        if not password_reset_mail_configured():
+            flash(
+                'Password recovery email is not configured. Contact the administrator.',
+                'error',
+            )
+            return render_template('auth/forgot_password.html'), 503
+
+    email = request.form.get('email')
+    if not isinstance(email, str) or not email.strip():
+        flash('Enter the email address on your account.', 'error')
+        return render_template('auth/forgot_password.html'), 400
+    user = User.query.filter_by(email=email.strip().lower()).first()
+    if user and user.email:
+        now = datetime.now(timezone.utc)
+        recent = PasswordResetToken.query.filter(
+            PasswordResetToken.user_id == user.id,
+            PasswordResetToken.created_at >= now - timedelta(minutes=15),
+        ).first()
+        if not recent:
+            raw_token = secrets.token_urlsafe(32)
+            token = PasswordResetToken(
+                user_id=user.id,
+                token_hash=hashlib.sha256(raw_token.encode('utf-8')).hexdigest(),
+                expires_at=now + timedelta(minutes=30),
+            )
+            db.session.add(token)
+            db.session.commit()
+            public_url = os.environ.get('PUBLIC_APP_URL', '').rstrip('/')
+            reset_url = (
+                public_url
+                + url_for('auth.reset_password', token=raw_token)
+            )
+            try:
+                if not current_app.config.get('TESTING'):
+                    from app.mail import send_password_reset_email
+                    send_password_reset_email(user.email, reset_url)
+            except Exception:
+                db.session.delete(token)
+                db.session.commit()
+                current_app.logger.exception(
+                    'Could not send password recovery email for user %s', user.id
+                )
+                flash('Password recovery email could not be sent. Please retry later.', 'error')
+                return render_template('auth/forgot_password.html'), 503
+    flash(
+        'If an account exists for that email, password reset instructions will be sent.',
+        'success',
+    )
+    return redirect(url_for('auth.login'))
+
+
+@auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
+def reset_password(token):
+    token_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
+    reset_token = PasswordResetToken.query.filter_by(
+        token_hash=token_hash, used_at=None
+    ).first()
+    if not reset_token:
+        flash('This password reset link is invalid or expired.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+    expires_at = reset_token.expires_at
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= datetime.now(timezone.utc):
+        flash('This password reset link is invalid or expired.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+    if request.method == 'GET':
+        return render_template('auth/reset_password.html', token=token)
+
+    password = request.form.get('password')
+    confirmation = request.form.get('confirm_password')
+    if (
+        not isinstance(password, str) or len(password) < 8
+        or password != confirmation
+    ):
+        flash('Use matching passwords with at least 8 characters.', 'error')
+        return render_template('auth/reset_password.html', token=token), 400
+    user = db.session.get(User, reset_token.user_id)
+    if user is None:
+        flash('This password reset link is invalid or expired.', 'error')
+        return redirect(url_for('auth.forgot_password'))
+    user.password_hash = generate_password_hash(password)
+    now = datetime.now(timezone.utc)
+    PasswordResetToken.query.filter_by(user_id=user.id).update(
+        {'used_at': now}, synchronize_session=False
+    )
+    db.session.commit()
+    flash('Password updated. Sign in with your new password.', 'success')
+    return redirect(url_for('auth.login'))
+
 
 @auth_bp.route('/register', methods=['GET', 'POST'])
 def register():
@@ -135,6 +241,9 @@ def update_account():
             flash('Password must be at least 8 characters', 'error')
             return redirect(url_for('auth.profile'))
         current_user.password_hash = generate_password_hash(new_password)
+        PasswordResetToken.query.filter_by(user_id=current_user.id).update(
+            {'used_at': datetime.now(timezone.utc)}, synchronize_session=False
+        )
     
     db.session.commit()
     if request.is_json:
@@ -161,9 +270,8 @@ def delete_account():
         return redirect(url_for('auth.profile'))
     # Delete all related data explicitly for safety
     try:
-        # Relationships have cascade, but be thorough
-        from app import models
-        # Delete in case cascades missed
+        from app.routes.calendar import delete_user_calendar_events
+        delete_user_calendar_events(user)
         db.session.delete(user)
         db.session.commit()
         logout_user()
@@ -196,6 +304,8 @@ def reset_account():
         flash('Current password is incorrect', 'error')
         return redirect(url_for('auth.profile'))
     try:
+        from app.routes.calendar import delete_user_calendar_events
+        delete_user_calendar_events(user)
         # Delete all user data but keep the user account
         from app.models import (Progress, LessonCompletion, QuizResult, StudySession, 
                                 UserSubjectConfig, ProficiencyTest, CalendarEvent,
@@ -210,6 +320,7 @@ def reset_account():
         CalendarEvent.query.filter_by(user_id=user.id).delete()
         SubjectCurriculum.query.filter_by(user_id=user.id).delete()
         LearningProject.query.filter_by(user_id=user.id).delete()
+        PasswordResetToken.query.filter_by(user_id=user.id).delete()
         UserSubject.query.filter_by(user_id=user.id).delete()
         UserSchedule.query.filter_by(user_id=user.id).delete()
         UserConfig.query.filter_by(user_id=user.id).delete()

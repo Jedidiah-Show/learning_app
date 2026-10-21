@@ -18,10 +18,11 @@
         </div>
     </section>
 
-    <section class="grid grid-cols-1 sm:grid-cols-3 gap-4" aria-label="Learning overview">
+    <section class="grid grid-cols-1 sm:grid-cols-4 gap-4" aria-label="Learning overview">
         <article class="stat-card"><span class="stat-icon violet">✦</span><div><p class="stat-label">Next up</p><p id="next-day-label" class="stat-value">Day 1</p></div></article>
         <article class="stat-card"><span class="stat-icon mint">◎</span><div><p class="stat-label">Subjects</p><p class="stat-value">{{ config.subjects|length }} tracks</p></div></article>
         <article class="stat-card"><span class="stat-icon amber">◷</span><div><p class="stat-label">Assessment</p><p class="stat-value">{{ config.app.assessment_date }}</p></div></article>
+        {% if config.progress.track_streaks %}<article class="stat-card"><span class="stat-icon violet">✦</span><div><p class="stat-label">Study streak</p><p class="stat-value"><span id="study-streak-days">0</span> days</p></div></article>{% endif %}
     </section>
 
     <section class="panel-card p-5 sm:p-7">
@@ -58,6 +59,8 @@
                 document.getElementById('overall-progress').textContent = data.overall_progress + '%';
                 document.getElementById('days-completed').textContent = `${data.days_completed} of ${data.curriculum_days} days complete`;
                 document.getElementById('next-day-label').textContent = data.next_unlocked_day > data.curriculum_days ? 'Course complete' : `Day ${data.next_unlocked_day}`;
+                const streak = document.getElementById('study-streak-days');
+                if (streak) streak.textContent = data.study_streak_days ?? 0;
                 data.subjects.forEach(subject => {
                     const card = document.querySelector(`[data-subject="${subject.id}"]`);
                     if (!card) return;

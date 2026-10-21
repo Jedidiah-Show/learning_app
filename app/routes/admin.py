@@ -150,6 +150,15 @@ def update_schedule():
     if not schedule:
         schedule = UserSchedule(user_id=current_user.id)
         db.session.add(schedule)
+    try:
+        from app.routes.calendar import reconcile_calendar_schedule
+        reconcile_calendar_schedule(current_user, blocks)
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception(
+            'Could not reconcile calendar events for user %s', current_user.id
+        )
+        return jsonify({'error': 'Could not update scheduled Google Calendar events'}), 502
     schedule.daily_blocks = json.dumps(blocks)
     db.session.commit()
     return jsonify({'status': 'success', 'daily_blocks': blocks})

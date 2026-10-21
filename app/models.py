@@ -39,6 +39,9 @@ class User(UserMixin, db.Model):
     user_config = db.relationship('UserConfig', backref='user', lazy=True, cascade='all, delete-orphan', uselist=False)
     curricula = db.relationship('SubjectCurriculum', backref='user', lazy=True, cascade='all, delete-orphan')
     learning_projects = db.relationship('LearningProject', backref='user', lazy=True, cascade='all, delete-orphan')
+    password_reset_tokens = db.relationship(
+        'PasswordResetToken', backref='user', lazy=True, cascade='all, delete-orphan'
+    )
 
 class Progress(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -83,11 +86,13 @@ class QuizResult(db.Model):
     correct_answers = db.Column(db.Integer)
     answers_data = db.Column(db.Text)  # JSON
     evaluation = db.Column(db.Text)
+    attempt_id = db.Column(db.String(64))
     taken_at = db.Column(db.DateTime, default=utcnow)
     passed = db.Column(db.Boolean, default=False)
     __table_args__ = (
         db.Index('idx_quizresult_user', 'user_id'),
         db.Index('idx_quizresult_quiz_id', 'quiz_id'),
+        db.UniqueConstraint('user_id', 'quiz_id', 'attempt_id', name='unique_quiz_attempt'),
     )
 
 class StudySession(db.Model):
@@ -254,6 +259,8 @@ class ProficiencyTest(db.Model):
     answers_data = db.Column(db.Text)  # JSON
     evaluation = db.Column(db.Text)
     score = db.Column(db.Integer)
+    source_signature = db.Column(db.String(64))
+    is_ai_generated = db.Column(db.Boolean, default=False, nullable=False)
     completed = db.Column(db.Boolean, default=False)
     taken_at = db.Column(db.DateTime)
     created_at = db.Column(db.DateTime, default=utcnow)
@@ -295,6 +302,7 @@ class LearningProject(db.Model):
     evaluation = db.Column(db.Text)
     completed = db.Column(db.Boolean, default=False, nullable=False)
     is_ai_generated = db.Column(db.Boolean, default=False, nullable=False)
+    source_signature = db.Column(db.String(64))
     created_at = db.Column(db.DateTime, default=utcnow)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
     __table_args__ = (
@@ -307,3 +315,19 @@ class LearningProject(db.Model):
 
     def get_evaluation(self):
         return json.loads(self.evaluation) if self.evaluation else None
+
+
+class PasswordResetToken(db.Model):
+    __tablename__ = 'password_reset_token'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    token_hash = db.Column(db.String(64), unique=True, nullable=False)
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    used_at = db.Column(db.DateTime(timezone=True))
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    __table_args__ = (
+        db.Index('idx_password_reset_user', 'user_id'),
+        db.Index('idx_password_reset_expiry', 'expires_at'),
+    )

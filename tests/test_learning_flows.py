@@ -62,6 +62,21 @@ class LearningFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 401)
         self.assertEqual(response.get_json(), {'error': 'Authentication required'})
 
+    def test_login_without_password_returns_regular_auth_failure(self):
+        self.register('missingpassword')
+        self.client.post('/logout')
+        response = self.client.post('/login', data={'username': 'missingpassword'})
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Invalid username or password', response.data)
+
+    def test_account_update_rejects_non_object_json_without_server_error(self):
+        self.register('badaccountjson')
+        response = self.client.post(
+            '/account/update', data='[]', content_type='application/json'
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(response.get_json(), {'error': 'Request body must be an object'})
+
     def test_gemini_client_uses_configured_model_and_api_key_header(self):
         from unittest.mock import Mock
         with self.app.app_context():
@@ -93,6 +108,31 @@ class LearningFlowTests(unittest.TestCase):
             with patch('app.gemini.requests.post', return_value=response):
                 with self.assertRaisesRegex(GeminiError, 'HTTP 400'):
                     generate_json('Return JSON')
+
+    def test_gemini_retries_rate_limited_pro_with_flash(self):
+        from unittest.mock import Mock
+        with self.app.app_context():
+            self.app.config.update(
+                GEMINI_API_KEY='test-key',
+                GEMINI_PRO_MODEL='gemini-pro-test',
+                GEMINI_FLASH_MODEL='gemini-flash-test',
+            )
+            limited = Mock(ok=False, status_code=429)
+            limited.json.return_value = {'error': {'message': 'quota exceeded'}}
+            success = Mock(ok=True)
+            success.json.return_value = {
+                'candidates': [{
+                    'content': {'parts': [{'text': '{"answer":"ok"}'}]}
+                }]
+            }
+            with patch(
+                'app.gemini.requests.post', side_effect=[limited, success]
+            ) as post:
+                result = generate_json('Return JSON', model='pro')
+        self.assertEqual(result, {'answer': 'ok'})
+        self.assertEqual(post.call_count, 2)
+        self.assertIn('gemini-pro-test:generateContent', post.call_args_list[0].args[0])
+        self.assertIn('gemini-flash-test:generateContent', post.call_args_list[1].args[0])
 
     def test_offline_proficiency_assessment_has_twenty_distinct_balanced_questions(self):
         from app.routes.main import generate_proficiency_questions
@@ -191,6 +231,63 @@ class LearningFlowTests(unittest.TestCase):
             self.assertTrue(all(event.synced_to_google for event in events))
             self.assertTrue(all(event.event_id.startswith('google-event-') for event in events))
 
+    def test_schedule_changes_update_and_remove_synced_calendar_events(self):
+        from datetime import datetime, timezone
+        from unittest.mock import Mock
+        self.register('calendarreconcile')
+        self.app.config.update(
+            GOOGLE_CLIENT_ID='client-id',
+            GOOGLE_CLIENT_SECRET='client-secret',
+        )
+        with self.app.app_context():
+            user = User.query.filter_by(username='calendarreconcile').one()
+            user.google_access_token = 'access-token'
+            db.session.add_all([
+                CalendarEvent(
+                    user_id=user.id, event_id='google-morning',
+                    title='[Learning App] Morning Session - Day 1',
+                    start_time=datetime(2030, 1, 1, 11, tzinfo=timezone.utc).replace(tzinfo=None),
+                    end_time=datetime(2030, 1, 1, 13, tzinfo=timezone.utc).replace(tzinfo=None),
+                    day_number=1, block_name='morning', time_zone='UTC',
+                    synced_to_google=True,
+                ),
+                CalendarEvent(
+                    user_id=user.id, event_id='google-evening',
+                    title='[Learning App] Evening Session - Day 1',
+                    start_time=datetime(2030, 1, 1, 18, tzinfo=timezone.utc).replace(tzinfo=None),
+                    end_time=datetime(2030, 1, 1, 20, tzinfo=timezone.utc).replace(tzinfo=None),
+                    day_number=1, block_name='evening', time_zone='UTC',
+                    synced_to_google=True,
+                ),
+            ])
+            db.session.commit()
+
+        events_resource = Mock()
+        service = Mock()
+        service.events.return_value = events_resource
+        events_resource.update.return_value.execute.return_value = {}
+        events_resource.delete.return_value.execute.return_value = {}
+        with patch('google.oauth2.credentials.Credentials') as credentials:
+            credentials.return_value.expired = False
+            with patch('googleapiclient.discovery.build', return_value=service):
+                response = self.client.post('/api/admin/schedule', json={
+                    'daily_blocks': [{
+                        'name': 'morning',
+                        'start_time': '09:00',
+                        'end_time': '10:30',
+                    }],
+                })
+        self.assertEqual(response.status_code, 200)
+        events_resource.update.assert_called_once()
+        events_resource.delete.assert_called_once_with(
+            calendarId='primary', eventId='google-evening'
+        )
+        with self.app.app_context():
+            events = CalendarEvent.query.all()
+            self.assertEqual(len(events), 1)
+            self.assertEqual(events[0].start_time.isoformat(), '2030-01-01T09:00:00')
+            self.assertEqual(events[0].end_time.isoformat(), '2030-01-01T10:30:00')
+
     def test_unlocking_and_weekly_quiz_follow_completed_lessons(self):
         self.register('learner')
         locked = self.client.get('/api/lessons/daily/2')
@@ -234,14 +331,17 @@ class LearningFlowTests(unittest.TestCase):
         self.assertIn('deliverables', project_payload['project'])
         self.assertTrue(project_payload['is_ai_generated'])
         self.assertFalse(project_payload['completed'])
-        with patch('app.routes.projects.generate_json', return_value={
-            'score': 88,
-            'summary': 'The artifact applies the week’s ideas.',
-            'strengths': ['Clear application.'],
-            'gaps': [],
-            'next_steps': ['Add a second test case.'],
-            'rubric_scores': [],
-        }):
+        with patch('app.routes.projects.generate_json', side_effect=[
+            project_definition,
+            {
+                'score': 88,
+                'summary': 'The artifact applies the week’s ideas.',
+                'strengths': ['Clear application.'],
+                'gaps': [],
+                'next_steps': ['Add a second test case.'],
+                'rubric_scores': [],
+            },
+        ]):
             project_submission = self.client.post(
                 '/api/projects/weekly/1/submit',
                 json={'submission': 'A substantial project artifact. ' * 4},
@@ -345,7 +445,13 @@ class LearningFlowTests(unittest.TestCase):
             'objectives': ['Apply the concept.'],
             'content': {
                 'overview': 'A generated lesson overview.',
-                'theory_sections': [{'heading': 'Concept', 'content': 'A clear explanation.'}],
+                'theory_sections': [
+                    {'heading': heading, 'content': f'A clear explanation of {heading.lower()}.'}
+                    for heading in (
+                        'Overview', 'Core Concepts',
+                        'Guided Walkthrough', 'Practical Application',
+                    )
+                ],
                 'code_examples': [],
                 'pitfalls': [],
                 'self_checks': [{
@@ -415,7 +521,7 @@ class LearningFlowTests(unittest.TestCase):
         self.complete_day(1)
         completed = self.client.get('/api/lessons/daily/1').get_json()
         self.assertTrue(all(entry['completed'] for entry in completed['subjects']))
-        self.client.get('/logout')
+        self.client.post('/logout')
         self.register('bob')
 
         lessons = self.client.get('/api/lessons/daily/1').get_json()
@@ -430,6 +536,78 @@ class LearningFlowTests(unittest.TestCase):
         self.register('quizbob')
         bob_quiz = self.client.get('/api/quizzes/daily/1').get_json()
         self.assertNotEqual(alice_quiz['quiz_id'], bob_quiz['quiz_id'])
+
+    def test_quiz_submission_attempt_key_returns_saved_result_without_re_evaluation(self):
+        self.register('quizretry')
+        quiz = self.client.get('/api/quizzes/daily/1').get_json()
+        payload = {
+            'quiz_id': quiz['quiz_id'],
+            'quiz_type': quiz['quiz_type'],
+            'attempt_id': 'attempt-1',
+            'answers': {},
+        }
+        evaluation = {
+            'summary': 'Review the explanations.',
+            'strengths': [],
+            'gaps': [],
+            'next_steps': [],
+        }
+        with patch(
+            'app.routes.quizzes.generate_json', return_value=evaluation
+        ) as generate:
+            first = self.client.post('/api/quizzes/submit', json=payload)
+            retry = self.client.post('/api/quizzes/submit', json=payload)
+        self.assertEqual(first.status_code, 200)
+        self.assertEqual(retry.status_code, 200)
+        self.assertEqual(first.get_json(), retry.get_json())
+        self.assertEqual(generate.call_count, 1)
+        with self.app.app_context():
+            from app.models import QuizResult
+            self.assertEqual(QuizResult.query.filter_by(
+                attempt_id='attempt-1'
+            ).count(), 1)
+
+    def test_disabling_quiz_prevents_submission_of_an_existing_quiz(self):
+        self.register('quizdisabled')
+        quiz = self.client.get('/api/quizzes/daily/1').get_json()
+        preferences = self.client.post('/api/settings/preferences', json={
+            'quizzes': {'end_of_day_quiz': {'enabled': False}},
+        })
+        self.assertEqual(preferences.status_code, 200)
+        response = self.client.post('/api/quizzes/submit', json={
+            'quiz_id': quiz['quiz_id'],
+            'quiz_type': 'daily',
+            'answers': {},
+        })
+        self.assertEqual(response.status_code, 403)
+
+    def test_password_reset_token_is_hashed_expiring_and_single_use(self):
+        from werkzeug.security import check_password_hash
+        from app.models import PasswordResetToken
+
+        self.register('resetuser')
+        raw_token = 'test-reset-token-not-a-credential'
+        with patch('app.routes.auth.secrets.token_urlsafe', return_value=raw_token):
+            response = self.client.post('/forgot-password', data={
+                'email': 'resetuser@example.test',
+            })
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            stored = PasswordResetToken.query.one()
+            self.assertNotEqual(stored.token_hash, raw_token)
+            token_id = stored.id
+        reset = self.client.post(
+            f'/reset-password/{raw_token}',
+            data={'password': 'new-secure-pass', 'confirm_password': 'new-secure-pass'},
+        )
+        self.assertEqual(reset.status_code, 302)
+        with self.app.app_context():
+            stored = db.session.get(PasswordResetToken, token_id)
+            user = User.query.filter_by(username='resetuser').one()
+            self.assertIsNotNone(stored.used_at)
+            self.assertTrue(check_password_hash(user.password_hash, 'new-secure-pass'))
+        reused = self.client.get(f'/reset-password/{raw_token}')
+        self.assertEqual(reused.status_code, 302)
 
     def test_curriculum_length_and_personal_settings_are_isolated(self):
         alice = self.client
@@ -457,7 +635,7 @@ class LearningFlowTests(unittest.TestCase):
         )
         self.assertEqual(
             bob.get('/api/progress/dashboard').get_json()['assessment_date'],
-            '2026-01-27',
+            '2027-01-27',
         )
         self.assertEqual(
             alice.get('/api/progress/dashboard').get_json()['curriculum_days'],
@@ -558,6 +736,78 @@ class LearningFlowTests(unittest.TestCase):
             self.assertIsNone(user.google_access_token)
             self.assertIsNone(user.google_refresh_token)
 
+    def test_reset_deletes_synced_google_events_before_clearing_calendar_data(self):
+        from datetime import datetime
+        from unittest.mock import Mock
+        self.register('resetcalendar')
+        self.app.config.update(
+            GOOGLE_CLIENT_ID='client-id',
+            GOOGLE_CLIENT_SECRET='client-secret',
+        )
+        with self.app.app_context():
+            user = User.query.filter_by(username='resetcalendar').one()
+            user.google_access_token = 'access-token'
+            db.session.add(CalendarEvent(
+                user_id=user.id, event_id='google-reset-event',
+                title='Learning session',
+                start_time=datetime(2030, 1, 1, 11),
+                end_time=datetime(2030, 1, 1, 12),
+                day_number=1, block_name='morning', time_zone='UTC',
+                synced_to_google=True,
+            ))
+            db.session.commit()
+
+        events_resource = Mock()
+        service = Mock()
+        service.events.return_value = events_resource
+        events_resource.delete.return_value.execute.return_value = {}
+        with patch('google.oauth2.credentials.Credentials') as credentials:
+            credentials.return_value.expired = False
+            with patch('googleapiclient.discovery.build', return_value=service):
+                response = self.client.post('/account/reset', json={
+                    'current_password': 'secure-pass-123',
+                })
+        self.assertEqual(response.status_code, 200)
+        events_resource.delete.assert_called_once_with(
+            calendarId='primary', eventId='google-reset-event'
+        )
+        with self.app.app_context():
+            user = User.query.filter_by(username='resetcalendar').one()
+            self.assertIsNone(user.google_access_token)
+            self.assertEqual(CalendarEvent.query.filter_by(user_id=user.id).count(), 0)
+
+    def test_weekly_project_is_regenerated_when_its_source_changes(self):
+        from app.routes.projects import _get_or_create_project
+        self.register('projectrefresh')
+        project_data = {
+            'title': 'Updated project',
+            'brief': 'Apply the updated subject material.',
+            'learning_goals': ['Use the current topics.'],
+            'deliverables': ['One working artifact.'],
+            'rubric': [{'criterion': 'Application', 'weight': 100}],
+        }
+        with self.app.app_context():
+            user = User.query.filter_by(username='projectrefresh').one()
+            config = self.app.config['APP_CONFIG']
+            subjects = config['subjects'][:1]
+            original = _get_or_create_project(
+                user, config, 1, subjects, 1, 7
+            )
+            original_signature = original.source_signature
+            original_id = original.id
+            db.session.commit()
+            subjects[0]['description'] = 'Changed subject source'
+            with patch(
+                'app.routes.projects.generate_json', return_value=project_data
+            ) as generate:
+                updated = _get_or_create_project(
+                    user, config, 1, subjects, 1, 7
+                )
+            self.assertEqual(generate.call_count, 1)
+            self.assertEqual(updated.id, original_id)
+            self.assertNotEqual(updated.source_signature, original_signature)
+            self.assertEqual(updated.get_project()['title'], 'Updated project')
+
     def test_malformed_progress_json_returns_bad_request(self):
         self.register('malformedlearner')
         response = self.client.post(
@@ -565,21 +815,20 @@ class LearningFlowTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 400)
 
-    def test_curriculum_respects_configured_length_and_refreshes_on_subject_change(self):
-        self.register('shortcourse')
-        self.app.config['APP_CONFIG']['app']['curriculum_days'] = 2
+    def test_curriculum_length_is_fixed_and_refreshes_on_subject_change(self):
+        self.register('fixedcourse')
         subject = self.app.config['APP_CONFIG']['subjects'][0]
         with self.app.app_context():
-            user = User.query.filter_by(username='shortcourse').one()
+            user = User.query.filter_by(username='fixedcourse').one()
             stored, days = get_subject_curriculum(
                 user, subject, self.app.config['APP_CONFIG']
             )
-            self.assertEqual(len(days), 2)
-            self.assertEqual(days[-1]['day'], 2)
+            self.assertEqual(len(days), 90)
+            self.assertEqual(days[-1]['day'], 90)
             subject['description'] = 'Changed source material'
             generated = {'days': [
                 {'day': day, 'topic': f'Updated {day}', 'objective': f'Objective {day}', 'difficulty': 2}
-                for day in (1, 2)
+                for day in range(1, 91)
             ]}
             with patch('app.curriculum.generate_json', return_value=generated) as generate:
                 refreshed, updated_days = get_subject_curriculum(
@@ -588,6 +837,11 @@ class LearningFlowTests(unittest.TestCase):
             self.assertEqual(generate.call_count, 1)
             self.assertTrue(refreshed.is_ai_generated)
             self.assertEqual(updated_days[0]['topic'], 'Updated 1')
+            invalid_config = dict(self.app.config['APP_CONFIG'])
+            invalid_config['app'] = dict(invalid_config['app'], curriculum_days=2)
+            with self.assertRaisesRegex(ValueError, 'fixed at 90'):
+                from app import validate_app_config
+                validate_app_config(invalid_config)
 
     def test_calendar_events_use_course_start_date_and_learner_timezone(self):
         self.register('timezonelearner')

@@ -17,27 +17,27 @@
 })();
 
 function updateCountdown(assessmentDate) {
-    try {
-        const examDate = new Date(assessmentDate + ' 09:00:00').getTime();
-        const now = new Date().getTime();
-        const distance = examDate - now;
-        
-        if (distance > 0) {
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const elem = document.getElementById('countdown-timer');
-            if (elem) {
-                elem.innerText = days + ' Days';
-            }
-        } else {
-            const elem = document.getElementById('countdown-timer');
-            if (elem) {
-                elem.innerText = 'Today!';
-            }
-        }
-    } catch (e) {
-        console.error('Countdown error:', e);
+    const elem = document.getElementById('countdown-timer');
+    if (!elem) return;
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(assessmentDate);
+    if (!match) {
+        elem.textContent = 'Date unavailable';
+        return;
     }
+    const [, year, month, day] = match;
+    const examDate = new Date(Number(year), Number(month) - 1, Number(day), 9);
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const examDay = new Date(Number(year), Number(month) - 1, Number(day));
+    if (examDay < today || (examDay.getTime() === today.getTime() && now >= examDate)) {
+        elem.textContent = 'Past due';
+        return;
+    }
+    if (examDay.getTime() === today.getTime()) {
+        elem.textContent = 'Today!';
+        return;
+    }
+    elem.textContent = `${Math.ceil((examDay - today) / 86400000)} Days`;
 }
 
 // Format time

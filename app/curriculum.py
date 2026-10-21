@@ -4,7 +4,8 @@ import json
 import hashlib
 
 from app import db
-from app.gemini import GeminiNotConfigured, generate_json
+from flask import current_app
+from app.gemini import GeminiNotConfigured, generate_json, generation_context
 from app.models import SubjectCurriculum, UserSubjectConfig
 
 CURRICULUM_DAYS = 90
@@ -81,14 +82,19 @@ def get_subject_curriculum(user, subject, config):
         'proficiency': proficiency,
         'test_score': subject_config.test_score if subject_config else None,
         'curriculum_days': total_days,
+        'generation': generation_context(config, config.get('ai', {}).get('model_tier', 'flash')),
     }, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
     source_signature = hashlib.sha256(source.encode('utf-8')).hexdigest()
 
     stored = SubjectCurriculum.query.filter_by(
         user_id=user.id, subject_id=subject['id']
     ).first()
-    if (stored and stored.starting_proficiency == proficiency
-            and stored.source_signature == source_signature):
+    expected_ai_source = bool(current_app.config.get('GEMINI_API_KEY'))
+    if (
+        stored and stored.starting_proficiency == proficiency
+        and stored.source_signature == source_signature
+        and stored.is_ai_generated == expected_ai_source
+    ):
         try:
             days = _validate_plan({'days': json.loads(stored.plan)}, total_days)
             return stored, days
@@ -96,9 +102,12 @@ def get_subject_curriculum(user, subject, config):
             db.session.delete(stored)
             db.session.flush()
 
+    target_proficiency = config.get('learning', {}).get(
+        'target_proficiency', 'Advanced'
+    )
     prompt = (
         f'Create a personalized {total_days}-day curriculum for the learner and subject described below. '
-        f'The day-{total_days} outcome must demonstrate Advanced proficiency, regardless of starting level. '
+        f'The day-{total_days} outcome must demonstrate {target_proficiency} proficiency, regardless of starting level. '
         'For a Novice, begin with absolute basics and prerequisites. For other levels, diagnose '
         'likely gaps early and appropriately challenge their stated/assessed level. Sequence '
         'prerequisites before advanced application, include practice and cumulative integration, '
@@ -112,10 +121,14 @@ def get_subject_curriculum(user, subject, config):
     )
     generated = False
     try:
-        result = generate_json(prompt, model='pro')
+        result = generate_json(
+            prompt, model=config.get('ai', {}).get('model_tier', 'flash')
+        )
         days = _validate_plan(result, total_days)
         generated = True
     except GeminiNotConfigured:
+        if not current_app.testing:
+            raise
         days = _fallback_plan(subject, proficiency, total_days)
     except ValueError as error:
         from app.gemini import GeminiError

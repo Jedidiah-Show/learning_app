@@ -9,6 +9,7 @@
     </div>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {% if config.quizzes.end_of_day_quiz.enabled %}
         <div class="panel-card p-5 sm:p-6">
             <span class="stat-icon violet mb-4">◉</span><h3 class="section-title">Daily quiz</h3>
             <p class="text-sm text-slate-600 mb-4">End-of-day quiz covering all subjects</p>
@@ -22,6 +23,7 @@
                 Start Daily Quiz
             </button>
         </div>
+        {% endif %}
 
         <div class="panel-card p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -32,6 +34,7 @@
                 Open weekly projects
             </a>
         </div>
+        {% if config.quizzes.end_of_week_quiz.enabled %}
         <div class="panel-card p-5 sm:p-6">
             <span class="stat-icon mint mb-4">✳</span><h3 class="section-title">Weekly review</h3>
             <p class="text-sm text-slate-600 mb-4">Comprehensive weekly assessment</p>
@@ -43,6 +46,7 @@
                 Start Weekly Quiz
             </button>
         </div>
+        {% endif %}
     </div>
     
     <div id="quiz-container" class="hidden panel-card p-5 sm:p-8 max-w-3xl mx-auto">
@@ -65,6 +69,7 @@
     let currentQuiz = null;
     let currentQuestionIndex = 0;
     let userAnswers = {};
+    let currentAttemptId = null;
     
     function startDailyQuiz() {
         loadQuiz(`/api/quizzes/daily/${document.getElementById('quiz-day').value}`);
@@ -80,6 +85,7 @@
             .then(data => {
                 if (!data.questions.length) throw new Error('There are no questions available for this quiz yet.');
                 currentQuiz = data;
+                currentAttemptId = crypto.randomUUID();
                 currentQuestionIndex = 0;
                 userAnswers = {};
                 document.getElementById('quiz-container').classList.remove('hidden');
@@ -145,6 +151,7 @@
                 quiz_id: currentQuiz.quiz_id,
                 quiz_type: currentQuiz.quiz_type,
                 day_number: currentQuiz.day_number,
+                attempt_id: currentAttemptId,
                 answers: userAnswers
             })
         })

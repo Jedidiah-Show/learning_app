@@ -1,13 +1,16 @@
 """End-of-week synthesis projects and learner submissions."""
 
 import json
+import hashlib
 
 from flask import Blueprint, current_app, jsonify, render_template, request
 from flask_login import current_user, login_required
 
 from app import db
 from app.curriculum import get_curriculum_day
-from app.gemini import GeminiError, GeminiNotConfigured, generate_json
+from app.gemini import (
+    GeminiError, GeminiNotConfigured, generate_json, generation_context,
+)
 from app.learning import curriculum_days
 from app.request_data import get_json_object
 from app.models import LearningProject, Progress
@@ -110,8 +113,6 @@ def _get_or_create_project(user, config, week_number, subjects, first_day, last_
     project = LearningProject.query.filter_by(
         user_id=user.id, week_number=week_number
     ).first()
-    if project:
-        return project
     weekly_topics = {
         subject['id']: [
             get_curriculum_day(user, subject, day, config)
@@ -119,6 +120,30 @@ def _get_or_create_project(user, config, week_number, subjects, first_day, last_
         ]
         for subject in subjects
     }
+    source = json.dumps(
+        {
+            'subjects': subjects,
+            'weekly_topics': weekly_topics,
+            'week_number': week_number,
+            'generation': generation_context(
+                config, config.get('ai', {}).get('model_tier', 'flash')
+            ),
+            'project_prompt_version': '2026-10-21.1',
+        },
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(',', ':'),
+    )
+    source_signature = hashlib.sha256(source.encode('utf-8')).hexdigest()
+    expected_ai_source = bool(current_app.config.get('GEMINI_API_KEY'))
+    if project and (
+        project.completed
+        or (
+            project.source_signature == source_signature
+            and project.is_ai_generated == expected_ai_source
+        )
+    ):
+        return project
     prompt = (
         'Design a meaningful, beginner-accessible but challenging end-of-week learning project '
         'that synthesizes the actual topics and proficiency levels listed below. Give concrete '
@@ -132,19 +157,22 @@ def _get_or_create_project(user, config, week_number, subjects, first_day, last_
     )
     try:
         generated = _validate_project(
-            generate_json(prompt, model='pro')
+            generate_json(prompt, model=config.get('ai', {}).get('model_tier', 'flash'))
         )
         ai_generated = True
     except GeminiNotConfigured:
+        if not current_app.testing:
+            raise
         generated = _fallback_project(week_number, subjects, weekly_topics)
         ai_generated = False
-    project = LearningProject(
-        user_id=user.id,
-        week_number=week_number,
-        project=json.dumps(generated, ensure_ascii=False),
-        is_ai_generated=ai_generated,
-    )
-    db.session.add(project)
+    if project is None:
+        project = LearningProject(user_id=user.id, week_number=week_number)
+        db.session.add(project)
+    project.project = json.dumps(generated, ensure_ascii=False)
+    project.is_ai_generated = ai_generated
+    project.source_signature = source_signature
+    project.submission = None
+    project.evaluation = None
     db.session.flush()
     return project
 
@@ -236,8 +264,12 @@ def submit_weekly_project(week_number):
             f"Submission: {json.dumps(submission.strip(), ensure_ascii=False)}"
         )
         try:
-            evaluation = generate_json(prompt, model='pro')
+            evaluation = generate_json(
+                prompt, model=config.get('ai', {}).get('model_tier', 'flash')
+            )
         except GeminiNotConfigured:
+            if not current_app.testing:
+                raise
             evaluation = {
                 'score': None,
                 'summary': (

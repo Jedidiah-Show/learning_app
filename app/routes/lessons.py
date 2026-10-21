@@ -3,7 +3,9 @@ from flask_login import current_user, login_required
 from app.user_subjects import get_effective_config_for_user, get_effective_subjects_for_user
 from app.learning import day_is_available, next_unlocked_day
 from app.curriculum import get_curriculum_day
-from app.gemini import GeminiError, GeminiNotConfigured, generate_json
+from app.gemini import (
+    GeminiError, GeminiNotConfigured, generate_json, generation_context,
+)
 from app.request_data import get_json_object
 from app import db
 from app.models import Lesson, LessonCompletion, Progress
@@ -31,7 +33,9 @@ def get_daily_lessons(day_number):
             for subject in subjects
         }
         lesson_ids = [
-            get_lesson_id(subject, day_number, curriculum_days[subject['id']])
+            get_lesson_id(
+                subject, day_number, curriculum_days[subject['id']], config
+            )
             for subject in subjects
         ]
         lessons = Lesson.query.filter(Lesson.lesson_id.in_(lesson_ids)).all() if lesson_ids else []
@@ -47,7 +51,7 @@ def get_daily_lessons(day_number):
                 db.session.add(lesson)
                 added = True
             lesson_map[subject['id']] = lesson
-        if added or subjects:
+        if added:
             db.session.commit()
     except GeminiError:
         db.session.rollback()
@@ -100,7 +104,7 @@ def generate_lesson(subject, day_number, config, user=None, curriculum_day=None)
     topics = subject.get('topics') or []
     if curriculum_day is None and user is not None:
         curriculum_day = get_curriculum_day(user, subject, day_number, config)
-    lesson_id = get_lesson_id(subject, day_number, curriculum_day)
+    lesson_id = get_lesson_id(subject, day_number, curriculum_day, config)
     if curriculum_day:
         topic = curriculum_day['topic']
     elif topics:
@@ -110,9 +114,13 @@ def generate_lesson(subject, day_number, config, user=None, curriculum_day=None)
     
     ai_generated = False
     try:
-        lesson_content = generate_ai_lesson(subject, day_number, topic, curriculum_day)
+        lesson_content = generate_ai_lesson(
+            subject, day_number, topic, curriculum_day, config
+        )
         ai_generated = True
     except GeminiNotConfigured:
+        if not current_app.testing:
+            raise
         lesson_content = get_comprehensive_lesson_content(
             subject, day_number, topic, config, curriculum_day
         )
@@ -128,20 +136,25 @@ def generate_lesson(subject, day_number, config, user=None, curriculum_day=None)
             curriculum_day['difficulty'] if curriculum_day
             else min(day_number // 7 + 1, 5)
         ) if config.get('lesson_generation', {}).get('difficulty_progression', True) else 1,
-        estimated_minutes=90,
+        estimated_minutes=config.get('lesson_generation', {}).get(
+            'estimated_minutes', 90
+        ),
         is_ai_generated=ai_generated
     )
     
     return lesson
 
 
-def get_lesson_id(subject, day_number, curriculum_day=None):
+def get_lesson_id(subject, day_number, curriculum_day=None, config=None):
+    config = config or current_app.config.get('APP_CONFIG', {})
+    model_tier = config.get('ai', {}).get('model_tier', 'flash')
     subject_signature = json.dumps(
         [
             subject,
             curriculum_day.get('topic') if curriculum_day else None,
             curriculum_day.get('objective') if curriculum_day else None,
             curriculum_day.get('difficulty') if curriculum_day else None,
+            generation_context(config, model_tier),
         ],
         ensure_ascii=False,
         separators=(',', ':'),
@@ -150,7 +163,9 @@ def get_lesson_id(subject, day_number, curriculum_day=None):
     return f"{subject['id']}_day_{day_number}_{suffix}"
 
 
-def generate_ai_lesson(subject, day_number, topic, curriculum_day):
+def generate_ai_lesson(subject, day_number, topic, curriculum_day, config):
+    generation = config.get('lesson_generation', {})
+    model_tier = config.get('ai', {}).get('model_tier', 'flash')
     prompt = (
         'Write an accurate, practical lesson in JSON for one learner and one day of their '
         '90-day subject curriculum. Tailor explanation and exercise difficulty to learner '
@@ -161,13 +176,17 @@ def generate_ai_lesson(subject, day_number, topic, curriculum_day):
         '"explanation":"..."}],"pitfalls":["..."],"self_checks":[{"question":"...",'
         '"options":["...","...","...","..."],"correct_index":0,"explanation":"..."}],'
         '"summary":{"heading":"Key takeaways","points":["..."]},"exercises":[{"title":"...",'
-        '"description":"...","type":"practice"}],"key_terms":["..."]}}. Include 2-4 self-checks; '
+        '"description":"...","type":"practice"}],"key_terms":["..."]}}. Keep exactly four theory sections, '
+        'with headings Overview, Core Concepts, Guided Walkthrough, and Practical Application. '
+        'Include 2-4 self-checks when enabled; '
         'each correct_index must be a valid zero-based option index. No markdown fences.\\n'
         f'Subject: {json.dumps(subject, ensure_ascii=False)}\\n'
         f'Day: {day_number}\\nCurriculum objective: {json.dumps(curriculum_day, ensure_ascii=False)}\\n'
-        f'Topic: {json.dumps(topic, ensure_ascii=False)}'
+        f'Topic: {json.dumps(topic, ensure_ascii=False)}\\n'
+        f'Learner content preferences: {json.dumps(generation, ensure_ascii=False)}\\n'
+        f"Target proficiency: {config.get('learning', {}).get('target_proficiency', 'Advanced')}"
     )
-    result = generate_json(prompt)
+    result = generate_json(prompt, model=model_tier)
     if (
         not isinstance(result, dict)
         or not isinstance(result.get('title'), str)
@@ -177,11 +196,17 @@ def generate_ai_lesson(subject, day_number, topic, curriculum_day):
         from app.gemini import GeminiError
         raise GeminiError('Gemini returned an invalid lesson')
     content = result['content']
+    if not generation.get('include_code_examples', True):
+        content['code_examples'] = []
+    if not generation.get('include_pitfalls', True):
+        content['pitfalls'] = []
+    if not generation.get('include_self_checks', True):
+        content['self_checks'] = []
     checks = content.get('self_checks')
     sections = content.get('theory_sections')
     if (
         not isinstance(content.get('overview'), str)
-        or not isinstance(sections, list) or not sections
+        or not isinstance(sections, list) or len(sections) != 4
         or any(
             not isinstance(section, dict)
             or not isinstance(section.get('heading'), str)
@@ -203,6 +228,11 @@ def generate_ai_lesson(subject, day_number, topic, curriculum_day):
     ):
         from app.gemini import GeminiError
         raise GeminiError('Gemini returned an invalid lesson structure')
+    for section, heading in zip(
+        sections,
+        ('Overview', 'Core Concepts', 'Guided Walkthrough', 'Practical Application'),
+    ):
+        section['heading'] = heading
     for check in checks:
         check['explanation'] = (
             f"{chr(65 + check['correct_index'])}) {check.get('explanation', '')}".strip()
@@ -553,7 +583,9 @@ def complete_lesson():
         db.session.rollback()
         current_app.logger.exception('Could not verify lesson curriculum')
         return jsonify({'error': 'Lesson verification is temporarily unavailable.'}), 503
-    if not subject or get_lesson_id(subject, lesson.day_number, curriculum_day) != lesson.lesson_id:
+    if not subject or get_lesson_id(
+        subject, lesson.day_number, curriculum_day, config
+    ) != lesson.lesson_id:
         return jsonify({'error': 'Lesson not found'}), 404
     subject_id = lesson.subject_id
     day_number = lesson.day_number
@@ -561,6 +593,8 @@ def complete_lesson():
         time_spent = max(0, min(int(data.get('time_spent_minutes', 0)), 1440))
     except (TypeError, ValueError):
         return jsonify({'error': 'time_spent_minutes must be a non-negative integer'}), 400
+    if not config.get('progress', {}).get('track_time_spent', True):
+        time_spent = 0
     
     # Mark lesson complete
     completion = LessonCompletion.query.filter_by(
@@ -622,13 +656,19 @@ def complete_lesson():
         if not p or not p.completed:
             all_complete = False
             break
+    day_complete = (
+        all_complete
+        if config['schedule']['unlock_rules'].get(
+            'require_all_subjects_complete', True
+        )
+        else any(progress.completed for progress in prog_map.values())
+    )
     
     return jsonify({
         'status': 'success',
         'all_subjects_complete_for_day': all_complete,
         'can_progress_to_next_day': (
-            all_complete
-            and config['schedule']['unlock_rules'].get('allow_continue_after_day_complete', True)
+            day_complete
             and next_unlocked_day(user, config) > day_number
         )
     })
@@ -662,6 +702,7 @@ def ask_lesson_question():
         valid_lesson = bool(subject) and get_lesson_id(
             subject, lesson.day_number,
             get_curriculum_day(current_user, subject, lesson.day_number, config),
+            config,
         ) == lesson.lesson_id
     except GeminiError:
         db.session.rollback()

@@ -7,6 +7,7 @@ from app.user_subjects import get_effective_subjects_for_user
 from app.learning import curriculum_days, next_unlocked_day, day_is_available
 from app.request_data import get_json_object
 from datetime import datetime, date, timezone
+from datetime import timedelta
 
 progress_bp = Blueprint('progress', __name__)
 
@@ -56,7 +57,9 @@ def get_dashboard():
             'percentage': round((completed_count / total_days * 100) if total_days > 0 else 0, 1),
             'starting_proficiency': subject.get('stated_proficiency', 'Novice'),
             'current_proficiency': subject.get('proficiency', 'Novice'),
-            'target_proficiency': 'Advanced',
+            'target_proficiency': config.get('learning', {}).get(
+                'target_proficiency', 'Advanced'
+            ),
         })
         
         total_completed += completed_count
@@ -69,6 +72,23 @@ def get_dashboard():
         ):
             days_completed += 1
     dashboard_data['days_completed'] = days_completed
+    dashboard_data['study_streak_days'] = None
+    if config.get('progress', {}).get('track_streaks', True):
+        completion_dates = {
+            item.date() if isinstance(item, datetime) else item
+            for (item,) in db.session.query(Progress.completion_date).filter(
+                Progress.user_id == user.id,
+                Progress.completed.is_(True),
+                Progress.completion_date.isnot(None),
+            ).distinct()
+        }
+        today = datetime.now(timezone.utc).date()
+        current = today if today in completion_dates else today - timedelta(days=1)
+        streak = 0
+        while current in completion_dates:
+            streak += 1
+            current -= timedelta(days=1)
+        dashboard_data['study_streak_days'] = streak
     
     if total_possible > 0:
         dashboard_data['overall_progress'] = round((total_completed / total_possible * 100), 1)
@@ -102,6 +122,8 @@ def update_progress():
         return jsonify({'error': 'time_spent_minutes must be an integer'}), 400
     if time_spent < 0 or time_spent > 1440:
         return jsonify({'error': 'time_spent_minutes must be between 0 and 1440'}), 400
+    if not config.get('progress', {}).get('track_time_spent', True):
+        time_spent = 0
     
     progress = Progress.query.filter_by(
         user_id=user.id, 

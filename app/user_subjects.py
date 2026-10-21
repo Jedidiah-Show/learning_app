@@ -64,9 +64,22 @@ def get_effective_config_for_user(user=None):
     if user is None:
         user = current_user
     config = deepcopy(current_app.config.get('APP_CONFIG', {}) or {})
+    user_config = _user_config(user)
+    extra = user_config.get_extra_config() if user_config else {}
+    preferences = extra.get('preferences', {})
+    if isinstance(preferences, dict):
+        for section in (
+            'ai', 'learning', 'proficiency_assessment', 'quizzes',
+            'lesson_generation', 'progress', 'google_calendar',
+        ):
+            overrides = preferences.get(section)
+            if isinstance(overrides, dict):
+                config.setdefault(section, {}).update(deepcopy(overrides))
+        schedule_preferences = preferences.get('schedule', {})
+        if isinstance(schedule_preferences, dict):
+            config.setdefault('schedule', {}).update(deepcopy(schedule_preferences))
     config['subjects'] = get_effective_subjects_for_user(user)
     config.setdefault('schedule', {})['daily_blocks'] = get_effective_schedule_for_user(user)
-    user_config = _user_config(user)
     if user_config and user_config.assessment_date:
         config.setdefault('app', {})['assessment_date'] = user_config.assessment_date
     for key in ('google_client_secret', 'GOOGLE_CLIENT_SECRET'):
@@ -84,6 +97,26 @@ def update_user_extra_config(user, **updates):
         db.session.add(config)
     extra = config.get_extra_config()
     extra.update(updates)
+    import json
+    config.extra_config = json.dumps(extra)
+    return config
+
+
+def get_user_preferences(user):
+    user_config = _user_config(user)
+    extra = user_config.get_extra_config() if user_config else {}
+    preferences = extra.get('preferences', {})
+    return preferences if isinstance(preferences, dict) else {}
+
+
+def set_user_preferences(user, preferences):
+    config = _user_config(user)
+    if config is None:
+        config = UserConfig(user_id=user.id)
+        from app import db
+        db.session.add(config)
+    extra = config.get_extra_config()
+    extra['preferences'] = preferences
     import json
     config.extra_config = json.dumps(extra)
     return config

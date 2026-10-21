@@ -22,8 +22,8 @@ def validate_app_config(config):
     if not isinstance(app_config, dict):
         raise ValueError('Configuration must contain an app object')
     days = app_config.get('curriculum_days')
-    if not isinstance(days, int) or isinstance(days, bool) or days < 1 or days > 3660:
-        raise ValueError('app.curriculum_days must be an integer between 1 and 3660')
+    if not isinstance(days, int) or isinstance(days, bool) or days != 90:
+        raise ValueError('app.curriculum_days is fixed at 90')
     assessment_date = app_config.get('assessment_date')
     try:
         date.fromisoformat(str(assessment_date))
@@ -57,6 +57,7 @@ def validate_app_config(config):
         not isinstance(schedule, dict)
         or not isinstance(schedule.get('daily_blocks'), list)
         or not isinstance(schedule.get('unlock_rules'), dict)
+        or not isinstance(schedule['unlock_rules'].get('require_all_subjects_complete'), bool)
         or not isinstance(schedule['unlock_rules'].get('allow_continue_after_day_complete'), bool)
     ):
         raise ValueError('schedule must contain daily_blocks and valid unlock_rules')
@@ -80,7 +81,7 @@ def validate_app_config(config):
         raise ValueError('Configuration must contain quiz settings')
     for quiz_name in ('end_of_day_quiz', 'end_of_week_quiz'):
         quiz = quizzes.get(quiz_name)
-        if not isinstance(quiz, dict):
+        if not isinstance(quiz, dict) or not isinstance(quiz.get('enabled'), bool):
             raise ValueError(f'quizzes.{quiz_name} must be an object')
         count = quiz.get('questions_per_subject')
         threshold = quiz.get('passing_threshold')
@@ -89,7 +90,10 @@ def validate_app_config(config):
         if not isinstance(threshold, int) or isinstance(threshold, bool) or not 0 <= threshold <= 100:
             raise ValueError(f'quizzes.{quiz_name}.passing_threshold must be between 0 and 100')
     calendar_config = config.get('google_calendar')
-    if not isinstance(calendar_config, dict):
+    if (
+        not isinstance(calendar_config, dict)
+        or not isinstance(calendar_config.get('enabled'), bool)
+    ):
         raise ValueError('google_calendar must be an object')
     for key in ('calendar_id', 'event_prefix'):
         if not isinstance(calendar_config.get(key), str) or not calendar_config[key]:
@@ -103,17 +107,59 @@ def validate_app_config(config):
     generation = config.get('lesson_generation')
     if not isinstance(generation, dict):
         raise ValueError('lesson_generation must be an object')
+    minutes = generation.get('estimated_minutes')
+    if not isinstance(minutes, int) or isinstance(minutes, bool) or not 5 <= minutes <= 480:
+        raise ValueError('lesson_generation.estimated_minutes must be between 5 and 480')
     for key in ('include_code_examples', 'include_pitfalls', 'include_self_checks', 'difficulty_progression'):
         if key in generation and not isinstance(generation[key], bool):
             raise ValueError(f'lesson_generation.{key} must be a boolean')
+    progress = config.get('progress')
+    if not isinstance(progress, dict) or any(
+        not isinstance(progress.get(key), bool)
+        for key in ('track_streaks', 'track_time_spent')
+    ):
+        raise ValueError('progress must contain boolean tracking preferences')
     ai = config.get('ai')
     if not isinstance(ai, dict):
         raise ValueError('ai must be an object')
+    if ai.get('model_tier') not in {'flash', 'pro'}:
+        raise ValueError('ai.model_tier must be flash or pro')
     for key in ('flash_model', 'pro_model'):
         if not isinstance(ai.get(key), str) or not re.fullmatch(
             r'[A-Za-z0-9._-]+', ai[key]
         ):
             raise ValueError(f'ai.{key} must be a valid Gemini model name')
+    learning = config.get('learning')
+    if (
+        not isinstance(learning, dict)
+        or learning.get('target_proficiency') not in {
+            'Novice', 'Beginner', 'Intermediate', 'Advanced', 'Expert'
+        }
+    ):
+        raise ValueError('learning.target_proficiency must be a proficiency level')
+    assessment = config.get('proficiency_assessment')
+    question_count = assessment.get('questions_per_subject') if isinstance(assessment, dict) else None
+    if (
+        not isinstance(question_count, int) or isinstance(question_count, bool)
+        or not 5 <= question_count <= 100 or question_count % 5
+    ):
+        raise ValueError(
+            'proficiency_assessment.questions_per_subject must be a multiple of 5 between 5 and 100'
+        )
+    thresholds = assessment.get('proficiency_thresholds', {})
+    if (
+        not isinstance(thresholds, dict)
+        or set(thresholds) != {'Beginner', 'Intermediate', 'Advanced', 'Expert'}
+        or any(
+            not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 100
+            for value in thresholds.values()
+        )
+        or not (
+            thresholds['Beginner'] < thresholds['Intermediate']
+            < thresholds['Advanced'] < thresholds['Expert']
+        )
+    ):
+        raise ValueError('proficiency_assessment thresholds must increase from 0 to 100')
     return config
 
 

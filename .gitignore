@@ -7,3 +7,7 @@ __pycache__/
 instance/
 data/*.db
 data/*.db-*
+.vercel
+.env*
+client_secret*.json
+node_modules/

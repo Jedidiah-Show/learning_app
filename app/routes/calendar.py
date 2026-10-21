@@ -70,6 +70,146 @@ def _parse_timezone(value):
         return None
 
 
+def _calendar_service(user):
+    from google.auth.transport.requests import Request as GoogleRequest
+    from google.oauth2.credentials import Credentials
+    from googleapiclient.discovery import build
+
+    client_id, client_secret, _ = _oauth_settings()
+    if not user.google_access_token:
+        raise RuntimeError('Google Calendar is not connected')
+    if not client_id or not client_secret:
+        raise RuntimeError('Google Calendar credentials are not configured')
+    expiry = user.token_expiry
+    if expiry and expiry.tzinfo is None:
+        expiry = expiry.replace(tzinfo=timezone.utc)
+    credentials = Credentials(
+        token=user.google_access_token,
+        refresh_token=user.google_refresh_token,
+        token_uri='https://oauth2.googleapis.com/token',
+        client_id=client_id,
+        client_secret=client_secret,
+        scopes=[GOOGLE_CALENDAR_SCOPE],
+        expiry=expiry,
+    )
+    if credentials.expired:
+        if not user.google_refresh_token:
+            raise RuntimeError('Google authorization has expired; reconnect Google Calendar')
+        credentials.refresh(GoogleRequest())
+        user.google_access_token = credentials.token
+        if credentials.expiry:
+            user.token_expiry = credentials.expiry
+    return build('calendar', 'v3', credentials=credentials)
+
+
+def _google_event_body(event, user_id, calendar_config):
+    if event.time_zone:
+        zone = _parse_timezone(event.time_zone) or timezone.utc
+        start_time = event.start_time.replace(tzinfo=timezone.utc).astimezone(zone)
+        end_time = event.end_time.replace(tzinfo=timezone.utc).astimezone(zone)
+    else:
+        start_time = event.start_time.replace(tzinfo=timezone.utc).astimezone()
+        end_time = event.end_time.replace(tzinfo=timezone.utc).astimezone()
+    return {
+        'id': event.event_id or hashlib.sha256(
+            f'learning-app:{user_id}:{event.id}'.encode()
+        ).hexdigest(),
+        'summary': event.title,
+        'description': event.description,
+        'start': {'dateTime': start_time.isoformat()},
+        'end': {'dateTime': end_time.isoformat()},
+        'reminders': {
+            'useDefault': False,
+            'overrides': [
+                {'method': 'popup', 'minutes': value}
+                for value in calendar_config.get('reminder_minutes', [30])
+            ],
+        },
+    }
+
+
+def _delete_google_event(service, calendar_id, event_id):
+    try:
+        service.events().delete(calendarId=calendar_id, eventId=event_id).execute()
+    except Exception as error:
+        if getattr(getattr(error, 'resp', None), 'status', None) != 404:
+            raise
+
+
+def delete_user_calendar_events(user):
+    events = CalendarEvent.query.filter_by(
+        user_id=user.id, synced_to_google=True,
+    ).filter(CalendarEvent.event_id.isnot(None)).all()
+    if not events:
+        return
+    service = _calendar_service(user)
+    config = get_effective_config_for_user(user)
+    calendar_id = (config.get('google_calendar') or {}).get('calendar_id', 'primary')
+    for event in events:
+        _delete_google_event(service, calendar_id, event.event_id)
+
+
+def reconcile_calendar_schedule(user, blocks, force_update=False):
+    config = get_effective_config_for_user(user)
+    calendar_config = config.get('google_calendar') or {}
+    block_by_name = {block['name']: block for block in blocks}
+    events = CalendarEvent.query.filter_by(user_id=user.id).all()
+    updates = []
+    removals = []
+    for event in events:
+        if not event.block_name:
+            continue
+        block = block_by_name.get(event.block_name)
+        if block is None:
+            removals.append(event)
+            continue
+        zone = _parse_timezone(event.time_zone) or timezone.utc
+        local_date = event.start_time.replace(tzinfo=timezone.utc).astimezone(zone).date()
+        start_time = datetime.combine(
+            local_date, time.fromisoformat(block['start_time']), tzinfo=zone
+        )
+        end_time = datetime.combine(
+            local_date, time.fromisoformat(block['end_time']), tzinfo=zone
+        )
+        if end_time <= start_time:
+            end_time += timedelta(days=1)
+        start_utc = start_time.astimezone(timezone.utc).replace(tzinfo=None)
+        end_utc = end_time.astimezone(timezone.utc).replace(tzinfo=None)
+        title = (
+            f"{calendar_config.get('event_prefix', '[Learning App]')} "
+            f"{block['name'].title()} Session - Day {event.day_number}"
+        )
+        if force_update or (
+            event.start_time != start_utc
+            or event.end_time != end_utc
+            or event.title != title
+        ):
+            event.start_time = start_utc
+            event.end_time = end_utc
+            event.title = title
+            updates.append(event)
+
+    remote_updates = [event for event in updates if event.synced_to_google]
+    remote_removals = [
+        event for event in removals
+        if event.synced_to_google and event.event_id
+    ]
+    service = _calendar_service(user) if remote_updates or remote_removals else None
+    calendar_id = calendar_config.get('calendar_id', 'primary')
+    if service:
+        for event in remote_updates:
+            service.events().update(
+                calendarId=calendar_id,
+                eventId=event.event_id,
+                body=_google_event_body(event, user.id, calendar_config),
+            ).execute()
+        for event in remote_removals:
+            _delete_google_event(service, calendar_id, event.event_id)
+    for event in removals:
+        db.session.delete(event)
+    return bool(updates or removals)
+
+
 @calendar_bp.route('/schedule', methods=['POST'])
 @login_required
 def schedule_study_sessions():
@@ -167,6 +307,9 @@ def get_events():
 @login_required
 def google_auth():
     from google_auth_oauthlib.flow import Flow
+    if not get_effective_config_for_user(current_user)['google_calendar']['enabled']:
+        flash('Google Calendar integration is disabled in your preferences.', 'info')
+        return redirect(url_for('main.schedule'))
     client_id, client_secret, redirect_uri = _oauth_settings()
     if not client_id or not client_secret:
         flash(
@@ -257,18 +400,16 @@ def google_callback():
 @calendar_bp.route('/sync', methods=['POST'])
 @login_required
 def sync_to_google():
-    from google.oauth2.credentials import Credentials
-    from googleapiclient.discovery import build
-    from google.auth.transport.requests import Request as GoogleRequest
-    
     user = current_user
+    app_config = get_effective_config_for_user(user)
+    if not app_config['google_calendar']['enabled']:
+        return jsonify({'status': 'error', 'message': 'Google Calendar integration is disabled in your preferences'}), 403
     if not user.google_access_token:
         return jsonify({'status': 'error', 'message': 'Google Calendar not connected. Please authorize first.'}), 401
     
     data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'status': 'error', 'message': 'Request body must be a JSON object'}), 400
-    app_config = get_effective_config_for_user(user)
     day_number = _parse_day_number(data, app_config)
     if day_number is None:
         return jsonify({'status': 'error', 'message': 'day_number must be an integer inside the curriculum'}), 400
@@ -293,48 +434,11 @@ def sync_to_google():
         if already_synced:
             return jsonify({'status': 'success', 'events_created': 0, 'message': 'Study blocks are already synced'})
         return jsonify({'status': 'error', 'message': 'Schedule this day locally before syncing it'}), 409
-    expiry = user.token_expiry
-    if expiry and expiry.tzinfo is None:
-        expiry = expiry.replace(tzinfo=timezone.utc)
-    if expiry and expiry <= datetime.now(timezone.utc) and not user.google_refresh_token:
-        return jsonify({'status': 'error', 'message': 'Google authorization has expired; reconnect Google Calendar'}), 401
-    creds = Credentials(
-        token=user.google_access_token,
-        refresh_token=user.google_refresh_token,
-        token_uri="https://oauth2.googleapis.com/token",
-        client_id=client_id,
-        client_secret=client_secret,
-        scopes=[GOOGLE_CALENDAR_SCOPE],
-        expiry=expiry,
-    )
     try:
-        if creds.expired:
-            creds.refresh(GoogleRequest())
-            user.google_access_token = creds.token
-            if creds.expiry:
-                user.token_expiry = creds.expiry
-            db.session.commit()
-        service = build('calendar', 'v3', credentials=creds)
+        service = _calendar_service(user)
         event_ids = []
         for local_event in local_events:
-            if local_event.time_zone:
-                zone = _parse_timezone(local_event.time_zone) or timezone.utc
-                start_time = local_event.start_time.replace(tzinfo=timezone.utc).astimezone(zone)
-                end_time = local_event.end_time.replace(tzinfo=timezone.utc).astimezone(zone)
-            else:
-                start_time = local_event.start_time.astimezone()
-                end_time = local_event.end_time.astimezone()
-            body = {
-                'id': hashlib.sha256(f'learning-app:{user.id}:{local_event.id}'.encode()).hexdigest(),
-                'summary': local_event.title,
-                'description': local_event.description,
-                'start': {'dateTime': start_time.isoformat()},
-                'end': {'dateTime': end_time.isoformat()},
-                'reminders': {
-                    'useDefault': False,
-                    'overrides': [{'method': 'popup', 'minutes': value} for value in gcal_cfg.get('reminder_minutes', [30])],
-                },
-            }
+            body = _google_event_body(local_event, user.id, gcal_cfg)
             calendar_id = gcal_cfg.get('calendar_id', 'primary')
             try:
                 created_event = service.events().insert(

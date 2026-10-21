@@ -5,10 +5,13 @@ from app.models import Quiz, QuizResult, Lesson, Progress
 from flask_login import current_user, login_required
 from app.learning import curriculum_days, day_is_available, next_unlocked_day
 from app.curriculum import get_curriculum_day
-from app.gemini import GeminiError, GeminiNotConfigured, generate_json
+from app.gemini import (
+    GeminiError, GeminiNotConfigured, generate_json, generation_context,
+)
 from app.request_data import get_json_object
 import hashlib
 import json
+from sqlalchemy.exc import IntegrityError
 
 quizzes_bp = Blueprint('quizzes', __name__)
 
@@ -16,10 +19,12 @@ quizzes_bp = Blueprint('quizzes', __name__)
 @login_required
 def get_daily_quiz(day_number):
     config = get_effective_config_for_user(current_user)
+    quiz_settings = config['quizzes']['end_of_day_quiz']
+    if not quiz_settings['enabled']:
+        return jsonify({'error': 'Daily quizzes are disabled in your settings'}), 403
     if not day_is_available(current_user, config, day_number):
         return jsonify({'error': 'Day is locked', 'next_unlocked_day': next_unlocked_day(current_user, config)}), 403
     subjects = get_effective_subjects_for_user(current_user)
-    quiz_id = _quiz_id('daily', day_number, subjects, current_user.id)
     # A quiz must be backed by that day's actual lesson checks.
     from app.routes.lessons import generate_lesson, get_lesson_id
     try:
@@ -32,9 +37,18 @@ def get_daily_quiz(day_number):
         current_app.logger.exception('Could not load the curriculum for day %s', day_number)
         return jsonify({'error': 'The quiz is temporarily unavailable. Please retry.'}), 503
     lesson_ids = [
-        get_lesson_id(subject, day_number, curriculum_days[subject['id']])
+        get_lesson_id(
+            subject, day_number, curriculum_days[subject['id']], config
+        )
         for subject in subjects
     ]
+    quiz_source = [
+        (subject['id'], day_number, curriculum_days[subject['id']])
+        for subject in subjects
+    ]
+    quiz_id = _quiz_id(
+        'daily', day_number, subjects, current_user.id, config, quiz_source
+    )
     try:
         lessons = Lesson.query.filter(Lesson.lesson_id.in_(lesson_ids)).all() if lesson_ids else []
         lesson_map = {l.subject_id: l for l in lessons}
@@ -93,6 +107,8 @@ def get_daily_quiz(day_number):
 @login_required
 def get_weekly_quiz(week_number):
     config = get_effective_config_for_user(current_user)
+    if not config['quizzes']['end_of_week_quiz']['enabled']:
+        return jsonify({'error': 'Weekly quizzes are disabled in your settings'}), 403
     total_days = curriculum_days(config)
     last_week = (total_days + 6) // 7
     if week_number < 1 or week_number > last_week:
@@ -106,27 +122,34 @@ def get_weekly_quiz(week_number):
         return jsonify({'error': 'Complete every lesson in this week before taking its quiz', 'incomplete_day': incomplete_day}), 409
 
     subjects = get_effective_subjects_for_user(current_user)
-    quiz_id = _quiz_id('weekly', week_number, subjects, current_user.id)
+    week_days = list(range(first_day, last_day + 1))
+    from app.routes.lessons import generate_lesson, get_lesson_id
+    try:
+        week_curriculum = {
+            (subject['id'], day): get_curriculum_day(current_user, subject, day, config)
+            for subject in subjects for day in week_days
+        }
+    except GeminiError:
+        db.session.rollback()
+        current_app.logger.exception(
+            'Could not load the curriculum for week %s', week_number
+        )
+        return jsonify({'error': 'The quiz is temporarily unavailable. Please retry.'}), 503
+    quiz_source = [
+        (subject['id'], day, week_curriculum[(subject['id'], day)])
+        for subject in subjects for day in week_days
+    ]
+    quiz_id = _quiz_id(
+        'weekly', week_number, subjects, current_user.id, config, quiz_source
+    )
     quiz = Quiz.query.filter_by(quiz_id=quiz_id).first()
     if not quiz:
         questions = []
         questions_per_subject = config['quizzes']['end_of_week_quiz']['questions_per_subject']
-        # Batch fetch all lessons for the week
-        week_days = list(range(first_day, last_day + 1))
-        from app.routes.lessons import generate_lesson, get_lesson_id
-        try:
-            week_curriculum = {
-                (subject['id'], day): get_curriculum_day(current_user, subject, day, config)
-                for subject in subjects for day in week_days
-            }
-        except GeminiError:
-            db.session.rollback()
-            current_app.logger.exception(
-                'Could not load the curriculum for week %s', week_number
-            )
-            return jsonify({'error': 'The quiz is temporarily unavailable. Please retry.'}), 503
         week_lesson_ids = [
-            get_lesson_id(subject, day, week_curriculum[(subject['id'], day)])
+            get_lesson_id(
+                subject, day, week_curriculum[(subject['id'], day)], config
+            )
             for subject in subjects for day in week_days
         ]
         try:
@@ -225,11 +248,20 @@ def _lesson_questions(lesson, subject, day_number, limit):
     return questions
 
 
-def _quiz_id(quiz_type, number, subjects, user_id):
+def _quiz_id(
+    quiz_type, number, subjects, user_id, config=None, curriculum_source=None
+):
+    config = config or current_app.config['APP_CONFIG']
+    option = 'end_of_day_quiz' if quiz_type == 'daily' else 'end_of_week_quiz'
+    model_tier = config.get('ai', {}).get('model_tier', 'flash')
     signature = json.dumps(
         {
             'user_id': user_id,
             'subjects': sorted(subjects, key=lambda subject: subject.get('id', '')),
+            'quiz_settings': config.get('quizzes', {}).get(option, {}),
+            'generation': generation_context(config, model_tier),
+            'curriculum_source': curriculum_source or [],
+            'quiz_prompt_version': '2026-10-21.1',
         },
         ensure_ascii=False,
         separators=(',', ':'),
@@ -250,6 +282,7 @@ def generate_daily_quiz(quiz_id, day_number, subjects, config, lesson_map=None, 
          for subject in subjects if subject['id'] in lesson_map],
         questions_per_subject,
         'daily',
+        config.get('ai', {}).get('model_tier', 'flash'),
     ) if user else None
     if ai_questions is not None:
         questions = ai_questions
@@ -272,7 +305,9 @@ def generate_daily_quiz(quiz_id, day_number, subjects, config, lesson_map=None, 
     return quiz
 
 
-def generate_ai_quiz_questions(subjects, lesson_sources, per_subject, quiz_type):
+def generate_ai_quiz_questions(
+    subjects, lesson_sources, per_subject, quiz_type, model_tier='flash'
+):
     prompt_sources = []
     for subject, day, lesson in lesson_sources:
         content = lesson.get_content()
@@ -301,8 +336,10 @@ def generate_ai_quiz_questions(subjects, lesson_sources, per_subject, quiz_type)
         f'Lesson material: {json.dumps(prompt_sources, ensure_ascii=False)}'
     )
     try:
-        result = generate_json(prompt)
+        result = generate_json(prompt, model=model_tier)
     except GeminiNotConfigured:
+        if not current_app.testing:
+            raise
         return None
     if not isinstance(result, dict) or not isinstance(result.get('questions'), list):
         raise GeminiError('Gemini returned an invalid quiz')
@@ -349,23 +386,61 @@ def submit_quiz():
     quiz_id = data.get('quiz_id')
     quiz_type = data.get('quiz_type')
     answers = data.get('answers', {})
+    attempt_id = data.get('attempt_id')
     if not isinstance(answers, dict):
         return jsonify({'error': 'answers must be an object'}), 400
+    if attempt_id is not None and (
+        not isinstance(attempt_id, str)
+        or not 1 <= len(attempt_id) <= 64
+    ):
+        return jsonify({'error': 'attempt_id must be a string of 1 to 64 characters'}), 400
     
     quiz = Quiz.query.filter_by(quiz_id=quiz_id).first()
     if not quiz:
         return jsonify({'error': 'Quiz not found'}), 404
+    config = get_effective_config_for_user(user)
+    quiz_setting = (
+        config['quizzes']['end_of_day_quiz']
+        if quiz.quiz_type == 'daily'
+        else config['quizzes']['end_of_week_quiz']
+    )
+    if not quiz_setting['enabled']:
+        return jsonify({'error': 'This quiz type is disabled in your settings'}), 403
     
     questions = quiz.get_questions()
     if quiz_type != quiz.quiz_type:
         return jsonify({'error': 'Quiz type does not match quiz'}), 400
     subjects = get_effective_subjects_for_user(user)
     quiz_number = quiz.day_number if quiz.quiz_type == 'daily' else quiz.week_number
-    if quiz_number is None or quiz.quiz_id != _quiz_id(
-        quiz.quiz_type, quiz_number, subjects, user.id
+    if quiz_number is None:
+        return jsonify({'error': 'Quiz not found'}), 404
+    if quiz.quiz_type == 'daily':
+        source_days = [quiz_number]
+    else:
+        first_day = (quiz_number - 1) * 7 + 1
+        source_days = list(range(first_day, min(quiz_number * 7, curriculum_days(config)) + 1))
+    try:
+        curriculum_source = [
+            (subject['id'], day, get_curriculum_day(user, subject, day, config))
+            for subject in subjects for day in source_days
+        ]
+    except GeminiError:
+        db.session.rollback()
+        current_app.logger.exception('Could not verify quiz curriculum %s', quiz_id)
+        return jsonify({'error': 'Quiz verification is temporarily unavailable.'}), 503
+    if quiz.quiz_id != _quiz_id(
+        quiz.quiz_type, quiz_number, subjects, user.id, config, curriculum_source
     ):
         return jsonify({'error': 'Quiz not found'}), 404
-    config = get_effective_config_for_user(user)
+    if attempt_id:
+        existing_attempt = QuizResult.query.filter_by(
+            user_id=user.id,
+            quiz_id=quiz_id,
+            attempt_id=attempt_id,
+        ).first()
+        if existing_attempt:
+            return jsonify(_quiz_result_response(existing_attempt, quiz.passing_threshold))
+    passing_threshold = quiz.passing_threshold
     if quiz.quiz_type == 'daily' and not day_is_available(user, config, quiz.day_number):
         return jsonify({'error': 'Day is locked', 'next_unlocked_day': next_unlocked_day(user, config)}), 403
     if quiz.quiz_type == 'weekly':
@@ -393,7 +468,8 @@ def submit_quiz():
     passed = score >= quiz.passing_threshold
     try:
         evaluation = evaluate_quiz(
-            questions, answers, score, quiz.quiz_type
+            questions, answers, score, quiz.quiz_type,
+            config.get('ai', {}).get('model_tier', 'flash'),
         )
     except GeminiError:
         current_app.logger.exception('Could not evaluate quiz %s', quiz_id)
@@ -410,26 +486,38 @@ def submit_quiz():
         correct_answers=correct,
         answers_data=json.dumps(answers),
         evaluation=json.dumps(evaluation, ensure_ascii=False),
-        passed=passed
+        passed=passed,
+        attempt_id=attempt_id,
     )
     db.session.add(result)
     try:
         db.session.commit()
-    except Exception:
+    except IntegrityError:
         db.session.rollback()
+        if attempt_id:
+            existing_attempt = QuizResult.query.filter_by(
+                user_id=user.id,
+                quiz_id=quiz_id,
+                attempt_id=attempt_id,
+            ).first()
+            if existing_attempt:
+                return jsonify(_quiz_result_response(existing_attempt, passing_threshold))
         raise
-    
-    return jsonify({
-        'score': score,
-        'correct': correct,
-        'total': total,
-        'passed': passed,
-        'passing_threshold': quiz.passing_threshold,
-        'evaluation': evaluation,
-    })
+    return jsonify(_quiz_result_response(result, passing_threshold))
 
 
-def evaluate_quiz(questions, answers, score, quiz_type):
+def _quiz_result_response(result, passing_threshold):
+    return {
+        'score': result.score,
+        'correct': result.correct_answers,
+        'total': result.total_questions,
+        'passed': result.passed,
+        'passing_threshold': passing_threshold,
+        'evaluation': json.loads(result.evaluation) if result.evaluation else {},
+    }
+
+
+def evaluate_quiz(questions, answers, score, quiz_type, model_tier='flash'):
     responses = [
         {
             'question': question['question'],
@@ -449,8 +537,10 @@ def evaluate_quiz(questions, answers, score, quiz_type):
         f'Responses and answer key: {json.dumps(responses, ensure_ascii=False)}'
     )
     try:
-        result = generate_json(prompt)
+        result = generate_json(prompt, model=model_tier)
     except GeminiNotConfigured:
+        if not current_app.testing:
+            raise
         missed = sum(
             item['selected_option'] != item['correct_option'] for item in responses
         )

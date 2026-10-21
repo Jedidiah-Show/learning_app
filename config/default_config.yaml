@@ -2,12 +2,24 @@
 app:
   name: "Daily Deep-Dive Learning App"
   version: "1.0.0"
-  assessment_date: "2026-01-27"  # Make this configurable as requested
+  assessment_date: "2027-01-27"
   curriculum_days: 90
 
 ai:
+  model_tier: "flash"
   flash_model: "gemini-3.8-flash"
   pro_model: "gemini-3.1-pro-preview"
+
+learning:
+  target_proficiency: "Advanced"
+
+proficiency_assessment:
+  questions_per_subject: 20
+  proficiency_thresholds:
+    Beginner: 45
+    Intermediate: 65
+    Advanced: 80
+    Expert: 90
 
 # Configurable subjects (can be tweaked - not hardcoded)
 subjects:
@@ -88,7 +100,7 @@ schedule:
   unlock_rules:
     # Can progress after completing a daily deep dive BUT only after completing ALL subjects for that day
     require_all_subjects_complete: true
-    allow_continue_after_day_complete: true
+    allow_continue_after_day_complete: false
 
 # Quizzes
 quizzes:
@@ -110,13 +122,12 @@ google_calendar:
 
 # Progress tracking
 progress:
-  auto_save: true
   track_streaks: true
   track_time_spent: true
 
 # Lesson generation
 lesson_generation:
-  mode: "hybrid"  # template | ai | hybrid
+  estimated_minutes: 90
   include_code_examples: true
   include_pitfalls: true
   include_self_checks: true

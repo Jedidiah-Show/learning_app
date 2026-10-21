@@ -6,7 +6,7 @@
 <div class="space-y-6">
     <div class="page-intro">
         <div><p class="eyebrow">Make time for the work</p><h2 class="section-title text-2xl">Your study schedule</h2><p class="mt-1 text-sm text-slate-600">Plan the day’s blocks and keep them visible here.</p></div>
-        {% if current_user.google_access_token %}<span class="connected-badge">✓ Google Calendar connected</span>{% elif google_calendar_oauth_configured %}<a href="{{ url_for('calendar.google_auth') }}" class="btn-secondary">Connect Google Calendar</a>{% else %}<span class="text-sm text-slate-500">Google Calendar connection is not configured.</span>{% endif %}
+        {% if not config.google_calendar.enabled %}<span class="text-sm text-slate-500">Google Calendar integration is disabled in settings.</span>{% elif current_user.google_access_token %}<span class="connected-badge">✓ Google Calendar connected</span>{% elif google_calendar_oauth_configured %}<a href="{{ url_for('calendar.google_auth') }}" class="btn-secondary">Connect Google Calendar</a>{% else %}<span class="text-sm text-slate-500">Google Calendar connection is not configured.</span>{% endif %}
     </div>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -32,7 +32,7 @@
                 </select>
             </label>
             <button id="schedule-button" onclick="scheduleStudyDay()" class="btn-primary">Schedule all study blocks</button>
-            {% if current_user.google_access_token %}<button id="sync-button" onclick="syncStudyDay()" class="btn-secondary">Sync this day to Google</button>{% endif %}
+            {% if config.google_calendar.enabled and current_user.google_access_token %}<button id="sync-button" onclick="syncStudyDay()" class="btn-secondary">Sync this day to Google</button>{% endif %}
         </div>
         <p id="schedule-status" class="mt-3 text-sm" role="status"></p>
     </div>

@@ -7,6 +7,11 @@
     <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <h2 class="text-xl font-bold text-slate-800 mb-1">Settings</h2>
         <p class="text-slate-600 text-sm">Configure subjects, assessment date, app settings, and account</p>
+        {% if gemini_configured %}
+        <p class="mt-3 text-sm text-emerald-700">Gemini is configured for this app.</p>
+        {% else %}
+        <p class="mt-3 text-sm text-rose-700">Gemini is not configured on this server. Set GEMINI_API_KEY in the server environment to generate lessons, assessments, and quizzes.</p>
+        {% endif %}
     </div>
 
     {% if current_user.is_authenticated %}
@@ -23,6 +28,88 @@
         <h3 class="text-base font-bold text-slate-800 mb-4">Assessment Date</h3>
         <input type="date" id="assessment-date" value="{{ config.app.assessment_date }}" class="border border-slate-300 rounded-lg px-3 py-2">
         <button onclick="updateAssessmentDate()" class="ml-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Update</button>
+    </div>
+
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm space-y-5">
+        <div>
+            <h3 class="text-base font-bold text-slate-800">Learning preferences</h3>
+            <p class="text-sm text-slate-600">These choices apply only to your account. Course duration is fixed at 90 days.</p>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <label class="text-sm font-medium text-slate-700">Target proficiency
+                <select id="target-proficiency" class="mt-1 w-full border rounded-lg px-3 py-2">
+                    {% for level in ['Novice', 'Beginner', 'Intermediate', 'Advanced', 'Expert'] %}
+                    <option value="{{ level }}" {% if config.learning.target_proficiency == level %}selected{% endif %}>{{ level }}</option>
+                    {% endfor %}
+                </select>
+            </label>
+            <label class="text-sm font-medium text-slate-700">Gemini model tier
+                <select id="model-tier" class="mt-1 w-full border rounded-lg px-3 py-2">
+                    <option value="flash" {% if config.ai.model_tier == 'flash' %}selected{% endif %}>Flash (recommended)</option>
+                    <option value="pro" {% if config.ai.model_tier == 'pro' %}selected{% endif %}>Pro (uses Flash automatically if rate-limited)</option>
+                </select>
+            </label>
+            <div class="text-sm text-slate-600">
+                <p class="font-medium text-slate-700 mb-2">Lesson content preferences</p>
+                {% for field, label in [('include_code_examples', 'Include code/examples'), ('include_pitfalls', 'Include pitfalls'), ('include_self_checks', 'Include self-checks'), ('difficulty_progression', 'Progress lesson difficulty')] %}
+                <label class="flex items-center gap-2 mb-2">
+                    <input type="checkbox" id="lesson-{{ field }}" {% if config.lesson_generation[field] %}checked{% endif %}>
+                    {{ label }}
+                </label>
+                {% endfor %}
+                <label class="block text-xs text-slate-600 mt-3">Estimated lesson minutes
+                    <input id="lesson-minutes" type="number" min="5" max="480" value="{{ config.lesson_generation.estimated_minutes }}" class="block mt-1 border rounded px-2 py-1">
+                </label>
+                <p class="text-xs text-slate-500">The lesson section structure stays fixed.</p>
+            </div>
+            <div>
+                <h4 class="text-sm font-medium text-slate-700 mb-2">Daily quiz</h4>
+                <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="daily-enabled" {% if config.quizzes.end_of_day_quiz.enabled %}checked{% endif %}> Enabled</label>
+                <label class="block text-xs text-slate-600 mt-2">Questions per subject<input id="daily-count" type="number" min="1" max="100" value="{{ config.quizzes.end_of_day_quiz.questions_per_subject }}" class="block mt-1 border rounded px-2 py-1"></label>
+                <label class="block text-xs text-slate-600 mt-2">Passing threshold (%)<input id="daily-threshold" type="number" min="0" max="100" value="{{ config.quizzes.end_of_day_quiz.passing_threshold }}" class="block mt-1 border rounded px-2 py-1"></label>
+            </div>
+            <div>
+                <h4 class="text-sm font-medium text-slate-700 mb-2">Weekly quiz</h4>
+                <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="weekly-enabled" {% if config.quizzes.end_of_week_quiz.enabled %}checked{% endif %}> Enabled</label>
+                <label class="block text-xs text-slate-600 mt-2">Questions per subject<input id="weekly-count" type="number" min="1" max="100" value="{{ config.quizzes.end_of_week_quiz.questions_per_subject }}" class="block mt-1 border rounded px-2 py-1"></label>
+                <label class="block text-xs text-slate-600 mt-2">Passing threshold (%)<input id="weekly-threshold" type="number" min="0" max="100" value="{{ config.quizzes.end_of_week_quiz.passing_threshold }}" class="block mt-1 border rounded px-2 py-1"></label>
+            </div>
+            <div>
+                <h4 class="text-sm font-medium text-slate-700 mb-2">Initial proficiency assessment</h4>
+                <label class="block text-xs text-slate-600">Questions per subject (multiple of 5)
+                    <input id="proficiency-question-count" type="number" min="5" max="100" step="5" value="{{ config.proficiency_assessment.questions_per_subject }}" class="block mt-1 border rounded px-2 py-1">
+                </label>
+                <div class="grid grid-cols-2 gap-2 mt-2">
+                    {% for level in ['Beginner', 'Intermediate', 'Advanced', 'Expert'] %}
+                    <label class="text-xs text-slate-600">{{ level }} score threshold (%)
+                        <input id="threshold-{{ level|lower }}" type="number" min="0" max="100" value="{{ config.proficiency_assessment.proficiency_thresholds[level] }}" class="block mt-1 border rounded px-2 py-1 w-full">
+                    </label>
+                    {% endfor %}
+                </div>
+            </div>
+            <div>
+                <h4 class="text-sm font-medium text-slate-700 mb-2">Progress tracking</h4>
+                <label class="flex items-center gap-2 text-sm mb-2"><input type="checkbox" id="track-streaks" {% if config.progress.track_streaks %}checked{% endif %}> Calculate study streaks</label>
+                <label class="flex items-center gap-2 text-sm"><input type="checkbox" id="track-time" {% if config.progress.track_time_spent %}checked{% endif %}> Record lesson time spent</label>
+            </div>
+            <div>
+                <h4 class="text-sm font-medium text-slate-700 mb-2">Course pacing</h4>
+                <label class="block text-xs text-slate-600">Course start date<input id="schedule-start-date" type="date" value="{{ config.schedule.start_date or '' }}" class="block mt-1 border rounded px-2 py-1"></label>
+                <label class="flex items-center gap-2 text-sm mt-3"><input type="checkbox" id="require-all-subjects" {% if config.schedule.unlock_rules.require_all_subjects_complete %}checked{% endif %}> Require every subject to unlock the next day</label>
+                <label class="flex items-center gap-2 text-sm mt-2"><input type="checkbox" id="allow-continue" {% if config.schedule.unlock_rules.allow_continue_after_day_complete %}checked{% endif %}> Continue without completing the weekly project</label>
+            </div>
+            <div>
+                <h4 class="text-sm font-medium text-slate-700 mb-2">Google Calendar preferences</h4>
+                <label class="flex items-center gap-2 text-sm mb-2"><input type="checkbox" id="calendar-enabled" {% if config.google_calendar.enabled %}checked{% endif %}> Enable Google Calendar integration</label>
+                <label class="block text-xs text-slate-600">Calendar ID<input id="calendar-id" value="{{ config.google_calendar.calendar_id }}" maxlength="200" class="block mt-1 border rounded px-2 py-1 w-full"></label>
+                <label class="block text-xs text-slate-600 mt-2">Event title prefix<input id="calendar-prefix" value="{{ config.google_calendar.event_prefix }}" maxlength="100" class="block mt-1 border rounded px-2 py-1 w-full"></label>
+                <label class="block text-xs text-slate-600 mt-2">Popup reminder minutes (comma-separated)<input id="calendar-reminders" value="{{ config.google_calendar.reminder_minutes | join(', ') }}" class="block mt-1 border rounded px-2 py-1 w-full"></label>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="savePreferences()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Save learning preferences</button>
+            <span id="preferences-status" class="text-sm" role="status"></span>
+        </div>
     </div>
     
     <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
@@ -211,6 +298,83 @@
         fetch('/api/admin/schedule', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({daily_blocks: blocks})}).then(async r=>{ const d=await r.json(); if(!r.ok) throw new Error(d.error||'Could not save schedule'); return d; }).then(d=>{
             if (d.status==='success') { alert('Schedule saved'); } else { alert(d.error||'Failed'); }
         }).catch(error => alert(error.message));
+    }
+    function savePreferences() {
+        const status = document.getElementById('preferences-status');
+        const remindersText = document.getElementById('calendar-reminders').value.trim();
+        const reminders = remindersText ? remindersText.split(',').map(value => Number(value.trim())) : [];
+        if (reminders.some(value => !Number.isInteger(value))) {
+            status.textContent = 'Reminder values must be whole minutes.';
+            status.className = 'text-sm text-rose-700';
+            return;
+        }
+        const checked = id => document.getElementById(id).checked;
+        const value = id => document.getElementById(id).value;
+        const preferences = {
+            ai: {model_tier: value('model-tier')},
+            learning: {target_proficiency: value('target-proficiency')},
+            proficiency_assessment: {
+                questions_per_subject: Number(value('proficiency-question-count')),
+                proficiency_thresholds: {
+                    Beginner: Number(value('threshold-beginner')),
+                    Intermediate: Number(value('threshold-intermediate')),
+                    Advanced: Number(value('threshold-advanced')),
+                    Expert: Number(value('threshold-expert'))
+                }
+            },
+            quizzes: {
+                end_of_day_quiz: {
+                    enabled: checked('daily-enabled'),
+                    questions_per_subject: Number(value('daily-count')),
+                    passing_threshold: Number(value('daily-threshold'))
+                },
+                end_of_week_quiz: {
+                    enabled: checked('weekly-enabled'),
+                    questions_per_subject: Number(value('weekly-count')),
+                    passing_threshold: Number(value('weekly-threshold'))
+                }
+            },
+            lesson_generation: {
+                include_code_examples: checked('lesson-include_code_examples'),
+                include_pitfalls: checked('lesson-include_pitfalls'),
+                include_self_checks: checked('lesson-include_self_checks'),
+                difficulty_progression: checked('lesson-difficulty_progression'),
+                estimated_minutes: Number(value('lesson-minutes'))
+            },
+            progress: {
+                track_streaks: checked('track-streaks'),
+                track_time_spent: checked('track-time')
+            },
+            schedule: {
+                start_date: value('schedule-start-date') || null,
+                unlock_rules: {
+                    require_all_subjects_complete: checked('require-all-subjects'),
+                    allow_continue_after_day_complete: checked('allow-continue')
+                }
+            },
+            google_calendar: {
+                enabled: checked('calendar-enabled'),
+                calendar_id: value('calendar-id').trim(),
+                event_prefix: value('calendar-prefix').trim(),
+                reminder_minutes: reminders
+            }
+        };
+        fetch('/api/settings/preferences', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(preferences)
+        }).then(async response => {
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Could not save preferences.');
+            return data;
+        }).then(() => {
+            status.textContent = 'Preferences saved.';
+            status.className = 'text-sm text-emerald-700';
+            location.reload();
+        }).catch(error => {
+            status.textContent = error.message;
+            status.className = 'text-sm text-rose-700';
+        });
     }
     document.addEventListener('DOMContentLoaded', function(){ loadSchedule(); });
 </script>
