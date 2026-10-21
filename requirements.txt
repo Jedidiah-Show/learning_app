@@ -1,6 +1,7 @@
 Flask==3.0.0
 Flask-SQLAlchemy==3.1.1
 Flask-Migrate==4.0.7
+psycopg[binary]>=3.1,<4
 Flask-Login==0.6.3
 google-api-python-client==2.108.0
 google-auth-httplib2==0.1.1

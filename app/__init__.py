@@ -153,7 +153,19 @@ def create_app(config_override=None):
     # Never use a public, hard-coded Flask signing key for account sessions.
     # Set SECRET_KEY in the environment to keep sessions valid across restarts.
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or os.urandom(32)
-    app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///../data/learning_app.db')
+    database_url = os.environ.get('DATABASE_URL')
+    if database_url:
+        if database_url.startswith('postgres://'):
+            database_url = database_url.replace(
+                'postgres://', 'postgresql+psycopg://', 1
+            )
+        elif database_url.startswith('postgresql://'):
+            database_url = database_url.replace(
+                'postgresql://', 'postgresql+psycopg://', 1
+            )
+    app.config['SQLALCHEMY_DATABASE_URI'] = (
+        database_url or 'sqlite:///../data/learning_app.db'
+    )
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
     app.config['GEMINI_API_KEY'] = (
         os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')

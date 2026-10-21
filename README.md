@@ -22,6 +22,10 @@ The app does not create or alter database tables at startup. For a new database,
 
 Only stamp an existing database after confirming it contains the original application schema. Then apply all outstanding migrations with `flask --app index.py db upgrade`. Back up production data before applying migrations.
 
+## Vercel deployment
+
+Configure `DATABASE_URL` in the Vercel project with a persistent PostgreSQL connection URL. The app accepts `postgresql://` and `postgres://` URLs and uses Psycopg 3. Vercel's function filesystem is read-only except for temporary `/tmp` storage, so the SQLite fallback is only for local development and must not be used for production account data. After setting the database URL, run `flask --app index.py db upgrade` against that database before using registration or login.
+
 ## Configuration and account data
 
 `config/default_config.yaml` defines the shared curriculum, default topics, schedule, Gemini 3 model names, quiz thresholds, and Google Calendar defaults. New learners choose one of Novice, Beginner, Intermediate, Advanced, or Expert for each subject during onboarding. Novice learners skip the diagnostic and start at the basics; all other levels must complete an initial diagnostic of at least 20 questions per subject before any curriculum content is available. Gemini-generated diagnostics are validated for question uniqueness, four distinct answer choices, and balanced coverage across five difficulty bands. Each completed week unlocks a synthesis project; the next week remains locked until its project is submitted.
