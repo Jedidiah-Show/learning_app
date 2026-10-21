@@ -237,7 +237,6 @@ def create_app(config_override=None):
                 if request.path.startswith('/api/'):
                     return jsonify({'error': 'CSRF validation failed'}), 400
                 return 'CSRF validation failed', 400
-        from flask import request
         from flask_login import current_user
         if not current_user.is_authenticated:
             return None
