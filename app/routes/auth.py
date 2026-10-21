@@ -213,6 +213,10 @@ def update_account():
         return jsonify({'error': 'Account fields must be strings'}), 400
     email = (raw_email or '').strip().lower() if raw_email is not None else None
     phone = (raw_phone or '').strip() if raw_phone is not None else None
+    if email is not None and len(email) > 120:
+        return jsonify({'error': 'Email must be 120 characters or fewer'}), 400
+    if phone is not None and len(phone) > 50:
+        return jsonify({'error': 'Phone must be 50 characters or fewer'}), 400
     
     # Update email
     if email is not None and email != (current_user.email or ''):

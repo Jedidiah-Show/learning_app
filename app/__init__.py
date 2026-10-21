@@ -199,7 +199,26 @@ def create_app(config_override=None):
     # Never use a public, hard-coded Flask signing key for account sessions.
     # Set SECRET_KEY in the environment to keep sessions valid across restarts.
     app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or os.urandom(32)
-    database_url = os.environ.get('DATABASE_URL')
+    database_url = next((
+        os.environ.get(key)
+        for key in (
+            'DATABASE_URL',
+            'POSTGRES_URL',
+            'POSTGRES_URL_NON_POOLING',
+            'DATABASE_URL_UNPOOLED',
+        )
+        if os.environ.get(key)
+    ), None)
+    running_on_vercel = bool(
+        os.environ.get('VERCEL')
+        or os.environ.get('VERCEL_ENV')
+        or os.path.isdir('/var/task')
+    )
+    if running_on_vercel and not database_url:
+        raise RuntimeError(
+            'A persistent PostgreSQL URL is required on Vercel. Configure '
+            'DATABASE_URL or POSTGRES_URL in the project environment.'
+        )
     if database_url:
         if database_url.startswith('postgres://'):
             database_url = database_url.replace(

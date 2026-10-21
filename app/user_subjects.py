@@ -5,6 +5,7 @@ from copy import deepcopy
 from flask import current_app
 from flask_login import current_user
 
+from app import merge_config
 from app.models import UserSchedule, UserSubject, UserConfig, UserSubjectConfig
 
 
@@ -74,10 +75,14 @@ def get_effective_config_for_user(user=None):
         ):
             overrides = preferences.get(section)
             if isinstance(overrides, dict):
-                config.setdefault(section, {}).update(deepcopy(overrides))
+                config[section] = merge_config(
+                    config.get(section, {}), overrides
+                )
         schedule_preferences = preferences.get('schedule', {})
         if isinstance(schedule_preferences, dict):
-            config.setdefault('schedule', {}).update(deepcopy(schedule_preferences))
+            config['schedule'] = merge_config(
+                config.get('schedule', {}), schedule_preferences
+            )
     config['subjects'] = get_effective_subjects_for_user(user)
     config.setdefault('schedule', {})['daily_blocks'] = get_effective_schedule_for_user(user)
     if user_config and user_config.assessment_date:
