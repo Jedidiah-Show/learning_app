@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}Daily Lessons - Daily Deep-Dive Learning{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="page-intro">
+        <div>
+            <p class="eyebrow">One focused day at a time</p>
+            <h2 class="section-title text-2xl">Daily deep dives</h2>
+            <p id="day-summary" class="mt-1 text-sm text-slate-600">Complete every subject to open the next day.</p>
+            <div class="mt-4 progress-track max-w-sm"><div id="day-progress" class="progress-fill" style="width:0%;--subject-color:#635bdb"></div></div>
+            <p id="day-progress-label" class="mt-1 text-xs text-slate-500"></p>
+        </div>
+        <div class="flex items-center gap-3">
+            <label for="day-selector" class="text-xs font-bold uppercase tracking-wider text-slate-500">Course day</label>
+            <select id="day-selector" class="field-input min-w-28" onchange="loadLessons()">
+                {% for day in range(1, curriculum_days + 1) %}
+                <option value="{{ day }}" {% if day > next_unlocked_day %}disabled{% endif %} {% if day == [next_unlocked_day, curriculum_days]|min %}selected{% endif %}>Day {{ day }}{% if day > next_unlocked_day %} · Locked{% endif %}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+    
+    <div id="lessons-container" class="grid grid-cols-1 lg:grid-cols-2 gap-4" aria-live="polite">
+        <!-- Lessons will be loaded dynamically -->
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let currentDay = 1;
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        loadLessons();
+    });
+    
+    function loadLessons() {
+        currentDay = document.getElementById('day-selector').value;
+        fetch(`/api/lessons/daily/${currentDay}`)
+            .then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.error || 'Could not load lessons'); return data; })
+            .then(data => {
+                renderLessons(data);
+                const done = data.subjects.filter(item => item.completed).length;
+                const percent = data.subjects.length ? Math.round(done / data.subjects.length * 100) : 0;
+                document.getElementById('day-progress').style.width = `${percent}%`;
+                document.getElementById('day-progress-label').textContent = `${done} of ${data.subjects.length} subjects complete`;
+                const weekEnd = (Number(currentDay) % 7 === 0 && Number(currentDay) < {{ curriculum_days }})
+                    || Number(currentDay) === {{ curriculum_days }};
+                document.getElementById('day-summary').textContent = percent === 100
+                    ? (weekEnd ? 'All subjects complete. Your weekly synthesis project is ready before you continue.' : 'All subjects complete. Your next day is unlocked.')
+                    : 'Finish every subject to unlock the next day.';
+            })
+            .catch(error => { const container = document.getElementById('lessons-container'); container.className = 'panel-card p-5 text-sm text-rose-700'; container.textContent = error.message; });
+    }
+    
+    function renderLessons(data) {
+        const container = document.getElementById('lessons-container');
+        container.innerHTML = '';
+        
+        data.subjects.forEach(item => {
+            const subject = item.subject;
+            const lesson = item.lesson;
+            const completed = item.completed;
+            
+            const card = document.createElement('div');
+            card.className = 'panel-card p-5 sm:p-6 flex flex-col';
+            const header = document.createElement('div');
+            header.className = 'flex items-start justify-between gap-3 mb-4';
+            const identity = document.createElement('div');
+            identity.className = 'flex items-center space-x-3';
+            const icon = document.createElement('span');
+            icon.className = 'subject-icon';
+            icon.style.setProperty('--subject-color', subject.color);
+            icon.textContent = subject.icon;
+            const labels = document.createElement('div');
+            const name = document.createElement('h3');
+            name.className = 'subject-name';
+            name.textContent = subject.name;
+            const title = document.createElement('p');
+            title.className = 'mt-1 text-xs leading-relaxed text-slate-500';
+            title.textContent = lesson.title;
+            labels.append(name, title);
+            identity.append(icon, labels);
+            const badge = document.createElement('span');
+            badge.className = `shrink-0 px-3 py-1 rounded-full text-[10px] uppercase tracking-wide font-bold ${completed ? 'bg-emerald-100 text-emerald-700' : 'bg-indigo-50 text-indigo-700'}`;
+            badge.textContent = completed ? '✓ Completed' : 'In Progress';
+            header.append(identity, badge);
+            const overview = document.createElement('p');
+            overview.className = 'text-sm leading-relaxed text-slate-600 flex-1';
+            overview.textContent = lesson.content.overview || '';
+            const footer = document.createElement('div');
+            footer.className = 'mt-5 flex items-center justify-between border-t border-slate-100 pt-4';
+            const duration = document.createElement('span');
+            duration.className = 'text-xs font-semibold text-slate-500';
+            duration.textContent = `◷ ${lesson.estimated_minutes} min`;
+            const link = document.createElement('a');
+            link.href = `/lesson/${encodeURIComponent(lesson.lesson_id)}`;
+            link.className = 'btn-primary';
+            link.textContent = completed ? 'Review lesson →' : 'Start lesson →';
+            footer.append(duration, link);
+            card.append(header, overview, footer);
+            container.appendChild(card);
+        });
+    }
+    
+    function startLesson(lessonId, subjectId) {
+        window.location.href = '/lesson/' + lessonId;
+    }
+</script>
+{% endblock %}

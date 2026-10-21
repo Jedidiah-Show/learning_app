@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - Daily Deep-Dive Learning{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-xl font-bold text-slate-800 mb-1">Settings</h2>
+        <p class="text-slate-600 text-sm">Configure subjects, assessment date, app settings, and account</p>
+    </div>
+
+    {% if current_user.is_authenticated %}
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h3 class="text-base font-bold text-slate-800 mb-4">Account Management</h3>
+        <p class="text-sm text-slate-600 mb-4">Manage your account settings. Visit <a href="{{ url_for('auth.profile') }}" class="text-indigo-600 hover:underline">Profile</a> for full account management options.</p>
+        <div class="flex flex-wrap gap-2">
+            <a href="{{ url_for('auth.profile') }}" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Manage Account</a>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h3 class="text-base font-bold text-slate-800 mb-4">Assessment Date</h3>
+        <input type="date" id="assessment-date" value="{{ config.app.assessment_date }}" class="border border-slate-300 rounded-lg px-3 py-2">
+        <button onclick="updateAssessmentDate()" class="ml-2 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm">Update</button>
+    </div>
+    
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="text-base font-bold text-slate-800">Configurable Subjects</h3>
+                <p class="text-sm text-slate-600">Add, edit, or remove subjects (id, name, icon, description, color, topics)</p>
+            </div>
+            <button onclick="openSubjectModal()" class="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm">Add Subject</button>
+        </div>
+        <div id="subjects-list" class="space-y-2">
+            {% for subject in config.subjects %}
+            <div class="flex items-center justify-between p-3 border border-slate-200 rounded-lg" data-subject-id="{{ subject.id }}">
+                <div class="flex items-center space-x-3">
+                    <span class="text-xl">{{ subject.icon }}</span>
+                    <div>
+                        <div class="font-semibold text-slate-800">{{ subject.name }} <span class="text-xs text-slate-400">({{ subject.id }})</span></div>
+                        <div class="text-xs text-slate-500">{{ subject.description }}</div>
+                        <div class="text-xs text-slate-400 mt-1">Topics: {{ subject.topics | join(', ') }}</div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick='editSubject({{ subject | tojson }})' class="text-indigo-600 text-sm">Edit</button>
+                    <button onclick='deleteSubject({{ subject.id | tojson }})' class="text-rose-600 text-sm">Remove</button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="text-base font-bold text-slate-800">Daily Schedule</h3>
+                <p class="text-sm text-slate-600">Configure study blocks (times) per user</p>
+            </div>
+            <button onclick="addScheduleBlock()" class="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm">Add Block</button>
+        </div>
+        <div id="schedule-blocks" class="space-y-2"></div>
+        <button onclick="saveSchedule()" class="mt-3 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm">Save Schedule</button>
+    </div>
+
+    <!-- Subject Modal -->
+    <div id="subject-modal" class="fixed inset-0 bg-black/40 hidden items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-6 w-full max-w-lg mx-4">
+            <h4 class="font-bold text-lg mb-4" id="subject-modal-title">Add Subject</h4>
+            <input type="hidden" id="subject-id-orig">
+            <div class="grid grid-cols-2 gap-3">
+                <label class="text-sm">ID<input id="subject-id" class="w-full border rounded-lg px-2 py-1 mt-1"></label>
+                <label class="text-sm">Name<input id="subject-name" class="w-full border rounded-lg px-2 py-1 mt-1"></label>
+                <label class="text-sm">Icon<input id="subject-icon" class="w-full border rounded-lg px-2 py-1 mt-1" placeholder="📚"></label>
+                <label class="text-sm">Color<input id="subject-color" class="w-full border rounded-lg px-2 py-1 mt-1" placeholder="#6366f1"></label>
+                <label class="text-sm col-span-2">Description<input id="subject-desc" class="w-full border rounded-lg px-2 py-1 mt-1"></label>
+                <label class="text-sm">Priority<input id="subject-priority" type="number" class="w-full border rounded-lg px-2 py-1 mt-1" value="1"></label>
+                <label class="text-sm col-span-2">Topics (comma separated)<input id="subject-topics" class="w-full border rounded-lg px-2 py-1 mt-1" placeholder="Topic 1, Topic 2, Topic 3, Topic 4"></label>
+            </div>
+            <div class="flex justify-end gap-2 mt-4">
+                <button onclick="closeSubjectModal()" class="px-3 py-2 border rounded-lg text-sm">Cancel</button>
+                <button onclick="saveSubject()" class="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function updateAssessmentDate() {
+        const date = document.getElementById('assessment-date').value;
+        fetch('/api/settings/assessment', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({assessment_date: date})
+        }).then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.error || 'Failed to update'); return data; }).then(data => {
+            if (data.status === 'success') {
+                alert('Assessment date updated to: ' + date);
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to update');
+            }
+        }).catch(e => alert(e.message));
+    }
+    function openSubjectModal() {
+        document.getElementById('subject-modal').classList.remove('hidden');
+        document.getElementById('subject-modal').classList.add('flex');
+        document.getElementById('subject-modal-title').textContent = 'Add Subject';
+        document.getElementById('subject-id-orig').value = '';
+        document.getElementById('subject-id').value = '';
+        document.getElementById('subject-name').value = '';
+        document.getElementById('subject-icon').value = '📚';
+        document.getElementById('subject-color').value = '#6366f1';
+        document.getElementById('subject-desc').value = '';
+        document.getElementById('subject-priority').value = '1';
+        document.getElementById('subject-topics').value = '';
+    }
+    function closeSubjectModal() {
+        document.getElementById('subject-modal').classList.add('hidden');
+        document.getElementById('subject-modal').classList.remove('flex');
+    }
+    function editSubject(s) {
+        document.getElementById('subject-modal').classList.remove('hidden');
+        document.getElementById('subject-modal').classList.add('flex');
+        document.getElementById('subject-modal-title').textContent = 'Edit Subject';
+        document.getElementById('subject-id-orig').value = s.id;
+        document.getElementById('subject-id').value = s.id;
+        document.getElementById('subject-name').value = s.name;
+        document.getElementById('subject-icon').value = s.icon || '📚';
+        document.getElementById('subject-color').value = s.color || '#6366f1';
+        document.getElementById('subject-desc').value = s.description || '';
+        document.getElementById('subject-priority').value = s.priority || 1;
+        document.getElementById('subject-topics').value = (s.topics || []).join(', ');
+    }
+    function saveSubject() {
+        const orig = document.getElementById('subject-id-orig').value;
+        const id = document.getElementById('subject-id').value.trim();
+        if (!id) { alert('ID required'); return; }
+        const topics = document.getElementById('subject-topics').value.split(',').map(x=>x.trim()).filter(x=>x);
+        fetch('/api/admin/subjects', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                id: id,
+                name: document.getElementById('subject-name').value || id,
+                icon: document.getElementById('subject-icon').value || '📚',
+                description: document.getElementById('subject-desc').value,
+                color: document.getElementById('subject-color').value || '#6366f1',
+                priority: parseInt(document.getElementById('subject-priority').value) || 1,
+                topics: topics
+            })
+        }).then(r=>r.json()).then(data=>{
+            if (data.status==='success') { location.reload(); } else { alert(data.error||'Failed'); }
+        }).catch(e=>alert('Failed'));
+    }
+    function deleteSubject(id) {
+        if (!confirm('Delete subject ' + id + '?')) return;
+        fetch('/api/admin/subjects/' + encodeURIComponent(id), { method: 'DELETE' }).then(async r=>{ const data=await r.json(); if(!r.ok) throw new Error(data.error||'Could not remove subject'); return data; }).then(data=>{
+            if (data.status==='success') { location.reload(); } else { alert('Failed'); }
+        }).catch(error => alert(error.message));
+    }
+    function buildScheduleBlock(block = {}) {
+        const div = document.createElement('div');
+        div.className = 'flex items-center gap-2 p-2 border rounded-lg';
+        const fields = [
+            ['block-name', 'text', block.name || '', 'morning/evening/custom'],
+            ['block-start', 'time', block.start_time || '', ''],
+            ['block-end', 'time', block.end_time || '', ''],
+            ['block-desc', 'text', block.description || '', 'description']
+        ];
+        fields.forEach(([className, type, value, placeholder]) => {
+            const input = document.createElement('input');
+            input.className = `${className} border rounded px-2 py-1 text-sm${className === 'block-desc' ? ' flex-1' : ''}`;
+            input.type = type;
+            input.value = value;
+            input.placeholder = placeholder;
+            div.appendChild(input);
+        });
+        const remove = document.createElement('button');
+        remove.className = 'text-rose-600 text-xs';
+        remove.textContent = 'Remove';
+        remove.type = 'button';
+        remove.addEventListener('click', () => div.remove());
+        div.appendChild(remove);
+        return div;
+    }
+    function addScheduleBlock() {
+        document.getElementById('schedule-blocks').appendChild(buildScheduleBlock());
+    }
+    function loadSchedule() {
+        fetch('/api/admin/schedule').then(async r=>{ const data=await r.json(); if(!r.ok) throw new Error(data.error||'Could not load schedule'); return data; }).then(data=>{
+            const c = document.getElementById('schedule-blocks'); c.replaceChildren();
+            (data.daily_blocks||[]).forEach(b=>{
+                c.appendChild(buildScheduleBlock(b));
+            });
+        }).catch(error => { document.getElementById('schedule-blocks').textContent = error.message; });
+    }
+    function saveSchedule() {
+        const blocks = [];
+        document.querySelectorAll('#schedule-blocks > div').forEach(div=>{
+            blocks.push({
+                name: div.querySelector('.block-name').value,
+                start_time: div.querySelector('.block-start').value,
+                end_time: div.querySelector('.block-end').value,
+                description: div.querySelector('.block-desc').value
+            });
+        });
+        fetch('/api/admin/schedule', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({daily_blocks: blocks})}).then(async r=>{ const d=await r.json(); if(!r.ok) throw new Error(d.error||'Could not save schedule'); return d; }).then(d=>{
+            if (d.status==='success') { alert('Schedule saved'); } else { alert(d.error||'Failed'); }
+        }).catch(error => alert(error.message));
+    }
+    document.addEventListener('DOMContentLoaded', function(){ loadSchedule(); });
+</script>
+{% endblock %}

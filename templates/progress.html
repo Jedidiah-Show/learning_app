@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+
+{% block title %}Progress - Daily Deep-Dive Learning{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="page-intro">
+        <div><p class="eyebrow">Your learning history</p><h2 class="section-title text-2xl">Progress overview</h2><p class="mt-1 text-sm text-slate-600">See what you’ve completed and what’s ready next.</p></div>
+        <div class="intro-badge"><span class="text-xl">✦</span><span id="next-step">Loading your next step…</span></div>
+    </div>
+
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <article class="stat-card"><span class="stat-icon violet">%</span><div><p class="stat-label">Overall complete</p><p class="stat-value" id="overall-stat">—</p></div></article>
+        <article class="stat-card"><span class="stat-icon mint">✓</span><div><p class="stat-label">Days completed</p><p class="stat-value" id="days-stat">—</p></div></article>
+        <article class="stat-card"><span class="stat-icon amber">◎</span><div><p class="stat-label">Subjects in course</p><p class="stat-value">{{ config.subjects|length }}</p></div></article>
+    </section>
+
+    <section class="panel-card p-5 sm:p-7">
+        <div class="section-heading"><div><p class="eyebrow">At a glance</p><h3 class="section-title">Subject progress</h3></div></div>
+        <div class="chart-wrap"><canvas id="progressChart" role="img" aria-label="Progress by subject"></canvas></div>
+        <div id="progress-fallback" class="space-y-3 mt-5"></div>
+        <p id="progress-error" class="hidden mt-4 text-sm text-rose-700" role="status"></p>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        fetch('/api/progress/dashboard')
+            .then(async response => { const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Progress is unavailable.'); return data; })
+            .then(data => {
+                document.getElementById('overall-stat').textContent = `${data.overall_progress}%`;
+                document.getElementById('days-stat').textContent = `${data.days_completed} / ${data.curriculum_days}`;
+                document.getElementById('next-step').textContent = data.next_unlocked_day > data.curriculum_days ? 'You’ve completed the course!' : `Next up: Day ${data.next_unlocked_day}`;
+                const fallback = document.getElementById('progress-fallback');
+                fallback.replaceChildren();
+                data.subjects.forEach(subject => {
+                    const row = document.createElement('div');
+                    row.className = 'flex items-center gap-3';
+                    const name = document.createElement('span');
+                    name.className = 'w-28 text-sm font-semibold text-slate-700';
+                    name.textContent = subject.name;
+                    const track = document.createElement('div');
+                    track.className = 'progress-track flex-1';
+                    const fill = document.createElement('div');
+                    fill.className = 'progress-fill';
+                    fill.style.width = `${subject.percentage}%`;
+                    fill.style.setProperty('--subject-color', subject.color);
+                    track.appendChild(fill);
+                    const percentage = document.createElement('span');
+                    percentage.className = 'w-12 text-right text-xs font-bold text-slate-600';
+                    percentage.textContent = `${subject.percentage}%`;
+                    row.append(name, track, percentage);
+                    fallback.appendChild(row);
+                });
+                if (window.Chart) {
+                    new Chart(document.getElementById('progressChart'), {
+                        type: 'bar',
+                        data: { labels: data.subjects.map(item => item.name), datasets: [{ label: 'Complete', data: data.subjects.map(item => item.percentage), backgroundColor: data.subjects.map(item => item.color), borderRadius: 8, barThickness: 18 }] },
+                        options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false }, tooltip: { callbacks: { label: context => `${context.raw}% complete` } } }, scales: { x: { min: 0, max: 100, grid: { color: '#eef0f5' }, ticks: { callback: value => `${value}%` } }, y: { grid: { display: false } } } }
+                    });
+                }
+            })
+            .catch(error => { const message = document.getElementById('progress-error'); message.textContent = error.message; message.classList.remove('hidden'); });
+    });
+</script>
+{% endblock %}

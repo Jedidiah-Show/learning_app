@@ -1,0 +1,200 @@
+{% extends "base.html" %}
+
+{% block title %}Quizzes - Daily Deep-Dive Learning{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="page-intro">
+        <div><p class="eyebrow">Practice makes knowledge stick</p><h2 class="section-title text-2xl">Knowledge checks</h2><p class="mt-1 text-sm text-slate-600">Review your day or bring the whole week together.</p></div>
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div class="panel-card p-5 sm:p-6">
+            <span class="stat-icon violet mb-4">◉</span><h3 class="section-title">Daily quiz</h3>
+            <p class="text-sm text-slate-600 mb-4">End-of-day quiz covering all subjects</p>
+            <label for="quiz-day" class="text-sm text-slate-600 mr-2">Day</label>
+            <select id="quiz-day" class="border border-slate-300 rounded-lg px-3 py-2 text-sm mr-2">
+                {% for day in range(1, curriculum_days + 1) %}
+                <option value="{{ day }}" {% if day > next_unlocked_day %}disabled{% endif %} {% if day == [next_unlocked_day, curriculum_days]|min %}selected{% endif %}>{{ day }}</option>
+                {% endfor %}
+            </select>
+            <button onclick="startDailyQuiz()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">
+                Start Daily Quiz
+            </button>
+        </div>
+
+        <div class="panel-card p-5 sm:p-6 flex flex-wrap items-center justify-between gap-4">
+            <div>
+                <h3 class="section-title">End-of-week synthesis project</h3>
+                <p class="text-sm text-slate-600">Build an artifact that brings the week’s lessons together.</p>
+            </div>
+            <a href="{{ url_for('projects.project_page') }}" class="px-4 py-2 bg-violet-600 text-white rounded-lg text-sm font-semibold hover:bg-violet-700">
+                Open weekly projects
+            </a>
+        </div>
+        <div class="panel-card p-5 sm:p-6">
+            <span class="stat-icon mint mb-4">✳</span><h3 class="section-title">Weekly review</h3>
+            <p class="text-sm text-slate-600 mb-4">Comprehensive weekly assessment</p>
+            <label for="quiz-week" class="text-sm text-slate-600 mr-2">Week</label>
+            <select id="quiz-week" class="border border-slate-300 rounded-lg px-3 py-2 text-sm mr-2">
+                {% for week in range(1, total_weeks + 1) %}<option value="{{ week }}">{{ week }}</option>{% endfor %}
+            </select>
+            <button onclick="startWeeklyQuiz()" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700">
+                Start Weekly Quiz
+            </button>
+        </div>
+    </div>
+    
+    <div id="quiz-container" class="hidden panel-card p-5 sm:p-8 max-w-3xl mx-auto">
+        <div class="flex justify-between items-center mb-3">
+            <span id="quiz-progress" class="text-xs font-bold uppercase tracking-wider text-slate-500">Question 1 / X</span>
+            <span id="quiz-subject" class="intro-badge py-2">Subject</span>
+        </div>
+        <div class="progress-track mb-7"><div id="quiz-progress-fill" class="progress-fill" style="width:0%;--subject-color:#635bdb"></div></div>
+        <div id="quiz-question" class="mb-6"></div>
+        <div id="quiz-options" class="space-y-2 mb-6"></div>
+        <button id="quiz-next" onclick="nextQuestion()" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700 hidden">
+            Next Question
+        </button>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    let currentQuiz = null;
+    let currentQuestionIndex = 0;
+    let userAnswers = {};
+    
+    function startDailyQuiz() {
+        loadQuiz(`/api/quizzes/daily/${document.getElementById('quiz-day').value}`);
+    }
+
+    function startWeeklyQuiz() {
+        loadQuiz(`/api/quizzes/weekly/${document.getElementById('quiz-week').value}`);
+    }
+
+    function loadQuiz(url) {
+        fetch(url)
+            .then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.error || 'Could not load quiz'); return data; })
+            .then(data => {
+                if (!data.questions.length) throw new Error('There are no questions available for this quiz yet.');
+                currentQuiz = data;
+                currentQuestionIndex = 0;
+                userAnswers = {};
+                document.getElementById('quiz-container').classList.remove('hidden');
+                showQuestion();
+            })
+            .catch(error => {
+                const container = document.getElementById('quiz-container');
+                container.classList.remove('hidden');
+                container.textContent = error.message;
+            });
+    }
+    
+    function showQuestion() {
+        const q = currentQuiz.questions[currentQuestionIndex];
+        document.getElementById('quiz-progress').textContent = `Question ${currentQuestionIndex + 1} / ${currentQuiz.questions.length}`;
+        document.getElementById('quiz-progress-fill').style.width = `${((currentQuestionIndex + 1) / currentQuiz.questions.length) * 100}%`;
+        document.getElementById('quiz-subject').textContent = q.subject_name || 'Review';
+        const question = document.createElement('h3');
+        question.className = 'text-xl sm:text-2xl font-extrabold leading-snug text-slate-800';
+        question.textContent = q.question;
+        document.getElementById('quiz-question').replaceChildren(question);
+        
+        const optionsDiv = document.getElementById('quiz-options');
+        optionsDiv.innerHTML = '';
+        q.options.forEach((opt, idx) => {
+            const btn = document.createElement('button');
+            btn.className = 'quiz-choice';
+            btn.textContent = opt;
+            btn.onclick = () => selectAnswer(q.id, idx, btn);
+            optionsDiv.appendChild(btn);
+        });
+        document.getElementById('quiz-next').classList.add('hidden');
+    }
+    
+    function selectAnswer(qid, idx, btn) {
+        userAnswers[qid] = idx;
+        // Disable all options
+        const optionsDiv = document.getElementById('quiz-options');
+        Array.from(optionsDiv.children).forEach(b => {
+            b.disabled = true;
+            b.classList.add('opacity-50');
+        });
+        btn.classList.remove('opacity-50');
+        btn.classList.add('selected');
+        document.getElementById('quiz-next').textContent = currentQuestionIndex === currentQuiz.questions.length - 1 ? 'Finish quiz' : 'Next question →';
+        document.getElementById('quiz-next').classList.remove('hidden');
+    }
+    
+    function nextQuestion() {
+        currentQuestionIndex++;
+        if (currentQuestionIndex < currentQuiz.questions.length) {
+            showQuestion();
+        } else {
+            submitQuiz();
+        }
+    }
+    
+    function submitQuiz() {
+        fetch('/api/quizzes/submit', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                quiz_id: currentQuiz.quiz_id,
+                quiz_type: currentQuiz.quiz_type,
+                day_number: currentQuiz.day_number,
+                answers: userAnswers
+            })
+        })
+        .then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.error || 'Could not submit your quiz.'); return data; })
+        .then(data => {
+            const container = document.getElementById('quiz-container');
+            container.replaceChildren();
+            const heading = document.createElement('h3');
+            heading.className = 'text-xl font-bold text-slate-800 mb-4';
+            heading.textContent = 'Quiz complete';
+            const score = document.createElement('p');
+            score.className = `text-lg mb-2 font-bold ${data.passed ? 'text-emerald-600' : 'text-amber-600'}`;
+            score.textContent = `Score: ${data.score}%`;
+            const result = document.createElement('p');
+            result.className = 'text-sm text-slate-600 mb-4';
+            result.textContent = `${data.correct} / ${data.total} correct ${data.passed ? '✓ Passed' : '(Needs improvement)'}`;
+            container.append(heading, score, result);
+            if (data.evaluation && data.evaluation.summary) {
+                const summary = document.createElement('p');
+                summary.className = 'mb-4 text-sm leading-relaxed text-slate-700';
+                summary.textContent = data.evaluation.summary;
+                container.appendChild(summary);
+                for (const [label, entries] of [['Strengths', data.evaluation.strengths], ['Review next', data.evaluation.next_steps]]) {
+                    if (!Array.isArray(entries) || !entries.length) continue;
+                    const labelNode = document.createElement('h4');
+                    labelNode.className = 'mt-3 font-semibold text-slate-800';
+                    labelNode.textContent = label;
+                    const list = document.createElement('ul');
+                    list.className = 'list-disc pl-5 text-sm text-slate-700';
+                    entries.forEach(entry => {
+                        const item = document.createElement('li');
+                        item.textContent = entry;
+                        list.appendChild(item);
+                    });
+                    container.append(labelNode, list);
+                }
+            }
+            const retry = document.createElement('button');
+            retry.className = 'mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm';
+            retry.textContent = 'Take another quiz';
+            retry.onclick = () => location.reload();
+            container.appendChild(retry);
+        })
+        .catch(error => {
+            const container = document.getElementById('quiz-container');
+            const message = document.createElement('p');
+            message.className = 'mt-4 text-sm text-rose-700';
+            message.textContent = error.message;
+            container.appendChild(message);
+        });
+    }
+</script>
+{% endblock %}

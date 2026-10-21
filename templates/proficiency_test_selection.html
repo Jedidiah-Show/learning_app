@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+
+{% block title %}Proficiency Tests - Daily Deep-Dive Learning{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto">
+    <section class="panel-card p-6 sm:p-8">
+        <div class="mb-6">
+            <p class="eyebrow">Assessment</p>
+            <h2 class="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">Proficiency Tests</h2>
+            <p class="text-slate-600">Complete each assessment before the curriculum begins. Your result sets your starting level; Novice subjects skip the test and start with the basics.</p>
+        </div>
+
+        {% if test_subjects %}
+        <div class="space-y-4 mb-6">
+            {% for item in test_subjects %}
+            <div class="border border-slate-200 rounded-lg p-5 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="text-2xl">{{ item.subject.icon }}</span>
+                    <div>
+                        <h3 class="text-lg font-semibold text-slate-800">{{ item.subject.name }}</h3>
+                        <p class="text-sm text-slate-600">You selected {{ item.subject.stated_proficiency }} · Assessment required</p>
+                    </div>
+                </div>
+                <a href="{{ url_for('main.take_proficiency_test', test_id=item.test.id) }}" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">
+                    Take Test
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-slate-600 mb-4">All subjects are set to Novice (no tests needed) or tests are complete.</p>
+        <a href="{{ url_for('main.index') }}" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">
+            Continue to Dashboard
+        </a>
+        {% endif %}
+    </section>
+</div>
+{% endblock %}

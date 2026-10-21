@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Daily Deep-Dive Learning App{% endblock %}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-slate-50 font-['Inter'] app-shell">
+    <!-- Header Navigation -->
+    <header class="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0 z-50 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center space-x-3">
+                    <span class="bg-indigo-600 text-white p-2 rounded-lg font-bold text-lg shadow-sm">📚</span>
+                    <div>
+                        <h1 class="text-lg font-bold text-slate-800 leading-tight">Daily Deep-Dive Learning</h1>
+                        <p class="text-xs text-slate-500">Assessment: <span class="font-semibold text-indigo-600">{{ config.app.assessment_date }}</span></p>
+                    </div>
+                </div>
+                
+                <!-- Desktop Navigation -->
+                <nav class="app-nav flex space-x-1">
+                    <a href="{{ url_for('main.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.index' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        📊 Dashboard
+                    </a>
+                    <a href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.lessons' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        📖 Daily Lessons
+                    </a>
+                    <a href="{{ url_for('main.schedule') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.schedule' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        📅 Schedule
+                    </a>
+                    <a href="{{ url_for('main.quizzes') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.quizzes' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        🎯 Quizzes
+                    </a>
+                    <a href="{{ url_for('projects.project_page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'projects.project_page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        🧩 Projects
+                    </a>
+                    <a href="{{ url_for('main.progress') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.progress' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        📈 Progress
+                    </a>
+                    <a href="{{ url_for('main.settings') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.settings' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        ⚙️ Settings
+                    </a>
+                </nav>
+                
+                <div class="flex items-center space-x-3">
+                    <!-- User Menu -->
+                    {% if current_user.is_authenticated %}
+                    <div class="flex items-center space-x-2">
+                        <a href="{{ url_for('auth.profile') }}" class="text-sm text-slate-600 hover:text-indigo-600 flex items-center space-x-1">
+                            <span>👤</span>
+                            <span>{{ current_user.username or current_user.full_name or 'User' }}</span>
+                        </a>
+                        <a href="{{ url_for('auth.logout') }}" class="text-xs text-slate-500 hover:text-red-600">Logout</a>
+                    </div>
+                    {% else %}
+                    <div class="flex items-center space-x-2">
+                        <a href="{{ url_for('auth.login') }}" class="text-xs font-semibold text-indigo-600 hover:text-indigo-700">Login</a>
+                        <span class="text-slate-300">|</span>
+                        <a href="{{ url_for('auth.register') }}" class="text-xs font-semibold text-emerald-600 hover:text-emerald-700">Register</a>
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Countdown -->
+                    <div class="countdown-card bg-amber-50 border border-amber-200 rounded-lg px-3 py-1 text-right">
+                        <span class="text-[10px] uppercase font-bold text-amber-800 block">Assessment</span>
+                        <span id="countdown-timer" class="text-xs font-extrabold text-amber-700">--</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+    
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-stack mb-5 space-y-2" role="status">
+            {% for category, message in messages %}
+            <div class="flash-message {{ category }} rounded-xl border px-4 py-3 text-sm font-medium">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+    
+    <!-- Footer -->
+    <footer class="bg-white border-t border-slate-200 py-4 mt-8">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
+            Daily Deep-Dive Learning <span class="text-slate-300">·</span> Small steps, deep understanding
+        </div>
+    </footer>
+    
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

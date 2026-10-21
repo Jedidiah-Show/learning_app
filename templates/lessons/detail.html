@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}Lesson - {{ lesson.title }}{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h1 class="text-2xl font-bold text-slate-800 mb-1">{{ lesson.title }}</h1>
+                <p class="text-slate-600">Subject: {{ subject.name if subject else lesson.subject_id }} | Day {{ lesson.day_number }}</p>
+            </div>
+            <a href="{{ url_for('main.lessons') }}" class="px-4 py-2 bg-slate-100 text-slate-700 rounded-lg text-sm font-semibold hover:bg-slate-200">
+                Back to Lessons
+            </a>
+        </div>
+    </div>
+
+    {% if content.overview %}
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-800 mb-3">Overview</h2>
+        <p class="text-slate-700 leading-relaxed">{{ content.overview }}</p>
+    </div>
+    {% endif %}
+
+    {% if objectives %}
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-800 mb-3">Learning Objectives</h2>
+        <ul class="space-y-2">
+            {% for obj in objectives %}
+            <li class="flex items-start space-x-2">
+                <span class="text-emerald-600 mt-1">✓</span>
+                <span class="text-slate-700">{{ obj }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if content.theory_sections %}
+    {% for section in content.theory_sections %}
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-800 mb-3">{{ section.heading }}</h2>
+        <div class="prose max-w-none text-slate-700">
+            {{ section.content }}
+        </div>
+        {% if section.code %}
+        <pre class="mt-4 bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto"><code>{{ section.code }}</code></pre>
+        {% endif %}
+        {% if section.list %}
+        <ul class="mt-3 space-y-2 list-disc list-inside">
+            {% for item in section.list %}
+            <li class="text-slate-700">{{ item }}</li>
+            {% endfor %}
+        </ul>
+        {% endif %}
+    </div>
+    {% endfor %}
+    {% endif %}
+
+    {% if content.code_examples %}
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-800 mb-4">Code Examples</h2>
+        {% for example in content.code_examples %}
+        <div class="mb-6">
+            <h3 class="font-semibold text-slate-800 mb-2">{{ example.title }}</h3>
+            {% if example.description %}
+            <p class="text-slate-600 mb-3 text-sm">{{ example.description }}</p>
+            {% endif %}
+            <pre class="bg-slate-900 text-slate-100 p-4 rounded-lg overflow-x-auto"><code>{{ example.code }}</code></pre>
+            {% if example.explanation %}
+            <p class="mt-2 text-sm text-slate-600">{{ example.explanation }}</p>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if content.pitfalls %}
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-800 mb-3">⚠️ Common Pitfalls & Tips</h2>
+        <ul class="space-y-2">
+            {% for pitfall in content.pitfalls %}
+            <li class="flex items-start space-x-2">
+                <span class="text-amber-600 mt-1">⚠</span>
+                <span class="text-slate-700">{{ pitfall }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if content.self_checks %}
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-800 mb-4">🧠 Self-Check Questions</h2>
+        {% for check in content.self_checks %}
+        <div class="mb-4 p-4 bg-slate-50 rounded-lg">
+            <p class="font-semibold text-slate-800 mb-2">{{ loop.index }}. {{ check.question }}</p>
+            {% if check.options %}
+            <ul class="space-y-1 ml-4">
+                {% for opt in check.options %}
+                <li class="text-slate-700 text-sm">{{ opt }}</li>
+                {% endfor %}
+            </ul>
+            {% endif %}
+            {% if check.explanation %}
+            <details class="mt-2">
+                <summary class="text-sm text-indigo-600 cursor-pointer hover:text-indigo-700">Show answer/explanation</summary>
+                <p class="mt-2 text-sm text-slate-600 pl-4">{{ check.explanation }}</p>
+            </details>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    <section class="bg-white p-6 rounded-xl border border-indigo-200 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-800 mb-2">Ask a follow-up question</h2>
+        <p class="text-sm text-slate-600 mb-4">Ask Gemini to explain a concept another way, clarify an example, or suggest a practice question.</p>
+        <form id="lesson-question-form" class="space-y-3">
+            <label for="lesson-question" class="sr-only">Your question</label>
+            <textarea id="lesson-question" name="question" required maxlength="2000" rows="3"
+                      class="w-full rounded-lg border border-slate-300 p-3 text-sm"
+                      placeholder="What would you like explained?"></textarea>
+            <button id="lesson-question-submit" type="submit"
+                    class="px-5 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">
+                Ask about this lesson
+            </button>
+        </form>
+        <div id="lesson-answer" class="hidden mt-4 rounded-lg bg-indigo-50 p-4 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap" aria-live="polite"></div>
+    </section>
+
+    <div class="bg-gradient-to-r from-indigo-50 to-blue-50 p-6 rounded-xl border border-indigo-200">
+        <div class="flex items-center justify-between">
+            <div>
+                <h3 class="font-bold text-indigo-900 mb-1">Mark this lesson as complete</h3>
+                <p class="text-indigo-700 text-sm">Complete all subjects for the day to unlock the next day</p>
+            </div>
+            <button onclick="markComplete()" id="completeBtn" class="px-6 py-3 bg-indigo-600 text-white rounded-lg font-semibold hover:bg-indigo-700">
+                Mark Complete
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    const lessonOpenedAt = performance.now();
+    const questionForm = document.getElementById('lesson-question-form');
+    questionForm.addEventListener('submit', async event => {
+        event.preventDefault();
+        const button = document.getElementById('lesson-question-submit');
+        const answer = document.getElementById('lesson-answer');
+        button.disabled = true;
+        button.textContent = 'Thinking…';
+        answer.classList.remove('hidden');
+        answer.textContent = 'Getting an explanation…';
+        try {
+            const response = await fetch('/api/lessons/ask', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({
+                    lesson_id: {{ lesson.lesson_id | tojson }},
+                    question: document.getElementById('lesson-question').value
+                })
+            });
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Could not answer this question.');
+            answer.textContent = data.answer;
+        } catch (error) {
+            answer.textContent = error.message;
+        } finally {
+            button.disabled = false;
+            button.textContent = 'Ask about this lesson';
+        }
+    });
+
+    function markComplete() {
+        const btn = document.getElementById('completeBtn');
+        btn.disabled = true;
+        btn.textContent = 'Saving…';
+        fetch('/api/lessons/complete', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                lesson_id: {{ lesson.lesson_id | tojson }},
+                time_spent_minutes: Math.min(1440, Math.floor((performance.now() - lessonOpenedAt) / 60000))
+            })
+        })
+        .then(async response => {
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Could not complete this lesson.');
+            return data;
+        })
+        .then(data => {
+            btn.textContent = '✓ Completed';
+            btn.className = 'px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold cursor-not-allowed';
+            alert('Lesson completed! ' + (data.all_subjects_complete_for_day ? 'All subjects complete for this day!' : ''));
+        })
+        .catch(error => {
+            btn.disabled = false;
+            btn.textContent = 'Mark Complete';
+            alert(error.message);
+        });
+    }
+</script>
+{% endblock %}

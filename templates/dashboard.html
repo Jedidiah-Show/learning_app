@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - Daily Deep-Dive Learning{% endblock %}
+
+{% block content %}
+<div class="space-y-7">
+    <section class="dashboard-hero relative overflow-hidden rounded-3xl p-7 sm:p-10 text-white shadow-xl">
+        <div class="hero-orb orb-one"></div><div class="hero-orb orb-two"></div>
+        <div class="relative z-10 max-w-2xl">
+            <p class="text-xs font-bold tracking-[.2em] uppercase text-indigo-200">Your learning space</p>
+            <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold tracking-tight">Keep your momentum, {{ current_user.full_name or current_user.username }}.</h2>
+            <p class="mt-3 max-w-xl text-sm sm:text-base text-indigo-100">Build toward Advanced proficiency in every subject through a personalized 90-day curriculum, weekly projects, and focused practice.</p>
+            <a href="{{ url_for('main.lessons') }}" class="inline-flex items-center gap-2 mt-6 px-5 py-3 rounded-xl bg-white text-indigo-800 font-bold text-sm shadow-lg hover:bg-indigo-50 transition">Continue learning <span aria-hidden="true">→</span></a>
+        </div>
+        <div class="hero-progress relative z-10 mt-8 sm:absolute sm:right-10 sm:bottom-10 sm:mt-0">
+            <span class="text-xs uppercase tracking-wider text-indigo-200">Course progress</span>
+            <div class="flex items-baseline gap-2"><strong id="overall-progress" class="text-4xl font-extrabold">0%</strong><span id="days-completed" class="text-sm text-indigo-100">0 days done</span></div>
+        </div>
+    </section>
+
+    <section class="grid grid-cols-1 sm:grid-cols-3 gap-4" aria-label="Learning overview">
+        <article class="stat-card"><span class="stat-icon violet">✦</span><div><p class="stat-label">Next up</p><p id="next-day-label" class="stat-value">Day 1</p></div></article>
+        <article class="stat-card"><span class="stat-icon mint">◎</span><div><p class="stat-label">Subjects</p><p class="stat-value">{{ config.subjects|length }} tracks</p></div></article>
+        <article class="stat-card"><span class="stat-icon amber">◷</span><div><p class="stat-label">Assessment</p><p class="stat-value">{{ config.app.assessment_date }}</p></div></article>
+    </section>
+
+    <section class="panel-card p-5 sm:p-7">
+        <div class="section-heading"><div><p class="eyebrow">Your curriculum</p><h3 class="section-title">Progress by subject</h3></div><a href="{{ url_for('main.progress') }}" class="text-sm font-semibold text-indigo-700 hover:text-indigo-900">View details →</a></div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3" id="subjects-progress">
+            {% for subject in config.subjects %}
+            <article class="subject-progress-card" data-subject="{{ subject.id }}">
+            <div class="flex items-center justify-between gap-3"><div class="flex items-center gap-3"><span class="subject-icon" style="--subject-color: {{ subject.color }}">{{ subject.icon }}</span><div><h4 class="subject-name">{{ subject.name }}</h4><p class="subject-count">0 completed</p><p class="subject-proficiency text-xs text-slate-500">Starting: {{ subject.stated_proficiency|default('Novice') }} · Current: {{ subject.proficiency|default('Novice') }} · Target: Advanced+</p></div></div><span class="subject-percent">0%</span></div>
+                <div class="progress-track mt-4"><div class="progress-fill" style="--subject-color: {{ subject.color }};width:0%" role="progressbar" aria-label="{{ subject.name }} progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div></div>
+            </article>
+            {% endfor %}
+        </div>
+        <p id="dashboard-error" class="hidden mt-4 text-sm text-rose-700" role="status"></p>
+    </section>
+
+    <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <a href="{{ url_for('main.lessons') }}" class="action-card action-violet"><span class="action-symbol">↗</span><div><h3>Open today’s lessons</h3><p>Pick up your next subject and keep the day moving.</p></div></a>
+        <a href="{{ url_for('main.quizzes') }}" class="action-card action-mint"><span class="action-symbol">✓</span><div><h3>Check your understanding</h3><p>Practice with daily and weekly knowledge checks.</p></div></a>
+    </section>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        updateCountdown('{{ config.app.assessment_date }}');
+        loadDashboardProgress();
+    });
+    
+    function loadDashboardProgress() {
+        fetch('/api/progress/dashboard')
+            .then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.error || 'Progress is temporarily unavailable.'); return data; })
+            .then(data => {
+                document.getElementById('overall-progress').textContent = data.overall_progress + '%';
+                document.getElementById('days-completed').textContent = `${data.days_completed} of ${data.curriculum_days} days complete`;
+                document.getElementById('next-day-label').textContent = data.next_unlocked_day > data.curriculum_days ? 'Course complete' : `Day ${data.next_unlocked_day}`;
+                data.subjects.forEach(subject => {
+                    const card = document.querySelector(`[data-subject="${subject.id}"]`);
+                    if (!card) return;
+                    const bar = card.querySelector('.progress-fill');
+                    bar.style.width = `${subject.percentage}%`;
+                    bar.setAttribute('aria-valuenow', subject.percentage);
+                    card.querySelector('.subject-percent').textContent = `${subject.percentage}%`;
+                    card.querySelector('.subject-count').textContent = `${subject.completed} of ${subject.total_days} days complete`;
+                    card.querySelector('.subject-proficiency').textContent = `Starting: ${subject.starting_proficiency} · Current: ${subject.current_proficiency} · Target: ${subject.target_proficiency}+`;
+                });
+            })
+            .catch(error => { const message = document.getElementById('dashboard-error'); message.textContent = error.message; message.classList.remove('hidden'); });
+    }
+</script>
+{% endblock %}

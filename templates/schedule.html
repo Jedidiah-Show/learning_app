@@ -1,0 +1,117 @@
+{% extends "base.html" %}
+
+{% block title %}Schedule - Daily Deep-Dive Learning{% endblock %}
+
+{% block content %}
+<div class="space-y-6">
+    <div class="page-intro">
+        <div><p class="eyebrow">Make time for the work</p><h2 class="section-title text-2xl">Your study schedule</h2><p class="mt-1 text-sm text-slate-600">Plan the day’s blocks and keep them visible here.</p></div>
+        {% if current_user.google_access_token %}<span class="connected-badge">✓ Google Calendar connected</span>{% elif google_calendar_oauth_configured %}<a href="{{ url_for('calendar.google_auth') }}" class="btn-secondary">Connect Google Calendar</a>{% else %}<span class="text-sm text-slate-500">Google Calendar connection is not configured.</span>{% endif %}
+    </div>
+    
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {% for block in config.schedule.daily_blocks %}
+        <div class="panel-card overflow-hidden">
+            <div class="schedule-block-head">
+                <span class="text-xs uppercase opacity-80 font-semibold">{{ block.name }} session</span>
+                <h3 class="text-lg font-bold">{{ block.start_time }} <span class="opacity-60">—</span> {{ block.end_time }}</h3>
+            </div>
+            <div class="p-5">
+                <p class="text-xs text-slate-500">{{ block.description }}</p>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <div class="panel-card p-5 sm:p-7">
+        <div class="section-heading"><div><p class="eyebrow">Plan ahead</p><h3 class="section-title">Schedule a study day</h3></div></div>
+        <div class="flex flex-col sm:flex-row gap-3 sm:items-end">
+            <label class="field-label flex-1">Course day
+                <select id="schedule-day" class="field-input mt-1">
+                    {% for day in range(1, curriculum_days + 1) %}<option value="{{ day }}" {% if day > next_unlocked_day %}disabled{% endif %} {% if day == [next_unlocked_day, curriculum_days]|min %}selected{% endif %}>Day {{ day }}{% if day > next_unlocked_day %} · Locked{% endif %}</option>{% endfor %}
+                </select>
+            </label>
+            <button id="schedule-button" onclick="scheduleStudyDay()" class="btn-primary">Schedule all study blocks</button>
+            {% if current_user.google_access_token %}<button id="sync-button" onclick="syncStudyDay()" class="btn-secondary">Sync this day to Google</button>{% endif %}
+        </div>
+        <p id="schedule-status" class="mt-3 text-sm" role="status"></p>
+    </div>
+
+    <div class="panel-card p-5 sm:p-7">
+        <div class="section-heading"><div><p class="eyebrow">Your plan</p><h3 class="section-title">Scheduled sessions</h3></div><button onclick="loadEvents()" class="text-sm font-semibold text-indigo-700">Refresh</button></div>
+        <div id="events-list" class="space-y-3 text-sm"><p class="text-slate-500">Loading sessions…</p></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        loadEvents();
+    });
+    
+    function scheduleStudyDay() {
+        const button = document.getElementById('schedule-button');
+        const status = document.getElementById('schedule-status');
+        button.disabled = true;
+        button.textContent = 'Scheduling…';
+        status.textContent = '';
+        fetch('/api/calendar/schedule', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({day_number: Number(document.getElementById('schedule-day').value)})
+        })
+        .then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.error || data.message || 'Could not schedule this day.'); return data; })
+        .then(data => {
+            status.textContent = `${data.events_created.length} sessions scheduled for Day ${document.getElementById('schedule-day').value}.`;
+            status.className = 'mt-3 text-sm text-emerald-700';
+            loadEvents();
+        })
+        .catch(error => { status.textContent = error.message; status.className = 'mt-3 text-sm text-rose-700'; })
+        .finally(() => { button.disabled = false; button.textContent = 'Schedule all study blocks'; });
+    }
+
+    function syncStudyDay() {
+        const button = document.getElementById('sync-button');
+        const status = document.getElementById('schedule-status');
+        button.disabled = true;
+        button.textContent = 'Syncing…';
+        fetch('/api/calendar/sync', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({day_number: Number(document.getElementById('schedule-day').value)})
+        })
+        .then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.message || data.error || 'Could not sync with Google Calendar.'); return data; })
+        .then(data => { status.textContent = `${data.events_created} study blocks synced to Google Calendar.`; status.className = 'mt-3 text-sm text-emerald-700'; })
+        .catch(error => { status.textContent = error.message; status.className = 'mt-3 text-sm text-rose-700'; })
+        .finally(() => { button.disabled = false; button.textContent = 'Sync this day to Google'; });
+    }
+    
+    function loadEvents() {
+        fetch('/api/calendar/events')
+            .then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.error || 'Could not load sessions.'); return data; })
+            .then(data => {
+                const list = document.getElementById('events-list');
+                list.replaceChildren();
+                if (data.length === 0) {
+                    const empty = document.createElement('p');
+                    empty.className = 'empty-state';
+                    empty.textContent = 'Nothing scheduled yet. Choose a course day above to add its study blocks.';
+                    list.appendChild(empty);
+                    return;
+                }
+                data.sort((a, b) => new Date(a.start_time) - new Date(b.start_time)).forEach(event => {
+                    const card = document.createElement('article');
+                    card.className = 'event-row';
+                    const title = document.createElement('strong');
+                    title.textContent = event.title;
+                    const time = document.createElement('span');
+                    time.textContent = `${new Date(event.start_time).toLocaleString()} — ${new Date(event.end_time).toLocaleTimeString([], {hour:'numeric', minute:'2-digit'})}`;
+                    card.append(title, time);
+                    list.appendChild(card);
+                });
+            })
+            .catch(error => { document.getElementById('events-list').textContent = error.message; });
+    }
+</script>
+{% endblock %}

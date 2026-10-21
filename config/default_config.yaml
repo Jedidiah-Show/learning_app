@@ -1,0 +1,123 @@
+# Learning App Configuration
+app:
+  name: "Daily Deep-Dive Learning App"
+  version: "1.0.0"
+  assessment_date: "2026-01-27"  # Make this configurable as requested
+  curriculum_days: 90
+
+ai:
+  flash_model: "gemini-3.8-flash"
+  pro_model: "gemini-3.1-pro-preview"
+
+# Configurable subjects (can be tweaked - not hardcoded)
+subjects:
+  - id: "python"
+    name: "Python"
+    icon: "🐍"
+    description: "Python programming, data structures, and memory"
+    priority: 1
+    color: "#10b981"
+    topics:
+      - "Data Structures & Mutability"
+      - "Memory Models"
+      - "Error Handling"
+      - "Best Practices"
+  
+  - id: "javascript"
+    name: "JavaScript"
+    icon: "⚡"
+    description: "JavaScript fundamentals, functional programming"
+    priority: 2
+    color: "#3b82f6"
+    topics:
+      - "Array Methods & Higher Order Functions"
+      - "Immutability"
+      - "Async Programming"
+      - "ES6+ Features"
+  
+  - id: "frameworks"
+    name: "Frameworks"
+    icon: "🏗️"
+    description: "React, Flask, Node.js"
+    priority: 3
+    color: "#8b5cf6"
+    topics:
+      - "React Components & State"
+      - "Flask API Development"
+      - "Node.js Backend"
+      - "RESTful Architecture"
+  
+  - id: "git"
+    name: "Git"
+    icon: "🐙"
+    description: "Version control and Git workflows"
+    priority: 4
+    color: "#059669"
+    topics:
+      - "Stashing & Reflog"
+      - "Branching Strategies"
+      - "Git Internals"
+      - "Collaboration Workflows"
+  
+  - id: "linux"
+    name: "Linux"
+    icon: "🐧"
+    description: "Linux systems, filesystem, and administration"
+    priority: 5
+    color: "#f59e0b"
+    topics:
+      - "VFS & Filesystems"
+      - "Disk Management (df/du)"
+      - "Process Management"
+      - "System Administration"
+
+# Study Schedule
+schedule:
+  start_date: null  # Auto-detect or set
+  daily_blocks:
+    - name: "morning"
+      start_time: "11:00"
+      end_time: "13:00"
+      description: "Morning deep-dive session"
+    - name: "evening"
+      start_time: "18:00"
+      end_time: "20:00"
+      description: "Evening review & practice"
+  
+  # Progress rules
+  unlock_rules:
+    # Can progress after completing a daily deep dive BUT only after completing ALL subjects for that day
+    require_all_subjects_complete: true
+    allow_continue_after_day_complete: true
+
+# Quizzes
+quizzes:
+  end_of_day_quiz:
+    enabled: true
+    questions_per_subject: 2
+    passing_threshold: 80  # percent
+  end_of_week_quiz:
+    enabled: true
+    questions_per_subject: 5
+    passing_threshold: 80
+
+# Google Calendar Integration
+google_calendar:
+  enabled: true
+  calendar_id: "primary"
+  reminder_minutes: [30, 10]
+  event_prefix: "[Learning App]"
+
+# Progress tracking
+progress:
+  auto_save: true
+  track_streaks: true
+  track_time_spent: true
+
+# Lesson generation
+lesson_generation:
+  mode: "hybrid"  # template | ai | hybrid
+  include_code_examples: true
+  include_pitfalls: true
+  include_self_checks: true
+  difficulty_progression: true
