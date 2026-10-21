@@ -133,9 +133,21 @@ def load_config():
     return validate_app_config(config)
 
 def create_app(config_override=None):
-    app = Flask(__name__, 
-                template_folder='../templates',
-                static_folder='../static')
+    flask_options = {
+        'template_folder': '../templates',
+        'static_folder': '../static',
+    }
+    if (
+        os.environ.get('VERCEL')
+        or os.environ.get('VERCEL_ENV')
+        or os.path.isdir('/var/task')
+    ):
+        # Vercel's deployment bundle is read-only; Flask-SQLAlchemy creates
+        # the instance directory during initialization, so keep it in /tmp.
+        flask_options['instance_path'] = os.environ.get(
+            'FLASK_INSTANCE_PATH', '/tmp/learning_app_instance'
+        )
+    app = Flask(__name__, **flask_options)
     
     # Config
     # Never use a public, hard-coded Flask signing key for account sessions.
