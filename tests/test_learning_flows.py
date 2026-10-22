@@ -7,8 +7,9 @@ from app import create_app, db
 from app.curriculum import get_subject_curriculum
 from app.gemini import generate_json
 from app.models import (
-    CalendarEvent, LearningProject, Progress, ProficiencyTest,
-    Quiz, SubjectCurriculum, User, UserSubjectConfig,
+    CalendarEvent, GeminiUsageBucket, LearningProject, Progress,
+    ProficiencyTest, Quiz, StudySession, SubjectCurriculum, User,
+    UserSubjectConfig,
 )
 
 
@@ -39,6 +40,7 @@ class LearningFlowTests(unittest.TestCase):
             'username': username,
             'email': f'{username}@example.test',
             'password': 'secure-pass-123',
+            'confirm_password': 'secure-pass-123',
             'full_name': username.title(),
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
@@ -69,6 +71,189 @@ class LearningFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Invalid username or password', response.data)
 
+    def test_production_requires_a_stable_secret_key(self):
+        with patch.dict(os.environ, {'APP_ENV': 'production'}, clear=True):
+            with self.assertRaisesRegex(RuntimeError, 'SECRET_KEY'):
+                create_app()
+
+    def test_login_normalizes_email_case(self):
+        self.register('emailcase')
+        self.client.post('/logout')
+        response = self.client.post('/login', data={
+            'username': 'EMAILCASE@EXAMPLE.TEST',
+            'password': 'secure-pass-123',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers['Location'], '/')
+
+    def test_calendar_outage_does_not_prevent_account_deletion(self):
+        self.register('deletewithcalendaroutage')
+        with self.app.app_context():
+            user = User.query.filter_by(
+                username='deletewithcalendaroutage'
+            ).one()
+            user.google_access_token = 'expired-token'
+            db.session.add(CalendarEvent(
+                user_id=user.id,
+                event_id='event-to-delete',
+                title='Study session',
+                start_time=__import__('datetime').datetime(2030, 1, 1),
+                end_time=__import__('datetime').datetime(2030, 1, 1, 1),
+                synced_to_google=True,
+            ))
+            db.session.commit()
+        with patch(
+            'app.routes.calendar._calendar_service',
+            side_effect=RuntimeError('Calendar unavailable'),
+        ):
+            response = self.client.post('/account/delete', data={
+                'current_password': 'secure-pass-123',
+            })
+        self.assertEqual(response.status_code, 302)
+        with self.app.app_context():
+            self.assertIsNone(User.query.filter_by(
+                username='deletewithcalendaroutage'
+            ).first())
+
+    def test_schedule_rejects_duplicate_block_names(self):
+        self.register('duplicateschedule')
+        response = self.client.post('/api/admin/schedule', json={
+            'daily_blocks': [
+                {'name': 'study', 'start_time': '09:00', 'end_time': '10:00'},
+                {'name': 'study', 'start_time': '11:00', 'end_time': '12:00'},
+            ],
+        })
+        self.assertEqual(response.status_code, 400)
+
+    def test_gemini_requests_are_limited_per_authenticated_user(self):
+        from app.gemini import GeminiRateLimitExceeded, _record_user_request
+        self.register('geminilimit')
+        with self.app.app_context():
+            user_id = User.query.filter_by(username='geminilimit').one().id
+        with self.app.test_request_context('/'):
+            from flask import session
+            session['_user_id'] = str(user_id)
+            session['_fresh'] = True
+            for _ in range(10):
+                _record_user_request()
+            with self.assertRaises(GeminiRateLimitExceeded):
+                _record_user_request()
+        with self.app.app_context():
+            self.assertEqual(
+                GeminiUsageBucket.query.filter_by(
+                    user_id=user_id, window='minute'
+                ).one().request_count,
+                10,
+            )
+
+    def test_gemini_quota_errors_return_retryable_http_429(self):
+        from app.gemini import GeminiRateLimitExceeded
+
+        self.register('gemini429')
+        lesson = self.client.get('/api/lessons/daily/1').get_json()['subjects'][0]
+        with patch(
+            'app.routes.lessons.generate_json',
+            side_effect=GeminiRateLimitExceeded(17),
+        ):
+            response = self.client.post('/api/lessons/ask', json={
+                'lesson_id': lesson['lesson']['lesson_id'],
+                'question': 'Can you explain this lesson?',
+            })
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.headers['Retry-After'], '17')
+
+    def test_generated_cache_insert_recovers_from_unique_collision(self):
+        from app.db_utils import add_or_get
+        self.register('cachecollision')
+        with self.app.app_context():
+            quiz = Quiz(
+                quiz_id='shared-cache-entry',
+                quiz_type='daily',
+                day_number=1,
+                questions='[]',
+            )
+            db.session.add(quiz)
+            db.session.commit()
+            recovered = add_or_get(
+                Quiz,
+                Quiz(
+                    quiz_id='shared-cache-entry',
+                    quiz_type='daily',
+                    day_number=1,
+                    questions='[]',
+                ),
+                quiz_id='shared-cache-entry',
+            )
+            self.assertEqual(recovered.id, quiz.id)
+
+    def test_dashboard_streak_uses_the_requested_timezone(self):
+        from datetime import datetime, timezone
+        from app.routes import progress as progress_routes
+
+        self.register('localstreak')
+        with self.app.app_context():
+            user = User.query.filter_by(username='localstreak').one()
+            db.session.add_all([
+                Progress(
+                    user_id=user.id, subject_id='python', day_number=1,
+                    completed=True,
+                    completion_date=datetime(2026, 2, 2, 23, 30, tzinfo=timezone.utc),
+                ),
+                Progress(
+                    user_id=user.id, subject_id='python', day_number=2,
+                    completed=True,
+                    completion_date=datetime(2026, 2, 3, 0, 30, tzinfo=timezone.utc),
+                ),
+            ])
+            db.session.commit()
+
+        class FrozenDateTime(datetime):
+            @classmethod
+            def now(cls, tz=None):
+                now = cls(2026, 2, 3, 1, 0, tzinfo=timezone.utc)
+                return now.astimezone(tz) if tz else now.replace(tzinfo=None)
+
+        with patch.object(progress_routes, 'datetime', FrozenDateTime):
+            response = self.client.get(
+                '/api/progress/dashboard',
+                headers={'X-Timezone': 'America/Los_Angeles'},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()['study_streak_days'], 1)
+
+    def test_revisiting_completed_lesson_records_additional_study_time(self):
+        self.register('reviewtimetracking')
+        lessons = self.client.get('/api/lessons/daily/1').get_json()['subjects']
+        lesson_id = lessons[0]['lesson']['lesson_id']
+        for minutes in (20, 10):
+            response = self.client.post('/api/lessons/complete', json={
+                'lesson_id': lesson_id,
+                'time_spent_minutes': minutes,
+            })
+            self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            user = User.query.filter_by(username='reviewtimetracking').one()
+            self.assertEqual(
+                StudySession.query.filter_by(
+                    user_id=user.id, session_type='lesson'
+                ).with_entities(db.func.sum(StudySession.duration_minutes)).scalar(),
+                30,
+            )
+
+    def test_quiz_submission_rejects_missing_answers(self):
+        self.register('incompletequiz')
+        quiz = self.client.get('/api/quizzes/daily/1').get_json()
+        response = self.client.post('/api/quizzes/submit', json={
+            'quiz_id': quiz['quiz_id'],
+            'quiz_type': quiz['quiz_type'],
+            'answers': {},
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertEqual(
+            response.get_json()['error'],
+            'Provide one valid answer for every quiz question',
+        )
+
     def test_account_update_rejects_non_object_json_without_server_error(self):
         self.register('badaccountjson')
         response = self.client.post(
@@ -95,6 +280,10 @@ class LearningFlowTests(unittest.TestCase):
             post.call_args.kwargs['headers']['x-goog-api-key'],
             'test-key-not-a-real-secret',
         )
+        self.assertEqual(
+            post.call_args.kwargs['json']['generationConfig']['thinkingConfig'],
+            {'thinkingLevel': 'LOW'},
+        )
 
     def test_gemini_client_reports_provider_rejections_without_exposing_key(self):
         from unittest.mock import Mock
@@ -107,6 +296,40 @@ class LearningFlowTests(unittest.TestCase):
             }
             with patch('app.gemini.requests.post', return_value=response):
                 with self.assertRaisesRegex(GeminiError, 'HTTP 400'):
+                    generate_json('Return JSON')
+
+    def test_gemini_older_models_keep_their_default_thinking_config(self):
+        from unittest.mock import Mock
+
+        with self.app.app_context():
+            self.app.config.update(
+                GEMINI_API_KEY='test-key',
+                GEMINI_FLASH_MODEL='gemini-2.5-flash',
+            )
+            response = Mock(ok=True)
+            response.json.return_value = {
+                'candidates': [{
+                    'content': {'parts': [{'text': '{"answer":"ok"}'}]}
+                }]
+            }
+            with patch('app.gemini.requests.post', return_value=response) as post:
+                self.assertEqual(generate_json('Return JSON'), {'answer': 'ok'})
+        self.assertNotIn(
+            'thinkingConfig',
+            post.call_args.kwargs['json']['generationConfig'],
+        )
+
+    def test_gemini_client_reports_generation_timeouts_clearly(self):
+        from requests import ReadTimeout
+        from app.gemini import GeminiError
+
+        with self.app.app_context():
+            self.app.config['GEMINI_API_KEY'] = 'test-key'
+            with patch(
+                'app.gemini.requests.post',
+                side_effect=ReadTimeout('provider took too long'),
+            ):
+                with self.assertRaisesRegex(GeminiError, 'timed out while generating'):
                     generate_json('Return JSON')
 
     def test_gemini_retries_rate_limited_pro_with_flash(self):
@@ -288,6 +511,62 @@ class LearningFlowTests(unittest.TestCase):
             self.assertEqual(events[0].start_time.isoformat(), '2030-01-01T09:00:00')
             self.assertEqual(events[0].end_time.isoformat(), '2030-01-01T10:30:00')
 
+    def test_failed_calendar_reconciliation_is_persisted_for_retry(self):
+        from datetime import datetime, timezone
+        from unittest.mock import Mock
+
+        self.register('calendarretry')
+        self.app.config.update(
+            GOOGLE_CLIENT_ID='client-id',
+            GOOGLE_CLIENT_SECRET='client-secret',
+        )
+        with self.app.app_context():
+            user = User.query.filter_by(username='calendarretry').one()
+            user.google_access_token = 'access-token'
+            db.session.add(CalendarEvent(
+                user_id=user.id,
+                event_id='google-retry',
+                title='[Learning App] Morning Session - Day 1',
+                start_time=datetime(2030, 1, 1, 11),
+                end_time=datetime(2030, 1, 1, 13),
+                day_number=1,
+                block_name='morning',
+                time_zone='UTC',
+                synced_to_google=True,
+            ))
+            db.session.commit()
+
+        blocks = [{
+            'name': 'morning',
+            'start_time': '09:00',
+            'end_time': '10:30',
+        }]
+        with patch(
+            'app.routes.calendar._calendar_service',
+            side_effect=RuntimeError('temporary outage'),
+        ):
+            failed = self.client.post(
+                '/api/admin/schedule', json={'daily_blocks': blocks}
+            )
+        self.assertEqual(failed.status_code, 502)
+        with self.app.app_context():
+            event = CalendarEvent.query.one()
+            self.assertTrue(event.sync_pending)
+            self.assertEqual(event.start_time.isoformat(), '2030-01-01T09:00:00')
+
+        service = Mock()
+        service.events.return_value.update.return_value.execute.return_value = {}
+        with patch(
+            'app.routes.calendar._calendar_service', return_value=service
+        ):
+            retried = self.client.post(
+                '/api/admin/schedule', json={'daily_blocks': blocks}
+            )
+        self.assertEqual(retried.status_code, 200)
+        service.events.return_value.update.assert_called_once()
+        with self.app.app_context():
+            self.assertFalse(CalendarEvent.query.one().sync_pending)
+
     def test_unlocking_and_weekly_quiz_follow_completed_lessons(self):
         self.register('learner')
         locked = self.client.get('/api/lessons/daily/2')
@@ -306,7 +585,10 @@ class LearningFlowTests(unittest.TestCase):
         submitted = self.client.post('/api/quizzes/submit', json={
             'quiz_id': payload['quiz_id'],
             'quiz_type': payload['quiz_type'],
-            'answers': {},
+            'answers': {
+                question['id']: 0
+                for question in payload['questions']
+            },
         })
         self.assertEqual(submitted.status_code, 200)
         self.assertEqual(
@@ -364,7 +646,10 @@ class LearningFlowTests(unittest.TestCase):
             self.client.post('/api/quizzes/submit', json={
                 'quiz_id': payload['quiz_id'],
                 'quiz_type': payload['quiz_type'],
-                'answers': {},
+                'answers': {
+                    question['id']: 0
+                    for question in payload['questions']
+                },
             }).status_code,
             409,
         )
@@ -544,7 +829,10 @@ class LearningFlowTests(unittest.TestCase):
             'quiz_id': quiz['quiz_id'],
             'quiz_type': quiz['quiz_type'],
             'attempt_id': 'attempt-1',
-            'answers': {},
+            'answers': {
+                question['id']: 0
+                for question in quiz['questions']
+            },
         }
         evaluation = {
             'summary': 'Review the explanations.',

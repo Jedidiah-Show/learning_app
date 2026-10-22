@@ -8,6 +8,7 @@ from app.learning import curriculum_days, next_unlocked_day, day_is_available
 from app.request_data import get_json_object
 from datetime import datetime, date, timezone
 from datetime import timedelta
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 progress_bp = Blueprint('progress', __name__)
 
@@ -74,15 +75,22 @@ def get_dashboard():
     dashboard_data['days_completed'] = days_completed
     dashboard_data['study_streak_days'] = None
     if config.get('progress', {}).get('track_streaks', True):
+        try:
+            user_zone = ZoneInfo(request.headers.get('X-Timezone', 'UTC'))
+        except (ZoneInfoNotFoundError, ValueError):
+            user_zone = timezone.utc
         completion_dates = {
-            item.date() if isinstance(item, datetime) else item
+            (
+                item.replace(tzinfo=timezone.utc)
+                if item.tzinfo is None else item
+            ).astimezone(user_zone).date()
             for (item,) in db.session.query(Progress.completion_date).filter(
                 Progress.user_id == user.id,
                 Progress.completed.is_(True),
                 Progress.completion_date.isnot(None),
             ).distinct()
         }
-        today = datetime.now(timezone.utc).date()
+        today = datetime.now(user_zone).date()
         current = today if today in completion_dates else today - timedelta(days=1)
         streak = 0
         while current in completion_dates:

@@ -8,8 +8,9 @@ from app.gemini import (
 )
 from app.request_data import get_json_object
 from app import db
-from app.models import Lesson, LessonCompletion, Progress
-from datetime import datetime, timezone
+from app.db_utils import add_or_get
+from app.models import Lesson, LessonCompletion, Progress, StudySession
+from datetime import datetime, timedelta, timezone
 import hashlib
 import json
 
@@ -48,7 +49,7 @@ def get_daily_lessons(day_number):
                     subject, day_number, config, user=user,
                     curriculum_day=curriculum_days[subject['id']],
                 )
-                db.session.add(lesson)
+                lesson = add_or_get(Lesson, lesson, lesson_id=lesson.lesson_id)
                 added = True
             lesson_map[subject['id']] = lesson
         if added:
@@ -612,11 +613,9 @@ def complete_lesson():
         )
         db.session.add(completion)
     
-    was_completed = completion.completed
     completion.completed = True
     completion.completed_at = completion.completed_at or datetime.now(timezone.utc)
-    if not was_completed:
-        completion.time_spent_minutes = (completion.time_spent_minutes or 0) + time_spent
+    completion.time_spent_minutes = (completion.time_spent_minutes or 0) + time_spent
     
     # Update progress
     progress = Progress.query.filter_by(
@@ -633,11 +632,22 @@ def complete_lesson():
         )
         db.session.add(progress)
     
-    was_progress_complete = progress.completed
     progress.completed = True
     progress.completion_date = progress.completion_date or datetime.now(timezone.utc)
-    if not was_progress_complete:
-        progress.time_spent_minutes = (progress.time_spent_minutes or 0) + time_spent
+    progress.time_spent_minutes = (progress.time_spent_minutes or 0) + time_spent
+
+    if time_spent:
+        now = datetime.now(timezone.utc)
+        db.session.add(StudySession(
+            user_id=user.id,
+            session_type='lesson',
+            date=now.date(),
+            start_time=now - timedelta(minutes=time_spent),
+            end_time=now,
+            duration_minutes=time_spent,
+            subjects_studied=json.dumps([subject_id]),
+            completed=True,
+        ))
     
     db.session.commit()
     

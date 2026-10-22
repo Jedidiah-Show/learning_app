@@ -29,8 +29,10 @@ def login():
     if request.method == 'POST':
         username = request.form.get('username') or request.form.get('email')
         password = request.form.get('password')
-        
-        user = User.query.filter((User.username == username) | (User.email == username)).first()
+        email = username.strip().lower() if isinstance(username, str) else username
+        user = User.query.filter(
+            (User.username == username) | (User.email == email)
+        ).first()
         if (
             user and user.password_hash
             and isinstance(password, str)
@@ -39,30 +41,29 @@ def login():
             login_user(user)
             user.last_active = datetime.now(timezone.utc)
             db.session.commit()
-            next_page = request.args.get('next')
+            next_page = request.args.get('next') or request.form.get('next')
             return redirect(next_page) if safe_local_redirect(next_page) else redirect(url_for('main.index'))
         flash('Invalid username or password', 'error')
-    
-    return render_template('auth/login.html')
+
+    return render_template(
+        'auth/login.html', login_identifier=request.form.get('username', ''),
+        next_page=request.args.get('next', ''),
+    )
 
 
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
+    from app.mail import password_reset_mail_configured
+    recovery_available = bool(current_app.config.get('TESTING')) or password_reset_mail_configured()
     if request.method == 'GET':
-        return render_template('auth/forgot_password.html')
-    if not current_app.config.get('TESTING'):
-        from app.mail import password_reset_mail_configured
-        if not password_reset_mail_configured():
-            flash(
-                'Password recovery email is not configured. Contact the administrator.',
-                'error',
-            )
-            return render_template('auth/forgot_password.html'), 503
+        return render_template('auth/forgot_password.html', recovery_available=recovery_available)
+    if not recovery_available:
+        return render_template('auth/forgot_password.html', recovery_available=False), 503
 
     email = request.form.get('email')
     if not isinstance(email, str) or not email.strip():
         flash('Enter the email address on your account.', 'error')
-        return render_template('auth/forgot_password.html'), 400
+        return render_template('auth/forgot_password.html', recovery_available=True, recovery_email=email), 200
     user = User.query.filter_by(email=email.strip().lower()).first()
     if user and user.email:
         now = datetime.now(timezone.utc)
@@ -94,8 +95,11 @@ def forgot_password():
                 current_app.logger.exception(
                     'Could not send password recovery email for user %s', user.id
                 )
-                flash('Password recovery email could not be sent. Please retry later.', 'error')
-                return render_template('auth/forgot_password.html'), 503
+                flash(
+                    'We could not send the reset email right now. Please try again later or contact the site administrator.',
+                    'error',
+                )
+                return render_template('auth/forgot_password.html', recovery_available=True, recovery_email=email), 503
     flash(
         'If an account exists for that email, password reset instructions will be sent.',
         'success',
@@ -128,7 +132,7 @@ def reset_password(token):
         or password != confirmation
     ):
         flash('Use matching passwords with at least 8 characters.', 'error')
-        return render_template('auth/reset_password.html', token=token), 400
+        return render_template('auth/reset_password.html', token=token), 200
     user = db.session.get(User, reset_token.user_id)
     if user is None:
         flash('This password reset link is invalid or expired.', 'error')
@@ -154,16 +158,35 @@ def register():
         password = request.form.get('password')
         full_name = (request.form.get('full_name') or '').strip()
 
-        if not username or not email or not password or len(password) < 8:
-            flash('Enter a username, email, and password with at least 8 characters.', 'error')
-            return render_template('auth/register.html')
+        values = {'username': username, 'email': email, 'full_name': full_name}
+        errors = {}
+        if not username:
+            errors['username'] = 'Enter a username.'
+        elif len(username) > 80:
+            errors['username'] = 'Username must be 80 characters or fewer.'
+        if not email:
+            errors['email'] = 'Enter your email address.'
+        elif len(email) > 120 or '@' not in email:
+            errors['email'] = 'Enter a valid email address.'
+        if not isinstance(password, str) or len(password) < 8:
+            errors['password'] = 'Use a password with at least 8 characters.'
+        elif password != request.form.get('confirm_password', password):
+            errors['confirm_password'] = 'The passwords do not match.'
+        if errors:
+            return render_template(
+                'auth/register.html', values=values, errors=errors,
+                next_page=request.form.get('next', ''),
+            ), 200
         
         if User.query.filter_by(username=username).first():
-            flash('Username already exists', 'error')
-            return render_template('auth/register.html')
+            errors['username'] = 'That username is already in use.'
         if email and User.query.filter_by(email=email).first():
-            flash('Email already exists', 'error')
-            return render_template('auth/register.html')
+            errors['email'] = 'An account with that email already exists.'
+        if errors:
+            return render_template(
+                'auth/register.html', values=values, errors=errors,
+                next_page=request.form.get('next', ''),
+            ), 200
         
         user = User(
             username=username,
@@ -177,7 +200,11 @@ def register():
         db.session.commit()
         login_user(user)
         flash('Registration successful!', 'success')
-        # After registration, go to subject configuration
+        # Keep the destination through the required first-run setup.
+        next_page = request.form.get('next', '')
+        if safe_local_redirect(next_page):
+            from flask import session
+            session['_post_setup_next'] = next_page
         return redirect(url_for('main.subject_configuration'))
     
     return render_template('auth/register.html')
@@ -260,6 +287,7 @@ def update_account():
 @login_required
 def delete_account():
     user = current_user
+    user_id = user.id
     current_password = request.form.get('current_password')
     if request.is_json:
         data = request.get_json(silent=True)
@@ -274,14 +302,36 @@ def delete_account():
         return redirect(url_for('auth.profile'))
     # Delete all related data explicitly for safety
     try:
-        from app.routes.calendar import delete_user_calendar_events
-        delete_user_calendar_events(user)
+        from app.routes.calendar import (
+            perform_user_calendar_cleanup, prepare_user_calendar_cleanup,
+        )
+        try:
+            calendar_cleanup = prepare_user_calendar_cleanup(user)
+            calendar_cleanup_ready = True
+        except Exception:
+            current_app.logger.exception(
+                'Could not prepare Calendar cleanup for deleted user %s', user_id
+            )
+            calendar_cleanup = None
+            calendar_cleanup_ready = False
         db.session.delete(user)
         db.session.commit()
         logout_user()
+        calendar_cleanup_complete = (
+            perform_user_calendar_cleanup(calendar_cleanup, user_id)
+            and calendar_cleanup_ready
+        )
         flash('Account deleted permanently', 'info')
+        if not calendar_cleanup_complete:
+            flash(
+                'Your account was deleted, but one or more Google Calendar events may remain.',
+                'warning',
+            )
         if request.is_json:
-            return {'status': 'success'}
+            return {
+                'status': 'success',
+                'calendar_cleanup_complete': calendar_cleanup_complete,
+            }
         return redirect(url_for('auth.login'))
     except Exception:
         db.session.rollback()
@@ -295,6 +345,7 @@ def delete_account():
 @login_required
 def reset_account():
     user = current_user
+    user_id = user.id
     current_password = request.form.get('current_password')
     if request.is_json:
         data = request.get_json(silent=True)
@@ -308,13 +359,24 @@ def reset_account():
         flash('Current password is incorrect', 'error')
         return redirect(url_for('auth.profile'))
     try:
-        from app.routes.calendar import delete_user_calendar_events
-        delete_user_calendar_events(user)
+        from app.routes.calendar import (
+            perform_user_calendar_cleanup, prepare_user_calendar_cleanup,
+        )
+        try:
+            calendar_cleanup = prepare_user_calendar_cleanup(user)
+            calendar_cleanup_ready = True
+        except Exception:
+            current_app.logger.exception(
+                'Could not prepare Calendar cleanup for reset user %s', user_id
+            )
+            calendar_cleanup = None
+            calendar_cleanup_ready = False
         # Delete all user data but keep the user account
         from app.models import (Progress, LessonCompletion, QuizResult, StudySession, 
                                 UserSubjectConfig, ProficiencyTest, CalendarEvent,
                                 UserSubject, UserSchedule, UserConfig,
-                                SubjectCurriculum, LearningProject)
+                                SubjectCurriculum, LearningProject,
+                                GeminiUsageBucket)
         Progress.query.filter_by(user_id=user.id).delete()
         LessonCompletion.query.filter_by(user_id=user.id).delete()
         QuizResult.query.filter_by(user_id=user.id).delete()
@@ -324,6 +386,7 @@ def reset_account():
         CalendarEvent.query.filter_by(user_id=user.id).delete()
         SubjectCurriculum.query.filter_by(user_id=user.id).delete()
         LearningProject.query.filter_by(user_id=user.id).delete()
+        GeminiUsageBucket.query.filter_by(user_id=user.id).delete()
         PasswordResetToken.query.filter_by(user_id=user.id).delete()
         UserSubject.query.filter_by(user_id=user.id).delete()
         UserSchedule.query.filter_by(user_id=user.id).delete()
@@ -333,9 +396,21 @@ def reset_account():
         user.token_expiry = None
         user.subjects_configured = False
         db.session.commit()
+        calendar_cleanup_complete = (
+            perform_user_calendar_cleanup(calendar_cleanup, user_id)
+            and calendar_cleanup_ready
+        )
         flash('Account reset successfully', 'success')
+        if not calendar_cleanup_complete:
+            flash(
+                'Your learning data was reset, but one or more Google Calendar events may remain.',
+                'warning',
+            )
         if request.is_json:
-            return {'status': 'success'}
+            return {
+                'status': 'success',
+                'calendar_cleanup_complete': calendar_cleanup_complete,
+            }
         return redirect(url_for('main.index'))
     except Exception:
         db.session.rollback()

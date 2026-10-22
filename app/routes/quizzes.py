@@ -9,6 +9,7 @@ from app.gemini import (
     GeminiError, GeminiNotConfigured, generate_json, generation_context,
 )
 from app.request_data import get_json_object
+from app.db_utils import add_or_get
 import hashlib
 import json
 from sqlalchemy.exc import IntegrityError
@@ -55,10 +56,11 @@ def get_daily_quiz(day_number):
         added = False
         for subject in subjects:
             if subject['id'] not in lesson_map:
-                db.session.add(generate_lesson(
+                lesson = generate_lesson(
                     subject, day_number, config, user=current_user,
                     curriculum_day=curriculum_days[subject['id']],
-                ))
+                )
+                add_or_get(Lesson, lesson, lesson_id=lesson.lesson_id)
                 added = True
     except GeminiError:
         db.session.rollback()
@@ -86,8 +88,7 @@ def get_daily_quiz(day_number):
             db.session.rollback()
             current_app.logger.exception('Could not generate daily quiz for day %s', day_number)
             return jsonify({'error': 'The quiz is temporarily unavailable. Please retry.'}), 503
-        db.session.add(quiz)
-        db.session.flush()
+        quiz = add_or_get(Quiz, quiz, quiz_id=quiz_id)
     
     # The answer key stays on the server. Sending it to the browser makes the
     # quiz trivially answerable through the network panel.
@@ -162,7 +163,9 @@ def get_weekly_quiz(week_number):
                             subject, day, config, user=current_user,
                             curriculum_day=week_curriculum[(subject['id'], day)],
                         )
-                        db.session.add(lesson)
+                        lesson = add_or_get(
+                            Lesson, lesson, lesson_id=lesson.lesson_id
+                        )
                         lesson_map_week[(subject['id'], day)] = lesson
         except GeminiError:
             db.session.rollback()
@@ -205,8 +208,7 @@ def get_weekly_quiz(week_number):
             passing_threshold=config['quizzes']['end_of_week_quiz']['passing_threshold'],
             is_ai_generated=ai_generated,
         )
-        db.session.add(quiz)
-        db.session.flush()
+        quiz = add_or_get(Quiz, quiz, quiz_id=quiz_id)
 
     db.session.commit()
     return jsonify({
@@ -410,6 +412,25 @@ def submit_quiz():
     questions = quiz.get_questions()
     if quiz_type != quiz.quiz_type:
         return jsonify({'error': 'Quiz type does not match quiz'}), 400
+    question_ids = [
+        question.get('id') if isinstance(question, dict) else None
+        for question in questions
+    ]
+    if (
+        not questions
+        or any(not isinstance(question_id, str) for question_id in question_ids)
+        or len(set(question_ids)) != len(question_ids)
+        or set(answers) != set(question_ids)
+        or any(
+            not isinstance(answers[question['id']], int)
+            or isinstance(answers[question['id']], bool)
+            or not 0 <= answers[question['id']] < len(question.get('options', []))
+            for question in questions
+        )
+    ):
+        return jsonify({
+            'error': 'Provide one valid answer for every quiz question'
+        }), 400
     subjects = get_effective_subjects_for_user(user)
     quiz_number = quiz.day_number if quiz.quiz_type == 'daily' else quiz.week_number
     if quiz_number is None:

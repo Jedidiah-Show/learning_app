@@ -4,6 +4,7 @@ import json
 import hashlib
 
 from app import db
+from app.db_utils import add_or_get
 from flask import current_app
 from app.gemini import GeminiNotConfigured, generate_json, generation_context
 from app.models import SubjectCurriculum, UserSubjectConfig
@@ -136,20 +137,18 @@ def get_subject_curriculum(user, subject, config):
 
     serialized = json.dumps(days, ensure_ascii=False)
     if stored is None:
-        stored = SubjectCurriculum(
+        stored = add_or_get(SubjectCurriculum, SubjectCurriculum(
             user_id=user.id,
             subject_id=subject['id'],
             starting_proficiency=proficiency,
             source_signature=source_signature,
             plan=serialized,
             is_ai_generated=generated,
-        )
-        db.session.add(stored)
-    else:
-        stored.starting_proficiency = proficiency
-        stored.source_signature = source_signature
-        stored.plan = serialized
-        stored.is_ai_generated = generated
+        ), user_id=user.id, subject_id=subject['id'])
+    stored.starting_proficiency = proficiency
+    stored.source_signature = source_signature
+    stored.plan = serialized
+    stored.is_ai_generated = generated
     return stored, days
 
 

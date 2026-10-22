@@ -42,6 +42,10 @@ class User(UserMixin, db.Model):
     password_reset_tokens = db.relationship(
         'PasswordResetToken', backref='user', lazy=True, cascade='all, delete-orphan'
     )
+    gemini_usage_buckets = db.relationship(
+        'GeminiUsageBucket', backref='user', lazy=True,
+        cascade='all, delete-orphan',
+    )
 
 class Progress(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -166,6 +170,8 @@ class CalendarEvent(db.Model):
     time_zone = db.Column(db.String(64))
     created_at = db.Column(db.DateTime, default=utcnow)
     synced_to_google = db.Column(db.Boolean, default=False)
+    sync_pending = db.Column(db.Boolean, default=False, nullable=False)
+    delete_pending = db.Column(db.Boolean, default=False, nullable=False)
     __table_args__ = (
         db.Index('idx_calendarevent_user', 'user_id'),
         db.Index('idx_calendarevent_user_day', 'user_id', 'day_number'),
@@ -330,4 +336,15 @@ class PasswordResetToken(db.Model):
     __table_args__ = (
         db.Index('idx_password_reset_user', 'user_id'),
         db.Index('idx_password_reset_expiry', 'expires_at'),
+    )
+
+
+class GeminiUsageBucket(db.Model):
+    __tablename__ = 'gemini_usage_bucket'
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+    window = db.Column(db.String(10), primary_key=True)
+    bucket_start = db.Column(db.DateTime, primary_key=True)
+    request_count = db.Column(db.Integer, nullable=False, default=0)
+    __table_args__ = (
+        db.Index('idx_gemini_usage_user_bucket', 'user_id', 'bucket_start'),
     )

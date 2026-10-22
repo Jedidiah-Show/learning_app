@@ -12,6 +12,7 @@ SECRET_KEY='replace-with-a-long-random-value' .venv/bin/python index.py
 ```
 
 Open `http://127.0.0.1:8080`. The default database URL is `sqlite:///../data/learning_app.db`; set `DATABASE_URL` to use a different database. Configure a persistent `SECRET_KEY` anywhere sessions must survive restarts.
+Production deployments must set `SECRET_KEY`; the app refuses to start in production without it.
 
 Production styles are precompiled into `static/css/tailwind.css`; the app does not load Tailwind's runtime CDN. After changing utility classes in templates or JavaScript, rebuild the stylesheet with `npm ci && npm run build:css`. Chart.js is loaded only on the progress page.
 
@@ -34,7 +35,9 @@ Configure `DATABASE_URL` in the Vercel project with a persistent PostgreSQL conn
 
 Set `GEMINI_API_KEY` to enable Gemini generation for curricula, lessons, quizzes, diagnostics and evaluations, weekly projects, and lesson follow-up answers. The default Flash and Pro model names are configured in `config/default_config.yaml`; override them with `GEMINI_FLASH_MODEL` and `GEMINI_PRO_MODEL`. Learners can select Flash or Pro in their account settings. If a Pro request is rate-limited, the app retries once with Flash. Missing credentials and other provider failures are reported to the learner rather than replaced with hardcoded lesson, quiz, or assessment content. The offline fixtures are available only in tests.
 
-When Gemini is enabled, educational context and project submissions are sent to Google's Gemini API for generation or evaluation; account credentials and identifiers are not included. Gemini requests use the configured model's `generateContent` endpoint. Provider rejections, blocked/empty responses, truncated responses, and malformed JSON are reported instead of being treated as successful generation.
+Authenticated learners are limited to 10 Gemini requests per minute and 300 per UTC day. Apply database migrations before deploying versions that add or change persistent data models.
+
+When Gemini is enabled, educational context and project submissions are sent to Google's Gemini API for generation or evaluation; account credentials and identifiers are not included. Gemini requests use the configured model's `generateContent` endpoint; Gemini 3 and 4 models use low thinking to reduce latency, while older models retain their default. Provider rejections, blocked/empty responses, timeouts, truncated responses, and malformed JSON are reported instead of being treated as successful generation.
 
 The course length is explicitly set to 90 days; it is not inferred from topic labels or past dates. Assessment dates, custom subjects, and study schedules are stored per account.
 

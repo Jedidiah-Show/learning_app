@@ -82,9 +82,9 @@
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
-        <div class="flash-stack mb-5 space-y-2" role="status">
+        <div class="flash-stack mb-5 space-y-2">
             {% for category, message in messages %}
-            <div class="flash-message {{ category }} rounded-xl border px-4 py-3 text-sm font-medium">{{ message }}</div>
+            <div class="flash-message {{ category }} rounded-xl border px-4 py-3 text-sm font-medium" role="{{ 'alert' if category == 'error' else 'status' }}">{{ message }}</div>
             {% endfor %}
         </div>
         {% endif %}

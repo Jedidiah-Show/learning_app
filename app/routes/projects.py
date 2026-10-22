@@ -7,6 +7,7 @@ from flask import Blueprint, current_app, jsonify, render_template, request
 from flask_login import current_user, login_required
 
 from app import db
+from app.db_utils import add_or_get
 from app.curriculum import get_curriculum_day
 from app.gemini import (
     GeminiError, GeminiNotConfigured, generate_json, generation_context,
@@ -166,8 +167,18 @@ def _get_or_create_project(user, config, week_number, subjects, first_day, last_
         generated = _fallback_project(week_number, subjects, weekly_topics)
         ai_generated = False
     if project is None:
-        project = LearningProject(user_id=user.id, week_number=week_number)
-        db.session.add(project)
+        project = add_or_get(
+            LearningProject,
+            LearningProject(
+                user_id=user.id,
+                week_number=week_number,
+                project=json.dumps(generated, ensure_ascii=False),
+            ),
+            user_id=user.id,
+            week_number=week_number,
+        )
+        if project.completed:
+            return project
     project.project = json.dumps(generated, ensure_ascii=False)
     project.is_ai_generated = ai_generated
     project.source_signature = source_signature

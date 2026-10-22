@@ -7,8 +7,9 @@
     <section class="panel-card p-6 sm:p-8">
         <div class="mb-6">
             <p class="eyebrow">Assessment</p>
+            <p class="mb-2 text-sm font-semibold text-indigo-700">Step 2 of 3 · Check your starting level</p>
             <h2 class="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">Proficiency Tests</h2>
-            <p class="text-slate-600">Complete each assessment before the curriculum begins. Your result sets your starting level; Novice subjects skip the test and start with the basics.</p>
+            <p class="text-slate-600">Complete the diagnostics for your selected subjects to personalize your starting point. If AI question generation is temporarily unavailable, a curated assessment will be used so you can continue.</p>
         </div>
 
         {% if test_subjects %}
@@ -29,8 +30,10 @@
             {% endfor %}
         </div>
         {% else %}
-        <p class="text-slate-600 mb-4">All subjects are set to Novice (no tests needed) or tests are complete.</p>
-        <a href="{{ url_for('main.index') }}" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">
+        <p class="mb-2 text-sm font-semibold text-indigo-700">Step 3 of 3 · Setup complete</p>
+        <div class="mb-4 h-2 overflow-hidden rounded-full bg-slate-100" role="progressbar" aria-label="Setup progress" aria-valuemin="1" aria-valuemax="3" aria-valuenow="3"><div class="h-full w-full rounded-full bg-indigo-600"></div></div>
+        <p class="text-slate-600 mb-4">Your starting levels are ready. Continue to your dashboard to begin learning.</p>
+        <a href="{{ url_for('main.finish_setup') }}" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">
             Continue to Dashboard
         </a>
         {% endif %}

@@ -196,9 +196,22 @@ def create_app(config_override=None):
     app = Flask(__name__, **flask_options)
     
     # Config
+    running_on_vercel = bool(
+        os.environ.get('VERCEL')
+        or os.environ.get('VERCEL_ENV')
+        or os.path.isdir('/var/task')
+    )
+    production = (
+        running_on_vercel
+        or os.environ.get('APP_ENV', '').lower() == 'production'
+        or os.environ.get('FLASK_ENV', '').lower() == 'production'
+    )
+    secret_key = os.environ.get('SECRET_KEY')
+    if production and not secret_key:
+        raise RuntimeError('SECRET_KEY must be configured in production')
     # Never use a public, hard-coded Flask signing key for account sessions.
     # Set SECRET_KEY in the environment to keep sessions valid across restarts.
-    app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY') or os.urandom(32)
+    app.config['SECRET_KEY'] = secret_key or os.urandom(32)
     database_url = next((
         os.environ.get(key)
         for key in (
@@ -209,11 +222,6 @@ def create_app(config_override=None):
         )
         if os.environ.get(key)
     ), None)
-    running_on_vercel = bool(
-        os.environ.get('VERCEL')
-        or os.environ.get('VERCEL_ENV')
-        or os.path.isdir('/var/task')
-    )
     if running_on_vercel and not database_url:
         raise RuntimeError(
             'A persistent PostgreSQL URL is required on Vercel. Configure '
@@ -357,6 +365,15 @@ def create_app(config_override=None):
             if current_user.subjects_configured
             else 'main.subject_configuration'
         ))
+
+    from app.gemini import GeminiRateLimitExceeded
+
+    @app.errorhandler(GeminiRateLimitExceeded)
+    def gemini_rate_limit_exceeded(error):
+        response = jsonify({'error': str(error)})
+        response.status_code = 429
+        response.headers['Retry-After'] = str(error.retry_after)
+        return response
     
     # Make config available to all templates
     @app.context_processor

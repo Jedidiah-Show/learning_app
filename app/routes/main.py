@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, request, jsonify, current_app, redirect, url_for, flash
+from flask import Blueprint, render_template, request, jsonify, current_app, redirect, url_for, flash, session
 from app import db, merge_config, validate_app_config
 from app.models import CalendarEvent, UserConfig, UserSubjectConfig, ProficiencyTest
 from datetime import datetime, date, timezone
@@ -15,10 +15,18 @@ from app.gemini import (
     GeminiError, GeminiNotConfigured, generate_json, generation_context,
 )
 from app.request_data import get_json_object
+from app.routes.auth import safe_local_redirect
 import json
 import hashlib
 
 main_bp = Blueprint('main', __name__)
+
+
+def _post_setup_redirect(default_endpoint='main.index'):
+    target = session.pop('_post_setup_next', None)
+    if safe_local_redirect(target):
+        return redirect(target)
+    return redirect(url_for(default_endpoint))
 
 @main_bp.route('/')
 @login_required
@@ -110,7 +118,7 @@ def subject_configuration():
         )
         if needs_test:
             return redirect(url_for('main.proficiency_test_selection'))
-        return redirect(url_for('main.index'))
+        return redirect(url_for('main.proficiency_test_selection'))
     return render_template('subject_config.html', config=config, user=user, subjects=subjects, existing_map=existing_map)
 
 
@@ -131,31 +139,28 @@ def proficiency_test_selection():
             source_signature = _proficiency_test_source_signature(
                 subject, conf.proficiency, config
             )
-            expected_ai_source = bool(current_app.config.get('GEMINI_API_KEY'))
             question_count = config['proficiency_assessment']['questions_per_subject']
             if test and len(test.get_questions()) != question_count:
                 db.session.delete(test)
                 db.session.flush()
                 test = None
-            if test and (
-                test.source_signature != source_signature
-                or test.is_ai_generated != expected_ai_source
-            ):
+            if test and test.source_signature != source_signature:
                 db.session.delete(test)
                 db.session.flush()
                 test = None
             if not test:
                 try:
-                    questions = generate_proficiency_questions(
-                        subject, config, conf.proficiency
+                    questions, generated_by_ai = generate_proficiency_questions(
+                        subject, config, conf.proficiency, allow_offline_fallback=True,
+                        return_source=True,
                     )
                 except GeminiError:
                     db.session.rollback()
-                    current_app.logger.exception(
-                        'Could not generate proficiency assessment for subject %s',
-                        subject['id'],
+                    current_app.logger.warning(
+                        'Could not generate proficiency assessment for subject %s; offline assessment fallback also failed',
+                        subject['id'], exc_info=True,
                     )
-                    flash('The proficiency assessment could not be generated. Please retry.', 'error')
+                    flash('We could not prepare this assessment right now. Your setup is saved; retry this page shortly or contact the site administrator.', 'error')
                     return render_template(
                         'proficiency_test_selection.html', config=config, user=user,
                         test_subjects=test_subjects,
@@ -165,7 +170,7 @@ def proficiency_test_selection():
                     subject_id=subject['id'],
                     questions=json.dumps(questions),
                     source_signature=source_signature,
-                    is_ai_generated=expected_ai_source,
+                    is_ai_generated=generated_by_ai,
                 )
                 db.session.add(test)
             test_subjects.append({'subject': subject, 'test': test})
@@ -173,8 +178,17 @@ def proficiency_test_selection():
     if not test_subjects:
         user.subjects_configured = True
         db.session.commit()
-        return redirect(url_for('main.index'))
+        return render_template(
+            'proficiency_test_selection.html', config=config, user=user,
+            test_subjects=test_subjects,
+        )
     return render_template('proficiency_test_selection.html', config=config, user=user, test_subjects=test_subjects)
+
+
+@main_bp.route('/finish-setup')
+@login_required
+def finish_setup():
+    return _post_setup_redirect()
 
 
 @main_bp.route('/proficiency-test/<int:test_id>', methods=['GET', 'POST'])
@@ -197,13 +211,11 @@ def take_proficiency_test(test_id):
          if item['id'] == test.subject_id),
         None,
     )
-    expected_ai_source = bool(current_app.config.get('GEMINI_API_KEY'))
     if (
         subject is None
         or test.source_signature != _proficiency_test_source_signature(
             subject, conf.proficiency, config
         )
-        or test.is_ai_generated != expected_ai_source
     ):
         return redirect(url_for('main.proficiency_test_selection'))
     questions = test.get_questions()
@@ -275,7 +287,10 @@ def take_proficiency_test(test_id):
     return render_template('proficiency_test.html', config=config, user=user, test=test, questions=questions, subject=subject)
 
 
-def generate_proficiency_questions(subject, config, stated_proficiency):
+def generate_proficiency_questions(
+    subject, config, stated_proficiency, *, allow_offline_fallback=False,
+    return_source=False,
+):
     question_count = config['proficiency_assessment']['questions_per_subject']
     questions_per_band = question_count // 5
     prompt = (
@@ -298,9 +313,14 @@ def generate_proficiency_questions(subject, config, stated_proficiency):
         result = generate_json(
             prompt, model=config.get('ai', {}).get('model_tier', 'flash')
         )
-    except GeminiNotConfigured:
-        if not current_app.testing:
+    except GeminiError as error:
+        if not current_app.testing and not allow_offline_fallback:
             raise
+        if allow_offline_fallback:
+            current_app.logger.warning(
+                'Gemini proficiency assessment generation failed; using curated questions: %s',
+                error,
+            )
         result = None
     if result is not None:
         if not isinstance(result, dict) or not isinstance(result.get('questions'), list):
@@ -330,7 +350,7 @@ def generate_proficiency_questions(subject, config, stated_proficiency):
             for difficulty in range(1, 6)
         ):
             raise GeminiError('Gemini returned an unbalanced proficiency assessment')
-        return [
+        generated = [
             {
                 'id': index,
                 'question': item['question'][:1000],
@@ -342,6 +362,7 @@ def generate_proficiency_questions(subject, config, stated_proficiency):
             }
             for index, item in enumerate(questions)
         ]
+        return (generated, True) if return_source else generated
 
     # Offline development uses curated checks for built-in tracks.
     questions = []
@@ -451,7 +472,7 @@ def generate_proficiency_questions(subject, config, stated_proficiency):
             'opts': options[rotation:] + options[:rotation],
             'correct': (len(options) - 1 - rotation) % len(options),
         })
-    return [
+    generated = [
         {
             'id': i,
             'question': item['q'],
@@ -462,6 +483,7 @@ def generate_proficiency_questions(subject, config, stated_proficiency):
         }
         for i, item in enumerate(selected[:question_count])
     ]
+    return (generated, False) if return_source else generated
 
 
 def _proficiency_test_source_signature(subject, proficiency, config):
@@ -615,6 +637,12 @@ def update_preferences():
             'error': 'Remove existing app-managed Google Calendar events before changing the calendar ID'
         }), 409
     set_user_preferences(current_user, new_preferences)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Could not save preferences for user %s', current_user.id)
+        return jsonify({'error': 'Could not save preferences'}), 500
     if 'google_calendar' in data and CalendarEvent.query.filter_by(
         user_id=current_user.id
     ).count():
@@ -632,14 +660,8 @@ def update_preferences():
                 current_user.id,
             )
             return jsonify({
-                'error': 'Could not apply calendar preferences; check Calendar access and retry.'
+                'error': 'Preferences saved, but Calendar sync is incomplete. Retry to finish syncing.'
             }), 502
-    try:
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-        current_app.logger.exception('Could not save preferences for user %s', current_user.id)
-        return jsonify({'error': 'Could not save preferences'}), 500
     return jsonify({'status': 'success'})
 
 

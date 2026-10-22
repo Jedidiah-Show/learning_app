@@ -25,9 +25,13 @@ admin_bp = Blueprint('admin', __name__)
 def _validate_schedule(blocks):
     if not isinstance(blocks, list) or len(blocks) > 12:
         return 'daily_blocks must be a list of at most 12 blocks'
+    names = set()
     for block in blocks:
         if not isinstance(block, dict) or not isinstance(block.get('name'), str) or not block['name'].strip():
             return 'Every schedule block needs a name'
+        if block['name'] in names:
+            return 'Schedule block names must be unique'
+        names.add(block['name'])
         try:
             start = time.fromisoformat(block['start_time'])
             end = time.fromisoformat(block['end_time'])
@@ -150,6 +154,15 @@ def update_schedule():
     if not schedule:
         schedule = UserSchedule(user_id=current_user.id)
         db.session.add(schedule)
+    schedule.daily_blocks = json.dumps(blocks)
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception(
+            'Could not save schedule for user %s', current_user.id
+        )
+        return jsonify({'error': 'Could not save schedule'}), 500
     try:
         from app.routes.calendar import reconcile_calendar_schedule
         reconcile_calendar_schedule(current_user, blocks)
@@ -158,9 +171,9 @@ def update_schedule():
         current_app.logger.exception(
             'Could not reconcile calendar events for user %s', current_user.id
         )
-        return jsonify({'error': 'Could not update scheduled Google Calendar events'}), 502
-    schedule.daily_blocks = json.dumps(blocks)
-    db.session.commit()
+        return jsonify({
+            'error': 'Schedule saved, but Calendar sync is incomplete. Retry to finish syncing.'
+        }), 502
     return jsonify({'status': 'success', 'daily_blocks': blocks})
 
 

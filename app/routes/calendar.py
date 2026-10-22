@@ -136,17 +136,45 @@ def _delete_google_event(service, calendar_id, event_id):
             raise
 
 
-def delete_user_calendar_events(user):
+def prepare_user_calendar_cleanup(user):
     events = CalendarEvent.query.filter_by(
         user_id=user.id, synced_to_google=True,
     ).filter(CalendarEvent.event_id.isnot(None)).all()
     if not events:
-        return
+        return None
     service = _calendar_service(user)
     config = get_effective_config_for_user(user)
     calendar_id = (config.get('google_calendar') or {}).get('calendar_id', 'primary')
-    for event in events:
-        _delete_google_event(service, calendar_id, event.event_id)
+    return service, calendar_id, [event.event_id for event in events]
+
+
+def perform_user_calendar_cleanup(cleanup, user_id):
+    if cleanup is None:
+        return True
+    service, calendar_id, event_ids = cleanup
+    complete = True
+    for event_id in event_ids:
+        try:
+            _delete_google_event(service, calendar_id, event_id)
+        except Exception:
+            complete = False
+            current_app.logger.exception(
+                'Could not delete Google Calendar event %s for user %s',
+                event_id,
+                user_id,
+            )
+    return complete
+
+
+def delete_user_calendar_events(user):
+    try:
+        cleanup = prepare_user_calendar_cleanup(user)
+    except Exception:
+        current_app.logger.exception(
+            'Could not prepare Google Calendar cleanup for user %s', user.id
+        )
+        return
+    return perform_user_calendar_cleanup(cleanup, user.id)
 
 
 def reconcile_calendar_schedule(user, blocks, force_update=False):
@@ -157,11 +185,19 @@ def reconcile_calendar_schedule(user, blocks, force_update=False):
     updates = []
     removals = []
     for event in events:
+        if event.delete_pending:
+            removals.append(event)
+            continue
         if not event.block_name:
             continue
         block = block_by_name.get(event.block_name)
         if block is None:
-            removals.append(event)
+            if event.synced_to_google and event.event_id:
+                event.delete_pending = True
+                event.sync_pending = False
+                removals.append(event)
+            else:
+                db.session.delete(event)
             continue
         zone = _parse_timezone(event.time_zone) or timezone.utc
         local_date = event.start_time.replace(tzinfo=timezone.utc).astimezone(zone).date()
@@ -179,7 +215,7 @@ def reconcile_calendar_schedule(user, blocks, force_update=False):
             f"{calendar_config.get('event_prefix', '[Learning App]')} "
             f"{block['name'].title()} Session - Day {event.day_number}"
         )
-        if force_update or (
+        if event.sync_pending or force_update or (
             event.start_time != start_utc
             or event.end_time != end_utc
             or event.title != title
@@ -187,26 +223,30 @@ def reconcile_calendar_schedule(user, blocks, force_update=False):
             event.start_time = start_utc
             event.end_time = end_utc
             event.title = title
-            updates.append(event)
+            if event.synced_to_google and event.event_id:
+                event.sync_pending = True
+                updates.append(event)
 
-    remote_updates = [event for event in updates if event.synced_to_google]
     remote_removals = [
         event for event in removals
         if event.synced_to_google and event.event_id
     ]
-    service = _calendar_service(user) if remote_updates or remote_removals else None
+    db.session.commit()
+    service = _calendar_service(user) if updates or remote_removals else None
     calendar_id = calendar_config.get('calendar_id', 'primary')
     if service:
-        for event in remote_updates:
+        for event in updates:
             service.events().update(
                 calendarId=calendar_id,
                 eventId=event.event_id,
                 body=_google_event_body(event, user.id, calendar_config),
             ).execute()
+            event.sync_pending = False
+            db.session.commit()
         for event in remote_removals:
             _delete_google_event(service, calendar_id, event.event_id)
-    for event in removals:
-        db.session.delete(event)
+            db.session.delete(event)
+            db.session.commit()
     return bool(updates or removals)
 
 
