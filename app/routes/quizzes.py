@@ -6,7 +6,8 @@ from flask_login import current_user, login_required
 from app.learning import curriculum_days, day_is_available, next_unlocked_day
 from app.curriculum import get_curriculum_day
 from app.gemini import (
-    GeminiError, GeminiNotConfigured, generate_json, generation_context,
+    GeminiError, GeminiNotConfigured, QUIZ_PROMPT_VERSION, generate_json,
+    generation_context, quiz_preferences,
 )
 from app.request_data import get_json_object
 from app.db_utils import add_or_get
@@ -67,11 +68,11 @@ def get_daily_quiz(day_number):
         current_app.logger.exception('Could not generate lesson content for day %s', day_number)
         return jsonify({'error': 'The quiz is temporarily unavailable. Please retry.'}), 503
     if added:
-        db.session.flush()
+        db.session.commit()
     quiz = Quiz.query.filter_by(quiz_id=quiz_id).first()
     if quiz:
         quiz_questions = quiz.get_questions()
-        if any(q.get('question', '').startswith('[') for q in quiz_questions):
+        if not quiz_questions or any(q.get('question', '').startswith('[') for q in quiz_questions):
             db.session.delete(quiz)
             db.session.flush()
             quiz = None
@@ -88,6 +89,11 @@ def get_daily_quiz(day_number):
             db.session.rollback()
             current_app.logger.exception('Could not generate daily quiz for day %s', day_number)
             return jsonify({'error': 'The quiz is temporarily unavailable. Please retry.'}), 503
+        if not quiz.get_questions():
+            # Keep the lessons that were generated for this day so they are
+            # not regenerated on every request.
+            db.session.commit()
+            return jsonify({'error': 'No review questions are available for this day'}), 422
         quiz = add_or_get(Quiz, quiz, quiz_id=quiz_id)
     
     # The answer key stays on the server. Sending it to the browser makes the
@@ -173,6 +179,8 @@ def get_weekly_quiz(week_number):
                 'Could not generate lesson content for week %s', week_number
             )
             return jsonify({'error': 'The quiz is temporarily unavailable. Please retry.'}), 503
+        # Keep the generated lessons so they are not rebuilt on every request.
+        db.session.commit()
         try:
             questions = generate_ai_quiz_questions(
                 subjects,
@@ -201,6 +209,7 @@ def get_weekly_quiz(week_number):
                 questions.extend(subject_questions)
             ai_generated = False
         if not questions:
+            db.session.commit()
             return jsonify({'error': 'No review questions are available for this week'}), 422
         quiz = Quiz(
             quiz_id=quiz_id, quiz_type='weekly', week_number=week_number,
@@ -223,7 +232,11 @@ def get_weekly_quiz(week_number):
 def _lesson_questions(lesson, subject, day_number, limit):
     checks = lesson.get_content().get('self_checks', [])
     questions = []
-    for i, check in enumerate(checks[:limit]):
+    for i, check in enumerate(checks):
+        # Keep scanning past checks that cannot be resolved so the quiz still
+        # receives the requested number of questions.
+        if len(questions) >= limit:
+            break
         explanation = check.get('explanation', '') or ''
         # Try to find correct answer more robustly
         correct = check.get('correct_index')
@@ -261,9 +274,13 @@ def _quiz_id(
             'user_id': user_id,
             'subjects': sorted(subjects, key=lambda subject: subject.get('id', '')),
             'quiz_settings': config.get('quizzes', {}).get(option, {}),
-            'generation': generation_context(config, model_tier),
+            'generation': generation_context(
+                config,
+                model_tier,
+                prompt_version=QUIZ_PROMPT_VERSION,
+                preferences=quiz_preferences(config),
+            ),
             'curriculum_source': curriculum_source or [],
-            'quiz_prompt_version': '2026-10-21.1',
         },
         ensure_ascii=False,
         separators=(',', ':'),

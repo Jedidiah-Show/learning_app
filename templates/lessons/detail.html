@@ -58,6 +58,31 @@
     {% endfor %}
     {% endif %}
 
+    {% if content.summary and content.summary.points %}
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-800 mb-3">{{ content.summary.heading or 'Key Takeaways' }}</h2>
+        <ul class="space-y-2">
+            {% for point in content.summary.points %}
+            <li class="flex items-start space-x-2">
+                <span class="text-emerald-600 mt-1">✓</span>
+                <span class="text-slate-700">{{ point }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
+    {% if content.key_terms %}
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-800 mb-3">Key Terms</h2>
+        <ul class="space-y-2 list-disc list-inside">
+            {% for term in content.key_terms %}
+            <li class="text-slate-700">{{ term }}</li>
+            {% endfor %}
+        </ul>
+    </div>
+    {% endif %}
+
     {% if content.code_examples %}
     <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <h2 class="text-lg font-bold text-slate-800 mb-4">Code Examples</h2>
@@ -108,6 +133,21 @@
                 <summary class="text-sm text-indigo-600 cursor-pointer hover:text-indigo-700">Show answer/explanation</summary>
                 <p class="mt-2 text-sm text-slate-600 pl-4">{{ check.explanation }}</p>
             </details>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+
+    {% if content.exercises %}
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h2 class="text-lg font-bold text-slate-800 mb-4">✍️ Exercises</h2>
+        {% for exercise in content.exercises %}
+        <div class="mb-4">
+            <h3 class="font-semibold text-slate-800 mb-1">{{ exercise.title }}</h3>
+            <p class="text-slate-700 text-sm">{{ exercise.description }}</p>
+            {% if exercise.type %}
+            <p class="text-sm text-slate-600 mt-1">{{ exercise.type }}</p>
             {% endif %}
         </div>
         {% endfor %}

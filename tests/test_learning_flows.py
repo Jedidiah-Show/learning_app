@@ -126,15 +126,18 @@ class LearningFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
 
     def test_gemini_requests_are_limited_per_authenticated_user(self):
-        from app.gemini import GeminiRateLimitExceeded, _record_user_request
+        from app.gemini import (
+            GeminiRateLimitExceeded, _record_user_request, requests_per_minute,
+        )
         self.register('geminilimit')
+        limit = requests_per_minute()
         with self.app.app_context():
             user_id = User.query.filter_by(username='geminilimit').one().id
         with self.app.test_request_context('/'):
             from flask import session
             session['_user_id'] = str(user_id)
             session['_fresh'] = True
-            for _ in range(10):
+            for _ in range(limit):
                 _record_user_request()
             with self.assertRaises(GeminiRateLimitExceeded):
                 _record_user_request()
@@ -143,7 +146,7 @@ class LearningFlowTests(unittest.TestCase):
                 GeminiUsageBucket.query.filter_by(
                     user_id=user_id, window='minute'
                 ).one().request_count,
-                10,
+                limit,
             )
 
     def test_gemini_quota_errors_return_retryable_http_429(self):
@@ -325,12 +328,55 @@ class LearningFlowTests(unittest.TestCase):
 
         with self.app.app_context():
             self.app.config['GEMINI_API_KEY'] = 'test-key'
-            with patch(
-                'app.gemini.requests.post',
-                side_effect=ReadTimeout('provider took too long'),
-            ):
-                with self.assertRaisesRegex(GeminiError, 'timed out while generating'):
-                    generate_json('Return JSON')
+            with patch('app.gemini.time.sleep'):
+                with patch(
+                    'app.gemini.requests.post',
+                    side_effect=ReadTimeout('provider took too long'),
+                ):
+                    with self.assertRaisesRegex(GeminiError, 'timed out while generating'):
+                        generate_json('Return JSON')
+
+    def test_gemini_client_retries_transient_provider_errors(self):
+        from unittest.mock import Mock
+        from app.gemini import GeminiError
+
+        with self.app.app_context():
+            self.app.config['GEMINI_API_KEY'] = 'test-key'
+            unavailable = Mock(ok=False, status_code=503)
+            unavailable.json.return_value = {
+                'error': {'message': 'This model is currently experiencing high demand'}
+            }
+            success = Mock(ok=True)
+            success.json.return_value = {
+                'candidates': [{
+                    'content': {'parts': [{'text': '{"answer":"ok"}'}]}
+                }]
+            }
+            with patch('app.gemini.time.sleep'):
+                with patch(
+                    'app.gemini.requests.post', side_effect=[unavailable, success]
+                ) as post:
+                    result = generate_json('Return JSON')
+        self.assertEqual(result, {'answer': 'ok'})
+        self.assertEqual(post.call_count, 2)
+
+    def test_gemini_client_gives_up_after_repeated_transient_errors(self):
+        from unittest.mock import Mock
+        from app.gemini import GeminiError, DEFAULT_MAX_ATTEMPTS
+
+        with self.app.app_context():
+            self.app.config['GEMINI_API_KEY'] = 'test-key'
+            unavailable = Mock(ok=False, status_code=503)
+            unavailable.json.return_value = {
+                'error': {'message': 'This model is currently experiencing high demand'}
+            }
+            with patch('app.gemini.time.sleep'):
+                with patch(
+                    'app.gemini.requests.post', return_value=unavailable
+                ) as post:
+                    with self.assertRaisesRegex(GeminiError, 'HTTP 503'):
+                        generate_json('Return JSON')
+        self.assertEqual(post.call_count, DEFAULT_MAX_ATTEMPTS)
 
     def test_gemini_retries_rate_limited_pro_with_flash(self):
         from unittest.mock import Mock
@@ -373,6 +419,170 @@ class LearningFlowTests(unittest.TestCase):
         self.assertEqual(
             {item['correct'] for item in questions},
             {0, 1, 2, 3},
+        )
+
+    def test_offline_proficiency_questions_stay_distinct_for_larger_counts(self):
+        from app.routes.main import generate_proficiency_questions
+        subject = self.app.config['APP_CONFIG']['subjects'][0]
+        config = dict(self.app.config['APP_CONFIG'])
+        config['proficiency_assessment'] = dict(
+            config['proficiency_assessment'], questions_per_subject=40,
+        )
+        with self.app.app_context():
+            questions = generate_proficiency_questions(
+                subject, config, 'Intermediate'
+            )
+        self.assertEqual(len(questions), 40)
+        self.assertEqual(len({item['question'] for item in questions}), 40)
+        self.assertEqual(
+            [sum(item['difficulty'] == level for item in questions) for level in range(1, 6)],
+            [8, 8, 8, 8, 8],
+        )
+
+    def test_offline_proficiency_questions_stay_distinct_for_a_single_topic(self):
+        from app.routes.main import generate_proficiency_questions
+        subject = {
+            'id': 'custom', 'name': 'Custom', 'topics': ['Only Topic'],
+            'proficiency': 'Beginner',
+        }
+        config = dict(self.app.config['APP_CONFIG'])
+        config['proficiency_assessment'] = dict(
+            config['proficiency_assessment'], questions_per_subject=100,
+        )
+        with self.app.app_context():
+            questions = generate_proficiency_questions(
+                subject, config, 'Intermediate'
+            )
+        self.assertEqual(len(questions), 100)
+        self.assertEqual(len({item['question'] for item in questions}), 100)
+        self.assertEqual(
+            [sum(item['difficulty'] == level for item in questions) for level in range(1, 6)],
+            [20, 20, 20, 20, 20],
+        )
+
+    def test_unrelated_preference_changes_do_not_invalidate_generated_content(self):
+        from app.routes.lessons import get_lesson_id
+        subject = self.app.config['APP_CONFIG']['subjects'][0]
+        curriculum_day = {
+            'day': 1, 'topic': 'Topic', 'objective': 'Objective', 'difficulty': 1,
+        }
+        config = self.app.config['APP_CONFIG']
+        with self.app.app_context():
+            baseline = get_lesson_id(subject, 1, curriculum_day, config)
+
+            # The proficiency thresholds only decide how a diagnostic score maps
+            # to a level, so they must not invalidate generated lessons.
+            threshold_change = dict(config)
+            threshold_change['proficiency_assessment'] = dict(
+                config['proficiency_assessment'],
+                proficiency_thresholds={
+                    'Beginner': 50, 'Intermediate': 70,
+                    'Advanced': 85, 'Expert': 95,
+                },
+            )
+            self.assertEqual(
+                get_lesson_id(subject, 1, curriculum_day, threshold_change), baseline,
+            )
+
+            # Settings that do change the lesson content still invalidate it.
+            content_change = dict(config)
+            content_change['lesson_generation'] = dict(
+                config['lesson_generation'], include_code_examples=False,
+            )
+            self.assertNotEqual(
+                get_lesson_id(subject, 1, curriculum_day, content_change), baseline,
+            )
+
+    def test_lesson_page_renders_the_generated_summary_terms_and_exercises(self):
+        self.register('renderlesson')
+        response = self.client.get('/api/lessons/daily/1')
+        self.assertEqual(response.status_code, 200)
+        entry = response.get_json()['subjects'][0]
+        page = self.client.get(f"/lesson/{entry['lesson']['lesson_id']}")
+        self.assertEqual(page.status_code, 200)
+        html = page.get_data(as_text=True)
+        self.assertIn('Key Takeaways', html)
+        self.assertIn('Key Terms', html)
+        self.assertIn('Exercises', html)
+
+    def test_lesson_sections_are_reordered_without_relabelling(self):
+        from app.routes.lessons import generate_ai_lesson
+        subject = self.app.config['APP_CONFIG']['subjects'][0]
+        generated = {
+            'title': 'Ordered sections',
+            'objectives': ['Apply it.'],
+            'content': {
+                'overview': 'Overview text.',
+                'theory_sections': [
+                    {'heading': 'Practical Application', 'content': 'Practical body.'},
+                    {'heading': 'Overview', 'content': 'Overview body.'},
+                    {'heading': 'Core Concepts', 'content': 'Core body.'},
+                    {'heading': 'Guided Walkthrough', 'content': 'Walkthrough body.'},
+                ],
+                'code_examples': [],
+                'pitfalls': [],
+                'self_checks': [],
+                'summary': {'heading': 'Key takeaways', 'points': ['Apply it.']},
+                'exercises': [],
+                'key_terms': ['term'],
+            },
+        }
+        with self.app.app_context():
+            with patch('app.routes.lessons.generate_json', return_value=generated):
+                lesson = generate_ai_lesson(
+                    subject, 1, 'Topic', None, self.app.config['APP_CONFIG'],
+                )
+        sections = lesson['content']['theory_sections']
+        self.assertEqual(
+            [section['heading'] for section in sections],
+            ['Overview', 'Core Concepts', 'Guided Walkthrough', 'Practical Application'],
+        )
+        self.assertEqual(sections[0]['content'], 'Overview body.')
+        self.assertEqual(sections[3]['content'], 'Practical body.')
+
+    def test_lesson_sections_keep_unexpected_headings(self):
+        from app.routes.lessons import generate_ai_lesson
+        subject = self.app.config['APP_CONFIG']['subjects'][0]
+        generated = {
+            'title': 'Custom sections',
+            'objectives': ['Apply it.'],
+            'content': {
+                'overview': 'Overview text.',
+                'theory_sections': [
+                    {'heading': 'Background', 'content': 'Background body.'},
+                    {'heading': 'Mechanics', 'content': 'Mechanics body.'},
+                    {'heading': 'Worked Example', 'content': 'Example body.'},
+                    {'heading': 'Next Steps', 'content': 'Next body.'},
+                ],
+                'code_examples': [],
+                'pitfalls': [],
+                'self_checks': [],
+                'summary': {'heading': 'Key takeaways', 'points': ['Apply it.']},
+                'exercises': [],
+                'key_terms': ['term'],
+            },
+        }
+        with self.app.app_context():
+            with patch('app.routes.lessons.generate_json', return_value=generated):
+                lesson = generate_ai_lesson(
+                    subject, 1, 'Topic', None, self.app.config['APP_CONFIG'],
+                )
+        self.assertEqual(
+            [section['heading'] for section in lesson['content']['theory_sections']],
+            ['Background', 'Mechanics', 'Worked Example', 'Next Steps'],
+        )
+
+    def test_daily_quiz_reports_when_no_review_questions_are_available(self):
+        self.register('noquestions')
+        preferences = self.client.post('/api/settings/preferences', json={
+            'lesson_generation': {'include_self_checks': False},
+        })
+        self.assertEqual(preferences.status_code, 200)
+        response = self.client.get('/api/quizzes/daily/1')
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(
+            response.get_json()['error'],
+            'No review questions are available for this day',
         )
 
     def test_google_calendar_oauth_uses_configured_callback_and_saves_tokens(self):
@@ -1095,6 +1305,22 @@ class LearningFlowTests(unittest.TestCase):
             self.assertEqual(updated.id, original_id)
             self.assertNotEqual(updated.source_signature, original_signature)
             self.assertEqual(updated.get_project()['title'], 'Updated project')
+
+    def test_regenerating_a_project_keeps_the_learner_submission(self):
+        from app.routes.projects import _get_or_create_project
+        self.register('projectsubmission')
+        with self.app.app_context():
+            user = User.query.filter_by(username='projectsubmission').one()
+            config = self.app.config['APP_CONFIG']
+            subjects = config['subjects'][:1]
+            project = _get_or_create_project(user, config, 1, subjects, 1, 7)
+            project.submission = 'A substantial piece of learner work.'
+            db.session.commit()
+            subjects[0]['description'] = 'Changed subject source'
+            updated = _get_or_create_project(user, config, 1, subjects, 1, 7)
+            self.assertEqual(
+                updated.submission, 'A substantial piece of learner work.',
+            )
 
     def test_malformed_progress_json_returns_bad_request(self):
         self.register('malformedlearner')

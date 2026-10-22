@@ -6,11 +6,16 @@ import hashlib
 from app import db
 from app.db_utils import add_or_get
 from flask import current_app
-from app.gemini import GeminiNotConfigured, generate_json, generation_context
+from app.gemini import (
+    CURRICULUM_PROMPT_VERSION, GeminiNotConfigured, curriculum_preferences,
+    generate_json, generation_context,
+)
 from app.models import SubjectCurriculum, UserSubjectConfig
 
 CURRICULUM_DAYS = 90
 PROFICIENCY_LEVELS = ('Novice', 'Beginner', 'Intermediate', 'Advanced', 'Expert')
+MAX_TOPIC_LENGTH = 200
+MAX_OBJECTIVE_LENGTH = 600
 
 
 def _fallback_plan(subject, proficiency, total_days=CURRICULUM_DAYS):
@@ -27,14 +32,25 @@ def _fallback_plan(subject, proficiency, total_days=CURRICULUM_DAYS):
     for day in range(1, total_days + 1):
         stage_index = min(4, (day - 1) * 5 // total_days + offset)
         stage, difficulty = stages[stage_index]
-        topic = topics[(day - 1) % len(topics)]
+        topic = _truncate(topics[(day - 1) % len(topics)], MAX_TOPIC_LENGTH)
         days.append({
             'day': day,
             'topic': topic,
-            'objective': f'Apply {topic} at the {stage.lower()} stage and explain your reasoning.',
+            'objective': _truncate(
+                f'Apply {topic} at the {stage.lower()} stage and explain your reasoning.',
+                MAX_OBJECTIVE_LENGTH,
+            ),
             'difficulty': difficulty,
         })
     return days
+
+
+def _truncate(value, limit):
+    """Shorten over-long generated text instead of rejecting the whole plan."""
+    value = value.strip()
+    if len(value) <= limit:
+        return value
+    return value[:limit - 3].rstrip() + '...'
 
 
 def _validate_plan(plan, total_days=CURRICULUM_DAYS):
@@ -50,16 +66,16 @@ def _validate_plan(plan, total_days=CURRICULUM_DAYS):
         topic, objective = entry.get('topic'), entry.get('objective')
         difficulty = entry.get('difficulty')
         if (
-            not isinstance(topic, str) or not topic.strip() or len(topic) > 200
-            or not isinstance(objective, str) or not objective.strip() or len(objective) > 600
+            not isinstance(topic, str) or not topic.strip()
+            or not isinstance(objective, str) or not objective.strip()
             or not isinstance(difficulty, int) or isinstance(difficulty, bool)
             or not 1 <= difficulty <= 5
         ):
             raise ValueError(f'Gemini curriculum day {expected_day} is invalid')
         normalized.append({
             'day': expected_day,
-            'topic': topic.strip(),
-            'objective': objective.strip(),
+            'topic': _truncate(topic, MAX_TOPIC_LENGTH),
+            'objective': _truncate(objective, MAX_OBJECTIVE_LENGTH),
             'difficulty': difficulty,
         })
     return normalized
@@ -83,7 +99,12 @@ def get_subject_curriculum(user, subject, config):
         'proficiency': proficiency,
         'test_score': subject_config.test_score if subject_config else None,
         'curriculum_days': total_days,
-        'generation': generation_context(config, config.get('ai', {}).get('model_tier', 'flash')),
+        'generation': generation_context(
+            config,
+            config.get('ai', {}).get('model_tier', 'flash'),
+            prompt_version=CURRICULUM_PROMPT_VERSION,
+            preferences=curriculum_preferences(config),
+        ),
     }, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
     source_signature = hashlib.sha256(source.encode('utf-8')).hexdigest()
 

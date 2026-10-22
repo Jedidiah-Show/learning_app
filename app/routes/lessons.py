@@ -4,7 +4,8 @@ from app.user_subjects import get_effective_config_for_user, get_effective_subje
 from app.learning import day_is_available, next_unlocked_day
 from app.curriculum import get_curriculum_day
 from app.gemini import (
-    GeminiError, GeminiNotConfigured, generate_json, generation_context,
+    GeminiError, GeminiNotConfigured, LESSON_PROMPT_VERSION, generate_json,
+    generation_context, lesson_preferences,
 )
 from app.request_data import get_json_object
 from app import db
@@ -15,6 +16,14 @@ import hashlib
 import json
 
 lessons_bp = Blueprint('lessons', __name__)
+
+# Canonical theory section headings, in the order they should be presented.
+LESSON_SECTION_HEADINGS = (
+    'Overview', 'Core Concepts', 'Guided Walkthrough', 'Practical Application',
+)
+MAX_TITLE_LENGTH = 200
+MAX_OBJECTIVE_LENGTH = 400
+MAX_OBJECTIVES = 12
 
 @lessons_bp.route('/daily/<int:day_number>', methods=['GET'])
 @login_required
@@ -155,7 +164,12 @@ def get_lesson_id(subject, day_number, curriculum_day=None, config=None):
             curriculum_day.get('topic') if curriculum_day else None,
             curriculum_day.get('objective') if curriculum_day else None,
             curriculum_day.get('difficulty') if curriculum_day else None,
-            generation_context(config, model_tier),
+            generation_context(
+                config,
+                model_tier,
+                prompt_version=LESSON_PROMPT_VERSION,
+                preferences=lesson_preferences(config),
+            ),
         ],
         ensure_ascii=False,
         separators=(',', ':'),
@@ -205,44 +219,99 @@ def generate_ai_lesson(subject, day_number, topic, curriculum_day, config):
         content['self_checks'] = []
     checks = content.get('self_checks')
     sections = content.get('theory_sections')
+    pitfalls = content.get('pitfalls')
+    summary = content.get('summary')
+    exercises = content.get('exercises')
+    key_terms = content.get('key_terms')
+    code_examples = content.get('code_examples')
     if (
         not isinstance(content.get('overview'), str)
-        or not isinstance(sections, list) or len(sections) != 4
+        or not content['overview'].strip()
+        or not isinstance(sections, list) or len(sections) != len(LESSON_SECTION_HEADINGS)
         or any(
             not isinstance(section, dict)
             or not isinstance(section.get('heading'), str)
+            or not section['heading'].strip()
             or not isinstance(section.get('content'), str)
+            or not section['content'].strip()
             for section in sections
         )
         or not isinstance(checks, list)
         or any(
             not isinstance(check, dict)
             or not isinstance(check.get('question'), str)
+            or not check['question'].strip()
             or not isinstance(check.get('options'), list)
             or not 2 <= len(check['options']) <= 6
-            or not all(isinstance(option, str) for option in check['options'])
+            or not all(isinstance(option, str) and option.strip() for option in check['options'])
             or not isinstance(check.get('correct_index'), int)
             or isinstance(check.get('correct_index'), bool)
             or not 0 <= check['correct_index'] < len(check['options'])
             for check in checks
         )
+        or not isinstance(pitfalls, list)
+        or not all(isinstance(item, str) and item.strip() for item in pitfalls)
+        or not isinstance(summary, dict)
+        or not isinstance(summary.get('heading'), str)
+        or not isinstance(summary.get('points'), list)
+        or not all(isinstance(item, str) and item.strip() for item in summary['points'])
+        or not isinstance(exercises, list)
+        or any(
+            not isinstance(exercise, dict)
+            or not isinstance(exercise.get('title'), str)
+            or not isinstance(exercise.get('description'), str)
+            for exercise in exercises
+        )
+        or not isinstance(key_terms, list)
+        or not all(isinstance(item, str) and item.strip() for item in key_terms)
+        or not isinstance(code_examples, list)
+        or any(
+            not isinstance(example, dict)
+            or not isinstance(example.get('title'), str)
+            or not isinstance(example.get('code'), str)
+            for example in code_examples
+        )
     ):
         from app.gemini import GeminiError
         raise GeminiError('Gemini returned an invalid lesson structure')
-    for section, heading in zip(
-        sections,
-        ('Overview', 'Core Concepts', 'Guided Walkthrough', 'Practical Application'),
-    ):
-        section['heading'] = heading
+    sections = _normalize_section_headings(sections)
     for check in checks:
         check['explanation'] = (
             f"{chr(65 + check['correct_index'])}) {check.get('explanation', '')}".strip()
         )
     return {
-        'title': result['title'][:200],
-        'objectives': [item for item in result['objectives'] if isinstance(item, str)][:12],
+        'title': result['title'].strip()[:MAX_TITLE_LENGTH],
+        'objectives': [
+            item.strip()[:MAX_OBJECTIVE_LENGTH]
+            for item in result['objectives']
+            if isinstance(item, str) and item.strip()
+        ][:MAX_OBJECTIVES],
         'content': content,
     }
+
+
+def _normalize_section_headings(sections):
+    """Restore the canonical section order without relabelling the content.
+
+    Overwriting the headings positionally describes the wrong section whenever
+    the model returns its sections in a different order, so the canonical
+    headings are only used when the model returned the expected set.
+    """
+    returned = [str(section.get('heading', '')).strip() for section in sections]
+    canonical = {heading.casefold() for heading in LESSON_SECTION_HEADINGS}
+    if {heading.casefold() for heading in returned} != canonical:
+        return sections
+    by_heading = {
+        heading.casefold(): section
+        for section, heading in zip(sections, returned)
+    }
+    for heading in LESSON_SECTION_HEADINGS:
+        by_heading[heading.casefold()]['heading'] = heading
+    # Reorder in place so the stored lesson keeps the canonical sequence.
+    sections[:] = [
+        by_heading[heading.casefold()] for heading in LESSON_SECTION_HEADINGS
+    ]
+    return sections
 
 
 TOPIC_GUIDES = {

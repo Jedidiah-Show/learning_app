@@ -10,7 +10,8 @@ from app import db
 from app.db_utils import add_or_get
 from app.curriculum import get_curriculum_day
 from app.gemini import (
-    GeminiError, GeminiNotConfigured, generate_json, generation_context,
+    GeminiError, GeminiNotConfigured, PROJECT_PROMPT_VERSION, generate_json,
+    generation_context, project_preferences,
 )
 from app.learning import curriculum_days
 from app.request_data import get_json_object
@@ -127,9 +128,11 @@ def _get_or_create_project(user, config, week_number, subjects, first_day, last_
             'weekly_topics': weekly_topics,
             'week_number': week_number,
             'generation': generation_context(
-                config, config.get('ai', {}).get('model_tier', 'flash')
+                config,
+                config.get('ai', {}).get('model_tier', 'flash'),
+                prompt_version=PROJECT_PROMPT_VERSION,
+                preferences=project_preferences(config),
             ),
-            'project_prompt_version': '2026-10-21.1',
         },
         ensure_ascii=False,
         sort_keys=True,
@@ -182,7 +185,8 @@ def _get_or_create_project(user, config, week_number, subjects, first_day, last_
     project.project = json.dumps(generated, ensure_ascii=False)
     project.is_ai_generated = ai_generated
     project.source_signature = source_signature
-    project.submission = None
+    # Regenerating the brief must not discard the learner's work. Only the
+    # evaluation is dropped, because it described the previous brief.
     project.evaluation = None
     db.session.flush()
     return project

@@ -12,10 +12,12 @@ from app.user_subjects import (
 )
 from app.curriculum import PROFICIENCY_LEVELS
 from app.gemini import (
-    GeminiError, GeminiNotConfigured, generate_json, generation_context,
+    ASSESSMENT_PROMPT_VERSION, GeminiError, GeminiNotConfigured,
+    assessment_preferences, generate_json, generation_context,
 )
 from app.request_data import get_json_object
 from app.routes.auth import safe_local_redirect
+import itertools
 import json
 import hashlib
 
@@ -287,6 +289,24 @@ def take_proficiency_test(test_id):
     return render_template('proficiency_test.html', config=config, user=user, test=test, questions=questions, subject=subject)
 
 
+# Focus angles used to keep the offline diagnostic questions distinct when a
+# subject has too few topics to produce enough template/topic combinations.
+ASSESSMENT_FOCUSES = (
+    'the core idea',
+    'a boundary case',
+    'a common mistake',
+    'a realistic example',
+    'the trade-offs involved',
+    'how it connects to the rest of the subject',
+    'how you would explain it to a beginner',
+    'how you would check it quickly',
+    'the tools or notation involved',
+    'what changes when the inputs grow',
+    'how you would document it for a teammate',
+    'how it fails in practice',
+)
+
+
 def generate_proficiency_questions(
     subject, config, stated_proficiency, *, allow_offline_fallback=False,
     return_source=False,
@@ -433,6 +453,7 @@ def generate_proficiency_questions(
             f'How can you explain your reasoning about {topic}?',
         )]
     topics = subject.get('topics') or [subject.get('name', 'the subject')]
+    topic_variants = _topic_variants(topics)
     prompts = [
         ('How would you verify that a proposed use of {topic} works beyond the simplest example?',
          'Test a representative case and relevant boundary cases.',
@@ -459,19 +480,53 @@ def generate_proficiency_questions(
          'One that lists terms without connecting them.',
          'One that presents an answer but omits its assumptions.',
          'One that claims the idea has no exceptions without evidence.'),
+        ('Someone asks for help with {topic}. What do you check first?',
+         'Their goal and the constraints they are working under.',
+         'The length of the answer you plan to give.',
+         'Whether the topic is one you remember clearly.',
+         'How quickly you can reply to them.'),
+        ('What separates a working use of {topic} from a lucky one?',
+         'A reason that predicts the outcome in cases you did not try first.',
+         'The number of lines the solution happens to use.',
+         'Whether the first attempt already succeeded.',
+         'How familiar the example looks.'),
+        ('Which change to a solution using {topic} is most likely to reveal a mistake?',
+         'One that pushes a case the design did not explicitly handle.',
+         'One that renames the variables for readability.',
+         'One that reorders unrelated statements.',
+         'One that removes a comment.'),
+        ('How would you explain a failure involving {topic} to a teammate?',
+         'Describe the observed behaviour, the assumption it violated, and the check that corrected it.',
+         'Say the tool is unreliable and suggest rewriting everything.',
+         'Describe only the final working version.',
+         'Leave it undocumented until it is understood.'),
+        ('What should you be able to show about {topic} before calling it understood?',
+         'A worked example, a boundary case, and an explanation of the trade-off.',
+         'A definition copied from the documentation.',
+         'A passing run of the simplest possible example.',
+         'An assurance that no further reading is needed.'),
     ]
     selected = list(base)
-    while len(selected) < question_count:
-        template_index = (len(selected) - len(base)) % len(prompts)
-        topic = topics[(len(selected) - len(base)) % len(topics)]
+    # Walk the templates, the topic groups and the focus angles as a product
+    # rather than a diagonal, so the same question is never produced twice.
+    for focus, variant, template_index in itertools.product(
+        [None, *ASSESSMENT_FOCUSES], topic_variants, range(len(prompts))
+    ):
+        if len(selected) >= question_count:
+            break
         prompt_text, correct, *distractors = prompts[template_index]
         options = distractors + [correct]
         rotation = len(selected) % len(options)
+        text = prompt_text.format(topic=variant)
+        if focus:
+            text = f'{text} Consider {focus}.'
         selected.append({
-            'q': prompt_text.format(topic=topic),
+            'q': text,
             'opts': options[rotation:] + options[:rotation],
             'correct': (len(options) - 1 - rotation) % len(options),
         })
+    if len(selected) < question_count:
+        raise GeminiError('Not enough distinct proficiency assessment questions are available')
     generated = [
         {
             'id': i,
@@ -486,15 +541,39 @@ def generate_proficiency_questions(
     return (generated, False) if return_source else generated
 
 
+def _topic_variants(topics):
+    """Distinct topic labels, growing from single topics to groups of topics."""
+    variants = []
+    seen = set()
+    for size in range(1, len(topics) + 1):
+        for combination in itertools.combinations(topics, size):
+            if size == 1:
+                label = str(combination[0])
+            elif size == 2:
+                label = f'{combination[0]} and {combination[1]}'
+            else:
+                label = (
+                    ', '.join(str(item) for item in combination[:-1])
+                    + f', and {combination[-1]}'
+                )
+            if label in seen:
+                continue
+            seen.add(label)
+            variants.append(label)
+    return variants
+
+
 def _proficiency_test_source_signature(subject, proficiency, config):
     source = json.dumps({
         'subject': subject,
         'proficiency': proficiency,
         'question_count': config['proficiency_assessment']['questions_per_subject'],
         'generation': generation_context(
-            config, config.get('ai', {}).get('model_tier', 'flash')
+            config,
+            config.get('ai', {}).get('model_tier', 'flash'),
+            prompt_version=ASSESSMENT_PROMPT_VERSION,
+            preferences=assessment_preferences(config),
         ),
-        'assessment_prompt_version': '2026-10-21.1',
     }, ensure_ascii=False, sort_keys=True, separators=(',', ':'))
     return hashlib.sha256(source.encode('utf-8')).hexdigest()
 
