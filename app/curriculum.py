@@ -7,7 +7,7 @@ from app import db
 from app.db_utils import add_or_get
 from flask import current_app
 from app.gemini import (
-    CURRICULUM_PROMPT_VERSION, GeminiNotConfigured, curriculum_preferences,
+    CURRICULUM_PROMPT_VERSION, GeminiError, curriculum_preferences,
     generate_json, generation_context,
 )
 from app.models import SubjectCurriculum, UserSubjectConfig
@@ -111,11 +111,9 @@ def get_subject_curriculum(user, subject, config):
     stored = SubjectCurriculum.query.filter_by(
         user_id=user.id, subject_id=subject['id']
     ).first()
-    expected_ai_source = bool(current_app.config.get('GEMINI_API_KEY'))
     if (
         stored and stored.starting_proficiency == proficiency
         and stored.source_signature == source_signature
-        and stored.is_ai_generated == expected_ai_source
     ):
         try:
             days = _validate_plan({'days': json.loads(stored.plan)}, total_days)
@@ -148,13 +146,12 @@ def get_subject_curriculum(user, subject, config):
         )
         days = _validate_plan(result, total_days)
         generated = True
-    except GeminiNotConfigured:
-        if not current_app.testing:
-            raise
+    except (GeminiError, ValueError) as error:
+        current_app.logger.warning(
+            'Gemini curriculum generation failed for %s; using a structured fallback: %s',
+            subject['id'], error,
+        )
         days = _fallback_plan(subject, proficiency, total_days)
-    except ValueError as error:
-        from app.gemini import GeminiError
-        raise GeminiError(f'Gemini returned an invalid {total_days}-day curriculum') from error
 
     serialized = json.dumps(days, ensure_ascii=False)
     if stored is None:

@@ -96,10 +96,10 @@ def forgot_password():
                     'Could not send password recovery email for user %s', user.id
                 )
                 flash(
-                    'We could not send the reset email right now. Please try again later or contact the site administrator.',
-                    'error',
+                    'If an account exists for that email, password reset instructions will be sent.',
+                    'success',
                 )
-                return render_template('auth/forgot_password.html', recovery_available=True, recovery_email=email), 503
+                return redirect(url_for('auth.login'))
     flash(
         'If an account exists for that email, password reset instructions will be sent.',
         'success',

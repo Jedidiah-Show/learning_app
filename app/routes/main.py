@@ -11,6 +11,7 @@ from app.user_subjects import (
     set_user_preferences,
 )
 from app.curriculum import PROFICIENCY_LEVELS
+from app.google_calendar import GoogleAuthorizationError
 from app.gemini import (
     ASSESSMENT_PROMPT_VERSION, GeminiError, GeminiNotConfigured,
     assessment_preferences, generate_json, generation_context,
@@ -35,7 +36,10 @@ def _post_setup_redirect(default_endpoint='main.index'):
 def index():
     user = current_user
     config = get_effective_config_for_user(user)
-    return render_template('dashboard.html', config=config, user=user)
+    return render_template(
+        'dashboard.html', config=config, user=user,
+        next_unlocked_day=next_unlocked_day(user, config),
+    )
 
 @main_bp.route('/lessons')
 @login_required
@@ -730,8 +734,16 @@ def update_preferences():
             reconcile_calendar_schedule(
                 current_user,
                 get_effective_config_for_user(current_user)['schedule']['daily_blocks'],
-                force_update=True,
             )
+        except GoogleAuthorizationError:
+            db.session.rollback()
+            current_app.logger.warning(
+                'Google Calendar needs to be reconnected for user %s',
+                current_user.id,
+            )
+            return jsonify({
+                'error': 'Preferences saved, but Google Calendar needs to be reconnected.'
+            }), 401
         except Exception:
             db.session.rollback()
             current_app.logger.exception(

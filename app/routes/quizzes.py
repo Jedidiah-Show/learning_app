@@ -192,10 +192,13 @@ def get_weekly_quiz(week_number):
                 'weekly',
             )
             ai_generated = questions is not None
-        except GeminiError:
-            db.session.rollback()
-            current_app.logger.exception('Could not generate weekly quiz for week %s', week_number)
-            return jsonify({'error': 'The quiz is temporarily unavailable. Please retry.'}), 503
+        except GeminiError as error:
+            current_app.logger.warning(
+                'Gemini weekly quiz generation failed for week %s; using lesson checks: %s',
+                week_number, error,
+            )
+            questions = None
+            ai_generated = False
         if questions is None:
             questions = []
             for subject in subjects:
@@ -295,14 +298,21 @@ def generate_daily_quiz(quiz_id, day_number, subjects, config, lesson_map=None, 
     if lesson_map is None:
         lessons = Lesson.query.filter_by(day_number=day_number).filter(Lesson.subject_id.in_([s['id'] for s in subjects])).all()
         lesson_map = {l.subject_id: l for l in lessons}
-    ai_questions = generate_ai_quiz_questions(
-        subjects,
-        [(subject, day_number, lesson_map[subject['id']])
-         for subject in subjects if subject['id'] in lesson_map],
-        questions_per_subject,
-        'daily',
-        config.get('ai', {}).get('model_tier', 'flash'),
-    ) if user else None
+    try:
+        ai_questions = generate_ai_quiz_questions(
+            subjects,
+            [(subject, day_number, lesson_map[subject['id']])
+             for subject in subjects if subject['id'] in lesson_map],
+            questions_per_subject,
+            'daily',
+            config.get('ai', {}).get('model_tier', 'flash'),
+        ) if user else None
+    except GeminiError as error:
+        current_app.logger.warning(
+            'Gemini daily quiz generation failed for day %s; using lesson checks: %s',
+            day_number, error,
+        )
+        ai_questions = None
     if ai_questions is not None:
         questions = ai_questions
     else:
@@ -366,26 +376,35 @@ def generate_ai_quiz_questions(
     questions = result['questions']
     counts = {subject_id: 0 for subject_id in expected_subjects}
     normalized = []
+    seen_questions = set()
     for index, question in enumerate(questions):
         subject_id = question.get('subject_id') if isinstance(question, dict) else None
         options = question.get('options') if isinstance(question, dict) else None
         correct = question.get('correct_index') if isinstance(question, dict) else None
+        question_text = question.get('question') if isinstance(question, dict) else None
         if (
-            subject_id not in expected_subjects
-            or not isinstance(question.get('question'), str)
+            not isinstance(subject_id, str)
+            or subject_id not in expected_subjects
+            or not isinstance(question_text, str)
+            or not question_text.strip()
             or not isinstance(options, list) or len(options) != 4
-            or not all(isinstance(option, str) for option in options)
+            or not all(isinstance(option, str) and option.strip() for option in options)
+            or len({option.strip().casefold() for option in options}) != 4
             or not isinstance(correct, int) or isinstance(correct, bool)
             or not 0 <= correct < len(options)
         ):
             raise GeminiError('Gemini returned an invalid quiz question')
+        question_signature = (subject_id, question_text.strip().casefold())
+        if question_signature in seen_questions:
+            raise GeminiError('Gemini returned duplicate quiz questions')
+        seen_questions.add(question_signature)
         counts[subject_id] += 1
         subject = expected_subjects[subject_id]
         normalized.append({
             'id': f'{subject_id}_{quiz_type}_{index}',
             'subject_id': subject_id,
             'subject_name': subject['name'],
-            'question': question['question'][:1000],
+            'question': question_text.strip()[:1000],
             'options': [option[:500] for option in options],
             'correct': correct,
             'explanation': str(question.get('explanation', ''))[:1000],
@@ -576,9 +595,21 @@ def evaluate_quiz(questions, answers, score, quiz_type, model_tier='flash'):
     )
     try:
         result = generate_json(prompt, model=model_tier)
-    except GeminiNotConfigured:
-        if not current_app.testing:
-            raise
+        if (
+            not isinstance(result, dict)
+            or not isinstance(result.get('summary'), str)
+            or any(
+                not isinstance(result.get(field), list)
+                or not all(isinstance(item, str) for item in result[field])
+                for field in ('strengths', 'gaps', 'next_steps')
+            )
+        ):
+            raise GeminiError('Gemini returned an invalid quiz evaluation')
+        return result
+    except GeminiError as error:
+        current_app.logger.warning(
+            'Gemini quiz evaluation failed; using answer explanations: %s', error
+        )
         missed = sum(
             item['selected_option'] != item['correct_option'] for item in responses
         )
@@ -592,17 +623,6 @@ def evaluate_quiz(questions, answers, score, quiz_type, model_tier='flash'):
             ][:3],
             'evaluation_source': 'local',
         }
-    if (
-        not isinstance(result, dict)
-        or not isinstance(result.get('summary'), str)
-        or any(
-            not isinstance(result.get(field), list)
-            or not all(isinstance(item, str) for item in result[field])
-            for field in ('strengths', 'gaps', 'next_steps')
-        )
-    ):
-        raise GeminiError('Gemini returned an invalid quiz evaluation')
-    return result
 
 
 def _first_incomplete_day(user_id, subjects, first_day, last_day):

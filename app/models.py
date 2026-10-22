@@ -46,6 +46,10 @@ class User(UserMixin, db.Model):
         'GeminiUsageBucket', backref='user', lazy=True,
         cascade='all, delete-orphan',
     )
+    ai_background_jobs = db.relationship(
+        'AIBackgroundJob', backref='user', lazy=True,
+        cascade='all, delete-orphan',
+    )
 
 class Progress(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -172,6 +176,7 @@ class CalendarEvent(db.Model):
     synced_to_google = db.Column(db.Boolean, default=False)
     sync_pending = db.Column(db.Boolean, default=False, nullable=False)
     delete_pending = db.Column(db.Boolean, default=False, nullable=False)
+    google_sync_hash = db.Column(db.String(64))
     __table_args__ = (
         db.Index('idx_calendarevent_user', 'user_id'),
         db.Index('idx_calendarevent_user_day', 'user_id', 'day_number'),
@@ -347,4 +352,26 @@ class GeminiUsageBucket(db.Model):
     request_count = db.Column(db.Integer, nullable=False, default=0)
     __table_args__ = (
         db.Index('idx_gemini_usage_user_bucket', 'user_id', 'bucket_start'),
+    )
+
+
+class AIBackgroundJob(db.Model):
+    __tablename__ = 'ai_background_job'
+    id = db.Column(db.Integer, primary_key=True)
+    job_key = db.Column(db.String(160), unique=True, nullable=False)
+    job_type = db.Column(db.String(40), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    payload = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='queued')
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+    available_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    locked_at = db.Column(db.DateTime(timezone=True))
+    last_error = db.Column(db.Text)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+    __table_args__ = (
+        db.Index('idx_ai_job_status_available', 'status', 'available_at'),
+        db.Index('idx_ai_job_user', 'user_id'),
     )

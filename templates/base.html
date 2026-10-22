@@ -9,21 +9,21 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_head %}{% endblock %}
 </head>
-<body class="min-h-screen bg-slate-50 font-['Inter'] app-shell">
+<body class="min-h-screen bg-slate-50 font-['Inter'] app-shell {% if request.endpoint and request.endpoint.startswith('auth.') and request.endpoint != 'auth.profile' %}auth-shell{% endif %}">
     <!-- Header Navigation -->
     <header class="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex justify-between h-16 items-center">
-                <div class="flex items-center space-x-3">
-                    <span class="bg-indigo-600 text-white p-2 rounded-lg font-bold text-lg shadow-sm">📚</span>
+                <a href="{{ url_for('main.index') if current_user.is_authenticated else url_for('auth.login') }}" class="flex items-center space-x-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label="Daily Deep-Dive Learning home">
+                    <span class="brand-mark">✦</span>
                     <div>
                         <h1 class="text-lg font-bold text-slate-800 leading-tight">Daily Deep-Dive Learning</h1>
-                        <p class="text-xs text-slate-500">Assessment: <span class="font-semibold text-indigo-600">{{ config.app.assessment_date }}</span></p>
+                        {% if current_user.is_authenticated %}<p class="text-xs text-slate-500">Your personal learning space</p>{% else %}<p class="text-xs text-slate-500">A little progress, every day</p>{% endif %}
                     </div>
-                </div>
+                </a>
                 
                 <!-- Desktop Navigation -->
-                <nav class="app-nav flex space-x-1">
+                {% if current_user.is_authenticated %}<nav class="app-nav flex space-x-1" aria-label="Main navigation">
                     <a href="{{ url_for('main.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.index' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         📊 Dashboard
                     </a>
@@ -45,7 +45,7 @@
                     <a href="{{ url_for('main.settings') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.settings' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         ⚙️ Settings
                     </a>
-                </nav>
+                </nav>{% endif %}
                 
                 <div class="flex items-center space-x-3">
                     <!-- User Menu -->
@@ -69,17 +69,17 @@
                     {% endif %}
                     
                     <!-- Countdown -->
-                    <div class="countdown-card bg-amber-50 border border-amber-200 rounded-lg px-3 py-1 text-right">
+                    {% if current_user.is_authenticated %}<div class="countdown-card bg-amber-50 border border-amber-200 rounded-lg px-3 py-1 text-right">
                         <span class="text-[10px] uppercase font-bold text-amber-800 block">Assessment</span>
                         <span id="countdown-timer" class="text-xs font-extrabold text-amber-700">--</span>
-                    </div>
+                    </div>{% endif %}
                 </div>
             </div>
         </div>
     </header>
     
     <!-- Main Content -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 {% if request.endpoint and request.endpoint.startswith('auth.') and request.endpoint != 'auth.profile' %}auth-main{% endif %}">
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <div class="flash-stack mb-5 space-y-2">
@@ -93,7 +93,7 @@
     </main>
     
     <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 py-4 mt-8">
+    <footer class="bg-white border-t border-slate-200 py-4 mt-8 app-footer">
         <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
             Daily Deep-Dive Learning <span class="text-slate-300">·</span> Small steps, deep understanding
         </div>

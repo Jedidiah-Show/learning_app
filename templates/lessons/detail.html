@@ -236,6 +236,11 @@
         .then(data => {
             btn.textContent = '✓ Completed';
             btn.className = 'px-6 py-3 bg-emerald-600 text-white rounded-lg font-semibold cursor-not-allowed';
+            if (data.can_progress_to_next_day) {
+                fetch('/api/lessons/prepare/{{ lesson.day_number + 1 }}', {method: 'POST'}).catch(() => {
+                    // Preparation is best-effort; the next lesson can still be generated when opened.
+                });
+            }
             alert('Lesson completed! ' + (data.all_subjects_complete_for_day ? 'All subjects complete for this day!' : ''));
         })
         .catch(error => {

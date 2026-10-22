@@ -50,7 +50,15 @@
     document.addEventListener('DOMContentLoaded', function() {
         updateCountdown('{{ config.app.assessment_date }}');
         loadDashboardProgress();
+        prepareUpcomingLessons({{ next_unlocked_day }});
     });
+
+    function prepareUpcomingLessons(dayNumber) {
+        if (!Number.isInteger(dayNumber) || dayNumber < 1 || dayNumber > {{ curriculum_days|default(90) }}) return;
+        fetch(`/api/lessons/prepare/${dayNumber}`, {method: 'POST'}).catch(() => {
+            // Preparation is best-effort; lessons can still be generated on first open.
+        });
+    }
     
     function loadDashboardProgress() {
         fetch('/api/progress/dashboard')

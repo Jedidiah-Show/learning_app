@@ -10,7 +10,7 @@ from app import db
 from app.db_utils import add_or_get
 from app.curriculum import get_curriculum_day
 from app.gemini import (
-    GeminiError, GeminiNotConfigured, PROJECT_PROMPT_VERSION, generate_json,
+    GeminiError, PROJECT_PROMPT_VERSION, generate_json,
     generation_context, project_preferences,
 )
 from app.learning import curriculum_days
@@ -139,13 +139,9 @@ def _get_or_create_project(user, config, week_number, subjects, first_day, last_
         separators=(',', ':'),
     )
     source_signature = hashlib.sha256(source.encode('utf-8')).hexdigest()
-    expected_ai_source = bool(current_app.config.get('GEMINI_API_KEY'))
     if project and (
         project.completed
-        or (
-            project.source_signature == source_signature
-            and project.is_ai_generated == expected_ai_source
-        )
+        or project.source_signature == source_signature
     ):
         return project
     prompt = (
@@ -164,9 +160,11 @@ def _get_or_create_project(user, config, week_number, subjects, first_day, last_
             generate_json(prompt, model=config.get('ai', {}).get('model_tier', 'flash'))
         )
         ai_generated = True
-    except GeminiNotConfigured:
-        if not current_app.testing:
-            raise
+    except GeminiError as error:
+        current_app.logger.warning(
+            'Gemini project generation failed for week %s; using a structured fallback: %s',
+            week_number, error,
+        )
         generated = _fallback_project(week_number, subjects, weekly_topics)
         ai_generated = False
     if project is None:
@@ -282,39 +280,41 @@ def submit_weekly_project(week_number):
             evaluation = generate_json(
                 prompt, model=config.get('ai', {}).get('model_tier', 'flash')
             )
-        except GeminiNotConfigured:
-            if not current_app.testing:
-                raise
+            if (
+                not isinstance(evaluation, dict)
+                or not isinstance(evaluation.get('summary'), str)
+                or (
+                    evaluation.get('score') is not None
+                    and (
+                        not isinstance(evaluation.get('score'), int)
+                        or isinstance(evaluation.get('score'), bool)
+                        or not 0 <= evaluation['score'] <= 100
+                    )
+                )
+                or any(
+                    not isinstance(evaluation.get(field), list)
+                    or not all(isinstance(item, str) for item in evaluation[field])
+                    for field in ('strengths', 'gaps', 'next_steps')
+                )
+            ):
+                raise GeminiError('Gemini returned an invalid project evaluation')
+        except GeminiError as error:
+            current_app.logger.warning(
+                'Gemini project evaluation failed for week %s; saving rubric guidance: %s',
+                week_number, error,
+            )
             evaluation = {
                 'score': None,
                 'summary': (
-                    'Your project has been saved. AI evaluation is unavailable until '
-                    'GEMINI_API_KEY is configured.'
+                    'Your submission is saved. An automated score is unavailable right now; '
+                    'use the rubric below to review your work.'
                 ),
                 'strengths': [],
                 'gaps': [],
-                'next_steps': ['Review the project rubric and reflect on each criterion.'],
+                'next_steps': ['Review each rubric criterion and note one improvement.'],
                 'rubric_scores': [],
-                'evaluation_source': 'unavailable',
+                'evaluation_source': 'local',
             }
-        if (
-            not isinstance(evaluation, dict)
-            or not isinstance(evaluation.get('summary'), str)
-            or (
-                evaluation.get('score') is not None
-                and (
-                    not isinstance(evaluation.get('score'), int)
-                    or isinstance(evaluation.get('score'), bool)
-                    or not 0 <= evaluation['score'] <= 100
-                )
-            )
-            or any(
-                not isinstance(evaluation.get(field), list)
-                or not all(isinstance(item, str) for item in evaluation[field])
-                for field in ('strengths', 'gaps', 'next_steps')
-            )
-        ):
-            raise GeminiError('Gemini returned an invalid project evaluation')
         project.evaluation = json.dumps(evaluation, ensure_ascii=False)
         project.completed = True
         db.session.commit()

@@ -47,6 +47,34 @@ Shared changes through `/api/admin/config` require the `ADMIN_API_TOKEN` environ
 
 Password recovery sends reset links through an app-owned Gmail mailbox using the Gmail API. Configure `GMAIL_SENDER_EMAIL`, `GMAIL_REFRESH_TOKEN` (authorized for the `gmail.send` scope), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and the externally reachable HTTPS `PUBLIC_APP_URL`. Do not put credentials in source control. For local development, `index.py` loads values from the root `.env` file; for Vercel, add them in the project’s Environment Variables settings and redeploy. Apply outstanding database migrations with `flask --app index.py db upgrade` before using password recovery.
 
+## Google Calendar sync
+
+All Google Calendar mechanics live in `app/google_calendar.py`; `app/routes/calendar.py` only decides what belongs in the calendar. The endpoints are:
+
+| Endpoint | Purpose |
+| --- | --- |
+| `POST /api/calendar/schedule` | Create the local study blocks for a day. |
+| `GET /api/calendar/events` | List the learner’s local blocks and their sync state. |
+| `GET /api/calendar/status` | Report connection state, pending work and the affected days. |
+| `POST /api/calendar/sync` | Sync one day (`{"day_number": n}`). |
+| `POST /api/calendar/sync-all` | Sync every locally scheduled day. |
+| `POST /api/calendar/disconnect` | Forget the stored Google authorization. |
+| `GET /api/calendar/auth/google` | Start the OAuth flow. |
+| `GET /api/calendar/oauth2callback` | OAuth redirect target. |
+
+Migration `c7b1f0a94d2e` adds `calendar_event.google_sync_hash`, a fingerprint of the payload each event was last pushed with. Apply it with `flask --app index.py db upgrade` before deploying the new sync code. Events whose fingerprint already matches the schedule are skipped, so a repeated sync performs no Google writes at all.
+
+Syncs are designed to be cheap and to survive failures:
+
+- **Idempotent identifiers.** Each study block gets a deterministic Google event id derived from the learner, day and block name, so a retried sync updates the existing event instead of creating a duplicate. An insert that conflicts with an existing event adopts it instead of failing.
+- **Batched requests.** Inserts, updates and deletes are submitted through Google's batch endpoint (50 operations per request). A failed batch falls back to individual calls, and a failed operation inside a batch is retried on its own.
+- **Bounded retries.** HTTP 429, 500, 502, 503 and 504 responses and transport errors are retried up to four times with exponential backoff and jitter, honouring `Retry-After`. HTTP 401 and 403 are reported as an expired authorization that the learner must fix by reconnecting.
+- **Nothing is lost.** The local plan is committed before Google is called, so unfinished work stays flagged as `sync_pending` or `delete_pending` on the event and is retried by the next sync. Account deletion and progress resets remove the learner's Google events in a batch before the local rows are dropped.
+- **Self-healing.** A block that is put back into the schedule restores the event instead of removing it, and an event that was deleted on Google's side is recreated under its original identifier when an update reports it missing.
+- **Reused connections.** The Calendar service is cached per learner while the access token is unchanged, and access tokens are refreshed five minutes before they expire and persisted with the expiry stored as naive UTC.
+
+Learners who have not connected Google Calendar can still schedule blocks and change their schedule, event prefix, reminders or calendar ID. Those changes are applied locally and reported as pending instead of failing the request; `/api/calendar/status` and the schedule page show what still needs to be synced.
+
 ## Tests
 
 ```bash

@@ -4,13 +4,13 @@ import json
 import os
 import random
 import re
+import threading
 import time
 from datetime import datetime, timedelta, timezone
 
 import requests
 from flask import current_app, has_request_context
 from flask_login import current_user
-from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
@@ -34,6 +34,21 @@ DEFAULT_READ_TIMEOUT = 120
 DEFAULT_REQUESTS_PER_MINUTE = 30
 DEFAULT_REQUESTS_PER_DAY = 300
 MAX_BACKOFF_SECONDS = 30
+
+_http_sessions = threading.local()
+
+
+def _gemini_http_session():
+    """Reuse HTTP connections within a worker thread without sharing session state."""
+    session = getattr(_http_sessions, 'session', None)
+    if session is None:
+        session = requests.Session()
+        _http_sessions.session = session
+    return session
+
+
+def _post_gemini_request(url, **kwargs):
+    return _gemini_http_session().post(url, **kwargs)
 
 
 def generation_context(
@@ -144,23 +159,6 @@ def _record_user_request():
     minute_start = now.replace(second=0, microsecond=0)
     day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     user_id = current_user.id
-    minute_count = db.session.scalar(select(GeminiUsageBucket.request_count).where(
-        GeminiUsageBucket.user_id == user_id,
-        GeminiUsageBucket.window == 'minute',
-        GeminiUsageBucket.bucket_start == minute_start,
-    )) or 0
-    day_count = db.session.scalar(select(GeminiUsageBucket.request_count).where(
-        GeminiUsageBucket.user_id == user_id,
-        GeminiUsageBucket.window == 'day',
-        GeminiUsageBucket.bucket_start == day_start,
-    )) or 0
-    if minute_count >= requests_per_minute():
-        raise GeminiRateLimitExceeded(60 - now.second)
-    if day_count >= requests_per_day():
-        raise GeminiRateLimitExceeded(
-            int((day_start + timedelta(days=1) - now).total_seconds())
-        )
-
     dialect = db.session.get_bind().dialect.name
     insert = (
         postgresql_insert if dialect == 'postgresql'
@@ -171,26 +169,41 @@ def _record_user_request():
         raise RuntimeError(f'Gemini request limits are unsupported for {dialect}')
 
     table = GeminiUsageBucket.__table__
-    for window, bucket_start in (
-        ('minute', minute_start),
-        ('day', day_start),
-    ):
-        statement = insert(table).values(
-            user_id=user_id,
-            window=window,
-            bucket_start=bucket_start,
-            request_count=1,
-        )
-        db.session.execute(statement.on_conflict_do_update(
-            index_elements=['user_id', 'window', 'bucket_start'],
-            set_={'request_count': table.c.request_count + 1},
-        ))
-    db.session.execute(
-        GeminiUsageBucket.__table__.delete().where(
-            GeminiUsageBucket.user_id == user_id,
-            GeminiUsageBucket.bucket_start < day_start - timedelta(days=1),
-        )
-    )
+    try:
+        # Reserve both windows in one savepoint. Each upsert increments only
+        # while below its limit, so simultaneous requests cannot all pass a
+        # separate read-before-write check.
+        with db.session.begin_nested():
+            for window, bucket_start, limit, retry_after in (
+                ('minute', minute_start, requests_per_minute(), 60 - now.second),
+                (
+                    'day', day_start, requests_per_day(),
+                    int((day_start + timedelta(days=1) - now).total_seconds()),
+                ),
+            ):
+                statement = insert(table).values(
+                    user_id=user_id,
+                    window=window,
+                    bucket_start=bucket_start,
+                    request_count=1,
+                )
+                reserved = db.session.execute(
+                    statement.on_conflict_do_update(
+                        index_elements=['user_id', 'window', 'bucket_start'],
+                        set_={'request_count': table.c.request_count + 1},
+                        where=table.c.request_count < limit,
+                    ).returning(table.c.request_count)
+                ).scalar_one_or_none()
+                if reserved is None:
+                    raise GeminiRateLimitExceeded(retry_after)
+            db.session.execute(
+                GeminiUsageBucket.__table__.delete().where(
+                    GeminiUsageBucket.user_id == user_id,
+                    GeminiUsageBucket.bucket_start < day_start - timedelta(days=1),
+                )
+            )
+    except GeminiRateLimitExceeded:
+        raise
     db.session.commit()
 
 
@@ -212,6 +225,10 @@ def generate_json(prompt, *, model='flash'):
         flash_model = current_app.config['GEMINI_FLASH_MODEL']
         if model != 'pro' or flash_model == model_name:
             raise
+        if not isinstance(flash_model, str) or not re.fullmatch(
+            r'[A-Za-z0-9._-]+', flash_model
+        ):
+            raise GeminiError('The configured Gemini Flash model name is invalid')
         current_app.logger.warning(
             'Gemini model %s is rate-limited; retrying with configured Flash model %s',
             model_name,
@@ -283,7 +300,7 @@ def _generate_json_for_model(prompt, api_key, model_name, tier='flash'):
     for attempt in range(1, max_attempts + 1):
         _record_user_request()
         try:
-            response = requests.post(
+            response = _post_gemini_request(
                 url,
                 headers=headers,
                 json=request_payload,

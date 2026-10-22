@@ -275,7 +275,7 @@ class LearningFlowTests(unittest.TestCase):
                     'content': {'parts': [{'text': '{"answer":"ok"}'}]}
                 }]
             }
-            with patch('app.gemini.requests.post', return_value=response) as post:
+            with patch('app.gemini._post_gemini_request', return_value=response) as post:
                 result = generate_json('Return JSON')
         self.assertEqual(result, {'answer': 'ok'})
         self.assertIn('/gemini-3.8-flash:generateContent', post.call_args.args[0])
@@ -288,6 +288,14 @@ class LearningFlowTests(unittest.TestCase):
             {'thinkingLevel': 'LOW'},
         )
 
+    def test_gemini_http_session_reuses_worker_connection_pool(self):
+        from app.gemini import _gemini_http_session
+
+        with self.app.app_context():
+            first = _gemini_http_session()
+            second = _gemini_http_session()
+        self.assertIs(first, second)
+
     def test_gemini_client_reports_provider_rejections_without_exposing_key(self):
         from unittest.mock import Mock
         from app.gemini import GeminiError
@@ -297,7 +305,7 @@ class LearningFlowTests(unittest.TestCase):
             response.json.return_value = {
                 'error': {'message': 'model is unavailable for this API key'}
             }
-            with patch('app.gemini.requests.post', return_value=response):
+            with patch('app.gemini._post_gemini_request', return_value=response):
                 with self.assertRaisesRegex(GeminiError, 'HTTP 400'):
                     generate_json('Return JSON')
 
@@ -315,7 +323,7 @@ class LearningFlowTests(unittest.TestCase):
                     'content': {'parts': [{'text': '{"answer":"ok"}'}]}
                 }]
             }
-            with patch('app.gemini.requests.post', return_value=response) as post:
+            with patch('app.gemini._post_gemini_request', return_value=response) as post:
                 self.assertEqual(generate_json('Return JSON'), {'answer': 'ok'})
         self.assertNotIn(
             'thinkingConfig',
@@ -330,7 +338,7 @@ class LearningFlowTests(unittest.TestCase):
             self.app.config['GEMINI_API_KEY'] = 'test-key'
             with patch('app.gemini.time.sleep'):
                 with patch(
-                    'app.gemini.requests.post',
+                    'app.gemini._post_gemini_request',
                     side_effect=ReadTimeout('provider took too long'),
                 ):
                     with self.assertRaisesRegex(GeminiError, 'timed out while generating'):
@@ -354,7 +362,7 @@ class LearningFlowTests(unittest.TestCase):
             }
             with patch('app.gemini.time.sleep'):
                 with patch(
-                    'app.gemini.requests.post', side_effect=[unavailable, success]
+                    'app.gemini._post_gemini_request', side_effect=[unavailable, success]
                 ) as post:
                     result = generate_json('Return JSON')
         self.assertEqual(result, {'answer': 'ok'})
@@ -372,7 +380,7 @@ class LearningFlowTests(unittest.TestCase):
             }
             with patch('app.gemini.time.sleep'):
                 with patch(
-                    'app.gemini.requests.post', return_value=unavailable
+                    'app.gemini._post_gemini_request', return_value=unavailable
                 ) as post:
                     with self.assertRaisesRegex(GeminiError, 'HTTP 503'):
                         generate_json('Return JSON')
@@ -395,13 +403,89 @@ class LearningFlowTests(unittest.TestCase):
                 }]
             }
             with patch(
-                'app.gemini.requests.post', side_effect=[limited, success]
+                'app.gemini._post_gemini_request', side_effect=[limited, success]
             ) as post:
                 result = generate_json('Return JSON', model='pro')
         self.assertEqual(result, {'answer': 'ok'})
         self.assertEqual(post.call_count, 2)
         self.assertIn('gemini-pro-test:generateContent', post.call_args_list[0].args[0])
         self.assertIn('gemini-flash-test:generateContent', post.call_args_list[1].args[0])
+
+    def test_gemini_rejects_invalid_flash_fallback_model_name(self):
+        from unittest.mock import Mock
+        from app.gemini import GeminiError
+
+        with self.app.app_context():
+            self.app.config.update(
+                GEMINI_API_KEY='test-key',
+                GEMINI_PRO_MODEL='gemini-pro-test',
+                GEMINI_FLASH_MODEL='invalid/model',
+            )
+            limited = Mock(ok=False, status_code=429)
+            limited.json.return_value = {'error': {'message': 'quota exceeded'}}
+            with patch('app.gemini._post_gemini_request', return_value=limited) as post:
+                with self.assertRaisesRegex(GeminiError, 'Flash model name is invalid'):
+                    generate_json('Return JSON', model='pro')
+        self.assertEqual(post.call_count, 1)
+
+    def test_gemini_quiz_generation_rejects_empty_or_duplicate_content(self):
+        from unittest.mock import Mock
+        from app.gemini import GeminiError
+        from app.routes.quizzes import generate_ai_quiz_questions
+
+        subject = {'id': 'python', 'name': 'Python', 'proficiency': 'Beginner'}
+        lesson = Mock()
+        lesson.title = 'Lesson'
+        lesson.get_objectives.return_value = []
+        lesson.get_content.return_value = {
+            'theory_sections': [], 'self_checks': [],
+        }
+        invalid_question_sets = [
+            [{
+                'subject_id': ['python'],
+                'question': 'Which option is correct?',
+                'options': ['A', 'B', 'C', 'D'],
+                'correct_index': 0,
+            }],
+            [{
+                'subject_id': 'python',
+                'question': '   ',
+                'options': ['A', 'B', 'C', 'D'],
+                'correct_index': 0,
+            }],
+            [{
+                'subject_id': 'python',
+                'question': 'Which option is correct?',
+                'options': ['A', 'A', 'C', 'D'],
+                'correct_index': 0,
+            }],
+            [
+                {
+                    'subject_id': 'python',
+                    'question': 'Which option is correct?',
+                    'options': ['A', 'B', 'C', 'D'],
+                    'correct_index': 0,
+                },
+                {
+                    'subject_id': 'python',
+                    'question': ' which option is correct? ',
+                    'options': ['E', 'F', 'G', 'H'],
+                    'correct_index': 0,
+                },
+            ],
+        ]
+        with self.app.app_context():
+            for question_set in invalid_question_sets:
+                with self.subTest(question_set=question_set):
+                    with patch(
+                        'app.routes.quizzes.generate_json',
+                        return_value={'questions': question_set},
+                    ):
+                        with self.assertRaises(GeminiError):
+                            generate_ai_quiz_questions(
+                                [subject], [(subject, 1, lesson)],
+                                len(question_set), 'daily',
+                            )
 
     def test_offline_proficiency_assessment_has_twenty_distinct_balanced_questions(self):
         from app.routes.main import generate_proficiency_questions
@@ -776,6 +860,386 @@ class LearningFlowTests(unittest.TestCase):
         service.events.return_value.update.assert_called_once()
         with self.app.app_context():
             self.assertFalse(CalendarEvent.query.one().sync_pending)
+
+    def _calendar_service_mock(self):
+        """Return a stand-in for the Google Calendar service."""
+        from unittest.mock import Mock
+        service = Mock()
+        counter = {'count': 0}
+
+        def insert(*args, **kwargs):
+            counter['count'] += 1
+            return {'id': f'google-event-{counter["count"]}'}
+
+        service.events.return_value.insert.return_value.execute.side_effect = insert
+        service.events.return_value.update.return_value.execute.return_value = {}
+        service.events.return_value.delete.return_value.execute.return_value = {}
+        service.events.return_value.get.return_value.execute.return_value = {
+            'id': 'google-event',
+        }
+        return service
+
+    def _connected_learner(self, username):
+        with self.app.app_context():
+            user = User.query.filter_by(username=username).one()
+            user.google_access_token = 'access-token'
+            user.google_refresh_token = 'refresh-token'
+            db.session.commit()
+            return user.id
+
+    def test_calendar_sync_pushes_updates_that_failed_earlier(self):
+        self.register('calendarpush')
+        self.app.config.update(
+            GOOGLE_CLIENT_ID='client-id',
+            GOOGLE_CLIENT_SECRET='client-secret',
+        )
+        self.client.post('/api/calendar/schedule', json={'day_number': 1})
+        self._connected_learner('calendarpush')
+
+        service = self._calendar_service_mock()
+        with patch('google.oauth2.credentials.Credentials') as credentials:
+            credentials.return_value.expired = False
+            with patch('googleapiclient.discovery.build', return_value=service):
+                synced = self.client.post('/api/calendar/sync', json={'day_number': 1})
+        self.assertEqual(synced.status_code, 200)
+        self.assertEqual(synced.get_json()['events_created'], 2)
+
+        # A schedule change that cannot reach Google leaves the work pending.
+        blocks = [{'name': 'morning', 'start_time': '09:00', 'end_time': '10:30'}]
+        with patch(
+            'app.routes.calendar._calendar_service',
+            side_effect=RuntimeError('temporary outage'),
+        ):
+            failed = self.client.post('/api/admin/schedule', json={'daily_blocks': blocks})
+        self.assertEqual(failed.status_code, 502)
+
+        service.events.return_value.update.reset_mock()
+        service.events.return_value.delete.reset_mock()
+        with patch('google.oauth2.credentials.Credentials') as credentials:
+            credentials.return_value.expired = False
+            with patch('googleapiclient.discovery.build', return_value=service):
+                retried = self.client.post('/api/calendar/sync', json={'day_number': 1})
+        self.assertEqual(retried.status_code, 200)
+        self.assertEqual(retried.get_json()['events_updated'], 1)
+        service.events.return_value.update.assert_called_once()
+        service.events.return_value.delete.assert_called_once()
+        with self.app.app_context():
+            self.assertFalse(
+                CalendarEvent.query.filter_by(sync_pending=True).count()
+            )
+
+    def test_calendar_sync_skips_events_that_already_match(self):
+        self.register('calendarnoop')
+        self.app.config.update(
+            GOOGLE_CLIENT_ID='client-id',
+            GOOGLE_CLIENT_SECRET='client-secret',
+        )
+        self.client.post('/api/calendar/schedule', json={'day_number': 1})
+        self._connected_learner('calendarnoop')
+
+        service = self._calendar_service_mock()
+        with patch('google.oauth2.credentials.Credentials') as credentials:
+            credentials.return_value.expired = False
+            with patch('googleapiclient.discovery.build', return_value=service):
+                first = self.client.post('/api/calendar/sync', json={'day_number': 1})
+                self.assertEqual(first.status_code, 200)
+                service.events.return_value.insert.reset_mock()
+                service.events.return_value.update.reset_mock()
+                second = self.client.post('/api/calendar/sync', json={'day_number': 1})
+        self.assertEqual(second.status_code, 200)
+        self.assertEqual(second.get_json()['events_created'], 0)
+        self.assertEqual(second.get_json()['events_updated'], 0)
+        service.events.return_value.insert.assert_not_called()
+        service.events.return_value.update.assert_not_called()
+
+    def test_calendar_sync_retries_transient_google_failures(self):
+        import httplib2
+        from googleapiclient.errors import HttpError
+
+        self.register('calendarretrygoogle')
+        self.app.config.update(
+            GOOGLE_CLIENT_ID='client-id',
+            GOOGLE_CLIENT_SECRET='client-secret',
+        )
+        self.client.post('/api/calendar/schedule', json={'day_number': 1})
+        self._connected_learner('calendarretrygoogle')
+
+        response = httplib2.Response({'status': 503, 'reason': 'Unavailable'})
+        failure = HttpError(
+            resp=response,
+            content=b'{"error": {"message": "backend unavailable"}}',
+            uri='https://www.googleapis.com/calendar/v3/events',
+        )
+        calls = {'count': 0}
+
+        def flaky_insert(**kwargs):
+            calls['count'] += 1
+            if calls['count'] == 1:
+                raise failure
+            return {'id': f'google-event-{calls["count"]}'}
+
+        service = self._calendar_service_mock()
+        service.events.return_value.insert.return_value.execute.side_effect = flaky_insert
+        with patch('google.oauth2.credentials.Credentials') as credentials:
+            credentials.return_value.expired = False
+            with patch('googleapiclient.discovery.build', return_value=service):
+                result = self.client.post('/api/calendar/sync', json={'day_number': 1})
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.get_json()['events_created'], 2)
+        self.assertGreaterEqual(calls['count'], 3)
+
+    def test_refreshed_google_token_is_stored(self):
+        from datetime import datetime, timezone
+
+        self.register('calendartoken')
+        self.app.config.update(
+            GOOGLE_CLIENT_ID='client-id',
+            GOOGLE_CLIENT_SECRET='client-secret',
+        )
+        with self.app.app_context():
+            user = User.query.filter_by(username='calendartoken').one()
+            user.google_access_token = 'old-token'
+            user.google_refresh_token = 'refresh-token'
+            db.session.commit()
+        self.client.post('/api/calendar/schedule', json={'day_number': 1})
+
+        service = self._calendar_service_mock()
+        with patch('google.oauth2.credentials.Credentials') as credentials:
+            credentials.return_value.expired = True
+            credentials.return_value.token = 'new-token'
+            credentials.return_value.expiry = datetime(2030, 1, 1, tzinfo=timezone.utc)
+            with patch('googleapiclient.discovery.build', return_value=service):
+                result = self.client.post('/api/calendar/sync', json={'day_number': 1})
+        self.assertEqual(result.status_code, 200)
+        with self.app.app_context():
+            user = User.query.filter_by(username='calendartoken').one()
+            self.assertEqual(user.google_access_token, 'new-token')
+            self.assertIsNotNone(user.token_expiry)
+
+    def test_calendar_sync_all_pushes_every_scheduled_day(self):
+        self.register('calendarsyncall')
+        self.app.config.update(
+            GOOGLE_CLIENT_ID='client-id',
+            GOOGLE_CLIENT_SECRET='client-secret',
+        )
+        self.client.post('/api/calendar/schedule', json={'day_number': 1})
+        self._connected_learner('calendarsyncall')
+
+        service = self._calendar_service_mock()
+        with patch('google.oauth2.credentials.Credentials') as credentials:
+            credentials.return_value.expired = False
+            with patch('googleapiclient.discovery.build', return_value=service):
+                result = self.client.post('/api/calendar/sync-all', json={})
+        self.assertEqual(result.status_code, 200)
+        self.assertEqual(result.get_json()['events_created'], 2)
+
+    def test_calendar_preferences_save_without_a_google_connection(self):
+        self.register('calendarnoconnect')
+        self.client.post('/api/calendar/schedule', json={'day_number': 1})
+        response = self.client.post('/api/settings/preferences', json={
+            'google_calendar': {'event_prefix': '[Deep Dive]'},
+        })
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            event = CalendarEvent.query.first()
+            self.assertTrue(event.title.startswith('[Deep Dive]'))
+
+    def test_calendar_sync_reports_an_expired_authorization(self):
+        from app.google_calendar import GoogleAuthorizationError
+
+        self.register('calendarexpired')
+        self.app.config.update(
+            GOOGLE_CLIENT_ID='client-id',
+            GOOGLE_CLIENT_SECRET='client-secret',
+        )
+        self.client.post('/api/calendar/schedule', json={'day_number': 1})
+        self._connected_learner('calendarexpired')
+        with patch(
+            'app.routes.calendar._calendar_service',
+            side_effect=GoogleAuthorizationError('expired'),
+        ):
+            response = self.client.post('/api/calendar/sync', json={'day_number': 1})
+        self.assertEqual(response.status_code, 401)
+        self.assertIn('reconnect', response.get_json()['message'].lower())
+
+    def test_google_event_ids_are_stable_for_the_same_block(self):
+        from app.google_calendar import deterministic_event_id
+
+        first = deterministic_event_id(7, 3, 'morning')
+        self.assertEqual(first, deterministic_event_id(7, 3, 'morning'))
+        self.assertNotEqual(first, deterministic_event_id(7, 4, 'morning'))
+        self.assertNotEqual(first, deterministic_event_id(8, 3, 'morning'))
+        self.assertTrue(
+            all(character in '0123456789abcdefghijklmnopqrstuv' for character in first)
+        )
+        self.assertTrue(5 <= len(first) <= 1024)
+
+    def test_calendar_status_reports_pending_work(self):
+        self.register('calendarstatus')
+        self.client.post('/api/calendar/schedule', json={'day_number': 1})
+        response = self.client.get('/api/calendar/status')
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload['events_total'], 2)
+        self.assertEqual(payload['events_pending'], 2)
+        self.assertEqual(payload['pending_days'], [1])
+
+    def test_readding_a_block_restores_the_event_pending_removal(self):
+        self.register('calendarreadd')
+        self.app.config.update(
+            GOOGLE_CLIENT_ID='client-id',
+            GOOGLE_CLIENT_SECRET='client-secret',
+        )
+        self.client.post('/api/calendar/schedule', json={'day_number': 1})
+        self._connected_learner('calendarreadd')
+
+        service = self._calendar_service_mock()
+        with patch('google.oauth2.credentials.Credentials') as credentials:
+            credentials.return_value.expired = False
+            with patch('googleapiclient.discovery.build', return_value=service):
+                synced = self.client.post('/api/calendar/sync', json={'day_number': 1})
+        self.assertEqual(synced.status_code, 200)
+        self.assertEqual(synced.get_json()['events_created'], 2)
+
+        # Removing the evening block fails, so the removal stays pending.
+        morning_only = [{
+            'name': 'morning', 'start_time': '11:00', 'end_time': '13:00',
+        }]
+        with patch(
+            'app.routes.calendar._calendar_service',
+            side_effect=RuntimeError('temporary outage'),
+        ):
+            failed = self.client.post(
+                '/api/admin/schedule', json={'daily_blocks': morning_only}
+            )
+        self.assertEqual(failed.status_code, 502)
+        with self.app.app_context():
+            evening = CalendarEvent.query.filter_by(
+                block_name='evening', user_id=User.query.filter_by(
+                    username='calendarreadd').one().id,
+            ).one()
+            self.assertTrue(evening.delete_pending)
+
+        # Putting the block back keeps the event instead of dropping it.
+        with patch('app.routes.calendar._calendar_service', return_value=service):
+            restored = self.client.post(
+                '/api/admin/schedule', json={'daily_blocks': [
+                    {'name': 'morning', 'start_time': '11:00', 'end_time': '13:00'},
+                    {'name': 'evening', 'start_time': '18:00', 'end_time': '20:00'},
+                ]}
+            )
+        self.assertEqual(restored.status_code, 200)
+        with self.app.app_context():
+            evening = CalendarEvent.query.filter_by(block_name='evening').one()
+            self.assertFalse(evening.delete_pending)
+            self.assertTrue(evening.synced_to_google)
+            self.assertFalse(evening.sync_pending)
+            self.assertIsNotNone(evening.event_id)
+
+    def test_calendar_sync_recreates_an_event_removed_on_google(self):
+        import httplib2
+        from googleapiclient.errors import HttpError
+
+        self.register('calendarvanished')
+        self.app.config.update(
+            GOOGLE_CLIENT_ID='client-id',
+            GOOGLE_CLIENT_SECRET='client-secret',
+        )
+        self.client.post('/api/calendar/schedule', json={'day_number': 1})
+        self._connected_learner('calendarvanished')
+
+        service = self._calendar_service_mock()
+        with patch('google.oauth2.credentials.Credentials') as credentials:
+            credentials.return_value.expired = False
+            with patch('googleapiclient.discovery.build', return_value=service):
+                synced = self.client.post('/api/calendar/sync', json={'day_number': 1})
+        self.assertEqual(synced.status_code, 200)
+
+        # The event was deleted on Google's side, so the update fails with 404.
+        response = httplib2.Response({'status': 404, 'reason': 'Not Found'})
+        failure = HttpError(
+            resp=response,
+            content=b'{"error": {"message": "not found"}}',
+            uri='https://www.googleapis.com/calendar/v3/events',
+        )
+        service.events.return_value.update.return_value.execute.side_effect = failure
+        service.events.return_value.insert.reset_mock()
+        with patch('app.routes.calendar._calendar_service', return_value=service):
+            changed = self.client.post('/api/admin/schedule', json={'daily_blocks': [
+                {'name': 'morning', 'start_time': '09:00', 'end_time': '10:30'},
+                {'name': 'evening', 'start_time': '18:00', 'end_time': '20:00'},
+            ]})
+        self.assertEqual(changed.status_code, 200)
+        # The missing event is recreated instead of staying failed.
+        service.events.return_value.insert.assert_called_once()
+        with self.app.app_context():
+            morning = CalendarEvent.query.filter_by(block_name='morning').one()
+            self.assertTrue(morning.synced_to_google)
+            self.assertFalse(morning.sync_pending)
+
+    def test_calendar_operations_are_submitted_as_a_single_batch(self):
+        from googleapiclient.discovery import Resource
+        from app.google_calendar import apply_operations
+
+        class FakeRequest:
+            def __init__(self, service, kind):
+                self.service = service
+                self.kind = kind
+
+            def execute(self):
+                self.service.executed.append(self.kind)
+                return {'id': 'batched-event'}
+
+        class FakeBatch:
+            def __init__(self, service):
+                self.service = service
+                self.entries = []
+
+            def add(self, request, callback=None, request_id=None):
+                self.entries.append((request, callback, request_id))
+
+            def execute(self):
+                self.service.batches.append(self)
+                for request, callback, request_id in self.entries:
+                    callback(request_id, request.execute(), None)
+
+        class FakeService(Resource):
+            """A real Calendar resource that records how requests are sent."""
+
+            def __init__(self):
+                self.batches = []
+                self.executed = []
+                self.batch_requests = 0
+
+            def new_batch_http_request(self, callback=None):
+                self.batch_requests += 1
+                return FakeBatch(self)
+
+            def events(self):
+                return self
+
+            def insert(self, calendarId=None, body=None):
+                return FakeRequest(self, 'insert')
+
+            def update(self, calendarId=None, eventId=None, body=None):
+                return FakeRequest(self, 'update')
+
+            def delete(self, calendarId=None, eventId=None):
+                return FakeRequest(self, 'delete')
+
+        service = FakeService()
+        operations = [
+            {'kind': 'insert', 'calendar_id': 'primary', 'event_id': 'a', 'payload': {}},
+            {'kind': 'update', 'calendar_id': 'primary', 'event_id': 'b', 'payload': {}},
+            {'kind': 'delete', 'calendar_id': 'primary', 'event_id': 'c'},
+        ]
+        results = apply_operations(service, operations)
+        self.assertEqual(len(results), 3)
+        self.assertTrue(all(result.ok for result in results))
+        # One batch instead of three separate HTTP round trips.
+        self.assertEqual(service.batch_requests, 1)
+        self.assertEqual(len(service.batches[0].entries), 3)
+        self.assertEqual(service.executed, ['insert', 'update', 'delete'])
 
     def test_unlocking_and_weekly_quiz_follow_completed_lessons(self):
         self.register('learner')

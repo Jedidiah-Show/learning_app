@@ -4,7 +4,7 @@ from app.user_subjects import get_effective_config_for_user, get_effective_subje
 from app.learning import day_is_available, next_unlocked_day
 from app.curriculum import get_curriculum_day
 from app.gemini import (
-    GeminiError, GeminiNotConfigured, LESSON_PROMPT_VERSION, generate_json,
+    GeminiError, LESSON_PROMPT_VERSION, generate_json,
     generation_context, lesson_preferences,
 )
 from app.request_data import get_json_object
@@ -38,31 +38,7 @@ def get_daily_lessons(day_number):
             'day_number': day_number,
             'subjects': []
         }
-        curriculum_days = {
-            subject['id']: get_curriculum_day(user, subject, day_number, config)
-            for subject in subjects
-        }
-        lesson_ids = [
-            get_lesson_id(
-                subject, day_number, curriculum_days[subject['id']], config
-            )
-            for subject in subjects
-        ]
-        lessons = Lesson.query.filter(Lesson.lesson_id.in_(lesson_ids)).all() if lesson_ids else []
-        lesson_map = {lesson.subject_id: lesson for lesson in lessons}
-        added = False
-        for subject in subjects:
-            lesson = lesson_map.get(subject['id'])
-            if not lesson:
-                lesson = generate_lesson(
-                    subject, day_number, config, user=user,
-                    curriculum_day=curriculum_days[subject['id']],
-                )
-                lesson = add_or_get(Lesson, lesson, lesson_id=lesson.lesson_id)
-                added = True
-            lesson_map[subject['id']] = lesson
-        if added:
-            db.session.commit()
+        lesson_map = prepare_lesson_day(user, day_number, config, subjects)
     except GeminiError:
         db.session.rollback()
         current_app.logger.exception('Could not generate day %s learning content', day_number)
@@ -107,6 +83,61 @@ def get_daily_lessons(day_number):
     
     return jsonify(lessons_data)
 
+
+@lessons_bp.route('/prepare/<int:day_number>', methods=['POST'])
+@login_required
+def prepare_daily_lessons(day_number):
+    """Warm the lesson cache for an unlocked day without returning lesson content."""
+    user = current_user
+    config = get_effective_config_for_user(user)
+    if not day_is_available(user, config, day_number):
+        return jsonify({
+            'error': 'Day is locked',
+            'next_unlocked_day': next_unlocked_day(user, config),
+        }), 403
+    try:
+        lesson_map = prepare_lesson_day(
+            user, day_number, config, get_effective_subjects_for_user(user)
+        )
+    except GeminiError:
+        db.session.rollback()
+        current_app.logger.warning(
+            'Could not prepare day %s lessons for user %s', day_number, user.id,
+            exc_info=True,
+        )
+        return jsonify({'error': 'Learning content is temporarily unavailable.'}), 503
+    return jsonify({'status': 'ready', 'day_number': day_number,
+                    'lessons_ready': len(lesson_map)})
+
+
+def prepare_lesson_day(user, day_number, config, subjects=None):
+    """Create any missing lessons for a day, then persist the complete cache set."""
+    subjects = subjects if subjects is not None else get_effective_subjects_for_user(user)
+    curriculum_days = {
+        subject['id']: get_curriculum_day(user, subject, day_number, config)
+        for subject in subjects
+    }
+    lesson_ids = [
+        get_lesson_id(subject, day_number, curriculum_days[subject['id']], config)
+        for subject in subjects
+    ]
+    lessons = Lesson.query.filter(Lesson.lesson_id.in_(lesson_ids)).all() if lesson_ids else []
+    lesson_map = {lesson.subject_id: lesson for lesson in lessons}
+    added = False
+    for subject in subjects:
+        if subject['id'] in lesson_map:
+            continue
+        lesson = generate_lesson(
+            subject, day_number, config, user=user,
+            curriculum_day=curriculum_days[subject['id']],
+        )
+        lesson = add_or_get(Lesson, lesson, lesson_id=lesson.lesson_id)
+        lesson_map[subject['id']] = lesson
+        added = True
+    if added:
+        db.session.commit()
+    return lesson_map
+
 def generate_lesson(subject, day_number, config, user=None, curriculum_day=None):
     """Generate a comprehensive lesson with real content"""
     if day_number < 1:
@@ -128,9 +159,11 @@ def generate_lesson(subject, day_number, config, user=None, curriculum_day=None)
             subject, day_number, topic, curriculum_day, config
         )
         ai_generated = True
-    except GeminiNotConfigured:
-        if not current_app.testing:
-            raise
+    except GeminiError as error:
+        current_app.logger.warning(
+            'Gemini lesson generation failed for %s day %s; using built-in lesson: %s',
+            subject['id'], day_number, error,
+        )
         lesson_content = get_comprehensive_lesson_content(
             subject, day_number, topic, config, curriculum_day
         )
