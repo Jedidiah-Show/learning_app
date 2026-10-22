@@ -50,6 +50,9 @@ class User(UserMixin, db.Model):
         'AIBackgroundJob', backref='user', lazy=True,
         cascade='all, delete-orphan',
     )
+    review_items = db.relationship(
+        'ReviewItem', backref='user', lazy=True, cascade='all, delete-orphan',
+    )
 
 class Progress(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -375,3 +378,29 @@ class AIBackgroundJob(db.Model):
         db.Index('idx_ai_job_status_available', 'status', 'available_at'),
         db.Index('idx_ai_job_user', 'user_id'),
     )
+
+
+class ReviewItem(db.Model):
+    __tablename__ = 'review_item'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    quiz_id = db.Column(db.String(100), nullable=False)
+    question_id = db.Column(db.String(100), nullable=False)
+    subject_id = db.Column(db.String(50), nullable=False)
+    question = db.Column(db.Text, nullable=False)
+    options = db.Column(db.Text, nullable=False)
+    correct_index = db.Column(db.Integer, nullable=False)
+    explanation = db.Column(db.Text)
+    due_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    interval_days = db.Column(db.Integer, nullable=False, default=1)
+    repetitions = db.Column(db.Integer, nullable=False, default=0)
+    active = db.Column(db.Boolean, nullable=False, default=True)
+    __table_args__ = (
+        db.UniqueConstraint(
+            'user_id', 'quiz_id', 'question_id', name='unique_review_question'
+        ),
+        db.Index('idx_review_due', 'user_id', 'active', 'due_at'),
+    )
+
+    def get_options(self):
+        return json.loads(self.options) if self.options else []

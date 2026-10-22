@@ -1,6 +1,9 @@
 from flask import Blueprint, render_template, request, jsonify, current_app, redirect, url_for, flash, session
 from app import db, merge_config, validate_app_config
-from app.models import CalendarEvent, UserConfig, UserSubjectConfig, ProficiencyTest
+from app.models import (
+    CalendarEvent, LessonCompletion, UserConfig, UserSubjectConfig,
+    ProficiencyTest,
+)
 from datetime import datetime, date, timezone
 from flask_login import current_user, login_required
 from app.learning import curriculum_days, next_unlocked_day
@@ -9,6 +12,7 @@ from app.user_subjects import (
     get_effective_subjects_for_user,
     get_user_preferences,
     set_user_preferences,
+    update_user_extra_config,
 )
 from app.curriculum import PROFICIENCY_LEVELS
 from app.google_calendar import GoogleAuthorizationError
@@ -81,11 +85,36 @@ def progress():
 def subject_configuration():
     user = current_user
     config = get_effective_config_for_user(user)
-    subjects = get_effective_subjects_for_user(user)
+    available_subjects = get_effective_subjects_for_user(
+        user, include_disabled=True
+    )
+    subjects = available_subjects
     # Get existing configs
     existing = UserSubjectConfig.query.filter_by(user_id=user.id).all()
     existing_map = {e.subject_id: e for e in existing}
     if request.method == 'POST':
+        selected_ids = request.form.getlist('selected_subjects')
+        if (
+            not selected_ids
+            and 'subject_selection_present' not in request.form
+        ):
+            selected_ids = [subject['id'] for subject in available_subjects]
+        subject_ids = {subject['id'] for subject in available_subjects}
+        selected_id_set = set(selected_ids)
+        if (
+            len(selected_ids) != len(set(selected_ids))
+            or not selected_id_set.issubset(subject_ids)
+        ):
+            flash('Choose one or more valid subjects.', 'error')
+            return render_template(
+                'subject_config.html', config=config, user=user,
+                subjects=available_subjects, existing_map=existing_map,
+                selected_ids=selected_id_set,
+            ), 400
+        subjects = [
+            subject for subject in available_subjects
+            if subject['id'] in selected_id_set
+        ]
         selections = {
             subject['id']: request.form.get(f'proficiency_{subject["id"]}')
             for subject in subjects
@@ -94,8 +123,13 @@ def subject_configuration():
             flash('Choose a valid proficiency level for every subject.', 'error')
             return render_template(
                 'subject_config.html', config=config, user=user,
-                subjects=subjects, existing_map=existing_map,
+                subjects=available_subjects, existing_map=existing_map,
+                selected_ids=selected_id_set,
             ), 400
+        update_user_extra_config(
+            user,
+            disabled_subject_ids=sorted(subject_ids - selected_id_set),
+        )
         for subject in subjects:
             proficiency = selections[subject['id']]
             conf = existing_map.get(subject['id'])
@@ -119,13 +153,12 @@ def subject_configuration():
             conf.updated_at = datetime.now(timezone.utc)
         user.subjects_configured = True
         db.session.commit()
-        needs_test = any(
-            selections[subject['id']] != 'Novice' for subject in subjects
-        )
-        if needs_test:
-            return redirect(url_for('main.proficiency_test_selection'))
         return redirect(url_for('main.proficiency_test_selection'))
-    return render_template('subject_config.html', config=config, user=user, subjects=subjects, existing_map=existing_map)
+    return render_template(
+        'subject_config.html', config=config, user=user, subjects=subjects,
+        existing_map=existing_map,
+        selected_ids={subject['id'] for subject in get_effective_subjects_for_user(user)},
+    )
 
 
 @main_bp.route('/proficiency-tests', methods=['GET'])
@@ -817,6 +850,10 @@ def lesson_detail(lesson_id):
         return redirect(url_for('main.lessons'))
     content = lesson.get_content()
     objectives = lesson.get_objectives()
+    completion = LessonCompletion.query.filter_by(
+        user_id=user.id, lesson_id=lesson.lesson_id, completed=True
+    ).first()
     
     return render_template('lessons/detail.html', lesson=lesson, subject=subject, 
-                         content=content, objectives=objectives, config=config, user=user)
+                         content=content, objectives=objectives, config=config,
+                         user=user, completed=completion is not None)

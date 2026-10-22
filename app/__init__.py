@@ -312,6 +312,8 @@ def create_app(config_override=None):
     app.register_blueprint(calendar_bp, url_prefix='/api/calendar')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(projects_bp)
+    from app.jobs import register_ai_job_cli
+    register_ai_job_cli(app)
 
     @app.before_request
     def require_subject_setup():

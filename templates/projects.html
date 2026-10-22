@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Weekly Projects - Daily Deep-Dive Learning{% endblock %}
+{% block title %}Weekly Projects - Ruach Learning{% endblock %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto space-y-6">
@@ -27,7 +27,11 @@
 <script>
     const statusBox = document.getElementById('project-status');
     const projectBox = document.getElementById('project-content');
+    const weeklyQuizRequired = {{ 'true' if config.quizzes.end_of_week_quiz.enabled else 'false' }};
     let activeWeek = null;
+    const completionMessage = weeklyQuizRequired
+        ? 'Project complete. Pass the weekly quiz as well to unlock the next course week.'
+        : 'Project complete.';
 
     function showStatus(message, isError = false) {
         statusBox.className = `panel-card p-4 text-sm ${isError ? 'text-rose-700' : 'text-slate-600'}`;
@@ -62,7 +66,7 @@
         const project = data.project;
         projectBox.replaceChildren();
         projectBox.classList.remove('hidden');
-        addText(projectBox, 'p', `Week ${data.week_number}${data.is_ai_generated ? ' · Gemini-generated' : ''}`, 'eyebrow');
+        addText(projectBox, 'p', `Week ${data.week_number} · ${data.is_ai_generated ? 'Gemini-generated project' : 'Offline project fallback'}`, 'eyebrow');
         addText(projectBox, 'h2', project.title, 'section-title text-xl');
         addText(projectBox, 'p', project.brief, 'text-slate-700 leading-relaxed');
         addText(projectBox, 'h3', 'Learning goals', 'font-semibold text-slate-800');
@@ -83,7 +87,7 @@
 
         if (data.completed) {
             renderEvaluation(projectBox, data.evaluation);
-            addText(projectBox, 'p', 'Project completed. Your next course week is unlocked.', 'font-semibold text-emerald-700');
+            addText(projectBox, 'p', completionMessage, 'font-semibold text-emerald-700');
             return;
         }
         const form = document.createElement('form');
@@ -141,7 +145,7 @@
             if (!response.ok) throw new Error(data.error || 'Could not submit this project.');
             projectBox.querySelector('form').remove();
             renderEvaluation(projectBox, data.evaluation);
-            addText(projectBox, 'p', 'Project completed. Your next course week is unlocked.', 'font-semibold text-emerald-700');
+            addText(projectBox, 'p', completionMessage, 'font-semibold text-emerald-700');
             statusBox.classList.add('hidden');
         } catch (error) {
             showStatus(error.message, true);
