@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Daily Lessons - Daily Deep-Dive Learning{% endblock %}
+{% block title %}Daily Lessons - Ruach Learning{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
@@ -31,28 +31,69 @@
 {% block extra_scripts %}
 <script>
     let currentDay = 1;
+    let loadGeneration = 0;
+    const dailyQuizRequired = {{ 'true' if config.quizzes.end_of_day_quiz.enabled else 'false' }};
+    const weeklyQuizRequired = {{ 'true' if config.quizzes.end_of_week_quiz.enabled else 'false' }};
+    const weeklyProjectRequired = {{ 'true' if not config.schedule.unlock_rules.allow_continue_after_day_complete else 'false' }};
     
     document.addEventListener('DOMContentLoaded', function() {
         loadLessons();
     });
     
-    function loadLessons() {
+    async function loadLessons() {
+        const generation = ++loadGeneration;
         currentDay = document.getElementById('day-selector').value;
-        fetch(`/api/lessons/daily/${currentDay}`)
-            .then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.error || 'Could not load lessons'); return data; })
-            .then(data => {
-                renderLessons(data);
-                const done = data.subjects.filter(item => item.completed).length;
-                const percent = data.subjects.length ? Math.round(done / data.subjects.length * 100) : 0;
-                document.getElementById('day-progress').style.width = `${percent}%`;
-                document.getElementById('day-progress-label').textContent = `${done} of ${data.subjects.length} subjects complete`;
-                const weekEnd = (Number(currentDay) % 7 === 0 && Number(currentDay) < {{ curriculum_days }})
-                    || Number(currentDay) === {{ curriculum_days }};
-                document.getElementById('day-summary').textContent = percent === 100
-                    ? (weekEnd ? 'All subjects complete. Your weekly synthesis project is ready before you continue.' : 'All subjects complete. Your next day is unlocked.')
-                    : 'Finish every subject to unlock the next day.';
-            })
-            .catch(error => { const container = document.getElementById('lessons-container'); container.className = 'panel-card p-5 text-sm text-rose-700'; container.textContent = error.message; });
+        const container = document.getElementById('lessons-container');
+        container.className = 'panel-card p-5 text-sm text-slate-600';
+        container.textContent = 'Preparing your lessons…';
+        try {
+            let preparation = await fetch(`/api/lessons/prepare/${currentDay}`, {method: 'POST'});
+            let job = await preparation.json();
+            if (!preparation.ok && preparation.status !== 202) {
+                throw new Error(job.error || 'Could not prepare lessons.');
+            }
+            for (let attempt = 0; preparation.status === 202 && attempt < 120; attempt++) {
+                if (generation !== loadGeneration) return;
+                container.textContent = job.status === 'running'
+                    ? 'Generating your lessons…'
+                    : 'Your lessons are queued for preparation…';
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                const statusResponse = await fetch(`/api/lessons/jobs/${job.job_id}`);
+                job = await statusResponse.json();
+                if (!statusResponse.ok) throw new Error(job.error || 'Could not check lesson preparation.');
+                preparation = {status: job.status === 'complete' ? 200 : job.status === 'failed' ? 500 : 202};
+                if (job.status === 'failed') throw new Error(job.error);
+            }
+            if (generation !== loadGeneration) return;
+            if (preparation.status === 202) {
+                throw new Error('Lesson preparation is taking longer than expected. Try again shortly.');
+            }
+            const response = await fetch(`/api/lessons/daily/${currentDay}`);
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Could not load lessons.');
+            if (generation !== loadGeneration) return;
+            renderLessons(data);
+            const done = data.subjects.filter(item => item.completed).length;
+            const percent = data.subjects.length ? Math.round(done / data.subjects.length * 100) : 0;
+            document.getElementById('day-progress').style.width = `${percent}%`;
+            document.getElementById('day-progress-label').textContent = `${done} of ${data.subjects.length} subjects complete`;
+            const weekEnd = (Number(currentDay) % 7 === 0 && Number(currentDay) < {{ curriculum_days }})
+                || Number(currentDay) === {{ curriculum_days }};
+            const requirements = [
+                dailyQuizRequired ? 'pass the daily quiz' : '',
+                weekEnd && weeklyQuizRequired ? 'pass the weekly quiz' : '',
+                weekEnd && weeklyProjectRequired ? 'submit the weekly project' : ''
+            ].filter(Boolean);
+            document.getElementById('day-summary').textContent = percent !== 100
+                ? 'Finish every subject to unlock the next step.'
+                : requirements.length
+                    ? `All lessons complete. You must ${requirements.join(', ')} to continue.`
+                    : 'All lessons complete. Your next day is unlocked.';
+        } catch (error) {
+            if (generation !== loadGeneration) return;
+            container.className = 'panel-card p-5 text-sm text-rose-700';
+            container.textContent = error.message;
+        }
     }
     
     function renderLessons(data) {
@@ -80,7 +121,7 @@
             name.textContent = subject.name;
             const title = document.createElement('p');
             title.className = 'mt-1 text-xs leading-relaxed text-slate-500';
-            title.textContent = lesson.title;
+            title.textContent = `${lesson.title} · ${lesson.content_source === 'ai' ? 'AI-generated lesson' : 'Offline lesson fallback'} · ${lesson.curriculum_content_source === 'ai' ? 'AI curriculum' : 'Offline curriculum fallback'}`;
             labels.append(name, title);
             identity.append(icon, labels);
             const badge = document.createElement('span');

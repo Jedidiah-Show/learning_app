@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Proficiency Tests - Daily Deep-Dive Learning{% endblock %}
+{% block title %}Proficiency Tests - Ruach Learning{% endblock %}
 
 {% block content %}
 <div class="max-w-3xl mx-auto">
@@ -20,7 +20,7 @@
                     <span class="text-2xl">{{ item.subject.icon }}</span>
                     <div>
                         <h3 class="text-lg font-semibold text-slate-800">{{ item.subject.name }}</h3>
-                        <p class="text-sm text-slate-600">You selected {{ item.subject.stated_proficiency }} · Assessment required</p>
+                        <p class="text-sm text-slate-600">You selected {{ item.subject.stated_proficiency }} · {{ 'AI-generated assessment' if item.test.is_ai_generated else 'Curated offline assessment' }}</p>
                     </div>
                 </div>
                 <a href="{{ url_for('main.take_proficiency_test', test_id=item.test.id) }}" class="px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition">

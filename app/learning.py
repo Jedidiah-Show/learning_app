@@ -1,6 +1,6 @@
 """Shared curriculum access rules."""
 
-from app.models import LearningProject, Progress
+from app.models import LearningProject, Progress, QuizResult
 from datetime import datetime, date
 
 
@@ -27,13 +27,37 @@ def next_unlocked_day(user, config):
             LearningProject.week_number
         ).filter_by(user_id=user.id, completed=True).all()
     }
+    passed_daily_days = {
+        day_number for (day_number,) in QuizResult.query.with_entities(
+            QuizResult.day_number
+        ).filter(
+            QuizResult.user_id == user.id,
+            QuizResult.quiz_type == 'daily',
+            QuizResult.passed.is_(True),
+        ).all()
+    }
+    passed_weeks = {
+        week_number for (week_number,) in QuizResult.query.with_entities(
+            QuizResult.week_number
+        ).filter(
+            QuizResult.user_id == user.id,
+            QuizResult.quiz_type == 'weekly',
+            QuizResult.passed.is_(True),
+        ).all()
+    }
     unlock_rules = config['schedule']['unlock_rules']
     for day in range(1, total_days + 1):
-        if (
-            day > 1 and (day - 1) % 7 == 0
-            and not unlock_rules.get('allow_continue_after_day_complete', True)
-        ):
-            if (day - 1) // 7 not in completed_weeks:
+        if day > 1 and (day - 1) % 7 == 0:
+            week_number = (day - 1) // 7
+            if (
+                not unlock_rules.get('allow_continue_after_day_complete', True)
+                and week_number not in completed_weeks
+            ):
+                return day - 1
+            if (
+                config['quizzes']['end_of_week_quiz']['enabled']
+                and week_number not in passed_weeks
+            ):
                 return day - 1
         day_completed = [
             bool(
@@ -49,10 +73,22 @@ def next_unlocked_day(user, config):
         )
         if not completed:
             return day
+        if (
+            day < total_days
+            and config['quizzes']['end_of_day_quiz']['enabled']
+            and day not in passed_daily_days
+        ):
+            return day
     if not unlock_rules.get('allow_continue_after_day_complete', True):
         final_week = (total_days + 6) // 7
         if final_week not in completed_weeks:
             return total_days
+    final_week = (total_days + 6) // 7
+    if (
+        config['quizzes']['end_of_week_quiz']['enabled']
+        and final_week not in passed_weeks
+    ):
+        return total_days
     return total_days + 1
 
 

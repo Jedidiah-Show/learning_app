@@ -1,8 +1,9 @@
 from flask import Blueprint, current_app, request, jsonify
 from app import db
 from app.user_subjects import get_effective_config_for_user, get_effective_subjects_for_user
-from app.models import Quiz, QuizResult, Lesson, Progress
+from app.models import Quiz, QuizResult, Lesson, Progress, ReviewItem
 from flask_login import current_user, login_required
+from datetime import datetime, timedelta, timezone
 from app.learning import curriculum_days, day_is_available, next_unlocked_day
 from app.curriculum import get_curriculum_day
 from app.gemini import (
@@ -547,6 +548,37 @@ def submit_quiz():
         attempt_id=attempt_id,
     )
     db.session.add(result)
+    for question in questions:
+        if answers[question['id']] == question['correct']:
+            continue
+        review = ReviewItem.query.filter_by(
+            user_id=user.id,
+            quiz_id=quiz_id,
+            question_id=question['id'],
+        ).first()
+        if review is None:
+            review = ReviewItem(
+                user_id=user.id,
+                quiz_id=quiz_id,
+                question_id=question['id'],
+                subject_id=question.get('subject_id') or 'review',
+                question=question['question'],
+                options=json.dumps(question['options'], ensure_ascii=False),
+                correct_index=question['correct'],
+                explanation=question.get('explanation', ''),
+                due_at=datetime.now(timezone.utc) + timedelta(days=1),
+            )
+            db.session.add(review)
+        else:
+            review.subject_id = question.get('subject_id') or 'review'
+            review.question = question['question']
+            review.options = json.dumps(question['options'], ensure_ascii=False)
+            review.correct_index = question['correct']
+            review.explanation = question.get('explanation', '')
+            review.due_at = datetime.now(timezone.utc) + timedelta(days=1)
+            review.interval_days = 1
+            review.repetitions = 0
+            review.active = True
     try:
         db.session.commit()
     except IntegrityError:
@@ -561,6 +593,83 @@ def submit_quiz():
                 return jsonify(_quiz_result_response(existing_attempt, passing_threshold))
         raise
     return jsonify(_quiz_result_response(result, passing_threshold))
+
+
+@quizzes_bp.route('/review/due', methods=['GET'])
+@login_required
+def get_due_reviews():
+    now = datetime.now(timezone.utc)
+    next_review = ReviewItem.query.filter_by(
+        user_id=current_user.id, active=True,
+    ).order_by(ReviewItem.due_at, ReviewItem.id).first()
+    items = ReviewItem.query.filter(
+        ReviewItem.user_id == current_user.id,
+        ReviewItem.active.is_(True),
+        ReviewItem.due_at <= now,
+    ).order_by(ReviewItem.due_at, ReviewItem.id).limit(20).all()
+    return jsonify({
+        'next_due_at': (
+            _utc_iso(next_review.due_at) if next_review else None
+        ),
+        'items': [{
+            'id': item.id,
+            'question': item.question,
+            'options': item.get_options(),
+            'subject_id': item.subject_id,
+            'explanation': item.explanation or '',
+        } for item in items],
+    })
+
+
+@quizzes_bp.route('/review/<int:review_id>', methods=['POST'])
+@login_required
+def answer_review(review_id):
+    data = get_json_object()
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Request body must be a JSON object'}), 400
+    answer = data.get('answer')
+    if not isinstance(answer, int) or isinstance(answer, bool):
+        return jsonify({'error': 'answer must be an option index'}), 400
+    item = ReviewItem.query.filter_by(
+        id=review_id, user_id=current_user.id, active=True
+    ).first_or_404()
+    due_at = (
+        item.due_at.replace(tzinfo=timezone.utc)
+        if item.due_at.tzinfo is None else item.due_at
+    )
+    if due_at > datetime.now(timezone.utc):
+        return jsonify({'error': 'This review is not due yet'}), 409
+    options = item.get_options()
+    if not 0 <= answer < len(options):
+        return jsonify({'error': 'Choose a valid answer'}), 400
+    correct = answer == item.correct_index
+    now = datetime.now(timezone.utc)
+    if correct:
+        intervals = (1, 3, 7, 14)
+        item.repetitions += 1
+        if item.repetitions >= len(intervals):
+            item.active = False
+        else:
+            item.interval_days = intervals[item.repetitions]
+            item.due_at = now + timedelta(days=item.interval_days)
+    else:
+        item.repetitions = 0
+        item.interval_days = 1
+        item.due_at = now + timedelta(days=1)
+    db.session.commit()
+    return jsonify({
+        'correct': correct,
+        'correct_index': item.correct_index,
+        'explanation': item.explanation or '',
+        'next_due_at': _utc_iso(item.due_at) if item.active else None,
+        'completed': not item.active,
+    })
+
+
+def _utc_iso(value):
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc).isoformat()
 
 
 def _quiz_result_response(result, passing_threshold):

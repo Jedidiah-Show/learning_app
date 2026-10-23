@@ -1,14 +1,16 @@
 import os
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from unittest.mock import patch
 
 from app import create_app, db
 from app.curriculum import get_subject_curriculum
 from app.gemini import generate_json
 from app.models import (
-    CalendarEvent, GeminiUsageBucket, LearningProject, Progress,
-    ProficiencyTest, Quiz, StudySession, SubjectCurriculum, User,
+    AIBackgroundJob, CalendarEvent, GeminiUsageBucket, LearningProject, Progress,
+    ProficiencyTest, Quiz, QuizResult, ReviewItem, StudySession,
+    SubjectCurriculum, User,
     UserSubjectConfig,
 )
 
@@ -58,6 +60,20 @@ class LearningFlowTests(unittest.TestCase):
                 'time_spent_minutes': 30,
             })
             self.assertEqual(result.status_code, 200)
+        with self.client.session_transaction() as session:
+            user_id = int(session['_user_id'])
+        with self.app.app_context():
+            db.session.add(QuizResult(
+                user_id=user_id,
+                quiz_type='daily',
+                quiz_id=f'test-daily-{user_id}-{day}',
+                day_number=day,
+                score=100,
+                total_questions=1,
+                correct_answers=1,
+                passed=True,
+            ))
+            db.session.commit()
 
     def test_signed_out_users_are_required_to_sign_in(self):
         response = self.client.get('/api/progress/dashboard')
@@ -254,7 +270,7 @@ class LearningFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()['study_streak_days'], 1)
 
-    def test_revisiting_completed_lesson_records_additional_study_time(self):
+    def test_revisiting_completed_lesson_does_not_double_count_study_time(self):
         self.register('reviewtimetracking')
         lessons = self.client.get('/api/lessons/daily/1').get_json()['subjects']
         lesson_id = lessons[0]['lesson']['lesson_id']
@@ -270,7 +286,14 @@ class LearningFlowTests(unittest.TestCase):
                 StudySession.query.filter_by(
                     user_id=user.id, session_type='lesson'
                 ).with_entities(db.func.sum(StudySession.duration_minutes)).scalar(),
-                30,
+                20,
+            )
+            from app.models import LessonCompletion
+            self.assertEqual(
+                LessonCompletion.query.filter_by(
+                    user_id=user.id, lesson_id=lesson_id
+                ).one().time_spent_minutes,
+                20,
             )
             from app.models import LessonCompletion
             self.assertEqual(LessonCompletion.query.filter_by(user_id=user.id).count(), 1)
@@ -1461,12 +1484,15 @@ class LearningFlowTests(unittest.TestCase):
         payload = weekly.get_json()
         self.assertGreater(len(payload['questions']), 0)
         self.assertTrue(all('correct' not in question for question in payload['questions']))
+        with self.app.app_context():
+            weekly_questions = Quiz.query.filter_by(
+                quiz_id=payload['quiz_id']
+            ).one().get_questions()
         submitted = self.client.post('/api/quizzes/submit', json={
             'quiz_id': payload['quiz_id'],
             'quiz_type': payload['quiz_type'],
             'answers': {
-                question['id']: 0
-                for question in payload['questions']
+                question['id']: question['correct'] for question in weekly_questions
             },
         })
         self.assertEqual(submitted.status_code, 200)
@@ -1529,6 +1555,71 @@ class LearningFlowTests(unittest.TestCase):
             }).status_code,
             409,
         )
+
+    def test_progression_requires_daily_and_weekly_mastery_checks(self):
+        self.register('masterygates')
+        self.complete_day(1)
+        with self.app.app_context():
+            user = User.query.filter_by(username='masterygates').one()
+            QuizResult.query.filter_by(user_id=user.id, day_number=1).delete()
+            db.session.commit()
+        self.assertEqual(
+            self.client.get('/api/progress/dashboard').get_json()['next_unlocked_day'],
+            1,
+        )
+        daily = self.client.get('/api/quizzes/daily/1').get_json()
+        with self.app.app_context():
+            questions = Quiz.query.filter_by(quiz_id=daily['quiz_id']).one().get_questions()
+        passed_daily = self.client.post('/api/quizzes/submit', json={
+            'quiz_id': daily['quiz_id'],
+            'quiz_type': 'daily',
+            'answers': {question['id']: question['correct'] for question in questions},
+        })
+        self.assertTrue(passed_daily.get_json()['passed'])
+        self.assertEqual(
+            self.client.get('/api/progress/dashboard').get_json()['next_unlocked_day'],
+            2,
+        )
+        for day in range(2, 8):
+            self.complete_day(day)
+        with self.app.app_context():
+            user = User.query.filter_by(username='masterygates').one()
+            db.session.add(LearningProject(
+                user_id=user.id, week_number=1, project='{}', completed=True,
+            ))
+            db.session.commit()
+        self.assertEqual(
+            self.client.get('/api/progress/dashboard').get_json()['next_unlocked_day'],
+            7,
+        )
+        with self.app.app_context():
+            user = User.query.filter_by(username='masterygates').one()
+            db.session.add(QuizResult(
+                user_id=user.id, quiz_type='weekly', quiz_id='test-weekly-1',
+                week_number=1, score=100, total_questions=1, correct_answers=1,
+                passed=True,
+            ))
+            db.session.commit()
+        self.assertEqual(
+            self.client.get('/api/progress/dashboard').get_json()['next_unlocked_day'],
+            8,
+        )
+
+    def test_subject_setup_can_select_a_single_learning_track(self):
+        self.register('subjectchoice')
+        response = self.client.post('/subject-config', data={
+            'subject_selection_present': '1',
+            'selected_subjects': ['python'],
+            'proficiency_python': 'Novice',
+        })
+        self.assertEqual(response.status_code, 302)
+        subjects = self.client.get('/api/admin/subjects').get_json()['subjects']
+        self.assertEqual([subject['id'] for subject in subjects], ['python'])
+        empty = self.client.post('/subject-config', data={
+            'subject_selection_present': '1',
+        })
+        self.assertEqual(empty.status_code, 400)
+        self.assertIn(b'python', empty.data)
 
     def test_initial_proficiency_assessment_blocks_the_curriculum(self):
         self.register('assessedlearner')
@@ -1730,6 +1821,66 @@ class LearningFlowTests(unittest.TestCase):
             self.assertEqual(QuizResult.query.filter_by(
                 attempt_id='attempt-1'
             ).count(), 1)
+
+    def test_missed_quiz_questions_are_scheduled_for_spaced_review(self):
+        self.register('reviewqueue')
+        quiz = self.client.get('/api/quizzes/daily/1').get_json()
+        with self.app.app_context():
+            questions = Quiz.query.filter_by(quiz_id=quiz['quiz_id']).one().get_questions()
+            answers = {
+                question['id']: question['correct']
+                for question in questions
+            }
+            answers[questions[0]['id']] = (
+                questions[0]['correct'] + 1
+            ) % len(questions[0]['options'])
+        result = self.client.post('/api/quizzes/submit', json={
+            'quiz_id': quiz['quiz_id'],
+            'quiz_type': 'daily',
+            'answers': answers,
+        })
+        self.assertEqual(result.status_code, 200)
+        review_queue = self.client.get('/api/quizzes/review/due').get_json()
+        self.assertTrue(review_queue['next_due_at'].endswith('+00:00'))
+        due = review_queue['items']
+        self.assertEqual(due, [])
+        with self.app.app_context():
+            item = ReviewItem.query.one()
+            item.due_at = datetime.now(timezone.utc) - timedelta(seconds=1)
+            review_id = item.id
+            db.session.commit()
+        due = self.client.get('/api/quizzes/review/due').get_json()['items']
+        self.assertEqual(len(due), 1)
+        reviewed = self.client.post(
+            f'/api/quizzes/review/{review_id}',
+            json={'answer': questions[0]['correct']},
+        )
+        self.assertEqual(reviewed.status_code, 200)
+        self.assertTrue(reviewed.get_json()['correct'])
+        with self.app.app_context():
+            item = db.session.get(ReviewItem, review_id)
+            self.assertEqual(item.interval_days, 3)
+
+    def test_lesson_worker_processes_queued_preparation(self):
+        from app.jobs import enqueue_lesson_preparation, process_one_ai_job
+        from app.user_subjects import (
+            get_effective_config_for_user, get_effective_subjects_for_user,
+        )
+
+        self.register('backgroundlessons')
+        with self.app.app_context():
+            user = User.query.filter_by(username='backgroundlessons').one()
+            job = enqueue_lesson_preparation(
+                user, 1, get_effective_config_for_user(user),
+                get_effective_subjects_for_user(user),
+            )
+            job_id = job.id
+        with patch('app.routes.lessons.prepare_lesson_day', return_value={}):
+            self.assertTrue(process_one_ai_job(self.app))
+        with self.app.app_context():
+            self.assertEqual(db.session.get(
+                AIBackgroundJob, job_id,
+            ).status, 'complete')
 
     def test_disabling_quiz_prevents_submission_of_an_existing_quiz(self):
         self.register('quizdisabled')

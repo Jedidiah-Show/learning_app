@@ -10,7 +10,11 @@ from app.gemini import (
 from app.request_data import get_json_object
 from app import db
 from app.db_utils import add_or_get
-from app.models import Lesson, LessonCompletion, Progress, StudySession
+from app.models import (
+    AIBackgroundJob, Lesson, LessonCompletion, Progress, StudySession,
+    SubjectCurriculum,
+)
+from app.jobs import enqueue_lesson_preparation
 from datetime import datetime, timedelta, timezone
 import hashlib
 import json
@@ -33,6 +37,14 @@ def get_daily_lessons(day_number):
     if not day_is_available(user, config, day_number):
         return jsonify({'error': 'Day is locked', 'next_unlocked_day': next_unlocked_day(user, config)}), 403
     subjects = get_effective_subjects_for_user(current_user)
+    if not current_app.testing:
+        job = enqueue_lesson_preparation(user, day_number, config, subjects)
+        if job.status != 'complete':
+            return jsonify({
+                'status': job.status,
+                'job_id': job.id,
+                'status_url': f'/api/lessons/jobs/{job.id}',
+            }), 202
     try:
         lessons_data = {
             'day_number': day_number,
@@ -46,6 +58,13 @@ def get_daily_lessons(day_number):
     
     # Batch fetch completions
     lesson_ids = [l.lesson_id for l in lesson_map.values()]
+    curricula = {
+        item.subject_id: item
+        for item in SubjectCurriculum.query.filter(
+            SubjectCurriculum.user_id == user.id,
+            SubjectCurriculum.subject_id.in_([subject['id'] for subject in subjects]),
+        ).all()
+    } if subjects else {}
     completions = LessonCompletion.query.filter(
         LessonCompletion.user_id == user.id,
         LessonCompletion.lesson_id.in_(lesson_ids)
@@ -72,6 +91,11 @@ def get_daily_lessons(day_number):
                 'estimated_minutes': lesson.estimated_minutes,
                 'difficulty': lesson.difficulty,
                 'is_ai_generated': lesson.is_ai_generated,
+                'content_source': 'ai' if lesson.is_ai_generated else 'offline',
+                'curriculum_content_source': (
+                    'ai' if curricula.get(subject['id'])
+                    and curricula[subject['id']].is_ai_generated else 'offline'
+                ),
                 'proficiency': subject.get('proficiency', 'Novice'),
             },
             'completed': bool((progress and progress.completed) or (completion and completion.completed)),
@@ -95,6 +119,22 @@ def prepare_daily_lessons(day_number):
             'error': 'Day is locked',
             'next_unlocked_day': next_unlocked_day(user, config),
         }), 403
+    if not current_app.testing:
+        job = enqueue_lesson_preparation(
+            user, day_number, config, get_effective_subjects_for_user(user)
+        )
+        if job.status == 'complete':
+            return jsonify({
+                'status': 'ready',
+                'day_number': day_number,
+                'job_id': job.id,
+            })
+        return jsonify({
+            'status': job.status,
+            'day_number': day_number,
+            'job_id': job.id,
+            'status_url': f'/api/lessons/jobs/{job.id}',
+        }), 202
     try:
         lesson_map = prepare_lesson_day(
             user, day_number, config, get_effective_subjects_for_user(user)
@@ -108,6 +148,19 @@ def prepare_daily_lessons(day_number):
         return jsonify({'error': 'Learning content is temporarily unavailable.'}), 503
     return jsonify({'status': 'ready', 'day_number': day_number,
                     'lessons_ready': len(lesson_map)})
+
+
+@lessons_bp.route('/jobs/<int:job_id>', methods=['GET'])
+@login_required
+def get_lesson_preparation_status(job_id):
+    job = AIBackgroundJob.query.filter_by(
+        id=job_id, user_id=current_user.id,
+        job_type='prepare_lesson_day',
+    ).first_or_404()
+    response = {'job_id': job.id, 'status': job.status, 'attempts': job.attempts}
+    if job.status == 'failed':
+        response['error'] = 'Lesson preparation failed. Retry preparation to try again.'
+    return jsonify(response)
 
 
 def prepare_lesson_day(user, day_number, config, subjects=None, *, commit=True):
@@ -721,7 +774,7 @@ def complete_lesson():
         completed_at=now,
         time_spent_minutes=time_spent,
     )
-    db.session.execute(completion_insert.on_conflict_do_update(
+    completion_result = db.session.execute(completion_insert.on_conflict_do_update(
         index_elements=['user_id', 'lesson_id'],
         set_={
             'completed': True,
@@ -734,7 +787,9 @@ def complete_lesson():
                 + completion_insert.excluded.time_spent_minutes
             ),
         },
-    ))
+        where=LessonCompletion.completed.is_(False),
+    ).returning(LessonCompletion.id))
+    completion_transitioned = completion_result.scalar_one_or_none() is not None
 
     progress_insert = insert(Progress).values(
         user_id=user.id,
@@ -744,7 +799,7 @@ def complete_lesson():
         completion_date=now,
         time_spent_minutes=time_spent,
     )
-    db.session.execute(progress_insert.on_conflict_do_update(
+    progress_result = db.session.execute(progress_insert.on_conflict_do_update(
         index_elements=['user_id', 'subject_id', 'day_number'],
         set_={
             'completed': True,
@@ -756,9 +811,12 @@ def complete_lesson():
                 + progress_insert.excluded.time_spent_minutes
             ),
         },
-    ))
+        where=Progress.completed.is_(False),
+    ).returning(Progress.id))
+    progress_transitioned = progress_result.scalar_one_or_none() is not None
+    new_completion = completion_transitioned and progress_transitioned
 
-    if time_spent:
+    if time_spent and new_completion:
         now = datetime.now(timezone.utc)
         db.session.add(StudySession(
             user_id=user.id,

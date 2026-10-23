@@ -15,7 +15,7 @@ def _user_config(user):
     return UserConfig.query.filter_by(user_id=user.id).first()
 
 
-def get_effective_subjects_for_user(user=None):
+def get_effective_subjects_for_user(user=None, *, include_disabled=False):
     if user is None:
         user = current_user
     config = current_app.config.get('APP_CONFIG', {}) or {}
@@ -27,9 +27,16 @@ def get_effective_subjects_for_user(user=None):
     } if isinstance(extra.get('disabled_subject_ids', []), list) else set()
 
     custom = UserSubject.query.filter_by(user_id=user.id).all() if getattr(user, 'is_authenticated', False) else []
-    subjects_by_id = {subject.subject_id: subject.to_dict() for subject in custom}
+    subjects_by_id = {
+        subject.subject_id: subject.to_dict()
+        for subject in custom
+        if include_disabled or subject.subject_id not in disabled_ids
+    }
     for subject in config.get('subjects', []) or []:
-        if subject.get('id') not in subjects_by_id and subject.get('id') not in disabled_ids:
+        if (
+            subject.get('id') not in subjects_by_id
+            and (include_disabled or subject.get('id') not in disabled_ids)
+        ):
             subjects_by_id[subject['id']] = deepcopy(subject)
     if getattr(user, 'is_authenticated', False):
         subject_configs = {

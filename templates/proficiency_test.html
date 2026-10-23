@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Proficiency Test - Daily Deep-Dive Learning{% endblock %}
+{% block title %}Proficiency Test - Ruach Learning{% endblock %}
 
 {% block content %}
 <div class="max-w-4xl mx-auto">
@@ -8,6 +8,7 @@
         <div class="mb-6">
             <p class="eyebrow">Proficiency Test</p>
             <h2 class="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">{{ subject.name if subject else 'Proficiency Test' }}</h2>
+            <p class="mb-2 text-xs text-slate-500">{{ 'AI-generated assessment' if test.is_ai_generated else 'Curated offline assessment' }}</p>
             <p class="text-slate-600">Answer all {{ questions|length }} questions. They span foundational through expert difficulty and help determine your assessed starting proficiency.</p>
         </div>
 

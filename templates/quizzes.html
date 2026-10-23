@@ -1,12 +1,18 @@
 {% extends "base.html" %}
 
-{% block title %}Quizzes - Daily Deep-Dive Learning{% endblock %}
+{% block title %}Quizzes - Ruach Learning{% endblock %}
 
 {% block content %}
 <div class="space-y-6">
     <div class="page-intro">
-        <div><p class="eyebrow">Practice makes knowledge stick</p><h2 class="section-title text-2xl">Knowledge checks</h2><p class="mt-1 text-sm text-slate-600">Review your day or bring the whole week together.</p></div>
+        <div><p class="eyebrow">Practice makes knowledge stick</p><h2 class="section-title text-2xl">Knowledge checks</h2><p class="mt-1 text-sm text-slate-600">Pass enabled daily and weekly quizzes to unlock your next course day. Missed questions return here for spaced review.</p></div>
     </div>
+
+    <section class="panel-card p-5 sm:p-6" aria-labelledby="review-heading">
+        <h3 id="review-heading" class="section-title">Spaced review</h3>
+        <p class="text-sm text-slate-600">Revisit questions you missed. Correct answers return at gradually longer intervals.</p>
+        <div id="review-items" class="mt-4 space-y-4" aria-live="polite">Loading due reviews…</div>
+    </section>
     
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         {% if config.quizzes.end_of_day_quiz.enabled %}
@@ -50,6 +56,7 @@
     </div>
     
     <div id="quiz-container" class="hidden panel-card p-5 sm:p-8 max-w-3xl mx-auto">
+        <p id="quiz-source" class="mb-4 text-xs text-slate-500" role="status"></p>
         <div class="flex justify-between items-center mb-3">
             <span id="quiz-progress" class="text-xs font-bold uppercase tracking-wider text-slate-500">Question 1 / X</span>
             <span id="quiz-subject" class="intro-badge py-2">Subject</span>
@@ -75,6 +82,66 @@
         loadQuiz(`/api/quizzes/daily/${document.getElementById('quiz-day').value}`);
     }
 
+    loadDueReviews();
+
+    async function loadDueReviews() {
+        const container = document.getElementById('review-items');
+        try {
+            const response = await fetch('/api/quizzes/review/due');
+            const data = await response.json();
+            if (!response.ok) throw new Error(data.error || 'Could not load reviews.');
+            container.replaceChildren();
+            if (!data.items.length) {
+                container.textContent = data.next_due_at
+                    ? `No reviews due. Next review: ${new Date(data.next_due_at).toLocaleString()}.`
+                    : 'No reviews due. Missed quiz questions will be scheduled here.';
+                return;
+            }
+            data.items.forEach(item => {
+                const card = document.createElement('article');
+                card.className = 'rounded-lg border border-slate-200 p-4';
+                const question = document.createElement('h4');
+                question.className = 'font-semibold text-slate-800';
+                question.textContent = item.question;
+                card.appendChild(question);
+                const choices = document.createElement('div');
+                choices.className = 'mt-3 flex flex-wrap gap-2';
+                const feedback = document.createElement('p');
+                feedback.className = 'mt-3 text-sm text-slate-700';
+                feedback.setAttribute('aria-live', 'polite');
+                item.options.forEach((option, index) => {
+                    const choice = document.createElement('button');
+                    choice.type = 'button';
+                    choice.className = 'quiz-choice';
+                    choice.textContent = option;
+                    choice.addEventListener('click', async () => {
+                        choice.disabled = true;
+                        try {
+                            const answerResponse = await fetch(`/api/quizzes/review/${item.id}`, {
+                                method: 'POST',
+                                headers: {'Content-Type': 'application/json'},
+                                body: JSON.stringify({answer: index})
+                            });
+                            const result = await answerResponse.json();
+                            if (!answerResponse.ok) throw new Error(result.error || 'Could not save review.');
+                            Array.from(choices.children).forEach(button => { button.disabled = true; });
+                            feedback.textContent = `${result.correct ? 'Correct.' : `Not quite. The correct answer is: ${item.options[result.correct_index]}.`} ${result.explanation}${result.completed ? ' This concept is well established.' : ''}`;
+                            if (result.correct) card.dataset.reviewed = 'true';
+                        } catch (error) {
+                            feedback.textContent = error.message;
+                            choice.disabled = false;
+                        }
+                    });
+                    choices.appendChild(choice);
+                });
+                card.append(question, choices, feedback);
+                container.appendChild(card);
+            });
+        } catch (error) {
+            container.textContent = error.message;
+        }
+    }
+
     function startWeeklyQuiz() {
         loadQuiz(`/api/quizzes/weekly/${document.getElementById('quiz-week').value}`);
     }
@@ -89,6 +156,9 @@
                 currentQuestionIndex = 0;
                 userAnswers = {};
                 document.getElementById('quiz-container').classList.remove('hidden');
+                document.getElementById('quiz-source').textContent = data.is_ai_generated
+                    ? 'AI-generated questions'
+                    : 'Lesson-based offline questions';
                 showQuestion();
             })
             .catch(error => {
@@ -167,7 +237,9 @@
             score.textContent = `Score: ${data.score}%`;
             const result = document.createElement('p');
             result.className = 'text-sm text-slate-600 mb-4';
-            result.textContent = `${data.correct} / ${data.total} correct ${data.passed ? '✓ Passed' : '(Needs improvement)'}`;
+            result.textContent = data.passed
+                ? `${data.correct} / ${data.total} correct — passed (${data.passing_threshold}% required).`
+                : `${data.correct} / ${data.total} correct — ${data.passing_threshold}% is required to unlock the next step.`;
             container.append(heading, score, result);
             if (data.evaluation && data.evaluation.summary) {
                 const summary = document.createElement('p');
