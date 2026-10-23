@@ -110,7 +110,7 @@ def prepare_daily_lessons(day_number):
                     'lessons_ready': len(lesson_map)})
 
 
-def prepare_lesson_day(user, day_number, config, subjects=None):
+def prepare_lesson_day(user, day_number, config, subjects=None, *, commit=True):
     """Create any missing lessons for a day, then persist the complete cache set."""
     subjects = subjects if subjects is not None else get_effective_subjects_for_user(user)
     curriculum_days = {
@@ -135,7 +135,10 @@ def prepare_lesson_day(user, day_number, config, subjects=None):
         lesson_map[subject['id']] = lesson
         added = True
     if added:
-        db.session.commit()
+        if commit:
+            db.session.commit()
+        else:
+            db.session.flush()
     return lesson_map
 
 def generate_lesson(subject, day_number, config, user=None, curriculum_day=None):
@@ -699,44 +702,61 @@ def complete_lesson():
     if not config.get('progress', {}).get('track_time_spent', True):
         time_spent = 0
     
-    # Mark lesson complete
-    completion = LessonCompletion.query.filter_by(
+    dialect = db.session.get_bind().dialect.name
+    if dialect == 'postgresql':
+        from sqlalchemy.dialects.postgresql import insert
+    elif dialect == 'sqlite':
+        from sqlalchemy.dialects.sqlite import insert
+    else:
+        raise RuntimeError(f'Lesson completion is unsupported for {dialect}')
+
+    now = datetime.now(timezone.utc)
+    completion_insert = insert(LessonCompletion).values(
         user_id=user.id,
-        lesson_id=lesson_id
-    ).first()
-    
-    if not completion:
-        completion = LessonCompletion(
-            user_id=user.id,
-            lesson_id=lesson_id,
-            subject_id=subject_id,
-            day_number=day_number,
-            started_at=datetime.now(timezone.utc)
-        )
-        db.session.add(completion)
-    
-    completion.completed = True
-    completion.completed_at = completion.completed_at or datetime.now(timezone.utc)
-    completion.time_spent_minutes = (completion.time_spent_minutes or 0) + time_spent
-    
-    # Update progress
-    progress = Progress.query.filter_by(
+        lesson_id=lesson_id,
+        subject_id=subject_id,
+        day_number=day_number,
+        completed=True,
+        started_at=now,
+        completed_at=now,
+        time_spent_minutes=time_spent,
+    )
+    db.session.execute(completion_insert.on_conflict_do_update(
+        index_elements=['user_id', 'lesson_id'],
+        set_={
+            'completed': True,
+            'completed_at': db.func.coalesce(
+                LessonCompletion.completed_at,
+                completion_insert.excluded.completed_at,
+            ),
+            'time_spent_minutes': (
+                db.func.coalesce(LessonCompletion.time_spent_minutes, 0)
+                + completion_insert.excluded.time_spent_minutes
+            ),
+        },
+    ))
+
+    progress_insert = insert(Progress).values(
         user_id=user.id,
         subject_id=subject_id,
-        day_number=day_number
-    ).first()
-    
-    if not progress:
-        progress = Progress(
-            user_id=user.id,
-            subject_id=subject_id,
-            day_number=day_number
-        )
-        db.session.add(progress)
-    
-    progress.completed = True
-    progress.completion_date = progress.completion_date or datetime.now(timezone.utc)
-    progress.time_spent_minutes = (progress.time_spent_minutes or 0) + time_spent
+        day_number=day_number,
+        completed=True,
+        completion_date=now,
+        time_spent_minutes=time_spent,
+    )
+    db.session.execute(progress_insert.on_conflict_do_update(
+        index_elements=['user_id', 'subject_id', 'day_number'],
+        set_={
+            'completed': True,
+            'completion_date': db.func.coalesce(
+                Progress.completion_date, progress_insert.excluded.completion_date,
+            ),
+            'time_spent_minutes': (
+                db.func.coalesce(Progress.time_spent_minutes, 0)
+                + progress_insert.excluded.time_spent_minutes
+            ),
+        },
+    ))
 
     if time_spent:
         now = datetime.now(timezone.utc)

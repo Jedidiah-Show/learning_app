@@ -77,6 +77,7 @@ class LessonCompletion(db.Model):
     completed_at = db.Column(db.DateTime)
     time_spent_minutes = db.Column(db.Integer, default=0)
     __table_args__ = (
+        db.UniqueConstraint('user_id', 'lesson_id', name='unique_user_lesson_completion'),
         db.Index('idx_lessoncomp_user_lesson', 'user_id', 'lesson_id'),
         db.Index('idx_lessoncomp_user_subject_day', 'user_id', 'subject_id', 'day_number'),
     )
@@ -366,6 +367,7 @@ class AIBackgroundJob(db.Model):
     attempts = db.Column(db.Integer, nullable=False, default=0)
     available_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
     locked_at = db.Column(db.DateTime(timezone=True))
+    lease_token = db.Column(db.String(64))
     last_error = db.Column(db.Text)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = db.Column(

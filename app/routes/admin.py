@@ -10,7 +10,7 @@ from flask_login import current_user, login_required
 from app import db, validate_app_config
 from app.google_calendar import GoogleAuthorizationError
 from app.models import (
-    UserConfig, UserSchedule, UserSubject, UserSubjectConfig,
+    CalendarEvent, UserConfig, UserSchedule, UserSubject, UserSubjectConfig,
     ProficiencyTest, Progress, LessonCompletion, SubjectCurriculum,
 )
 from app.user_subjects import (
@@ -21,6 +21,33 @@ from app.user_subjects import (
 from app.request_data import get_json_object
 
 admin_bp = Blueprint('admin', __name__)
+
+
+def _reconcile_subject_calendar():
+    if not CalendarEvent.query.filter_by(user_id=current_user.id).count():
+        return None
+    try:
+        from app.routes.calendar import reconcile_calendar_schedule
+        reconcile_calendar_schedule(
+            current_user,
+            get_effective_config_for_user(current_user)['schedule']['daily_blocks'],
+        )
+    except GoogleAuthorizationError:
+        current_app.logger.warning(
+            'Google Calendar needs to be reconnected for user %s', current_user.id
+        )
+        return jsonify({
+            'error': 'Subject saved, but Google Calendar needs to be reconnected.'
+        }), 401
+    except Exception:
+        current_app.logger.exception(
+            'Could not reconcile Calendar events after a subject change for user %s',
+            current_user.id,
+        )
+        return jsonify({
+            'error': 'Subject saved, but Calendar sync is incomplete. Retry to finish syncing.'
+        }), 502
+    return None
 
 
 def _validate_schedule(blocks):
@@ -104,6 +131,9 @@ def create_or_update_subject():
         ]
         preferences.extra_config = json.dumps(extra)
     db.session.commit()
+    calendar_response = _reconcile_subject_calendar()
+    if calendar_response:
+        return calendar_response
     return jsonify({'status': 'success', 'subject': subject.to_dict()})
 
 
@@ -132,6 +162,9 @@ def delete_subject(subject_id):
         disabled.add(subject_id)
         update_user_extra_config(current_user, disabled_subject_ids=sorted(disabled))
     db.session.commit()
+    calendar_response = _reconcile_subject_calendar()
+    if calendar_response:
+        return calendar_response
     return jsonify({'status': 'success'})
 
 

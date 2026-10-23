@@ -86,7 +86,7 @@ class LearningFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers['Location'], '/')
 
-    def test_calendar_outage_does_not_prevent_account_deletion(self):
+    def test_calendar_outage_preserves_account_for_cleanup_retry(self):
         self.register('deletewithcalendaroutage')
         with self.app.app_context():
             user = User.query.filter_by(
@@ -111,9 +111,39 @@ class LearningFlowTests(unittest.TestCase):
             })
         self.assertEqual(response.status_code, 302)
         with self.app.app_context():
-            self.assertIsNone(User.query.filter_by(
-                username='deletewithcalendaroutage'
-            ).first())
+            user = User.query.filter_by(username='deletewithcalendaroutage').one()
+            self.assertTrue(user.google_access_token)
+            self.assertEqual(CalendarEvent.query.filter_by(user_id=user.id).count(), 1)
+
+    def test_calendar_outage_preserves_learning_data_during_account_reset(self):
+        self.register('resetwithcalendaroutage')
+        with self.app.app_context():
+            user = User.query.filter_by(
+                username='resetwithcalendaroutage'
+            ).one()
+            user.google_access_token = 'expired-token'
+            db.session.add(CalendarEvent(
+                user_id=user.id,
+                event_id='event-to-reset',
+                title='Study session',
+                start_time=__import__('datetime').datetime(2030, 1, 1),
+                end_time=__import__('datetime').datetime(2030, 1, 1, 1),
+                synced_to_google=True,
+            ))
+            db.session.commit()
+        with patch(
+            'app.routes.calendar._calendar_service',
+            side_effect=RuntimeError('Calendar unavailable'),
+        ):
+            response = self.client.post('/account/reset', json={
+                'current_password': 'secure-pass-123',
+            })
+        self.assertEqual(response.status_code, 502)
+        with self.app.app_context():
+            user = User.query.filter_by(username='resetwithcalendaroutage').one()
+            self.assertEqual(CalendarEvent.query.filter_by(user_id=user.id).count(), 1)
+            self.assertTrue(user.subjects_configured)
+            self.assertEqual(user.google_access_token, 'expired-token')
 
     def test_schedule_rejects_duplicate_block_names(self):
         self.register('duplicateschedule')
@@ -242,6 +272,8 @@ class LearningFlowTests(unittest.TestCase):
                 ).with_entities(db.func.sum(StudySession.duration_minutes)).scalar(),
                 30,
             )
+            from app.models import LessonCompletion
+            self.assertEqual(LessonCompletion.query.filter_by(user_id=user.id).count(), 1)
 
     def test_quiz_submission_rejects_missing_answers(self):
         self.register('incompletequiz')
@@ -952,6 +984,52 @@ class LearningFlowTests(unittest.TestCase):
         service.events.return_value.insert.assert_not_called()
         service.events.return_value.update.assert_not_called()
 
+    def test_calendar_insert_conflict_updates_the_existing_remote_event(self):
+        from app.google_calendar import GoogleApiError, OperationResult
+
+        self.register('calendarinsertconflict')
+        self.client.post('/api/admin/schedule', json={
+            'daily_blocks': [{
+                'name': 'morning', 'start_time': '09:00', 'end_time': '10:00',
+            }],
+        })
+        self.client.post('/api/calendar/schedule', json={'day_number': 1})
+        with self.app.app_context():
+            user = User.query.filter_by(username='calendarinsertconflict').one()
+            user.google_access_token = 'access-token'
+            db.session.commit()
+
+        apply_results = [
+            [OperationResult(False, error=GoogleApiError('Already exists', 409))],
+            [OperationResult(True, response={'id': 'existing-google-event'})],
+        ]
+        with patch(
+            'app.routes.calendar._calendar_service', return_value=object()
+        ):
+            with patch(
+                'app.routes.calendar.gcal.fetch_event',
+                return_value={'id': 'existing-google-event', 'summary': 'Stale'},
+            ):
+                with patch(
+                    'app.routes.calendar.gcal.apply_operations',
+                    side_effect=apply_results,
+                ) as apply_operations:
+                    response = self.client.post('/api/calendar/sync', json={
+                        'day_number': 1,
+                    })
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(apply_operations.call_count, 2)
+        self.assertEqual(apply_operations.call_args_list[1].args[1][0]['kind'], 'update')
+        with self.app.app_context():
+            event = CalendarEvent.query.filter_by(
+                user_id=User.query.filter_by(
+                    username='calendarinsertconflict'
+                ).one().id
+            ).one()
+            self.assertEqual(event.event_id, 'existing-google-event')
+            self.assertFalse(event.sync_pending)
+            self.assertIsNotNone(event.google_sync_hash)
+
     def test_calendar_sync_retries_transient_google_failures(self):
         import httplib2
         from googleapiclient.errors import HttpError
@@ -1083,6 +1161,133 @@ class LearningFlowTests(unittest.TestCase):
         self.assertEqual(payload['events_total'], 2)
         self.assertEqual(payload['events_pending'], 2)
         self.assertEqual(payload['pending_days'], [1])
+
+    def test_schedule_response_counts_pending_updates_and_deletions(self):
+        from datetime import datetime
+
+        self.register('calendarpendingcount')
+        with self.app.app_context():
+            user = User.query.filter_by(username='calendarpendingcount').one()
+            db.session.add_all([
+                CalendarEvent(
+                    user_id=user.id, event_id='pending-update', title='Updated',
+                    start_time=datetime(2030, 1, 1, 9), end_time=datetime(2030, 1, 1, 10),
+                    day_number=1, block_name='morning',
+                    synced_to_google=True, sync_pending=True,
+                ),
+                CalendarEvent(
+                    user_id=user.id, event_id='pending-delete', title='Removed',
+                    start_time=datetime(2030, 1, 1, 11), end_time=datetime(2030, 1, 1, 12),
+                    day_number=1, block_name='obsolete',
+                    synced_to_google=True, delete_pending=True,
+                ),
+            ])
+            db.session.commit()
+        response = self.client.post('/api/calendar/schedule', json={'day_number': 1})
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()['pending_sync'], 3)
+
+    def test_calendar_start_date_change_reconciles_existing_events(self):
+        from datetime import datetime
+
+        self.register('calendarstartdate')
+        self.client.post('/api/calendar/schedule', json={'day_number': 1})
+        response = self.client.post('/api/settings/preferences', json={
+            'schedule': {'start_date': '2030-02-03'},
+        })
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            event = CalendarEvent.query.filter_by(
+                user_id=User.query.filter_by(username='calendarstartdate').one().id,
+                block_name='morning',
+            ).one()
+            self.assertEqual(event.start_time, datetime(2030, 2, 3, 11))
+
+    def test_subject_rename_reconciles_local_calendar_description(self):
+        import json
+
+        self.register('calendarrename')
+        self.client.post('/api/calendar/schedule', json={'day_number': 1})
+        response = self.client.post('/api/admin/subjects', json={
+            'id': 'python',
+            'name': 'Python renamed',
+            'topics': ['Fundamentals'],
+        })
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            user = User.query.filter_by(username='calendarrename').one()
+            event = CalendarEvent.query.filter_by(
+                user_id=user.id, block_name='morning',
+            ).one()
+            self.assertIn('Python renamed', event.description)
+        deleted = self.client.delete('/api/admin/subjects/python')
+        self.assertEqual(deleted.status_code, 200)
+        with self.app.app_context():
+            user = User.query.filter_by(username='calendarrename').one()
+            event = CalendarEvent.query.filter_by(
+                user_id=user.id, block_name='morning',
+            ).one()
+            self.assertNotIn('Python renamed', event.description)
+            self.assertNotIn('python', json.loads(event.subject_ids))
+
+    def test_large_custom_topic_list_only_builds_needed_diagnostic_variants(self):
+        from app.routes.main import _topic_variants
+
+        topics = [f'Topic {index}' for index in range(100)]
+        variants = _topic_variants(topics, 20)
+        self.assertEqual(len(variants), 20)
+        self.assertEqual(variants, topics[:20])
+
+    def test_reset_removes_queued_ai_jobs(self):
+        from datetime import datetime, timezone
+        from app.models import AIBackgroundJob
+
+        self.register('resetjobs')
+        with self.app.app_context():
+            user = User.query.filter_by(username='resetjobs').one()
+            db.session.add(AIBackgroundJob(
+                job_key='reset-job',
+                job_type='prepare_lesson_day',
+                user_id=user.id,
+                payload='{"day_number": 1}',
+                status='queued',
+                attempts=0,
+                available_at=datetime.now(timezone.utc),
+            ))
+            db.session.commit()
+        response = self.client.post('/account/reset', json={
+            'current_password': 'secure-pass-123',
+        })
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            self.assertEqual(AIBackgroundJob.query.count(), 0)
+
+    def test_ai_worker_completes_only_its_current_lease(self):
+        from datetime import datetime, timezone
+        from app.jobs import process_one_ai_job
+        from app.models import AIBackgroundJob
+
+        self.register('joblease')
+        with self.app.app_context():
+            user = User.query.filter_by(username='joblease').one()
+            db.session.add(AIBackgroundJob(
+                job_key='lease-job',
+                job_type='prepare_lesson_day',
+                user_id=user.id,
+                payload='{"day_number": 1}',
+                status='queued',
+                attempts=0,
+                available_at=datetime.now(timezone.utc),
+            ))
+            db.session.commit()
+        with patch('app.routes.lessons.prepare_lesson_day') as prepare:
+            self.assertTrue(process_one_ai_job(self.app))
+        prepare.assert_called_once()
+        self.assertFalse(prepare.call_args.kwargs['commit'])
+        with self.app.app_context():
+            job = AIBackgroundJob.query.filter_by(job_key='lease-job').one()
+            self.assertEqual(job.status, 'complete')
+            self.assertIsNone(job.lease_token)
 
     def test_readding_a_block_restores_the_event_pending_removal(self):
         self.register('calendarreadd')
@@ -1287,17 +1492,14 @@ class LearningFlowTests(unittest.TestCase):
         self.assertIn('deliverables', project_payload['project'])
         self.assertTrue(project_payload['is_ai_generated'])
         self.assertFalse(project_payload['completed'])
-        with patch('app.routes.projects.generate_json', side_effect=[
-            project_definition,
-            {
+        with patch('app.routes.projects.generate_json', return_value={
                 'score': 88,
                 'summary': 'The artifact applies the week’s ideas.',
                 'strengths': ['Clear application.'],
                 'gaps': [],
                 'next_steps': ['Add a second test case.'],
                 'rubric_scores': [],
-            },
-        ]):
+            }):
             project_submission = self.client.post(
                 '/api/projects/weekly/1/submit',
                 json={'submission': 'A substantial project artifact. ' * 4},
@@ -1570,6 +1772,32 @@ class LearningFlowTests(unittest.TestCase):
             self.assertTrue(check_password_hash(user.password_hash, 'new-secure-pass'))
         reused = self.client.get(f'/reset-password/{raw_token}')
         self.assertEqual(reused.status_code, 302)
+
+    def test_used_password_reset_token_does_not_throttle_new_link(self):
+        from app.models import PasswordResetToken
+
+        self.register('resetthrottle')
+        first_token = 'first-reset-token'
+        with patch('app.routes.auth.secrets.token_urlsafe', return_value=first_token):
+            first = self.client.post('/forgot-password', data={
+                'email': 'resetthrottle@example.test',
+            })
+        self.assertEqual(first.status_code, 302)
+        reset = self.client.post(
+            f'/reset-password/{first_token}',
+            data={'password': 'new-secure-pass', 'confirm_password': 'new-secure-pass'},
+        )
+        self.assertEqual(reset.status_code, 302)
+        with patch('app.routes.auth.secrets.token_urlsafe', return_value='second-reset-token'):
+            second = self.client.post('/forgot-password', data={
+                'email': 'resetthrottle@example.test',
+            })
+        self.assertEqual(second.status_code, 302)
+        with self.app.app_context():
+            tokens = PasswordResetToken.query.order_by(PasswordResetToken.id).all()
+            self.assertEqual(len(tokens), 2)
+            self.assertIsNotNone(tokens[0].used_at)
+            self.assertIsNone(tokens[1].used_at)
 
     def test_curriculum_length_and_personal_settings_are_isolated(self):
         alice = self.client

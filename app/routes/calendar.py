@@ -254,6 +254,10 @@ def _plan_events(
             event.start_time = desired.start_time
             event.end_time = desired.end_time
             plan.changed = True
+        subject_ids = json.dumps([subject['id'] for subject in subjects])
+        if event.subject_ids != subject_ids:
+            event.subject_ids = subject_ids
+            plan.changed = True
         if not event.synced_to_google or not event.event_id:
             if include_unsynced:
                 plan.operations.append({
@@ -297,7 +301,7 @@ def _record_success(event, operation, result):
 
 
 def _recover_existing_event(service, operation):
-    """Adopt an event that already exists after a conflicting insert."""
+    """Bring an event from a conflicting insert up to the desired state."""
     try:
         existing = gcal.fetch_event(
             service, operation['calendar_id'], operation['event_id']
@@ -312,8 +316,25 @@ def _recover_existing_event(service, operation):
     event = operation['event']
     event.event_id = (existing or {}).get('id') or operation['event_id']
     event.synced_to_google = True
-    event.sync_pending = False
-    event.google_sync_hash = operation['hash']
+    event.sync_pending = True
+    event.google_sync_hash = None
+    update = {
+        'kind': 'update',
+        'calendar_id': operation['calendar_id'],
+        'event_id': event.event_id,
+        'payload': operation['payload'],
+        'hash': operation['hash'],
+        'event': event,
+    }
+    result = gcal.apply_operations(service, [update])[0]
+    if not result.ok:
+        current_app.logger.warning(
+            'Could not update the existing Google Calendar event %s: %s',
+            event.event_id,
+            result.error,
+        )
+        return False
+    _record_success(event, update, result)
     return True
 
 
@@ -598,7 +619,10 @@ def schedule_study_sessions():
     )
     db.session.commit()
     pending = sum(
-        1 for event in existing.values() if not event.synced_to_google
+        1 for event in CalendarEvent.query.filter_by(
+            user_id=user.id, day_number=day_number,
+        ).all()
+        if not event.synced_to_google or event.sync_pending or event.delete_pending
     )
     return jsonify({
         'status': 'success',

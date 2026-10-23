@@ -2,6 +2,8 @@
 
 import hashlib
 import json
+import secrets
+import threading
 import time
 from datetime import datetime, timedelta, timezone
 
@@ -51,6 +53,28 @@ def _aware(value):
     return value.replace(tzinfo=timezone.utc) if value.tzinfo is None else value
 
 
+def _renew_job_lease(app, job_id, lease_token, stopped):
+    while not stopped.wait(60):
+        with app.app_context():
+            try:
+                now = datetime.now(timezone.utc)
+                renewed = AIBackgroundJob.query.filter_by(
+                    id=job_id, status='running', lease_token=lease_token,
+                ).update({
+                    'locked_at': now,
+                    'updated_at': now,
+                }, synchronize_session=False)
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
+                app.logger.exception(
+                    'Could not renew the lease for AI background job %s', job_id
+                )
+                continue
+            if not renewed:
+                return
+
+
 def process_one_ai_job(app):
     """Claim and process one due job. Safe for multiple worker processes."""
     now = datetime.now(timezone.utc)
@@ -63,6 +87,7 @@ def process_one_ai_job(app):
         for stale in stale_jobs:
             stale.status = 'queued'
             stale.locked_at = None
+            stale.lease_token = None
             stale.available_at = now
         if stale_jobs:
             db.session.commit()
@@ -74,12 +99,14 @@ def process_one_ai_job(app):
         if job is None:
             return False
         job_id = job.id
+        lease_token = secrets.token_urlsafe(32)
         claimed = AIBackgroundJob.query.filter_by(
             id=job_id, status='queued'
         ).update({
             'status': 'running',
             'attempts': AIBackgroundJob.attempts + 1,
             'locked_at': now,
+            'lease_token': lease_token,
             'updated_at': now,
         }, synchronize_session=False)
         if not claimed:
@@ -87,16 +114,32 @@ def process_one_ai_job(app):
             return False
         db.session.commit()
 
+        heartbeat_stopped = threading.Event()
+        heartbeat = threading.Thread(
+            target=_renew_job_lease,
+            args=(app, job_id, lease_token, heartbeat_stopped),
+            daemon=True,
+        )
+        heartbeat.start()
         try:
             payload = json.loads(job.payload)
-            user = db.session.get(User, job.user_id)
+            user = User.query.filter_by(id=job.user_id).with_for_update().first()
             if user is None:
-                job.status = 'cancelled'
-                job.locked_at = None
-                db.session.commit()
+                return True
+            job = AIBackgroundJob.query.filter_by(
+                id=job_id, status='running', lease_token=lease_token,
+            ).first()
+            if job is None:
+                db.session.rollback()
                 return True
             if job.job_type != 'prepare_lesson_day':
                 raise ValueError(f'Unsupported AI job type: {job.job_type}')
+            if not user.subjects_configured:
+                job.status = 'cancelled'
+                job.locked_at = None
+                job.lease_token = None
+                db.session.commit()
+                return True
 
             from app.routes.lessons import prepare_lesson_day
             from app.user_subjects import (
@@ -113,20 +156,30 @@ def process_one_ai_job(app):
                     int(payload['day_number']),
                     config,
                     get_effective_subjects_for_user(user),
+                    commit=False,
                 )
                 logout_user()
 
-            job = db.session.get(AIBackgroundJob, job_id)
+            job = AIBackgroundJob.query.filter_by(
+                id=job_id, status='running', lease_token=lease_token,
+            ).first()
+            if job is None:
+                db.session.rollback()
+                return True
             job.status = 'complete'
             job.locked_at = None
+            job.lease_token = None
             job.last_error = None
             db.session.commit()
         except Exception as error:
             db.session.rollback()
-            job = db.session.get(AIBackgroundJob, job_id)
+            job = AIBackgroundJob.query.filter_by(
+                id=job_id, status='running', lease_token=lease_token,
+            ).first()
             if job is None:
                 return True
             job.locked_at = None
+            job.lease_token = None
             job.last_error = str(error)[:1000]
             if job.attempts >= 4:
                 job.status = 'failed'
@@ -135,6 +188,9 @@ def process_one_ai_job(app):
                 job.available_at = now + timedelta(seconds=min(300, 15 * 2 ** (job.attempts - 1)))
             db.session.commit()
             app.logger.exception('AI background job %s failed', job_id)
+        finally:
+            heartbeat_stopped.set()
+            heartbeat.join(timeout=2)
         return True
 
 
@@ -153,4 +209,3 @@ def register_ai_job_cli(app):
                 break
             if not processed:
                 time.sleep(poll_seconds)
-

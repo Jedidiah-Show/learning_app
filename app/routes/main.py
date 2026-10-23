@@ -457,7 +457,7 @@ def generate_proficiency_questions(
             f'How can you explain your reasoning about {topic}?',
         )]
     topics = subject.get('topics') or [subject.get('name', 'the subject')]
-    topic_variants = _topic_variants(topics)
+    topic_variants = _topic_variants(topics, question_count)
     prompts = [
         ('How would you verify that a proposed use of {topic} works beyond the simplest example?',
          'Test a representative case and relevant boundary cases.',
@@ -545,7 +545,7 @@ def generate_proficiency_questions(
     return (generated, False) if return_source else generated
 
 
-def _topic_variants(topics):
+def _topic_variants(topics, limit):
     """Distinct topic labels, growing from single topics to groups of topics."""
     variants = []
     seen = set()
@@ -564,6 +564,8 @@ def _topic_variants(topics):
                 continue
             seen.add(label)
             variants.append(label)
+            if len(variants) >= limit:
+                return variants
     return variants
 
 
@@ -707,6 +709,7 @@ def update_preferences():
     except (TypeError, ValueError) as error:
         return jsonify({'error': str(error)}), 400
     previous_config = get_effective_config_for_user(current_user)
+    previous_start_date = previous_config.get('schedule', {}).get('start_date')
     requested_calendar = data.get('google_calendar', {})
     if (
         'calendar_id' in requested_calendar
@@ -726,14 +729,20 @@ def update_preferences():
         db.session.rollback()
         current_app.logger.exception('Could not save preferences for user %s', current_user.id)
         return jsonify({'error': 'Could not save preferences'}), 500
-    if 'google_calendar' in data and CalendarEvent.query.filter_by(
-        user_id=current_user.id
-    ).count():
+    effective_config = get_effective_config_for_user(current_user)
+    start_date_changed = (
+        'schedule' in data
+        and effective_config.get('schedule', {}).get('start_date') != previous_start_date
+    )
+    if (
+        ('google_calendar' in data or start_date_changed)
+        and CalendarEvent.query.filter_by(user_id=current_user.id).count()
+    ):
         try:
             from app.routes.calendar import reconcile_calendar_schedule
             reconcile_calendar_schedule(
                 current_user,
-                get_effective_config_for_user(current_user)['schedule']['daily_blocks'],
+                effective_config['schedule']['daily_blocks'],
             )
         except GoogleAuthorizationError:
             db.session.rollback()

@@ -70,6 +70,8 @@ def forgot_password():
         recent = PasswordResetToken.query.filter(
             PasswordResetToken.user_id == user.id,
             PasswordResetToken.created_at >= now - timedelta(minutes=15),
+            PasswordResetToken.used_at.is_(None),
+            PasswordResetToken.expires_at > now,
         ).first()
         if not recent:
             raw_token = secrets.token_urlsafe(32)
@@ -307,30 +309,31 @@ def delete_account():
         )
         try:
             calendar_cleanup = prepare_user_calendar_cleanup(user)
-            calendar_cleanup_ready = True
+            calendar_cleanup_complete = perform_user_calendar_cleanup(
+                calendar_cleanup, user_id
+            )
         except Exception:
             current_app.logger.exception(
                 'Could not prepare Calendar cleanup for deleted user %s', user_id
             )
-            calendar_cleanup = None
-            calendar_cleanup_ready = False
+            calendar_cleanup_complete = False
+        if not calendar_cleanup_complete:
+            db.session.rollback()
+            if request.is_json:
+                return {'error': 'Could not remove Google Calendar events; account was not deleted'}, 502
+            flash(
+                'Could not remove your Google Calendar events. Your account was not deleted; retry after reconnecting.',
+                'error',
+            )
+            return redirect(url_for('auth.profile'))
         db.session.delete(user)
         db.session.commit()
         logout_user()
-        calendar_cleanup_complete = (
-            perform_user_calendar_cleanup(calendar_cleanup, user_id)
-            and calendar_cleanup_ready
-        )
         flash('Account deleted permanently', 'info')
-        if not calendar_cleanup_complete:
-            flash(
-                'Your account was deleted, but one or more Google Calendar events may remain.',
-                'warning',
-            )
         if request.is_json:
             return {
                 'status': 'success',
-                'calendar_cleanup_complete': calendar_cleanup_complete,
+                'calendar_cleanup_complete': True,
             }
         return redirect(url_for('auth.login'))
     except Exception:
@@ -364,19 +367,30 @@ def reset_account():
         )
         try:
             calendar_cleanup = prepare_user_calendar_cleanup(user)
-            calendar_cleanup_ready = True
+            calendar_cleanup_complete = perform_user_calendar_cleanup(
+                calendar_cleanup, user_id
+            )
         except Exception:
             current_app.logger.exception(
                 'Could not prepare Calendar cleanup for reset user %s', user_id
             )
-            calendar_cleanup = None
-            calendar_cleanup_ready = False
+            calendar_cleanup_complete = False
+        if not calendar_cleanup_complete:
+            db.session.rollback()
+            if request.is_json:
+                return {'error': 'Could not remove Google Calendar events; account was not reset'}, 502
+            flash(
+                'Could not remove your Google Calendar events. Your account was not reset; retry after reconnecting.',
+                'error',
+            )
+            return redirect(url_for('auth.profile'))
+        user = User.query.filter_by(id=user_id).with_for_update().populate_existing().one()
         # Delete all user data but keep the user account
         from app.models import (Progress, LessonCompletion, QuizResult, StudySession, 
                                 UserSubjectConfig, ProficiencyTest, CalendarEvent,
                                 UserSubject, UserSchedule, UserConfig,
                                 SubjectCurriculum, LearningProject,
-                                GeminiUsageBucket)
+                                GeminiUsageBucket, AIBackgroundJob)
         Progress.query.filter_by(user_id=user.id).delete()
         LessonCompletion.query.filter_by(user_id=user.id).delete()
         QuizResult.query.filter_by(user_id=user.id).delete()
@@ -387,6 +401,7 @@ def reset_account():
         SubjectCurriculum.query.filter_by(user_id=user.id).delete()
         LearningProject.query.filter_by(user_id=user.id).delete()
         GeminiUsageBucket.query.filter_by(user_id=user.id).delete()
+        AIBackgroundJob.query.filter_by(user_id=user.id).delete()
         PasswordResetToken.query.filter_by(user_id=user.id).delete()
         UserSubject.query.filter_by(user_id=user.id).delete()
         UserSchedule.query.filter_by(user_id=user.id).delete()
@@ -396,20 +411,11 @@ def reset_account():
         user.token_expiry = None
         user.subjects_configured = False
         db.session.commit()
-        calendar_cleanup_complete = (
-            perform_user_calendar_cleanup(calendar_cleanup, user_id)
-            and calendar_cleanup_ready
-        )
         flash('Account reset successfully', 'success')
-        if not calendar_cleanup_complete:
-            flash(
-                'Your learning data was reset, but one or more Google Calendar events may remain.',
-                'warning',
-            )
         if request.is_json:
             return {
                 'status': 'success',
-                'calendar_cleanup_complete': calendar_cleanup_complete,
+                'calendar_cleanup_complete': True,
             }
         return redirect(url_for('main.index'))
     except Exception:
