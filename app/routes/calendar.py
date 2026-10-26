@@ -81,6 +81,11 @@ def _oauth_failure_message(error, redirect_uri):
             'Google rejected the requested Calendar scope. Enable the Google '
             'Calendar API and check the OAuth consent screen.'
         )
+    if 'scope has changed' in message:
+        return (
+            'Google returned additional permissions that were previously '
+            'granted to this app. Please try connecting Google Calendar again.'
+        )
     return (
         'Google Calendar authorization failed. Check the OAuth client, '
         'redirect URI, and enabled APIs, then try again.'
@@ -972,9 +977,10 @@ def google_auth():
     flow.redirect_uri = redirect_uri
     # A refresh token is only issued when the learner is asked to consent
     # again, so the prompt is only forced when one is actually missing.
+    # Calendar only needs calendar.events. Do not request previously granted
+    # scopes here; the app-owned Gmail scope is not part of the learner token.
     request_options = {
         'access_type': 'offline',
-        'include_granted_scopes': 'true',
     }
     if not current_user.google_refresh_token:
         request_options['prompt'] = 'consent'
@@ -1022,7 +1028,19 @@ def google_callback():
         code = request.args.get('code')
         if not code:
             raise ValueError('Google OAuth callback did not include an authorization code')
-        flow.fetch_token(code=code)
+        # Google can return scopes that were previously granted to this OAuth
+        # client even when only calendar.events was requested. oauthlib treats
+        # that superset as an error unless scope validation is relaxed. The
+        # token is still valid, and this app only uses calendar.events here.
+        previous_relax = os.environ.get('OAUTHLIB_RELAX_TOKEN_SCOPE')
+        os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
+        try:
+            flow.fetch_token(code=code)
+        finally:
+            if previous_relax is None:
+                os.environ.pop('OAUTHLIB_RELAX_TOKEN_SCOPE', None)
+            else:
+                os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = previous_relax
     except Exception as error:
         current_app.logger.exception('Google Calendar OAuth token exchange failed')
         flash(_oauth_failure_message(error, redirect_uri), 'error')
