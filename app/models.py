@@ -39,6 +39,7 @@ class User(UserMixin, db.Model):
     user_config = db.relationship('UserConfig', backref='user', lazy=True, cascade='all, delete-orphan', uselist=False)
     curricula = db.relationship('SubjectCurriculum', backref='user', lazy=True, cascade='all, delete-orphan')
     learning_projects = db.relationship('LearningProject', backref='user', lazy=True, cascade='all, delete-orphan')
+    course_projects = db.relationship('CourseProject', backref='user', lazy=True, cascade='all, delete-orphan')
     password_reset_tokens = db.relationship(
         'PasswordResetToken', backref='user', lazy=True, cascade='all, delete-orphan'
     )
@@ -327,6 +328,31 @@ class LearningProject(db.Model):
 
     def get_project(self):
         return json.loads(self.project)
+
+    def get_evaluation(self):
+        return json.loads(self.evaluation) if self.evaluation else None
+
+
+class CourseProject(db.Model):
+    """Projects for the fixed RuachAI course, isolated from legacy weekly projects."""
+    __tablename__ = 'course_project'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    module_id = db.Column(db.String(10), nullable=False)
+    project = db.Column(db.Text, nullable=False)
+    is_ai_generated = db.Column(db.Boolean, default=False, server_default=db.false(), nullable=False)
+    submission = db.Column(db.Text)
+    evaluation = db.Column(db.Text)
+    completed = db.Column(db.Boolean, default=False, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'module_id', name='unique_user_course_module_project'),
+        db.Index('idx_courseproject_user_module', 'user_id', 'module_id'),
+    )
+
+    def get_project(self):
+        return json.loads(self.project) if self.project else {}
 
     def get_evaluation(self):
         return json.loads(self.evaluation) if self.evaluation else None

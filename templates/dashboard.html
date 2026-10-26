@@ -1,86 +1,22 @@
 {% extends "base.html" %}
-
-{% block title %}Dashboard - Ruach Learning{% endblock %}
-
+{% block title %}Course Dashboard · RuachAI{% endblock %}
 {% block content %}
-<div class="space-y-7">
-    <section class="dashboard-hero relative overflow-hidden rounded-3xl p-7 sm:p-10 text-white shadow-xl">
-        <div class="hero-orb orb-one"></div><div class="hero-orb orb-two"></div>
-        <div class="relative z-10 max-w-2xl">
-            <p class="text-xs font-bold tracking-[.2em] uppercase text-indigo-200">Your learning space</p>
-            <h2 class="mt-3 text-3xl sm:text-4xl font-extrabold tracking-tight">Keep your momentum, {{ current_user.full_name or current_user.username }}.</h2>
-            <p class="mt-3 max-w-xl text-sm sm:text-base text-indigo-100">Build toward Advanced proficiency in every subject through a personalized 90-day curriculum, weekly projects, and focused practice.</p>
-            <a href="{{ url_for('main.lessons') }}" class="inline-flex items-center gap-2 mt-6 px-5 py-3 rounded-xl bg-white text-indigo-800 font-bold text-sm shadow-lg hover:bg-indigo-50 transition">Continue learning <span aria-hidden="true">→</span></a>
-        </div>
-        <div class="hero-progress relative z-10 mt-8 sm:absolute sm:right-10 sm:bottom-10 sm:mt-0">
-            <span class="text-xs uppercase tracking-wider text-indigo-200">Course progress</span>
-            <div class="flex items-baseline gap-2"><strong id="overall-progress" class="text-4xl font-extrabold">0%</strong><span id="days-completed" class="text-sm text-indigo-100">0 days done</span></div>
-        </div>
-    </section>
-
-    <section class="grid grid-cols-1 sm:grid-cols-4 gap-4" aria-label="Learning overview">
-        <article class="stat-card"><span class="stat-icon violet">✦</span><div><p class="stat-label">Next up</p><p id="next-day-label" class="stat-value">Day 1</p></div></article>
-        <article class="stat-card"><span class="stat-icon mint">◎</span><div><p class="stat-label">Subjects</p><p class="stat-value">{{ config.subjects|length }} tracks</p></div></article>
-        <article class="stat-card"><span class="stat-icon amber">◷</span><div><p class="stat-label">Assessment</p><p class="stat-value">{{ config.app.assessment_date }}</p></div></article>
-        {% if config.progress.track_streaks %}<article class="stat-card"><span class="stat-icon violet">✦</span><div><p class="stat-label">Study streak</p><p class="stat-value"><span id="study-streak-days">0</span> days</p></div></article>{% endif %}
-    </section>
-
-    <section class="panel-card p-5 sm:p-7">
-        <div class="section-heading"><div><p class="eyebrow">Your curriculum</p><h3 class="section-title">Progress by subject</h3></div><a href="{{ url_for('main.progress') }}" class="text-sm font-semibold text-indigo-700 hover:text-indigo-900">View details →</a></div>
-        <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3" id="subjects-progress">
-            {% for subject in config.subjects %}
-            <article class="subject-progress-card" data-subject="{{ subject.id }}">
-            <div class="flex items-center justify-between gap-3"><div class="flex items-center gap-3"><span class="subject-icon" style="--subject-color: {{ subject.color }}">{{ subject.icon }}</span><div><h4 class="subject-name">{{ subject.name }}</h4><p class="subject-count">0 completed</p><p class="subject-proficiency text-xs text-slate-500">Starting: {{ subject.stated_proficiency|default('Novice') }} · Current: {{ subject.proficiency|default('Novice') }} · Target: Advanced+</p></div></div><span class="subject-percent">0%</span></div>
-                <div class="progress-track mt-4"><div class="progress-fill" style="--subject-color: {{ subject.color }};width:0%" role="progressbar" aria-label="{{ subject.name }} progress" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"></div></div>
-            </article>
-            {% endfor %}
-        </div>
-        <p id="dashboard-error" class="hidden mt-4 text-sm text-rose-700" role="status"></p>
-    </section>
-
-    <section class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <a href="{{ url_for('main.lessons') }}" class="action-card action-violet"><span class="action-symbol">↗</span><div><h3>Open today’s lessons</h3><p>Pick up your next subject and keep the day moving.</p></div></a>
-        <a href="{{ url_for('main.quizzes') }}" class="action-card action-mint"><span class="action-symbol">✓</span><div><h3>Check your understanding</h3><p>Practice with daily and weekly knowledge checks.</p></div></a>
-    </section>
-</div>
-{% endblock %}
-
-{% block extra_scripts %}
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        updateCountdown('{{ config.app.assessment_date }}');
-        loadDashboardProgress();
-        prepareUpcomingLessons({{ next_unlocked_day }});
-    });
-
-    function prepareUpcomingLessons(dayNumber) {
-        if (!Number.isInteger(dayNumber) || dayNumber < 1 || dayNumber > {{ curriculum_days|default(90) }}) return;
-        fetch(`/api/lessons/prepare/${dayNumber}`, {method: 'POST'}).catch(() => {
-            // Preparation is best-effort; lessons can still be generated on first open.
-        });
-    }
-    
-    function loadDashboardProgress() {
-        fetch('/api/progress/dashboard')
-            .then(async r => { const data = await r.json(); if (!r.ok) throw new Error(data.error || 'Progress is temporarily unavailable.'); return data; })
-            .then(data => {
-                document.getElementById('overall-progress').textContent = data.overall_progress + '%';
-                document.getElementById('days-completed').textContent = `${data.days_completed} of ${data.curriculum_days} days complete`;
-                document.getElementById('next-day-label').textContent = data.next_unlocked_day > data.curriculum_days ? 'Course complete' : `Day ${data.next_unlocked_day}`;
-                const streak = document.getElementById('study-streak-days');
-                if (streak) streak.textContent = data.study_streak_days ?? 0;
-                data.subjects.forEach(subject => {
-                    const card = document.querySelector(`[data-subject="${subject.id}"]`);
-                    if (!card) return;
-                    const bar = card.querySelector('.progress-fill');
-                    bar.style.width = `${subject.percentage}%`;
-                    bar.setAttribute('aria-valuenow', subject.percentage);
-                    card.querySelector('.subject-percent').textContent = `${subject.percentage}%`;
-                    card.querySelector('.subject-count').textContent = `${subject.completed} of ${subject.total_days} days complete`;
-                    card.querySelector('.subject-proficiency').textContent = `Starting: ${subject.starting_proficiency} · Current: ${subject.current_proficiency} · Target: ${subject.target_proficiency}+`;
-                });
-            })
-            .catch(error => { const message = document.getElementById('dashboard-error'); message.textContent = error.message; message.classList.remove('hidden'); });
-    }
-</script>
+<section class="rounded-3xl bg-gradient-to-br from-indigo-700 to-violet-800 p-8 text-white shadow-lg">
+  <p class="text-sm font-semibold uppercase tracking-widest text-indigo-200">RuachAI Engineering Course</p>
+  <h2 class="mt-3 text-3xl font-bold">{{ course.course.title }}</h2>
+  <p class="mt-2 max-w-2xl text-indigo-100">{{ course.course.subtitle }}. Follow the complete course from foundations to a production AI platform.</p>
+  <div class="mt-6 flex flex-wrap items-center gap-5">
+    <a class="rounded-xl bg-white px-5 py-3 font-semibold text-indigo-800" href="{{ url_for('main.lessons') }}">Explore lessons</a>
+    <span>{{ progress.completed_lessons }} of {{ progress.total_lessons }} lessons complete</span>
+  </div>
+  <div class="mt-4 h-2 overflow-hidden rounded-full bg-indigo-950/30"><div class="h-full rounded-full bg-emerald-300" style="width:{{ (progress.completed_lessons / progress.total_lessons * 100)|round(1) }}%"></div></div>
+</section>
+{% if next_lesson %}<section class="mt-8 rounded-2xl border border-slate-200 bg-white p-6">
+  <p class="text-xs font-bold uppercase tracking-wider text-indigo-600">Continue your course · Lesson {{ next_lesson._ordinal }}</p>
+  <h3 class="mt-2 text-xl font-bold text-slate-900">{{ next_lesson.title }}</h3>
+  <p class="mt-2 text-slate-600">Module {{ next_lesson._module.number }} · {{ next_lesson._module.title }}</p>
+  <a class="mt-4 inline-flex rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white" href="{{ url_for('main.lesson_detail', lesson_id=next_lesson.id) }}">Continue lesson →</a>
+</section>{% elif next_project %}<section class="mt-8 rounded-2xl border border-amber-200 bg-amber-50 p-6 text-amber-950"><p class="text-xs font-bold uppercase tracking-wider">Project unlock</p><h3 class="mt-2 text-xl font-bold">Complete Module {{ next_project.module_number }} project</h3><p class="mt-2">{{ next_project.module_title }} lessons are complete. Submit the project to unlock the next module.</p><a class="mt-4 inline-flex rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white" href="{{ url_for('projects.project_page') }}#module-{{ next_project.module_id }}">Open module project →</a></section>{% elif progress.course_complete %}<section class="mt-8 rounded-2xl bg-emerald-50 p-6 text-emerald-900"><h3 class="text-xl font-bold">Course complete</h3><p>You completed all 201 lessons and 13 module projects.</p></section>{% endif %}
+<section class="mt-8"><div class="mb-4 flex items-end justify-between"><div><p class="text-xs font-bold uppercase tracking-wider text-indigo-600">Your curriculum</p><h3 class="text-2xl font-bold text-slate-900">13 modules · 201 lessons</h3></div><a href="{{ url_for('main.progress') }}" class="font-semibold text-indigo-700">Progress →</a></div>
+<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{% for module in progress.modules %}<article class="rounded-2xl border border-slate-200 bg-white p-5"><p class="text-xs font-semibold uppercase text-slate-500">Module {{ module.number }}</p><h4 class="mt-2 font-bold text-slate-900">{{ module.title }}</h4><p class="mt-2 text-sm text-slate-600">{{ module.completed_lessons }} / {{ module.total_lessons }} lessons</p><div class="mt-3 h-1.5 rounded-full bg-slate-100"><div class="h-full rounded-full bg-indigo-500" style="width:{{ (module.completed_lessons / module.total_lessons * 100)|round }}%"></div></div></article>{% endfor %}</div></section>
 {% endblock %}

@@ -207,7 +207,7 @@ def register():
         if safe_local_redirect(next_page):
             from flask import session
             session['_post_setup_next'] = next_page
-        return redirect(url_for('main.subject_configuration'))
+        return redirect(url_for('main.index'))
     
     return render_template('auth/register.html')
 
@@ -389,7 +389,7 @@ def reset_account():
         from app.models import (Progress, LessonCompletion, QuizResult, StudySession, 
                                 UserSubjectConfig, ProficiencyTest, CalendarEvent,
                                 UserSubject, UserSchedule, UserConfig,
-                                SubjectCurriculum, LearningProject,
+                                SubjectCurriculum, LearningProject, CourseProject,
                                 GeminiUsageBucket, AIBackgroundJob, ReviewItem)
         Progress.query.filter_by(user_id=user.id).delete()
         LessonCompletion.query.filter_by(user_id=user.id).delete()
@@ -400,6 +400,7 @@ def reset_account():
         CalendarEvent.query.filter_by(user_id=user.id).delete()
         SubjectCurriculum.query.filter_by(user_id=user.id).delete()
         LearningProject.query.filter_by(user_id=user.id).delete()
+        CourseProject.query.filter_by(user_id=user.id).delete()
         GeminiUsageBucket.query.filter_by(user_id=user.id).delete()
         AIBackgroundJob.query.filter_by(user_id=user.id).delete()
         ReviewItem.query.filter_by(user_id=user.id).delete()

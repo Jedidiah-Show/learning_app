@@ -22,45 +22,11 @@ def validate_app_config(config):
     if not isinstance(app_config, dict):
         raise ValueError('Configuration must contain an app object')
     days = app_config.get('curriculum_days')
-    if not isinstance(days, int) or isinstance(days, bool) or days != 90:
-        raise ValueError('app.curriculum_days is fixed at 90')
-    assessment_date = app_config.get('assessment_date')
-    try:
-        date.fromisoformat(str(assessment_date))
-    except (TypeError, ValueError) as error:
-        raise ValueError('app.assessment_date must be a valid ISO date') from error
-    subjects = config.get('subjects')
-    if not isinstance(subjects, list) or not subjects:
-        raise ValueError('Configuration must contain at least one subject')
-    subject_ids = set()
-    for subject in subjects:
-        if not isinstance(subject, dict):
-            raise ValueError('Every subject must be an object')
-        subject_id = subject.get('id')
-        if not isinstance(subject_id, str) or not re.fullmatch(r'[a-z0-9][a-z0-9_-]{0,49}', subject_id):
-            raise ValueError('Subject IDs must use lowercase letters, numbers, underscores, or hyphens')
-        if subject_id in subject_ids:
-            raise ValueError(f'Duplicate subject ID: {subject_id}')
-        subject_ids.add(subject_id)
-        if not isinstance(subject.get('name'), str) or not subject['name'].strip():
-            raise ValueError(f'Subject {subject_id} must have a name')
-        color = subject.get('color', '#6366f1')
-        if not isinstance(color, str) or not re.fullmatch(r'#[0-9a-fA-F]{6}', color):
-            raise ValueError(f'Subject {subject_id} color must be a six-digit hex value')
-        if not isinstance(subject.get('icon', ''), str) or len(subject.get('icon', '')) > 10:
-            raise ValueError(f'Subject {subject_id} icon must be a short string')
-        topics = subject.get('topics', [])
-        if not isinstance(topics, list) or any(not isinstance(topic, str) for topic in topics):
-            raise ValueError(f'Subject {subject_id} topics must be a list')
+    if not isinstance(days, int) or isinstance(days, bool) or days != 201:
+        raise ValueError('app.curriculum_days must match the 201-lesson RuachAI engineering course')
     schedule = config.get('schedule')
-    if (
-        not isinstance(schedule, dict)
-        or not isinstance(schedule.get('daily_blocks'), list)
-        or not isinstance(schedule.get('unlock_rules'), dict)
-        or not isinstance(schedule['unlock_rules'].get('require_all_subjects_complete'), bool)
-        or not isinstance(schedule['unlock_rules'].get('allow_continue_after_day_complete'), bool)
-    ):
-        raise ValueError('schedule must contain daily_blocks and valid unlock_rules')
+    if not isinstance(schedule, dict) or not isinstance(schedule.get('daily_blocks'), list):
+        raise ValueError('schedule must contain daily_blocks')
     if schedule.get('start_date') is not None:
         try:
             date.fromisoformat(schedule['start_date'])
@@ -79,16 +45,12 @@ def validate_app_config(config):
     quizzes = config.get('quizzes')
     if not isinstance(quizzes, dict):
         raise ValueError('Configuration must contain quiz settings')
-    for quiz_name in ('end_of_day_quiz', 'end_of_week_quiz'):
-        quiz = quizzes.get(quiz_name)
-        if not isinstance(quiz, dict) or not isinstance(quiz.get('enabled'), bool):
-            raise ValueError(f'quizzes.{quiz_name} must be an object')
-        count = quiz.get('questions_per_subject')
-        threshold = quiz.get('passing_threshold')
-        if not isinstance(count, int) or isinstance(count, bool) or count < 1 or count > 100:
-            raise ValueError(f'quizzes.{quiz_name}.questions_per_subject must be between 1 and 100')
-        if not isinstance(threshold, int) or isinstance(threshold, bool) or not 0 <= threshold <= 100:
-            raise ValueError(f'quizzes.{quiz_name}.passing_threshold must be between 0 and 100')
+    count = quizzes.get('questions_per_quiz')
+    threshold = quizzes.get('passing_threshold')
+    if not isinstance(count, int) or isinstance(count, bool) or not 1 <= count <= 30:
+        raise ValueError('quizzes.questions_per_quiz must be between 1 and 30')
+    if not isinstance(threshold, int) or isinstance(threshold, bool) or not 0 <= threshold <= 100:
+        raise ValueError('quizzes.passing_threshold must be between 0 and 100')
     calendar_config = config.get('google_calendar')
     if (
         not isinstance(calendar_config, dict)
@@ -104,15 +66,6 @@ def validate_app_config(config):
         for value in reminders
     ):
         raise ValueError('google_calendar.reminder_minutes must contain valid minute values')
-    generation = config.get('lesson_generation')
-    if not isinstance(generation, dict):
-        raise ValueError('lesson_generation must be an object')
-    minutes = generation.get('estimated_minutes')
-    if not isinstance(minutes, int) or isinstance(minutes, bool) or not 5 <= minutes <= 480:
-        raise ValueError('lesson_generation.estimated_minutes must be between 5 and 480')
-    for key in ('include_code_examples', 'include_pitfalls', 'include_self_checks', 'difficulty_progression'):
-        if key in generation and not isinstance(generation[key], bool):
-            raise ValueError(f'lesson_generation.{key} must be a boolean')
     progress = config.get('progress')
     if not isinstance(progress, dict) or any(
         not isinstance(progress.get(key), bool)
@@ -129,37 +82,6 @@ def validate_app_config(config):
             r'[A-Za-z0-9._-]+', ai[key]
         ):
             raise ValueError(f'ai.{key} must be a valid Gemini model name')
-    learning = config.get('learning')
-    if (
-        not isinstance(learning, dict)
-        or learning.get('target_proficiency') not in {
-            'Novice', 'Beginner', 'Intermediate', 'Advanced', 'Expert'
-        }
-    ):
-        raise ValueError('learning.target_proficiency must be a proficiency level')
-    assessment = config.get('proficiency_assessment')
-    question_count = assessment.get('questions_per_subject') if isinstance(assessment, dict) else None
-    if (
-        not isinstance(question_count, int) or isinstance(question_count, bool)
-        or not 5 <= question_count <= 100 or question_count % 5
-    ):
-        raise ValueError(
-            'proficiency_assessment.questions_per_subject must be a multiple of 5 between 5 and 100'
-        )
-    thresholds = assessment.get('proficiency_thresholds', {})
-    if (
-        not isinstance(thresholds, dict)
-        or set(thresholds) != {'Beginner', 'Intermediate', 'Advanced', 'Expert'}
-        or any(
-            not isinstance(value, int) or isinstance(value, bool) or not 0 <= value <= 100
-            for value in thresholds.values()
-        )
-        or not (
-            thresholds['Beginner'] < thresholds['Intermediate']
-            < thresholds['Advanced'] < thresholds['Expert']
-        )
-    ):
-        raise ValueError('proficiency_assessment thresholds must increase from 0 to 100')
     return config
 
 
@@ -312,11 +234,8 @@ def create_app(config_override=None):
     app.register_blueprint(calendar_bp, url_prefix='/api/calendar')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(projects_bp)
-    from app.jobs import register_ai_job_cli
-    register_ai_job_cli(app)
-
     @app.before_request
-    def require_subject_setup():
+    def enforce_csrf_protection():
         if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'} and not app.testing:
             token = session.get('_csrf_token')
             supplied = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
@@ -324,49 +243,9 @@ def create_app(config_override=None):
                 if request.path.startswith('/api/'):
                     return jsonify({'error': 'CSRF validation failed'}), 400
                 return 'CSRF validation failed', 400
-        from flask_login import current_user
-        if not current_user.is_authenticated:
-            return None
-        endpoint = request.endpoint or ''
-        setup_endpoints = {
-            'main.subject_configuration',
-            'main.proficiency_test_selection',
-            'main.take_proficiency_test',
-        }
-        if endpoint.startswith('auth.') or endpoint in setup_endpoints or endpoint == 'static':
-            return None
-
-        from app.models import UserSubjectConfig
-        from app.user_subjects import get_effective_subjects_for_user
-        subjects = get_effective_subjects_for_user(current_user)
-        configs = {
-            item.subject_id: item
-            for item in UserSubjectConfig.query.filter_by(user_id=current_user.id).all()
-        }
-        setup_complete = current_user.subjects_configured and all(
-            subject['id'] in configs for subject in subjects
-        )
-        if setup_complete:
-            setup_complete = all(
-                config.proficiency == 'Novice' or config.tested
-                for config in (configs[subject['id']] for subject in subjects)
-            )
-        if setup_complete:
-            return None
-        if request.path.startswith('/api/'):
-            return jsonify({
-                'error': 'Complete subject configuration and proficiency assessments first',
-                'next': url_for(
-                    'main.proficiency_test_selection'
-                    if current_user.subjects_configured
-                    else 'main.subject_configuration'
-                ),
-            }), 403
-        return redirect(url_for(
-            'main.proficiency_test_selection'
-            if current_user.subjects_configured
-            else 'main.subject_configuration'
-        ))
+        # Learners enter the fixed course immediately; the old subject and
+        # proficiency setup tables remain available for legacy records only.
+        return None
 
     from app.gemini import GeminiRateLimitExceeded
 

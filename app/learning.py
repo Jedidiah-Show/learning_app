@@ -1,96 +1,112 @@
-"""Shared curriculum access rules."""
+"""Sequential lesson and module-project unlock rules."""
 
-from app.models import LearningProject, Progress, QuizResult
-from datetime import datetime, date
-
-
-def curriculum_days(config):
-    if not isinstance(config, dict) or config.get('app', {}).get('curriculum_days') != 90:
-        raise ValueError('The curriculum duration is fixed at 90 days')
-    return 90
+from app.curriculum import all_lessons, all_modules
+from app.models import CourseProject, LessonCompletion
 
 
-def next_unlocked_day(user, config):
-    """Return the first day not fully completed by this user."""
-    subjects = config['subjects']
-    total_days = curriculum_days(config)
-    if total_days == 0:
-        return 1
-    # Batch fetch all progress for this user
-    all_progress = Progress.query.filter(
-        Progress.user_id == user.id,
-        Progress.day_number <= total_days
-    ).all()
-    progress_map = {(p.subject_id, p.day_number): p for p in all_progress}
-    completed_weeks = {
-        week_number for (week_number,) in LearningProject.query.with_entities(
-            LearningProject.week_number
+def completed_lesson_ids(user):
+    return {
+        lesson_id for (lesson_id,) in LessonCompletion.query.with_entities(
+            LessonCompletion.lesson_id
         ).filter_by(user_id=user.id, completed=True).all()
     }
-    passed_daily_days = {
-        day_number for (day_number,) in QuizResult.query.with_entities(
-            QuizResult.day_number
-        ).filter(
-            QuizResult.user_id == user.id,
-            QuizResult.quiz_type == 'daily',
-            QuizResult.passed.is_(True),
-        ).all()
+
+
+def completed_project_modules(user):
+    return {
+        module_id for (module_id,) in CourseProject.query.with_entities(
+            CourseProject.module_id
+        ).filter_by(user_id=user.id, completed=True).all()
     }
-    passed_weeks = {
-        week_number for (week_number,) in QuizResult.query.with_entities(
-            QuizResult.week_number
-        ).filter(
-            QuizResult.user_id == user.id,
-            QuizResult.quiz_type == 'weekly',
-            QuizResult.passed.is_(True),
-        ).all()
+
+
+def next_unlocked_lesson(user):
+    action = next_course_action(user)
+    return action['lesson_id'] if action and action['type'] == 'lesson' else None
+
+
+def next_course_action(user):
+    completed = completed_lesson_ids(user)
+    project_modules = completed_project_modules(user)
+    for module in all_modules():
+        if any(lesson['id'] not in completed for lesson in module['lessons']):
+            lesson = next(item for item in module['lessons'] if item['id'] not in completed)
+            return {'type': 'lesson', 'lesson_id': lesson['id']}
+        if module['id'] not in project_modules:
+            return {'type': 'project', 'module_id': module['id'],
+                    'module_title': module['title'],
+                    'module_number': module['number']}
+    return None
+
+
+def lesson_is_available(user, lesson_id):
+    from app.curriculum import get_lesson
+    lesson = get_lesson(lesson_id)
+    if not lesson:
+        return False
+    if lesson_id in completed_lesson_ids(user):
+        return True
+    unlocked = next_unlocked_lesson(user)
+    return lesson_id == unlocked
+
+
+def module_project_is_available(user, module_id):
+    from app.curriculum import get_module
+    module = get_module(module_id)
+    if not module:
+        return False
+    completed = completed_lesson_ids(user)
+    return all(lesson['id'] in completed for lesson in module['lessons'])
+
+
+def course_progress(user):
+    completed = completed_lesson_ids(user)
+    completed_projects = completed_project_modules(user)
+    lessons = all_lessons()
+    modules = all_modules()
+    action = next_course_action(user)
+    return {
+        'total_lessons': len(lessons),
+        'completed_lessons': sum(lesson['id'] in completed for lesson in lessons),
+        'next_lesson_id': next_unlocked_lesson(user),
+        'next_action': action,
+        'total_projects': len(modules),
+        'completed_projects': sum(module['id'] in completed_projects for module in modules),
+        'course_complete': (
+            all(lesson['id'] in completed for lesson in lessons)
+            and all(module['id'] in completed_projects for module in modules)
+        ),
+        'modules': [
+            {
+                'id': module['id'], 'number': module['number'],
+                'title': module['title'], 'total_lessons': len(module['lessons']),
+                'completed_lessons': sum(
+                    lesson['id'] in completed for lesson in module['lessons']
+                ),
+            }
+            for module in all_modules()
+        ],
     }
-    unlock_rules = config['schedule']['unlock_rules']
-    for day in range(1, total_days + 1):
-        if day > 1 and (day - 1) % 7 == 0:
-            week_number = (day - 1) // 7
-            if (
-                not unlock_rules.get('allow_continue_after_day_complete', True)
-                and week_number not in completed_weeks
-            ):
-                return day - 1
-            if (
-                config['quizzes']['end_of_week_quiz']['enabled']
-                and week_number not in passed_weeks
-            ):
-                return day - 1
-        day_completed = [
-            bool(
-                progress_map.get((subject['id'], day))
-                and progress_map[(subject['id'], day)].completed
-            )
-            for subject in subjects
-        ]
-        completed = (
-            all(day_completed)
-            if unlock_rules.get('require_all_subjects_complete', True)
-            else any(day_completed)
-        )
-        if not completed:
-            return day
-        if (
-            day < total_days
-            and config['quizzes']['end_of_day_quiz']['enabled']
-            and day not in passed_daily_days
-        ):
-            return day
-    if not unlock_rules.get('allow_continue_after_day_complete', True):
-        final_week = (total_days + 6) // 7
-        if final_week not in completed_weeks:
-            return total_days
-    final_week = (total_days + 6) // 7
-    if (
-        config['quizzes']['end_of_week_quiz']['enabled']
-        and final_week not in passed_weeks
-    ):
-        return total_days
-    return total_days + 1
+
+
+def curriculum_days(config=None):
+    """Compatibility name for the number of fixed course lessons."""
+    return len(all_lessons())
+
+
+def next_unlocked_day(user, config=None):
+    """Compatibility ordinal for calendar records created before the refactor."""
+    lesson_id = next_unlocked_lesson(user)
+    if lesson_id is None:
+        return len(all_lessons()) + 1
+    from app.curriculum import lesson_ordinal
+    return lesson_ordinal(lesson_id)
 
 
 def day_is_available(user, config, day_number):
-    return 1 <= day_number <= curriculum_days(config) and day_number <= next_unlocked_day(user, config)
+    if not isinstance(day_number, int) or isinstance(day_number, bool):
+        return False
+    lessons = all_lessons()
+    if day_number < 1 or day_number > len(lessons):
+        return False
+    return lesson_is_available(user, lessons[day_number - 1]['id'])

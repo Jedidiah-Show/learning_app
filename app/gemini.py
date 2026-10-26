@@ -15,16 +15,6 @@ from sqlalchemy.dialects.postgresql import insert as postgresql_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 
 
-# Bump a content type's version whenever its prompt or output contract
-# changes. The version is part of every cache signature, so a bump
-# invalidates previously generated content instead of serving stale output.
-CONTENT_PROMPT_VERSION = '2026-10-22.1'
-CURRICULUM_PROMPT_VERSION = CONTENT_PROMPT_VERSION
-LESSON_PROMPT_VERSION = CONTENT_PROMPT_VERSION
-QUIZ_PROMPT_VERSION = CONTENT_PROMPT_VERSION
-PROJECT_PROMPT_VERSION = CONTENT_PROMPT_VERSION
-ASSESSMENT_PROMPT_VERSION = CONTENT_PROMPT_VERSION
-
 # Provider responses that describe a temporary condition rather than a
 # rejected request. The same request can succeed when it is sent again.
 RETRYABLE_STATUS_CODES = frozenset({408, 429, 500, 502, 503, 504})
@@ -49,64 +39,6 @@ def _gemini_http_session():
 
 def _post_gemini_request(url, **kwargs):
     return _gemini_http_session().post(url, **kwargs)
-
-
-def generation_context(
-    config, tier='flash', *, prompt_version=CONTENT_PROMPT_VERSION, preferences=None
-):
-    """Describe how a piece of content was produced, for use in cache signatures.
-
-    ``preferences`` must contain only the settings that actually change the
-    generated content. Folding unrelated settings (for example the proficiency
-    thresholds, which only affect the diagnostic) into every signature would
-    invalidate every cached curriculum, lesson, quiz and project whenever an
-    unrelated preference changed.
-    """
-    model_key = 'GEMINI_PRO_MODEL' if tier == 'pro' else 'GEMINI_FLASH_MODEL'
-    return {
-        'prompt_version': prompt_version,
-        'provider': (
-            'gemini' if current_app.config.get('GEMINI_API_KEY')
-            else 'offline-test' if current_app.testing
-            else 'unconfigured'
-        ),
-        'tier': tier,
-        'model': current_app.config.get(model_key),
-        'preferences': preferences if preferences is not None else {},
-    }
-
-
-def curriculum_preferences(config):
-    """Settings that change the generated 90-day curriculum."""
-    return {'learning': config.get('learning', {}) or {}}
-
-
-def lesson_preferences(config):
-    """Settings that change a generated lesson."""
-    return {
-        'lesson_generation': config.get('lesson_generation', {}) or {},
-        'learning': config.get('learning', {}) or {},
-    }
-
-
-def quiz_preferences(config):
-    """Quiz content follows the lesson material and the quiz settings only."""
-    return {}
-
-
-def project_preferences(config):
-    """Weekly projects follow the curriculum and the subject list only."""
-    return {}
-
-
-def assessment_preferences(config):
-    """Diagnostic questions depend on the question count, not the thresholds."""
-    assessment = config.get('proficiency_assessment', {}) or {}
-    return {
-        'proficiency_assessment': {
-            'questions_per_subject': assessment.get('questions_per_subject'),
-        },
-    }
 
 
 class GeminiError(RuntimeError):

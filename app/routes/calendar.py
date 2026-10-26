@@ -19,11 +19,11 @@ from flask_login import current_user, login_required
 from app import db
 from app import google_calendar as gcal
 from app.learning import day_is_available, next_unlocked_day
+from app.curriculum import all_lessons, all_modules, lesson_ordinal
 from app.models import CalendarEvent
 from app.request_data import get_json_object
-from app.user_subjects import (
+from app.user_preferences import (
     get_effective_config_for_user,
-    get_effective_subjects_for_user,
     get_effective_schedule_for_user,
 )
 
@@ -55,6 +55,9 @@ def _user_connected(user):
 
 
 def _parse_day_number(data, config):
+    lesson_id = data.get('lesson_id')
+    if isinstance(lesson_id, str):
+        return lesson_ordinal(lesson_id)
     value = data.get('day_number', 1)
     if isinstance(value, bool):
         return None
@@ -64,7 +67,7 @@ def _parse_day_number(data, config):
         return None
     if isinstance(value, float) and not value.is_integer():
         return None
-    if day_number < 1 or day_number > config['app']['curriculum_days']:
+    if day_number < 1 or day_number > len(all_lessons()):
         return None
     return day_number
 
@@ -153,13 +156,13 @@ def _desired_state(event, block, calendar_config, subjects, start_date):
     else:
         local_date = gcal.stored_utc(event.start_time).astimezone(zone).date()
     start_time, end_time = _block_times(local_date, block, zone)
-    title = (
-        f"{calendar_config['event_prefix']} "
-        f"{block['name'].title()} Session - Day {event.day_number}"
-    )
+    lessons = all_lessons()
+    lesson = lessons[event.day_number - 1] if event.day_number and event.day_number <= len(lessons) else None
+    title = (f"{calendar_config['event_prefix']} {block['name'].title()} Session - "
+             f"Lesson {event.day_number}")
     description = (
-        'Daily deep-dive study session. Subjects: '
-        + ', '.join(subject['name'] for subject in subjects)
+        f"Module {lesson['_module']['number']}: {lesson['_module']['title']} · {lesson['title']}"
+        if lesson else 'RuachAI Engineering Course study session'
     )
     desired = _DesiredEvent(
         title,
@@ -254,7 +257,8 @@ def _plan_events(
             event.start_time = desired.start_time
             event.end_time = desired.end_time
             plan.changed = True
-        subject_ids = json.dumps([subject['id'] for subject in subjects])
+        lesson = all_lessons()[event.day_number - 1] if event.day_number and event.day_number <= len(all_lessons()) else None
+        subject_ids = json.dumps([lesson['module_id']] if lesson else [])
         if event.subject_ids != subject_ids:
             event.subject_ids = subject_ids
             plan.changed = True
@@ -395,7 +399,7 @@ def _apply_plan(service, plan):
 def _sync_events(user, events, config):
     """Push the given calendar rows to Google and return the plan."""
     calendar_config = gcal.calendar_settings(config)
-    subjects = get_effective_subjects_for_user(user)
+    subjects = all_modules()
     blocks = get_effective_schedule_for_user(user)
     plan = _plan_events(
         user,
@@ -518,7 +522,7 @@ def reconcile_calendar_schedule(user, blocks, force_update=False):
     """
     config = get_effective_config_for_user(user)
     calendar_config = gcal.calendar_settings(config)
-    subjects = get_effective_subjects_for_user(user)
+    subjects = all_modules()
     events = CalendarEvent.query.filter_by(
         user_id=user.id,
     ).order_by(CalendarEvent.start_time).all()
@@ -559,12 +563,12 @@ def schedule_study_sessions():
     config = get_effective_config_for_user(user)
     day_number = _parse_day_number(data, config)
     if day_number is None:
-        return jsonify({'error': 'day_number must be an integer inside the curriculum'}), 400
+        return jsonify({'error': 'lesson_id must identify a course lesson'}), 400
     if not day_is_available(user, config, day_number):
         return jsonify({'error': 'Day is locked', 'next_unlocked_day': next_unlocked_day(user, config)}), 403
 
     zone = _requested_timezone(data)
-    subjects = get_effective_subjects_for_user(user)
+    subjects = all_modules()
     blocks = get_effective_schedule_for_user(user)
     calendar_config = gcal.calendar_settings(config)
     start_date = _configured_start_date(config) or datetime.now(zone).date()
@@ -584,15 +588,16 @@ def schedule_study_sessions():
             user_id=user.id,
             title=(
                 f"{calendar_config['event_prefix']} "
-                f"{block['name'].title()} Session - Day {day_number}"
+                f"{block['name'].title()} Session - Lesson {day_number}"
             ),
             description=(
-                'Daily deep-dive study session. Subjects: '
-                + ', '.join(subject['name'] for subject in subjects)
+                (f"Module {all_lessons()[day_number - 1]['_module']['number']}: "
+                 f"{all_lessons()[day_number - 1]['_module']['title']} · "
+                 f"{all_lessons()[day_number - 1]['title']}")
             ),
             start_time=start_time,
             end_time=end_time,
-            subject_ids=json.dumps([subject['id'] for subject in subjects]),
+            subject_ids=json.dumps([all_lessons()[day_number - 1]['module_id']]),
             day_number=day_number,
             block_name=block['name'],
             time_zone=gcal.timezone_key(zone),
@@ -716,7 +721,7 @@ def sync_to_google():
         return jsonify({'status': 'error', 'message': 'Request body must be a JSON object'}), 400
     day_number = _parse_day_number(data, app_config)
     if day_number is None:
-        return jsonify({'status': 'error', 'message': 'day_number must be an integer inside the curriculum'}), 400
+        return jsonify({'status': 'error', 'message': 'lesson_id must identify a course lesson'}), 400
     if not day_is_available(user, app_config, day_number):
         return jsonify({'status': 'error', 'message': 'Day is locked'}), 403
 

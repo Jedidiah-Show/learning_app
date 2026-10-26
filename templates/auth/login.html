@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Login - Ruach Learning{% endblock %}
+{% block title %}Login · RuachAI Engineering Course{% endblock %}
 
 {% block content %}
 <div class="auth-layout">
@@ -49,7 +49,7 @@
                 </div>
             </form>
 
-            <div class="auth-switch"><span>New to Ruach Learning?</span><a href="{{ url_for('auth.register', next=request.args.get('next')) if request.args.get('next') else url_for('auth.register') }}" class="auth-link">Create an account</a></div>
+            <div class="auth-switch"><span>New to RuachAI?</span><a href="{{ url_for('auth.register', next=request.args.get('next')) if request.args.get('next') else url_for('auth.register') }}" class="auth-link">Create an account</a></div>
         </div>
     </div>
 </div>
