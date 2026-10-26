@@ -139,6 +139,61 @@ class RuachAICourseTests(unittest.TestCase):
             response = self.client.get(f"/api/quizzes/module/{module['id']}")
         self.assertEqual(response.status_code, 503)
 
+    def test_lesson_quiz_generates_questions_for_the_lesson_module(self):
+        self.register()
+        lesson = all_lessons()[0]
+        questions = [{
+            'question': f'Lesson question {index}?',
+            'options': ['A', 'B', 'C', 'D'],
+            'correct_index': 0,
+            'explanation': 'A is correct.',
+        } for index in range(5)]
+        with patch(
+            'app.gemini.generate_json',
+            return_value={'questions': questions},
+        ):
+            response = self.client.get(f"/api/quizzes/lesson/{lesson['id']}")
+        self.assertEqual(response.status_code, 200, response.get_json())
+        payload = response.get_json()
+        self.assertEqual(payload['quiz_type'], 'lesson')
+        self.assertEqual(len(payload['questions']), 5)
+        with self.app.app_context():
+            quiz = Quiz.query.filter_by(
+                quiz_id=f"dynamoai_lesson_{lesson['id']}"
+            ).one()
+            self.assertEqual(
+                quiz.week_number, lesson['_module']['number'] + 1
+            )
+            self.assertEqual(quiz.day_number, lesson['_ordinal'])
+            self.assertEqual(quiz.subject_id, lesson['module_id'])
+
+    def test_module_quiz_generates_questions_for_the_module(self):
+        self.register()
+        module = all_modules()[0]
+        for lesson in module['lessons']:
+            self.complete_lesson(lesson['id'])
+        questions = [{
+            'question': f'Module question {index}?',
+            'options': ['A', 'B', 'C', 'D'],
+            'correct_index': 0,
+            'explanation': 'A is correct.',
+        } for index in range(5)]
+        with patch(
+            'app.gemini.generate_json',
+            return_value={'questions': questions},
+        ):
+            response = self.client.get(f"/api/quizzes/module/{module['id']}")
+        self.assertEqual(response.status_code, 200, response.get_json())
+        payload = response.get_json()
+        self.assertEqual(payload['quiz_type'], 'module')
+        self.assertEqual(len(payload['questions']), 5)
+        with self.app.app_context():
+            quiz = Quiz.query.filter_by(
+                quiz_id=f"dynamoai_module_{module['id']}"
+            ).one()
+            self.assertEqual(quiz.week_number, module['number'] + 1)
+            self.assertEqual(quiz.subject_id, module['id'])
+
     def test_quiz_submission_requires_every_answer_and_records_a_result(self):
         self.register()
         lesson = all_lessons()[0]

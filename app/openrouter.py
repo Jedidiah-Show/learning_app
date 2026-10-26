@@ -23,7 +23,7 @@ DEFAULT_PRO_MODEL = 'openrouter/auto'
 DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_CONNECT_TIMEOUT = 5
 DEFAULT_READ_TIMEOUT = 120
-DEFAULT_MAX_TOKENS = 16384
+DEFAULT_MAX_TOKENS = 4096
 RETRYABLE_STATUS_CODES = frozenset({408, 429, 500, 502, 503, 504})
 MAX_BACKOFF_SECONDS = 30
 
@@ -296,6 +296,14 @@ def generate_json(
                 continue
             raise OpenRouterRateLimited(
                 f'OpenRouter model {model_name} returned HTTP 429{detail}'
+            )
+        if status == 402:
+            raise OpenRouterError(
+                f'OpenRouter model {model_name} returned HTTP 402{detail}. '
+                'Add OpenRouter credits or lower OPENROUTER_MAX_TOKENS '
+                f'(currently {request_payload["max_tokens"]}), then redeploy.',
+                status=status,
+                fallback_eligible=False,
             )
         if status in RETRYABLE_STATUS_CODES and attempt < max_attempts:
             current_app.logger.warning(

@@ -101,6 +101,8 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
         self.assertEqual(
             payload['openrouter']['flash_model'], 'openrouter/auto'
         )
+        self.assertIsInstance(payload['openrouter']['max_tokens'], int)
+        self.assertGreater(payload['openrouter']['max_tokens'], 0)
         self.assertTrue(payload['google_calendar']['oauth_configured'])
         self.assertEqual(
             payload['google_calendar']['redirect_uri'],

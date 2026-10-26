@@ -6,6 +6,7 @@ from unittest.mock import patch
 
 from app import create_app
 from app.gemini import GeminiError, generate_json
+from app.openrouter import DEFAULT_MAX_TOKENS
 
 
 class FakeResponse:
@@ -107,6 +108,57 @@ class AIFallbackTests(unittest.TestCase):
             request['json']['messages'][1]['content'],
             'Return {"ok": true}',
         )
+
+    def test_openrouter_uses_a_credit_safe_default_max_tokens(self):
+        with patch.dict(os.environ, {}, clear=False):
+            os.environ.pop('OPENROUTER_MAX_TOKENS', None)
+            with patch(
+                'app.gemini._post_gemini_request',
+                return_value=FakeResponse(503, {
+                    'error': {'message': 'Gemini high demand.'},
+                }),
+            ), patch(
+                'app.openrouter._post_openrouter_request',
+                return_value=openrouter_success({'ok': True}),
+            ) as openrouter_post:
+                result = generate_json(
+                    'Return {"ok": true}', model='flash', max_attempts=1
+                )
+
+        self.assertEqual(result, {'ok': True})
+        self.assertEqual(DEFAULT_MAX_TOKENS, 4096)
+        self.assertEqual(
+            openrouter_post.call_args.kwargs['json']['max_tokens'],
+            DEFAULT_MAX_TOKENS,
+        )
+
+    def test_openrouter_credit_error_explains_the_configuration_fix(self):
+        gemini_response = FakeResponse(503, {
+            'error': {'message': 'Gemini high demand.'},
+        })
+        openrouter_response = FakeResponse(402, {
+            'error': {
+                'message': (
+                    'This request requires more credits, or fewer '
+                    'max_tokens. You requested up to 16384 tokens, but can '
+                    'only afford 7998.'
+                ),
+            },
+        })
+        with patch(
+            'app.gemini._post_gemini_request',
+            return_value=gemini_response,
+        ), patch(
+            'app.openrouter._post_openrouter_request',
+            return_value=openrouter_response,
+        ):
+            with self.assertRaises(GeminiError) as raised:
+                generate_json('Return {"ok": true}', max_attempts=1)
+
+        message = str(raised.exception)
+        self.assertIn('HTTP 402', message)
+        self.assertIn('OPENROUTER_MAX_TOKENS', message)
+        self.assertIn('Add OpenRouter credits', message)
 
     def test_gemini_auth_failure_does_not_fall_back(self):
         gemini_response = FakeResponse(401, {

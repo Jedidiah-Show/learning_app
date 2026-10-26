@@ -59,7 +59,10 @@ def _quiz_for(quiz_id, quiz_type, lesson, module):
     quiz = Quiz(quiz_id=quiz_id, quiz_type=quiz_type,
                 subject_id=lesson['module_id'] if lesson else module['id'],
                 day_number=ordinal,
-                week_number=(module['_module']['number'] + 1 if lesson else module['number'] + 1),
+                week_number=(
+                    lesson['_module']['number'] + 1 if lesson
+                    else module['number'] + 1
+                ),
                 questions=json.dumps(normalized, ensure_ascii=False),
                 passing_threshold=config.get('quizzes', {}).get('passing_threshold', 70),
                 is_ai_generated=True)

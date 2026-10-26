@@ -94,6 +94,7 @@ def openrouter_status():
         key_source = 'missing'
     flash_model = current_app.config.get('OPENROUTER_FLASH_MODEL')
     pro_model = current_app.config.get('OPENROUTER_PRO_MODEL')
+    from app.openrouter import DEFAULT_MAX_TOKENS
     return {
         'configured': _present(key),
         'key_source': key_source,
@@ -103,6 +104,9 @@ def openrouter_status():
         ),
         'pro_model': (
             pro_model.strip() if isinstance(pro_model, str) else pro_model
+        ),
+        'max_tokens': _positive_env(
+            'OPENROUTER_MAX_TOKENS', DEFAULT_MAX_TOKENS
         ),
     }
 

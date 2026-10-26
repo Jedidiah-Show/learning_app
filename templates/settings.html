@@ -59,7 +59,7 @@
         statusBox.append(line(
             'OpenRouter fallback',
             openrouter.configured
-                ? `configured · ${openrouter.flash_model} / ${openrouter.pro_model}`
+                ? `configured · ${openrouter.flash_model} / ${openrouter.pro_model} · ${openrouter.max_tokens} max output tokens`
                 : 'not configured — optional fallback; set OPENROUTER_API_KEY in Vercel',
             openrouter.configured ? 'text-emerald-700' : 'text-slate-600'
         ));
