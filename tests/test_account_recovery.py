@@ -84,6 +84,34 @@ class AccountRecoveryTests(unittest.TestCase):
         with self.app.app_context():
             self.assertEqual(User.query.count(), 1)
 
+    def test_account_update_normalizes_and_checks_phone(self):
+        self.register(phone='+15551234567')
+        updated = self.client.post(
+            '/account/update', json={'phone': '+1 (555) 765-4321'}
+        )
+        self.assertEqual(updated.status_code, 200, updated.get_json())
+        with self.app.app_context():
+            self.assertEqual(User.query.one().phone, '+15557654321')
+
+        invalid = self.client.post(
+            '/account/update', json={'phone': '555 765 4321'}
+        )
+        self.assertEqual(invalid.status_code, 400)
+        self.assertIn('country code', invalid.get_json()['error'].lower())
+
+        with self.app.app_context():
+            db.session.add(User(
+                username='otherlearner',
+                email='otherlearner@example.test',
+                phone='+15550001111',
+            ))
+            db.session.commit()
+        duplicate = self.client.post(
+            '/account/update', json={'phone': '+1 555 000 1111'}
+        )
+        self.assertEqual(duplicate.status_code, 400)
+        self.assertIn('already exists', duplicate.get_json()['error'].lower())
+
     def test_database_enforces_unique_recovery_phone_numbers(self):
         with self.app.app_context():
             db.session.add_all([
