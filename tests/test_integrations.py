@@ -11,6 +11,7 @@ from httplib2 import Response
 from app import create_app, db
 from app import google_calendar as gcal
 from app.curriculum import all_lessons
+from app.gemini import GeminiError
 from app.integrations import probe_calendar, probe_gemini
 from app.models import User
 
@@ -80,6 +81,9 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
         )
         self.assertFalse(
             payload['google_calendar']['redirect_uri_matches_current_request']
+        )
+        self.assertTrue(
+            payload['google_calendar']['redirect_uri_host_differs']
         )
         self.assertTrue(payload['database']['ok'])
         self.assertNotIn('super-secret-gemini-key', body)
@@ -162,6 +166,22 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
         with self.app.app_context():
             user = User.query.one()
             self.assertEqual(probe_calendar(user)['status'], 'not_connected')
+
+    def test_gemini_probe_marks_provider_demand_as_temporary(self):
+        self.app.config.update(GEMINI_API_KEY='present')
+        with self.app.app_context():
+            user = User.query.one()
+            with patch(
+                'app.gemini.generate_json',
+                side_effect=GeminiError(
+                    'Gemini model gemini-3.8-flash returned HTTP 503: '
+                    'This model is currently experiencing high demand.'
+                ),
+            ):
+                result = probe_gemini(user)
+        self.assertEqual(result['status'], 'temporarily_unavailable')
+        self.assertIn('provider-side', result['message'])
+        self.assertIn('HTTP 503', result['provider_message'])
 
     def test_disabled_calendar_api_is_not_reported_as_expired_authorization(self):
         error = http_error(403, {

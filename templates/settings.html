@@ -68,11 +68,18 @@
                 ));
             }
             if (calendar.redirect_uri_matches_current_request === false) {
-                statusBox.append(line(
-                    'Redirect URI warning',
-                    'GOOGLE_REDIRECT_URI does not exactly match this deployment URL. Add it to the OAuth client Authorized redirect URIs.',
-                    'text-red-700'
-                ));
+                if (calendar.redirect_uri_host_differs) {
+                    statusBox.append(line(
+                        'OAuth callback host',
+                        `Configured for ${calendar.redirect_uri_host}; this page is ${calendar.current_host}. Open ${calendar.redirect_uri} to connect Google Calendar, or change GOOGLE_REDIRECT_URI and register the new callback in Google Cloud. This is expected on preview deployments.`
+                    ));
+                } else {
+                    statusBox.append(line(
+                        'Redirect URI warning',
+                        'GOOGLE_REDIRECT_URI does not exactly match this deployment URL. Check the trailing slash and path, then add the exact URL to the OAuth client Authorized redirect URIs.',
+                        'text-red-700'
+                    ));
+                }
             }
         }
         statusBox.append(line(
@@ -102,16 +109,23 @@
                 'text-emerald-700'
             ));
         } else {
-            const missing = (database.missing_tables || []).join(', ');
-            statusBox.append(line(
-                'Database',
-                [
-                    'needs attention',
-                    missing ? `missing ${missing}` : '',
-                    database.error || '',
-                ].filter(Boolean).join(' — '),
-                'text-red-700'
-            ));
+            const missing = database.missing_tables || [];
+            if (missing.length) {
+                const revision = database.current_revision
+                    ? ` Current revision: ${database.current_revision}.`
+                    : '';
+                statusBox.append(line(
+                    'Database',
+                    `needs migrations — missing ${missing.join(', ')}.${revision} Apply outstanding migrations with flask db upgrade against the production DATABASE_URL, then reload this page.`,
+                    'text-red-700'
+                ));
+            } else {
+                statusBox.append(line(
+                    'Database',
+                    `needs attention — ${database.error || 'the schema could not be inspected'}.`,
+                    'text-red-700'
+                ));
+            }
         }
     }
 
@@ -152,10 +166,16 @@
                 if (result.model) extras.push(result.model);
                 if (result.http_status) extras.push(`HTTP ${result.http_status}`);
                 if (result.reason) extras.push(result.reason);
+                if (result.provider_message) extras.push(result.provider_message);
+                const tone = result.status === 'ok'
+                    ? 'text-emerald-700'
+                    : result.status === 'temporarily_unavailable'
+                        ? 'text-slate-600'
+                        : 'text-red-700';
                 probeBox.append(line(
                     labels[key] || key,
-                    `${result.status}: ${result.message || ''}${extras.length ? ` (${extras.join(', ')})` : ''}`,
-                    result.status === 'ok' ? 'text-emerald-700' : 'text-red-700'
+                    `${String(result.status).replace(/_/g, ' ')}: ${result.message || ''}${extras.length ? ` (${extras.join(', ')})` : ''}`,
+                    tone
                 ));
             }
             if (!Object.keys(results).length) {

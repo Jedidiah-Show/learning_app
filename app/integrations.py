@@ -10,6 +10,7 @@ from __future__ import annotations
 import os
 import time
 from datetime import datetime, timezone
+from urllib.parse import urlsplit
 
 from flask import current_app, has_request_context, request, url_for
 from sqlalchemy import inspect, text
@@ -46,6 +47,15 @@ def _uri_scheme(uri):
     if not isinstance(uri, str):
         return ''
     return uri.split(':', 1)[0].lower() if ':' in uri else ''
+
+
+def _uri_host(uri):
+    if not isinstance(uri, str):
+        return ''
+    try:
+        return urlsplit(uri).netloc.lower()
+    except ValueError:
+        return ''
 
 
 def gemini_status():
@@ -88,6 +98,8 @@ def _redirect_uri_status():
     exact_match = None
     if _present(redirect_uri) and _present(computed):
         exact_match = redirect_uri == computed
+    redirect_host = _uri_host(redirect_uri)
+    current_host = _uri_host(computed)
     return {
         'client_id_configured': _present(client_id),
         'client_secret_configured': _present(client_secret),
@@ -96,6 +108,11 @@ def _redirect_uri_status():
         'redirect_uri_source': source,
         'computed_redirect_uri': computed,
         'redirect_uri_matches_current_request': exact_match,
+        'redirect_uri_host': redirect_host,
+        'current_host': current_host,
+        'redirect_uri_host_differs': bool(
+            redirect_host and current_host and redirect_host != current_host
+        ),
         'redirect_uri_uses_https': _uri_scheme(redirect_uri) == 'https',
         'redirect_uri_is_localhost': bool(
             isinstance(redirect_uri, str)
@@ -255,10 +272,32 @@ def probe_gemini(user):
             'message': _probe_message(error),
         }
     except GeminiError as error:
+        message = _probe_message(error)
+        lowered = message.lower()
+        if any(marker in lowered for marker in (
+            'http 500',
+            'http 502',
+            'http 503',
+            'http 504',
+            'high demand',
+            'overloaded',
+            'temporarily unavailable',
+            'timed out',
+        )):
+            return {
+                'status': 'temporarily_unavailable',
+                'model': model_name,
+                'message': (
+                    'Gemini is temporarily unavailable. This is a provider-side '
+                    'condition, not a configuration problem. Retry in a few '
+                    'minutes.'
+                ),
+                'provider_message': message,
+            }
         return {
             'status': 'error',
             'model': model_name,
-            'message': _probe_message(error),
+            'message': message,
         }
     except SQLAlchemyError:
         current_app.logger.exception('Gemini probe database error')
