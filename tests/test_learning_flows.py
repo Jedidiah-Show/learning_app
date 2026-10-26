@@ -7,7 +7,9 @@ from unittest.mock import patch
 from app import create_app, db
 from app.curriculum import all_lessons, all_modules, curriculum
 from app.gemini import GeminiError
-from app.models import CourseProject, LessonCompletion, Quiz, QuizResult, User
+from app.models import (
+    CourseProject, LessonCompletion, Quiz, QuizResult, User, VideoProgress,
+)
 
 
 class RuachAICourseTests(unittest.TestCase):
@@ -49,6 +51,40 @@ class RuachAICourseTests(unittest.TestCase):
         })
         self.assertEqual(response.status_code, 200, response.get_json())
         return response.get_json()
+
+    def unlock_lesson(self, target_id):
+        """Seed completed lessons and prior module projects for a target lesson."""
+        target = next(
+            (lesson for lesson in all_lessons() if lesson['id'] == target_id),
+            None,
+        )
+        if target is None:
+            self.fail(f'Unknown lesson {target_id}')
+        prior_module_ids = []
+        for module in all_modules():
+            if module['id'] == target['module_id']:
+                break
+            prior_module_ids.append(module['id'])
+        with self.app.app_context():
+            user = User.query.one()
+            for lesson in all_lessons():
+                if lesson['id'] == target_id:
+                    break
+                db.session.add(LessonCompletion(
+                    user_id=user.id,
+                    lesson_id=lesson['id'],
+                    subject_id=lesson['module_id'],
+                    day_number=lesson['_ordinal'],
+                    completed=True,
+                ))
+            for module_id in prior_module_ids:
+                db.session.add(CourseProject(
+                    user_id=user.id,
+                    module_id=module_id,
+                    project='{}',
+                    completed=True,
+                ))
+            db.session.commit()
 
     def test_bundled_course_has_its_declared_modules_and_lessons(self):
         self.assertEqual(len(all_modules()), 13)
@@ -158,3 +194,138 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertEqual(locked.status_code, 403)
         with self.app.app_context():
             self.assertEqual(User.query.count(), 2)
+
+    def test_lesson_page_renders_a_lazy_video_only_when_one_is_curated(self):
+        self.register()
+        first = all_lessons()[0]
+        self.assertIsNone(first.get('video'))
+        no_video = self.client.get(f"/lesson/{first['id']}")
+        self.assertEqual(no_video.status_code, 200)
+        self.assertNotIn('data-lesson-video', no_video.get_data(as_text=True))
+
+        lesson = next(
+            item for item in all_lessons() if item.get('video')
+        )
+        self.unlock_lesson(lesson['id'])
+        response = self.client.get(f"/lesson/{lesson['id']}")
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('data-lesson-video', html)
+        self.assertIn(f'data-video-id="{lesson["video"]["id"]}"', html)
+        self.assertIn(lesson['video']['thumbnail_url'], html)
+        self.assertIn('/api/lessons/video-progress', html)
+
+    def test_account_reset_clears_watch_progress(self):
+        self.register()
+        lesson = next(
+            item for item in all_lessons() if item.get('video')
+        )
+        self.unlock_lesson(lesson['id'])
+        response = self.client.post('/api/lessons/video-progress', json={
+            'lesson_id': lesson['id'],
+            'position_seconds': 60,
+            'duration_seconds': 600,
+        })
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            self.assertEqual(VideoProgress.query.count(), 1)
+
+        reset = self.client.post('/account/reset', json={
+            'current_password': 'secure-pass-123',
+        })
+        self.assertEqual(reset.status_code, 200, reset.get_json())
+        with self.app.app_context():
+            self.assertEqual(VideoProgress.query.count(), 0)
+
+    def test_video_progress_requires_an_unlocked_lesson_with_a_video(self):
+        self.register()
+        video_lesson = next(
+            lesson for lesson in all_lessons() if lesson.get('video')
+        )
+        locked = self.client.post('/api/lessons/video-progress', json={
+            'lesson_id': video_lesson['id'],
+            'position_seconds': 10,
+            'duration_seconds': 100,
+        })
+        self.assertEqual(locked.status_code, 403)
+
+        first = all_lessons()[0]
+        self.assertIsNone(first.get('video'))
+        no_video = self.client.post('/api/lessons/video-progress', json={
+            'lesson_id': first['id'],
+            'position_seconds': 10,
+            'duration_seconds': 100,
+        })
+        self.assertEqual(no_video.status_code, 404)
+        self.assertIn('no video', no_video.get_json()['error'])
+
+    def test_video_progress_tracks_furthest_watch_position_and_completion(self):
+        self.register()
+        lesson = next(
+            item for item in all_lessons() if item.get('video')
+        )
+        self.unlock_lesson(lesson['id'])
+        duration = 600
+
+        def report(position):
+            response = self.client.post('/api/lessons/video-progress', json={
+                'lesson_id': lesson['id'],
+                'position_seconds': position,
+                'duration_seconds': duration,
+            })
+            self.assertEqual(response.status_code, 200, response.get_json())
+            return response.get_json()
+
+        first = report(30)
+        self.assertFalse(first['completed'])
+        self.assertEqual(first['watched_seconds'], 30)
+        half = report(300)
+        self.assertFalse(half['completed'])
+        done = report(570)
+        self.assertTrue(done['completed'])
+        self.assertTrue(done['just_completed'])
+        with self.app.app_context():
+            progress = VideoProgress.query.one()
+            self.assertEqual(progress.video_id, lesson['video']['id'])
+            self.assertTrue(progress.completed)
+            self.assertEqual(progress.watched_seconds, 570)
+            self.assertEqual(progress.duration_seconds, duration)
+
+        earlier = report(120)
+        self.assertTrue(earlier['completed'])
+        self.assertFalse(earlier['just_completed'])
+        self.assertEqual(earlier['last_position'], 120)
+
+    def test_video_progress_validates_numbers_and_lesson_ids(self):
+        self.register()
+        lesson = next(
+            item for item in all_lessons() if item.get('video')
+        )
+        self.unlock_lesson(lesson['id'])
+        invalid_payloads = [
+            {'lesson_id': lesson['id'], 'position_seconds': -1},
+            {'lesson_id': lesson['id'], 'position_seconds': '10'},
+            {'lesson_id': lesson['id'], 'position_seconds': True},
+            {'lesson_id': lesson['id']},
+            {
+                'lesson_id': lesson['id'],
+                'position_seconds': 10,
+                'duration_seconds': -1,
+            },
+            {
+                'lesson_id': lesson['id'],
+                'position_seconds': 10,
+                'duration_seconds': 999999,
+            },
+        ]
+        for payload in invalid_payloads:
+            with self.subTest(payload=payload):
+                response = self.client.post(
+                    '/api/lessons/video-progress', json=payload
+                )
+                self.assertEqual(response.status_code, 400)
+        missing = self.client.post('/api/lessons/video-progress', json={
+            'lesson_id': 'missing.lesson',
+            'position_seconds': 10,
+        })
+        self.assertEqual(missing.status_code, 404)

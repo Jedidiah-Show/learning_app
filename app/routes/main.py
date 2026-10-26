@@ -11,7 +11,7 @@ from flask_login import current_user, login_required
 from app import db
 from app.curriculum import all_modules, curriculum, get_lesson
 from app.learning import course_progress, lesson_is_available
-from app.google_calendar import GoogleAuthorizationError
+from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
 from app.models import CalendarEvent
 from app.user_preferences import get_effective_config_for_user, get_user_preferences, set_user_preferences
 from app.request_data import get_json_object
@@ -84,9 +84,20 @@ def lesson_detail(lesson_id):
     if not lesson_is_available(current_user, lesson_id):
         abort(403)
     from app.learning import completed_lesson_ids
+    from app.practice import practice_exercises_for_lesson
+    from app.models import VideoProgress
+    video_progress = None
+    if lesson.get('video'):
+        video_progress = VideoProgress.query.filter_by(
+            user_id=current_user.id, lesson_id=lesson_id
+        ).first()
+        if video_progress and video_progress.video_id != lesson['video']['id']:
+            video_progress = None
     return render_template('lessons/detail.html', lesson=lesson, module=lesson['_module'],
                            completed=lesson_id in completed_lesson_ids(current_user),
+                           practice_exercises=practice_exercises_for_lesson(lesson_id),
                            next_lesson_id=course_progress(current_user)['next_lesson_id'],
+                           video_progress=video_progress,
                            config=get_effective_config_for_user(current_user), user=current_user)
 
 
@@ -143,6 +154,14 @@ def update_preferences():
             )
         except GoogleAuthorizationError:
             return jsonify({'error': 'Preferences saved, but Google Calendar needs to be reconnected.'}), 401
+        except GoogleCalendarError as error:
+            current_app.logger.warning(
+                'Calendar preference reconciliation failed for user %s: %s',
+                current_user.id, error,
+            )
+            return jsonify({
+                'error': f'Preferences saved, but {error}',
+            }), 502
         except Exception:
             current_app.logger.exception('Could not reconcile Calendar preferences for user %s', current_user.id)
             return jsonify({'error': 'Preferences saved, but Calendar sync is incomplete. Retry to finish syncing.'}), 502

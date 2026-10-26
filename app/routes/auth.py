@@ -390,9 +390,11 @@ def reset_account():
                                 UserSubjectConfig, ProficiencyTest, CalendarEvent,
                                 UserSubject, UserSchedule, UserConfig,
                                 SubjectCurriculum, LearningProject, CourseProject,
-                                GeminiUsageBucket, AIBackgroundJob, ReviewItem)
+                                GeminiUsageBucket, AIBackgroundJob, ReviewItem,
+                                VideoProgress)
         Progress.query.filter_by(user_id=user.id).delete()
         LessonCompletion.query.filter_by(user_id=user.id).delete()
+        VideoProgress.query.filter_by(user_id=user.id).delete()
         QuizResult.query.filter_by(user_id=user.id).delete()
         StudySession.query.filter_by(user_id=user.id).delete()
         UserSubjectConfig.query.filter_by(user_id=user.id).delete()

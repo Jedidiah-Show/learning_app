@@ -54,6 +54,13 @@ class User(UserMixin, db.Model):
     review_items = db.relationship(
         'ReviewItem', backref='user', lazy=True, cascade='all, delete-orphan',
     )
+    video_progress = db.relationship(
+        'VideoProgress', backref='user', lazy=True, cascade='all, delete-orphan',
+    )
+    practice_workspaces = db.relationship(
+        'PracticeWorkspace', backref='user', lazy=True,
+        cascade='all, delete-orphan',
+    )
 
 class Progress(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -85,6 +92,55 @@ class LessonCompletion(db.Model):
         db.Index('idx_lessoncomp_user_lesson', 'user_id', 'lesson_id'),
         db.Index('idx_lessoncomp_user_subject_day', 'user_id', 'subject_id', 'day_number'),
     )
+
+class VideoProgress(db.Model):
+    """Furthest watch position a learner has reported for a lesson video."""
+    __tablename__ = 'video_progress'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    lesson_id = db.Column(db.String(100), nullable=False)
+    video_id = db.Column(db.String(20), nullable=False)
+    watched_seconds = db.Column(db.Integer, nullable=False, default=0)
+    last_position = db.Column(db.Integer, nullable=False, default=0)
+    duration_seconds = db.Column(db.Integer)
+    completed = db.Column(
+        db.Boolean, nullable=False, default=False, server_default=db.false()
+    )
+    completed_at = db.Column(db.DateTime(timezone=True))
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'lesson_id', name='unique_user_video_progress'),
+        db.Index('idx_videoprogress_user', 'user_id'),
+        db.Index(
+            'idx_videoprogress_user_completed', 'user_id', 'completed'
+        ),
+    )
+
+
+class PracticeWorkspace(db.Model):
+    """Saved source code for one learner's curated lesson exercise."""
+    __tablename__ = 'practice_workspace'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    exercise_id = db.Column(db.String(100), nullable=False)
+    source = db.Column(db.Text, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+    __table_args__ = (
+        db.UniqueConstraint(
+            'user_id', 'exercise_id', name='unique_user_practice_workspace'
+        ),
+        db.Index('idx_practice_workspace_user', 'user_id'),
+    )
+
 
 class QuizResult(db.Model):
     id = db.Column(db.Integer, primary_key=True)

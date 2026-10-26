@@ -1,0 +1,138 @@
+[
+  {
+    "id": "python-cheapest-by-provider",
+    "lesson_id": "1.01",
+    "title": "Find the cheapest model per provider",
+    "instructions": "Implement cheapest_by_provider(rows). Return a dictionary mapping each provider to the name of its lowest-priced model. Convert price strings to numbers, return an empty dictionary for empty input, and break equal-price ties by choosing the alphabetically first model name.",
+    "starter_code": "models = [\n    {\"name\": \"Atlas-S\", \"provider\": \"Northwind\", \"price\": \"0.50\"},\n    {\"name\": \"Atlas-L\", \"provider\": \"Northwind\", \"price\": \"3.00\"},\n    {\"name\": \"Kestrel-8\", \"provider\": \"Cobalt\", \"price\": \"1.20\"},\n]\n\n\ndef cheapest_by_provider(rows):\n    # TODO: return {provider: cheapest_model_name}\n    raise NotImplementedError\n\n\nprint(cheapest_by_provider(models))",
+    "checks_code": "fixtures = [\n    {\"name\": \"Atlas-S\", \"provider\": \"Northwind\", \"price\": \"0.50\"},\n    {\"name\": \"Atlas-L\", \"provider\": \"Northwind\", \"price\": \"3.00\"},\n    {\"name\": \"Kestrel-8\", \"provider\": \"Cobalt\", \"price\": \"1.20\"},\n]\nassert cheapest_by_provider(fixtures) == {\"Cobalt\": \"Kestrel-8\", \"Northwind\": \"Atlas-S\"}\nassert cheapest_by_provider([]) == {}\ntied = [\n    {\"name\": \"Zeta\", \"provider\": \"Cobalt\", \"price\": \"1.0\"},\n    {\"name\": \"Alpha\", \"provider\": \"Cobalt\", \"price\": \"1.00\"},\n]\nassert cheapest_by_provider(tied) == {\"Cobalt\": \"Alpha\"}\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "python-score-case",
+    "lesson_id": "1.03",
+    "title": "Score one case safely",
+    "instructions": "Implement score_case(case, fetch). Call fetch with case[\"prompt\"], convert its result to a float, and return a dictionary with id, score, and error. On a missing prompt or non-numeric result, return score=None and the exception class name in error; use \"?\" when the case has no id.",
+    "starter_code": "def score_case(case, fetch):\n    # TODO: validate the case and convert the fetched score.\n    raise NotImplementedError\n\n\nprint(score_case({\"id\": \"c1\", \"prompt\": \"safe?\"}, lambda prompt: \"0.8\"))",
+    "checks_code": "valid = score_case({\"id\": \"c1\", \"prompt\": \"safe?\"}, lambda prompt: \"0.8\")\nassert valid == {\"id\": \"c1\", \"score\": 0.8, \"error\": None}\nmissing_id = score_case({\"prompt\": \"safe?\"}, lambda prompt: \"0.5\")\nassert missing_id == {\"id\": \"?\", \"score\": 0.5, \"error\": None}\ninvalid = score_case({\"id\": \"c2\", \"prompt\": \"bad\"}, lambda prompt: \"not-a-number\")\nassert invalid == {\"id\": \"c2\", \"score\": None, \"error\": \"ValueError\"}\nmissing = score_case({}, lambda prompt: \"0.5\")\nassert missing == {\"id\": \"?\", \"score\": None, \"error\": \"KeyError\"}\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "python-model-client",
+    "lesson_id": "1.05",
+    "title": "Build a small injectable model client",
+    "instructions": "Implement ModelClient. Normalize the base URL by removing trailing slashes, keep the supplied transport callable, and implement get(path) by calling transport with the normalized base URL plus a path that starts with exactly one slash, even if the input path has leading slashes. Do not perform real network requests.",
+    "starter_code": "class ModelClient:\n    def __init__(self, base_url, transport):\n        # TODO: normalize and store these dependencies.\n        raise NotImplementedError\n\n    def get(self, path):\n        # TODO: pass the joined URL to the injected transport.\n        raise NotImplementedError\n\n\ncalls = []\nclient = ModelClient(\"https://api.example.test/\", lambda url: calls.append(url) or {\"ok\": True})\nprint(client.get(\"/models\"))\nprint(calls)",
+    "checks_code": "calls = []\nclient = ModelClient(\"https://api.example.test///\", lambda url: calls.append(url) or {\"ok\": True})\nassert client.base_url == \"https://api.example.test\"\nassert client.get(\"models\") == {\"ok\": True}\nassert client.get(\"/models\") == {\"ok\": True}\nassert client.get(\"///models\") == {\"ok\": True}\nassert calls == [\"https://api.example.test/models\"] * 3\nassert client.transport is not None\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "python-validate-offer",
+    "lesson_id": "1.07",
+    "title": "Validate a bounded model offer",
+    "instructions": "Implement validate_offer(offer). Require a non-empty string name and a finite numeric price from 0 through 1000 inclusive. Return a new dictionary with the name and price converted to float. Raise ValueError for invalid input; do not mutate the input.",
+    "starter_code": "from math import isfinite\n\n\ndef validate_offer(offer):\n    # TODO: validate fields and return a normalized copy.\n    raise NotImplementedError\n\n\nprint(validate_offer({\"name\": \"Atlas-S\", \"price\": \"0.5\"}))",
+    "checks_code": "offer = {\"name\": \"Atlas-S\", \"price\": \"0.5\", \"notes\": \"keep this input unchanged\"}\noriginal = offer.copy()\nassert validate_offer(offer) == {\"name\": \"Atlas-S\", \"price\": 0.5}\nassert offer == original\nfor invalid in [\n    {\"name\": \"\", \"price\": \"1\"},\n    {\"name\": \"Atlas-S\", \"price\": \"not-a-number\"},\n    {\"name\": \"Atlas-S\", \"price\": \"-0.01\"},\n    {\"name\": \"Atlas-S\", \"price\": \"1000.01\"},\n    {\"name\": \"Atlas-S\", \"price\": float(\"nan\")},\n    {\"name\": \"Atlas-S\", \"price\": True},\n    {\"price\": \"1\"},\n]:\n    try:\n        validate_offer(invalid)\n    except (ValueError, KeyError):\n        pass\n    else:\n        raise AssertionError(\"Invalid offers must be rejected\")\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "python-bounded-retry",
+    "lesson_id": "1.08",
+    "title": "Retry only transient failures",
+    "instructions": "Implement request_with_retry(fetch, attempts=3). Require attempts to be a positive integer (booleans are not valid). Call fetch repeatedly only when it returns a response whose status is one of 429, 500, 502, 503, or 504. Return immediately for any other status, and stop after attempts calls. Do not retry exceptions.",
+    "starter_code": "TRANSIENT_STATUSES = {429, 500, 502, 503, 504}\n\n\ndef request_with_retry(fetch, attempts=3):\n    # TODO: retry only the transient response statuses, with a fixed attempt limit.\n    raise NotImplementedError\n\n\nresponses = iter([{\"status\": 503}, {\"status\": 200}])\nprint(request_with_retry(lambda: next(responses)))",
+    "checks_code": "calls = []\nresponses = iter([{\"status\": 503}, {\"status\": 200}])\nresult = request_with_retry(lambda: calls.append(True) or next(responses))\nassert result == {\"status\": 200}\nassert len(calls) == 2\ncalls.clear()\npermanent = request_with_retry(lambda: calls.append(True) or {\"status\": 400})\nassert permanent == {\"status\": 400}\nassert len(calls) == 1\ncalls.clear()\ntransient = request_with_retry(lambda: calls.append(True) or {\"status\": 429}, attempts=2)\nassert transient == {\"status\": 429}\nassert len(calls) == 2\ncalls.clear()\nfor invalid_attempts in [0, -1, True, 1.5]:\n    try:\n        request_with_retry(lambda: calls.append(True), attempts=invalid_attempts)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"Invalid attempt limits must be rejected\")\nassert not calls\ncalls.clear()\ntry:\n    request_with_retry(lambda: calls.append(True) or (_ for _ in ()).throw(RuntimeError(\"offline\")))\nexcept RuntimeError:\n    pass\nelse:\n    raise AssertionError(\"Transport exceptions must propagate\")\nassert len(calls) == 1\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "python-package-layout",
+    "lesson_id": "1.02",
+    "title": "Check a src-layout package",
+    "instructions": "Implement missing_package_files(paths). Return a sorted list of required package files that are absent. The expected src layout has model_catalog/__init__.py, model_catalog/__main__.py, catalog.py, and loader.py. Accept paths with or without a leading ./ and ignore unrelated files.",
+    "starter_code": "REQUIRED_FILES = {\n    \"src/model_catalog/__init__.py\",\n    \"src/model_catalog/__main__.py\",\n    \"src/model_catalog/catalog.py\",\n    \"src/model_catalog/loader.py\",\n}\n\n\ndef missing_package_files(paths):\n    # TODO: normalize paths and return missing required files in sorted order.\n    raise NotImplementedError\n\n\nprint(missing_package_files([\"src/model_catalog/__init__.py\"]))",
+    "checks_code": "complete = [\"./src/model_catalog/__init__.py\", \"src/model_catalog/__main__.py\", \"src/model_catalog/catalog.py\", \"src/model_catalog/loader.py\", \"README.md\"]\nassert missing_package_files(complete) == []\nassert missing_package_files([\"src/model_catalog/__init__.py\"]) == sorted(REQUIRED_FILES - {\"src/model_catalog/__init__.py\"})\nassert missing_package_files([]) == sorted(REQUIRED_FILES)\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "python-http-client-contract",
+    "lesson_id": "1.10",
+    "title": "Test HTTP retries with a fake transport",
+    "instructions": "Implement fetch_with_retry(transport, url, timeout_s=5, attempts=3). Pass url and timeout_s to the injected transport. Retry only HTTP 429, 500, 502, 503, and 504 responses; return any other response immediately. Require a positive timeout and attempt count. No real network calls are made.",
+    "starter_code": "RETRYABLE_STATUSES = {429, 500, 502, 503, 504}\n\n\ndef fetch_with_retry(transport, url, timeout_s=5, attempts=3):\n    # TODO: validate limits and retry only transient HTTP statuses.\n    raise NotImplementedError\n\n\nresponses = iter([{\"status\": 503}, {\"status\": 200}])\nprint(fetch_with_retry(lambda url, timeout_s: next(responses), \"https://example.test\", timeout_s=2))",
+    "checks_code": "calls = []\nresponses = iter([{\"status\": 429}, {\"status\": 200, \"json\": {\"ok\": True}}])\ndef transport(url, timeout_s):\n    calls.append((url, timeout_s))\n    return next(responses)\nassert fetch_with_retry(transport, \"https://example.test\", timeout_s=2) == {\"status\": 200, \"json\": {\"ok\": True}}\nassert calls == [(\"https://example.test\", 2), (\"https://example.test\", 2)]\ncalls.clear()\nassert fetch_with_retry(lambda url, timeout_s: calls.append(url) or {\"status\": 400}, \"https://example.test\")[\"status\"] == 400\nassert len(calls) == 1\nfor options in [{\"timeout_s\": 0}, {\"attempts\": 0}, {\"attempts\": True}]:\n    try:\n        fetch_with_retry(lambda *args, **kwargs: {}, \"https://example.test\", **options)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"Invalid request limits must be rejected\")\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "python-typed-settings",
+    "lesson_id": "1.11",
+    "title": "Validate environment-backed settings",
+    "instructions": "Implement load_settings(env). Require MODEL_BASE_URL, MODEL_API_KEY, and APP_ENV. APP_ENV must be dev, staging, or prod. REQUEST_TIMEOUT_S defaults to 10 and must be a positive number no greater than 120. Return normalized settings; never include the API key in safe_summary(settings).",
+    "starter_code": "def load_settings(env):\n    # TODO: validate required values and the bounded timeout.\n    raise NotImplementedError\n\n\ndef safe_summary(settings):\n    # TODO: return useful settings without exposing the API key.\n    raise NotImplementedError\n\n\nexample = {\"MODEL_BASE_URL\": \"https://api.example.test\", \"MODEL_API_KEY\": \"secret\", \"APP_ENV\": \"dev\"}\nprint(safe_summary(load_settings(example)))",
+    "checks_code": "env = {\"MODEL_BASE_URL\": \" https://api.example.test/ \", \"MODEL_API_KEY\": \"private-value\", \"APP_ENV\": \"prod\"}\nsettings = load_settings(env)\nassert settings[\"model_base_url\"] == \"https://api.example.test\"\nassert settings[\"request_timeout_s\"] == 10.0\nassert \"private-value\" not in repr(safe_summary(settings))\nassert safe_summary(settings)[\"app_env\"] == \"prod\"\nassert load_settings({**env, \"REQUEST_TIMEOUT_S\": \"2.5\"})[\"request_timeout_s\"] == 2.5\nfor invalid in [\n    {\"MODEL_API_KEY\": \"x\", \"APP_ENV\": \"dev\"},\n    {**env, \"APP_ENV\": \"production\"},\n    {**env, \"REQUEST_TIMEOUT_S\": \"0\"},\n    {**env, \"REQUEST_TIMEOUT_S\": \"121\"},\n    {**env, \"REQUEST_TIMEOUT_S\": \"nope\"},\n]:\n    try:\n        load_settings(invalid)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"Invalid settings must be rejected\")\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "python-venv-audit",
+    "lesson_id": "1.12",
+    "title": "Audit a locked Python environment",
+    "instructions": "Implement audit_environment(executable, base_prefix, packages, required). Report \"no active venv\" when executable and base_prefix identify the same interpreter. For each required package/version, report a stable \"name: missing\" or \"name: expected X, found Y\" message. Do not inspect the real browser environment; use only the supplied values.",
+    "starter_code": "def audit_environment(executable, base_prefix, packages, required):\n    # TODO: report interpreter and pinned-package mismatches.\n    raise NotImplementedError\n\n\nrequired = {\"pytest\": \"8.3.3\", \"httpx\": \"0.27.2\"}\nprint(audit_environment(\"/project/.venv/bin/python\", \"/usr\", {\"pytest\": \"8.3.3\"}, required))",
+    "checks_code": "required = {\"pytest\": \"8.3.3\", \"httpx\": \"0.27.2\"}\nassert audit_environment(\"/project/.venv/bin/python\", \"/usr\", {\"pytest\": \"8.3.3\", \"httpx\": \"0.27.2\"}, required) == []\nproblems = audit_environment(\"/usr/bin/python\", \"/usr\", {\"pytest\": \"8.4.0\"}, required)\nassert problems == [\"no active venv\", \"httpx: missing\", \"pytest: expected 8.3.3, found 8.4.0\"]\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "python-dependency-audit",
+    "lesson_id": "1.13",
+    "title": "Audit direct dependencies against a lock",
+    "instructions": "Implement audit_dependencies(direct, locked, imported). Compare package names case-insensitively and treat hyphens and underscores as equivalent. Return a dictionary with sorted missing_from_lock (declared direct dependencies absent from the lock) and unused_direct (direct dependencies absent from the import inventory).",
+    "starter_code": "def audit_dependencies(direct, locked, imported):\n    # TODO: normalize names and compare declared, locked, and imported packages.\n    raise NotImplementedError\n\n\nprint(audit_dependencies([\"httpx\", \"typing_extensions\"], [\"httpx\"], [\"httpx\"]))",
+    "checks_code": "result = audit_dependencies([\"HTTPX\", \"typing_extensions\", \"my-utils\"], [\"httpx\", \"my_utils\"], [\"httpx\", \"my_utils\"])\nassert result == {\"missing_from_lock\": [\"typing_extensions\"], \"unused_direct\": [\"typing_extensions\"]}\nassert audit_dependencies([], [], []) == {\"missing_from_lock\": [], \"unused_direct\": []}\nassert audit_dependencies([\"my-utils\"], [\"MY_UTILS\"], [\"my_utils\"]) == {\"missing_from_lock\": [], \"unused_direct\": []}\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "python-bounded-async-map",
+    "lesson_id": "1.14",
+    "title": "Bound concurrent async work",
+    "instructions": "Implement async_map_bounded(items, worker, limit). Run worker(item) for each item with at most limit calls active at once, preserve the input order in the returned list, and reject non-positive or non-integer limits. Use asyncio; the exercise uses an in-memory worker and performs no network requests.",
+    "starter_code": "import asyncio\n\n\nasync def async_map_bounded(items, worker, limit):\n    # TODO: bound concurrent calls and preserve result order.\n    raise NotImplementedError\n\n\nasync def main():\n    print(await async_map_bounded([1, 2, 3], lambda value: value * 2, limit=2))\n\n\nawait main()",
+    "checks_code": "async def _check_async_map():\n    active = 0\n    peak = 0\n    async def worker(value):\n        nonlocal active, peak\n        active += 1\n        peak = max(peak, active)\n        await asyncio.sleep(0)\n        active -= 1\n        return value * 2\n    assert await async_map_bounded([3, 1, 2, 4], worker, limit=2) == [6, 2, 4, 8]\n    assert peak == 2\n    for limit in [0, -1, True, 1.5]:\n        try:\n            await async_map_bounded([], worker, limit)\n        except ValueError:\n            pass\n        else:\n            raise AssertionError(\"Invalid concurrency limits must be rejected\")\n    print(\"All checks passed.\")\nawait _check_async_map()"
+  },
+  {
+    "id": "python-taskgroup-deadline",
+    "lesson_id": "1.15",
+    "title": "Run independent async work together",
+    "instructions": "Implement async usage_summary(user_id, fetch_usage, fetch_plan). Start both independent async calls in an asyncio.TaskGroup and return {\"tokens\": ..., \"plan\": ...}. Put a shared timeout of 1 second around the task group so either slow call cancels the work and raises TimeoutError.",
+    "starter_code": "import asyncio\n\n\nasync def usage_summary(user_id, fetch_usage, fetch_plan):\n    # TODO: use TaskGroup and one shared timeout.\n    raise NotImplementedError\n\n\nasync def _demo():\n    async def usage(user_id):\n        return 42\n    async def plan(user_id):\n        return \"starter\"\n    print(await usage_summary(\"learner-1\", usage, plan))\n\n\nawait _demo()",
+    "checks_code": "async def _check_summary():\n    started = []\n    async def usage(user_id):\n        started.append(\"usage\")\n        await asyncio.sleep(0)\n        return 42\n    async def plan(user_id):\n        started.append(\"plan\")\n        await asyncio.sleep(0)\n        return \"starter\"\n    assert await usage_summary(\"learner-1\", usage, plan) == {\"tokens\": 42, \"plan\": \"starter\"}\n    assert set(started) == {\"usage\", \"plan\"}\n    cancelled = []\n    async def slow_usage(user_id):\n        try:\n            await asyncio.sleep(2)\n        except asyncio.CancelledError:\n            cancelled.append(\"usage\")\n            raise\n    async def slow_plan(user_id):\n        try:\n            await asyncio.sleep(2)\n        except asyncio.CancelledError:\n            cancelled.append(\"plan\")\n            raise\n    try:\n        await usage_summary(\"learner-1\", slow_usage, slow_plan)\n    except TimeoutError:\n        pass\n    else:\n        raise AssertionError(\"The shared deadline must time out\")\n    assert set(cancelled) == {\"usage\", \"plan\"}\n    print(\"All checks passed.\")\nawait _check_summary()"
+  },
+  {
+    "id": "python-mocked-http-contract",
+    "lesson_id": "1.16",
+    "title": "Test a JSON HTTP contract without sockets",
+    "instructions": "Implement fetch_json(transport, url). The injected transport returns a response object with status_code, headers, and json(). Accept only status 200 and a Content-Type containing application/json. Raise ValueError for another status or content type and return the decoded JSON body on success. Do not open network connections.",
+    "starter_code": "def fetch_json(transport, url):\n    # TODO: validate status and content type before returning JSON.\n    raise NotImplementedError\n\n\nclass FakeResponse:\n    status_code = 200\n    headers = {\"Content-Type\": \"application/json\"}\n    def json(self):\n        return {\"text\": \"hello\"}\n\n\nprint(fetch_json(lambda url: FakeResponse(), \"https://example.test\"))",
+    "checks_code": "class Response:\n    def __init__(self, status, content_type, body):\n        self.status_code = status\n        self.headers = {\"Content-Type\": content_type}\n        self.body = body\n    def json(self):\n        return self.body\ncalls = []\nassert fetch_json(lambda url: calls.append(url) or Response(200, \"application/json; charset=utf-8\", {\"ok\": True}), \"https://example.test\") == {\"ok\": True}\nassert calls == [\"https://example.test\"]\nfor response in [Response(500, \"application/json\", {}), Response(200, \"text/plain\", {})]:\n    try:\n        fetch_json(lambda url: response, \"https://example.test\")\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"Invalid HTTP responses must be rejected\")\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "python-staged-secret-scan",
+    "lesson_id": "1.17",
+    "title": "Scan staged text for accidental keys",
+    "instructions": "Implement find_secret_lines(files). Inspect a mapping from file names to text contents, and return sorted (filename, line_number) pairs where a line contains an assignment to api_key or secret_key with a quoted value of at least 8 non-space characters. Ignore comments and do not include the secret value in the result.",
+    "starter_code": "import re\n\n\nSECRET_ASSIGNMENT = re.compile(r\"\\b(?:api_key|secret_key)\\s*=\\s*(['\\\"])(\\S{8,}?)\\1\", re.IGNORECASE)\n\n\ndef find_secret_lines(files):\n    # TODO: scan non-comment lines and return file/line pairs only.\n    raise NotImplementedError\n\n\nsample = {\"settings.py\": \"api_key = 'replace-me-with-a-long-key'\\n\"}\nprint(find_secret_lines(sample))",
+    "checks_code": "files = {\"z.py\": \"# api_key = 'do-not-flag-this'\\nsecret_key = \\\"very-long-secret-value\\\"\\n\", \"a.env\": \"API_KEY='12345678'\\napi_key='short'\\n\"}\nassert find_secret_lines(files) == [(\"a.env\", 1), (\"z.py\", 2)]\nassert find_secret_lines({\"clean.py\": \"api_key = ''\\nsecret_key = None\\n\"}) == []\nassert \"very-long-secret-value\" not in repr(find_secret_lines(files))\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "python-safe-model-summary",
+    "lesson_id": "1.04",
+    "title": "Build a typed, safe model summary",
+    "instructions": "Implement summarize_model(model). Return a dictionary containing the model name, provider, and context window. The input always has name and provider; context_window may be absent or None, in which case return None. Do not mutate the input.",
+    "starter_code": "from typing import NotRequired, TypedDict\n\n\nclass Model(TypedDict):\n    name: str\n    provider: str\n    context_window: NotRequired[int | None]\n\n\ndef summarize_model(model: Model) -> dict[str, str | int | None]:\n    # TODO: return a safe summary without changing model.\n    raise NotImplementedError\n\n\nprint(summarize_model({\"name\": \"Atlas-S\", \"provider\": \"Northwind\"}))",
+    "checks_code": "model = {\"name\": \"Atlas-S\", \"provider\": \"Northwind\", \"context_window\": 64000}\noriginal = model.copy()\nassert summarize_model(model) == {\"name\": \"Atlas-S\", \"provider\": \"Northwind\", \"context_window\": 64000}\nassert model == original\nassert summarize_model({\"name\": \"Kestrel-8\", \"provider\": \"Cobalt\"}) == {\"name\": \"Kestrel-8\", \"provider\": \"Cobalt\", \"context_window\": None}\nassert summarize_model({\"name\": \"Nova\", \"provider\": \"Cobalt\", \"context_window\": None})[\"context_window\"] is None\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "python-independent-dataclass-state",
+    "lesson_id": "1.06",
+    "title": "Keep dataclass summaries independent",
+    "instructions": "Implement a Summary dataclass with a provider string and a fresh model_names list for every instance. Add add_model(name) to append a model name. One summary's models must not appear in another summary.",
+    "starter_code": "from dataclasses import dataclass, field\n\n\n@dataclass\nclass Summary:\n    provider: str\n    # TODO: add per-instance model_names and add_model(name).\n    pass\n\n\nnorthwind = Summary(\"Northwind\")\nnorthwind.add_model(\"Atlas-S\")\nprint(northwind.model_names)",
+    "checks_code": "first = Summary(\"Northwind\")\nsecond = Summary(\"Cobalt\")\nfirst.add_model(\"Atlas-S\")\nassert first.model_names == [\"Atlas-S\"]\nassert second.model_names == []\nsecond.add_model(\"Kestrel-8\")\nassert first.model_names == [\"Atlas-S\"]\nassert second.model_names == [\"Kestrel-8\"]\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "python-json-safe-roundtrip",
+    "lesson_id": "1.09",
+    "title": "Round-trip a strict JSON report",
+    "instructions": "Implement encode_report(report). Serialize a JSON object with sorted keys and compact separators. Reject non-finite numbers such as NaN instead of emitting non-standard JSON. Return the JSON text.",
+    "starter_code": "import json\n\n\ndef encode_report(report):\n    # TODO: return deterministic JSON and reject NaN/Infinity.\n    raise NotImplementedError\n\n\nprint(encode_report({\"provider\": \"Cobalt\", \"models\": 2}))",
+    "checks_code": "encoded = encode_report({\"provider\": \"Cobalt\", \"models\": 2})\nassert encoded == '{\"models\":2,\"provider\":\"Cobalt\"}'\nassert json.loads(encoded) == {\"models\": 2, \"provider\": \"Cobalt\"}\ntry:\n    encode_report({\"score\": float(\"nan\")})\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"Non-finite numbers must be rejected\")\nprint(\"All checks passed.\")"
+  }
+]

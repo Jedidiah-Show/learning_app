@@ -7,7 +7,7 @@ from flask import Blueprint, current_app, jsonify, request
 from flask_login import current_user, login_required
 
 from app import db, validate_app_config
-from app.google_calendar import GoogleAuthorizationError
+from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
 from app.models import CalendarEvent, UserSchedule
 from app.user_preferences import get_effective_config_for_user
 from app.request_data import get_json_object
@@ -84,6 +84,15 @@ def update_schedule():
         return jsonify({
             'error': 'Schedule saved, but Google Calendar needs to be reconnected.'
         }), 401
+    except GoogleCalendarError as error:
+        db.session.rollback()
+        current_app.logger.warning(
+            'Calendar reconciliation failed for user %s: %s',
+            current_user.id, error,
+        )
+        return jsonify({
+            'error': f'Schedule saved, but {error}',
+        }), 502
     except Exception:
         db.session.rollback()
         current_app.logger.exception(

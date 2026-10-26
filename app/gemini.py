@@ -139,8 +139,12 @@ def _record_user_request():
     db.session.commit()
 
 
-def generate_json(prompt, *, model='flash'):
+def generate_json(
+    prompt, *, model='flash', max_attempts=None, read_timeout=None
+):
     api_key = current_app.config.get('GEMINI_API_KEY')
+    if isinstance(api_key, str):
+        api_key = api_key.strip()
     if not api_key:
         raise GeminiNotConfigured('Set GEMINI_API_KEY to enable Gemini generation')
 
@@ -149,12 +153,23 @@ def generate_json(prompt, *, model='flash'):
     model_name = current_app.config[
         'GEMINI_PRO_MODEL' if model == 'pro' else 'GEMINI_FLASH_MODEL'
     ]
+    if isinstance(model_name, str):
+        model_name = model_name.strip()
     if not re.fullmatch(r'[A-Za-z0-9._-]+', model_name):
         raise GeminiError('The configured Gemini model name is invalid')
     try:
-        return _generate_json_for_model(prompt, api_key, model_name, tier=model)
+        return _generate_json_for_model(
+            prompt,
+            api_key,
+            model_name,
+            tier=model,
+            max_attempts=max_attempts,
+            read_timeout=read_timeout,
+        )
     except GeminiRateLimited:
         flash_model = current_app.config['GEMINI_FLASH_MODEL']
+        if isinstance(flash_model, str):
+            flash_model = flash_model.strip()
         if model != 'pro' or flash_model == model_name:
             raise
         if not isinstance(flash_model, str) or not re.fullmatch(
@@ -166,7 +181,14 @@ def generate_json(prompt, *, model='flash'):
             model_name,
             flash_model,
         )
-        return _generate_json_for_model(prompt, api_key, flash_model, tier='flash')
+        return _generate_json_for_model(
+            prompt,
+            api_key,
+            flash_model,
+            tier='flash',
+            max_attempts=max_attempts,
+            read_timeout=read_timeout,
+        )
 
 
 def _retry_delay(attempt, response):
@@ -204,7 +226,14 @@ def _provider_error_message(response):
     return message if isinstance(message, str) else None
 
 
-def _generate_json_for_model(prompt, api_key, model_name, tier='flash'):
+def _generate_json_for_model(
+    prompt,
+    api_key,
+    model_name,
+    tier='flash',
+    max_attempts=None,
+    read_timeout=None,
+):
     generation_config = {
         'responseMimeType': 'application/json',
         'temperature': 0.2,
@@ -213,11 +242,21 @@ def _generate_json_for_model(prompt, api_key, model_name, tier='flash'):
     if re.match(r'^gemini-(?:3|4)(?:[.-])', model_name):
         generation_config['thinkingConfig'] = {'thinkingLevel': 'LOW'}
 
-    max_attempts = _positive_int_env('GEMINI_MAX_ATTEMPTS', DEFAULT_MAX_ATTEMPTS)
+    if max_attempts is None:
+        max_attempts = _positive_int_env(
+            'GEMINI_MAX_ATTEMPTS', DEFAULT_MAX_ATTEMPTS
+        )
+    else:
+        max_attempts = max(1, int(max_attempts))
     connect_timeout = _positive_int_env(
         'GEMINI_CONNECT_TIMEOUT', DEFAULT_CONNECT_TIMEOUT
     )
-    read_timeout = _positive_int_env('GEMINI_READ_TIMEOUT', DEFAULT_READ_TIMEOUT)
+    if read_timeout is None:
+        read_timeout = _positive_int_env(
+            'GEMINI_READ_TIMEOUT', DEFAULT_READ_TIMEOUT
+        )
+    else:
+        read_timeout = max(1, int(read_timeout))
     url = (
         'https://generativelanguage.googleapis.com/v1beta/models/'
         f'{model_name}:generateContent'

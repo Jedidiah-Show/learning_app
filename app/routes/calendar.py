@@ -41,6 +41,52 @@ def _oauth_settings():
     return gcal.oauth_settings()
 
 
+def _oauth_redirect_is_secure(uri):
+    """Google accepts HTTPS, or plain HTTP only for a local callback."""
+    if not isinstance(uri, str):
+        return False
+    return uri.startswith((
+        'https://',
+        'http://localhost',
+        'http://127.0.0.1',
+        'http://[::1]',
+    ))
+
+
+def _oauth_failure_message(error, redirect_uri):
+    """Turn an OAuth token-exchange error into an actionable message."""
+    message = str(error).lower()
+    if not redirect_uri:
+        return (
+            'Google OAuth redirect URI could not be determined. Set '
+            'GOOGLE_REDIRECT_URI to the HTTPS callback URL and try again.'
+        )
+    if 'redirect_uri_mismatch' in message:
+        return (
+            f'Google rejected the redirect URI. Add {redirect_uri} exactly '
+            'to the OAuth client\u2019s Authorized redirect URIs, then try again.'
+        )
+    if 'invalid_client' in message or 'unauthorized_client' in message:
+        return (
+            'Google rejected the OAuth client. Check GOOGLE_CLIENT_ID and '
+            'GOOGLE_CLIENT_SECRET in the deployment environment.'
+        )
+    if 'invalid_grant' in message:
+        return (
+            'The Google authorization code was invalid or expired. Start the '
+            'connection again.'
+        )
+    if 'invalid_scope' in message:
+        return (
+            'Google rejected the requested Calendar scope. Enable the Google '
+            'Calendar API and check the OAuth consent screen.'
+        )
+    return (
+        'Google Calendar authorization failed. Check the OAuth client, '
+        'redirect URI, and enabled APIs, then try again.'
+    )
+
+
 def _calendar_service(user):
     """Return a Google Calendar service for ``user``.
 
@@ -418,17 +464,26 @@ def _sync_events(user, events, config):
     return plan, failures
 
 def _failure_message(failures):
+    """Return an actionable, single-line summary of the failed operations."""
+    if not failures:
+        return 'Google Calendar sync failed.'
+    first_error = failures[0][1]
+    detail = getattr(first_error, 'user_message', None) or str(first_error)
+    detail = ' '.join(detail.split())
+    if len(failures) == 1:
+        return f'Google Calendar sync failed: {detail}'
     return (
-        f'{len(failures)} Google Calendar operation(s) could not be completed. '
-        'Retry the sync to finish.'
+        f'{len(failures)} Google Calendar operation(s) failed. '
+        f'First error: {detail}'
     )
 
 
 def _run_sync(user, events, config):
-    """Push calendar rows to Google and turn failures into a response.
+    """Push calendar rows to Google and return a safe error payload.
 
-    Returns ``(plan, failures, error)`` where ``error`` is a ready to send
-    Flask response when Google could not be reached at all.
+    Returns ``(plan, failures, error, status_code)``.  ``error`` is a JSON
+    payload when Google could not be reached at all; individual operation
+    failures are returned in ``failures`` so they can be retried.
     """
     try:
         plan, failures = _sync_events(user, events, config)
@@ -438,21 +493,38 @@ def _run_sync(user, events, config):
             user.id,
             error,
         )
-        return None, None, (jsonify({
+        return None, None, {
             'status': 'error',
+            'code': 'reauthorize',
             'message': 'Google Calendar authorization expired. '
                        'Please reconnect Google Calendar.',
-        }), 401)
+        }, 401
     except gcal.GoogleCalendarError as error:
         db.session.rollback()
         current_app.logger.exception(
             'Google Calendar sync failed for user %s: %s', user.id, error
         )
-        return None, None, (jsonify({
+        return None, None, {
             'status': 'error',
-            'message': 'Google Calendar sync failed; check the connection and try again',
-        }), 502)
-    return plan, failures, None
+            'code': 'calendar_error',
+            'message': (
+                getattr(error, 'user_message', None)
+                or str(error)
+                or 'Google Calendar sync failed; check the connection and try again'
+            ),
+        }, 502
+
+    for operation, error in failures:
+        current_app.logger.warning(
+            'Google Calendar %s failed for user %s '
+            '(status=%s, reason=%s): %s',
+            operation.get('kind'),
+            user.id,
+            getattr(error, 'status', None),
+            getattr(error, 'reason', None),
+            error,
+        )
+    return plan, failures, None, None
 
 
 # ---------------------------------------------------------------------------
@@ -614,7 +686,7 @@ def schedule_study_sessions():
 
     # Keep the stored rows aligned with the current schedule so a later sync
     # pushes the right times.
-    plan = _plan_events(
+    _plan_events(
         user,
         list(existing.values()),
         blocks,
@@ -623,18 +695,64 @@ def schedule_study_sessions():
         _configured_start_date(config),
     )
     db.session.commit()
+
+    sync_state = None
+    if calendar_config['enabled'] and _user_connected(user):
+        try:
+            synced_plan, failures, error, _ = _run_sync(
+                user, list(existing.values()), config
+            )
+        except Exception:
+            current_app.logger.exception(
+                'Unexpected Calendar sync failure for user %s', user.id
+            )
+            sync_state = {
+                'status': 'error',
+                'message': (
+                    'Study sessions were saved locally, but Google Calendar '
+                    'sync failed unexpectedly. Retry from Settings.'
+                ),
+            }
+        else:
+            if error:
+                sync_state = {
+                    'status': 'error',
+                    'message': error['message'],
+                }
+            elif failures:
+                sync_state = {
+                    'status': 'partial',
+                    'message': _failure_message(failures),
+                }
+            else:
+                sync_state = {
+                    'status': 'success',
+                    'events_created': synced_plan.inserted,
+                    'events_updated': synced_plan.updated,
+                    'events_removed': synced_plan.removed,
+                    'message': (
+                        'Study sessions scheduled and synced to Google Calendar.'
+                    ),
+                }
+
     pending = sum(
         1 for event in CalendarEvent.query.filter_by(
             user_id=user.id, day_number=day_number,
         ).all()
         if not event.synced_to_google or event.sync_pending or event.delete_pending
     )
-    return jsonify({
+    response = {
         'status': 'success',
         'events_created': events_created,
         'pending_sync': pending,
-        'message': 'Study sessions scheduled (Google Calendar sync pending)'
-    })
+        'message': (
+            sync_state['message'] if sync_state
+            else 'Study sessions scheduled (Google Calendar sync pending)'
+        ),
+    }
+    if sync_state:
+        response['sync'] = sync_state
+    return jsonify(response)
 
 
 @calendar_bp.route('/events', methods=['GET'])
@@ -731,9 +849,9 @@ def sync_to_google():
     if not events:
         return jsonify({'status': 'error', 'message': 'Schedule this day locally before syncing it'}), 409
 
-    plan, failures, error = _run_sync(user, events, app_config)
+    plan, failures, error, status_code = _run_sync(user, events, app_config)
     if error:
-        return error
+        return jsonify(error), status_code
     if failures:
         return jsonify({
             'status': 'error',
@@ -772,9 +890,9 @@ def sync_all_to_google():
         return jsonify({'status': 'success', 'events_created': 0, 'events_updated': 0,
                         'message': 'Nothing is scheduled locally yet'})
 
-    plan, failures, error = _run_sync(user, events, app_config)
+    plan, failures, error, status_code = _run_sync(user, events, app_config)
     if error:
-        return error
+        return jsonify(error), status_code
     if failures:
         return jsonify({
             'status': 'error',
@@ -821,6 +939,21 @@ def google_auth():
             'Google Calendar is not configured. Set GOOGLE_CLIENT_ID and '
             'GOOGLE_CLIENT_SECRET, plus GOOGLE_REDIRECT_URI when the app URL '
             'differs from its callback URL.',
+            'error',
+        )
+        return redirect(url_for('main.schedule'))
+    if not redirect_uri:
+        flash(
+            'Google OAuth redirect URI could not be determined. Set '
+            'GOOGLE_REDIRECT_URI to the HTTPS callback URL and try again.',
+            'error',
+        )
+        return redirect(url_for('main.schedule'))
+    if not _oauth_redirect_is_secure(redirect_uri):
+        flash(
+            'Google OAuth requires an HTTPS callback. Set '
+            'GOOGLE_REDIRECT_URI to the HTTPS URL for '
+            '/api/calendar/oauth2callback and try again.',
             'error',
         )
         return redirect(url_for('main.schedule'))
@@ -890,9 +1023,9 @@ def google_callback():
         if not code:
             raise ValueError('Google OAuth callback did not include an authorization code')
         flow.fetch_token(code=code)
-    except Exception:
+    except Exception as error:
         current_app.logger.exception('Google Calendar OAuth token exchange failed')
-        flash('Google Calendar authorization failed. Check OAuth setup and try again.', 'error')
+        flash(_oauth_failure_message(error, redirect_uri), 'error')
         return redirect(url_for('main.schedule'))
     credentials = flow.credentials
     user = current_user

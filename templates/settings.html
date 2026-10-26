@@ -6,11 +6,229 @@
 <label class="block font-semibold">Gemini model tier<select id="model-tier" class="mt-2 block w-full rounded-lg border p-2"><option value="flash" {% if config.ai.model_tier == 'flash' %}selected{% endif %}>Flash · faster</option><option value="pro" {% if config.ai.model_tier == 'pro' %}selected{% endif %}>Pro · deeper reasoning</option></select></label>
 <fieldset><legend class="font-semibold">Progress tracking</legend><label class="mt-2 flex gap-2"><input id="track-streaks" type="checkbox" {% if config.progress.track_streaks %}checked{% endif %}> Track study streaks</label><label class="mt-2 flex gap-2"><input id="track-time" type="checkbox" {% if config.progress.track_time_spent %}checked{% endif %}> Track study time</label></fieldset>
 <fieldset><legend class="font-semibold">Study blocks</legend><p class="mt-1 text-sm text-slate-600">Choose the recurring times used when adding a lesson to your calendar.</p><div id="study-blocks" class="mt-3 space-y-3">{% for block in config.schedule.daily_blocks %}<div class="grid grid-cols-2 gap-3" data-block data-name="{{ block.name }}" data-description="{{ block.description|default('RuachAI course study session') }}"><label class="text-sm">{{ block.name|title }} starts<input type="time" class="block-start mt-1 block w-full rounded-lg border p-2" value="{{ block.start_time }}"></label><label class="text-sm">Ends<input type="time" class="block-end mt-1 block w-full rounded-lg border p-2" value="{{ block.end_time }}"></label></div>{% endfor %}</div></fieldset>
-<div class="border-t pt-5"><h3 class="font-semibold">Google Calendar</h3><p class="mt-1 text-sm text-slate-600">Connect your calendar to schedule course study sessions.</p><a class="mt-3 inline-flex rounded-lg border px-4 py-2 font-semibold text-indigo-700" href="{{ url_for('calendar.google_auth') }}">Connect Google Calendar</a><label class="mt-4 block text-sm">Calendar ID<input id="calendar-id" class="mt-1 block w-full rounded-lg border p-2" value="{{ config.google_calendar.calendar_id }}"></label><label class="mt-3 block text-sm">Event prefix<input id="event-prefix" class="mt-1 block w-full rounded-lg border p-2" value="{{ config.google_calendar.event_prefix }}"></label></div>
+<div class="border-t pt-5"><h3 class="font-semibold">Google Calendar</h3><p class="mt-1 text-sm text-slate-600">Connect your calendar to schedule course study sessions.</p><div class="mt-3 flex flex-wrap items-center gap-3"><a class="inline-flex rounded-lg border px-4 py-2 font-semibold text-indigo-700" href="{{ url_for('calendar.google_auth') }}">Connect Google Calendar</a></div><label class="mt-4 block text-sm">Calendar ID<input id="calendar-id" class="mt-1 block w-full rounded-lg border p-2" value="{{ config.google_calendar.calendar_id }}"></label><label class="mt-3 block text-sm">Event prefix<input id="event-prefix" class="mt-1 block w-full rounded-lg border p-2" value="{{ config.google_calendar.event_prefix }}"></label></div>
 <button class="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white">Save preferences</button><span id="save-status" class="ml-3 text-sm"></span>
 </form>
+<section class="mt-6 max-w-2xl rounded-2xl border bg-white p-6">
+<div class="flex flex-wrap items-center justify-between gap-3"><div><h3 class="font-bold">Integration health</h3><p class="mt-1 text-sm text-slate-600">Check configuration before reconnecting. A live check uses one small Gemini request and one read-only Calendar request.</p></div><button id="test-integrations" type="button" class="rounded-lg border px-4 py-2 text-sm font-semibold text-indigo-700">Run live check</button></div>
+<div id="integration-status" class="mt-4 space-y-2 text-sm text-slate-600"><p>Loading…</p></div>
+<div class="mt-4 border-t pt-4"><button id="sync-calendar" type="button" class="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white">Sync scheduled events</button><span id="sync-status" class="ml-3 text-sm text-slate-600"></span></div>
+<div id="integration-probe" class="mt-4 space-y-2 text-sm text-slate-600"></div>
+</section>
 <p class="mt-5 text-sm text-slate-500">Your previous subject-based progress remains preserved as historical data.</p>
 {% endblock %}
 {% block extra_scripts %}<script>
-document.getElementById('settings-form').addEventListener('submit',async e=>{e.preventDefault();const status=document.getElementById('save-status');const response=await fetch('/api/settings/preferences',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ai:{model_tier:document.getElementById('model-tier').value},progress:{track_streaks:document.getElementById('track-streaks').checked,track_time_spent:document.getElementById('track-time').checked},google_calendar:{calendar_id:document.getElementById('calendar-id').value,event_prefix:document.getElementById('event-prefix').value}})});let data=await response.json();if(!response.ok){status.textContent=data.error||'Could not save preferences';return;}const blocks=Array.from(document.querySelectorAll('[data-block]')).map(row=>({name:row.dataset.name,description:row.dataset.description,start_time:row.querySelector('.block-start').value,end_time:row.querySelector('.block-end').value}));const scheduleResponse=await fetch('/api/admin/schedule',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({daily_blocks:blocks})});data=await scheduleResponse.json();status.textContent=scheduleResponse.ok?'Saved':(data.error||'Preferences saved; schedule update failed.');});
+(() => {
+    const statusBox = document.getElementById('integration-status');
+    const probeBox = document.getElementById('integration-probe');
+    const probeButton = document.getElementById('test-integrations');
+    const syncButton = document.getElementById('sync-calendar');
+    const syncStatus = document.getElementById('sync-status');
+
+    function line(label, value, tone) {
+        const row = document.createElement('p');
+        row.className = 'text-sm text-slate-600';
+        if (tone) row.classList.add(tone);
+        const strong = document.createElement('span');
+        strong.className = 'font-semibold';
+        strong.textContent = label + ': ';
+        row.append(strong, document.createTextNode(String(value)));
+        return row;
+    }
+
+    function renderStatus(data) {
+        const gemini = data.gemini || {};
+        const calendar = data.google_calendar || {};
+        const database = data.database || {};
+        statusBox.replaceChildren();
+        if (data.app_url) {
+            statusBox.append(line('Deployment URL', data.app_url));
+        }
+        statusBox.append(line(
+            'Gemini',
+            gemini.configured
+                ? `configured · ${gemini.model_tier} tier · ${gemini.flash_model} / ${gemini.pro_model}`
+                : 'not configured — set GEMINI_API_KEY in Vercel and redeploy',
+            gemini.configured ? 'text-emerald-700' : 'text-red-700'
+        ));
+        statusBox.append(line(
+            'Google OAuth',
+            calendar.oauth_configured
+                ? 'configured'
+                : 'not configured — set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET',
+            calendar.oauth_configured ? 'text-emerald-700' : 'text-red-700'
+        ));
+        if (calendar.redirect_uri) {
+            statusBox.append(line('Redirect URI', calendar.redirect_uri));
+            if (!calendar.redirect_uri_uses_https && !calendar.redirect_uri_is_localhost) {
+                statusBox.append(line(
+                    'Redirect URI warning',
+                    'Google requires HTTPS. Set GOOGLE_REDIRECT_URI to the HTTPS callback URL.',
+                    'text-red-700'
+                ));
+            }
+            if (calendar.redirect_uri_matches_current_request === false) {
+                statusBox.append(line(
+                    'Redirect URI warning',
+                    'GOOGLE_REDIRECT_URI does not exactly match this deployment URL. Add it to the OAuth client Authorized redirect URIs.',
+                    'text-red-700'
+                ));
+            }
+        }
+        statusBox.append(line(
+            'Google Calendar',
+            calendar.connected
+                ? `connected${calendar.refresh_token_present ? '' : ' (no refresh token; reconnect)'}`
+                : 'not connected — use Connect Google Calendar above',
+            calendar.connected ? 'text-emerald-700' : 'text-red-700'
+        ));
+        if (calendar.calendar_id) {
+            statusBox.append(line('Calendar ID', calendar.calendar_id));
+        }
+        if (calendar.token_expiry) {
+            statusBox.append(line(
+                'Access token expiry',
+                new Date(calendar.token_expiry).toLocaleString()
+                    + (calendar.token_expired ? ' (expired; a refresh token will renew it)' : '')
+            ));
+        }
+        if (calendar.enabled === false) {
+            statusBox.append(line('Calendar sync', 'disabled in your preferences'));
+        }
+        if (database.ok) {
+            statusBox.append(line(
+                'Database',
+                `ready${database.current_revision ? ` · revision ${database.current_revision}` : ''}`,
+                'text-emerald-700'
+            ));
+        } else {
+            const missing = (database.missing_tables || []).join(', ');
+            statusBox.append(line(
+                'Database',
+                [
+                    'needs attention',
+                    missing ? `missing ${missing}` : '',
+                    database.error || '',
+                ].filter(Boolean).join(' — '),
+                'text-red-700'
+            ));
+        }
+    }
+
+    async function loadStatus() {
+        try {
+            const response = await fetch('/api/integrations/status');
+            const data = await response.json();
+            if (!response.ok) {
+                statusBox.replaceChildren(line('Status', data.error || 'Could not load integration health.', 'text-red-700'));
+                return;
+            }
+            renderStatus(data);
+        } catch (error) {
+            statusBox.replaceChildren(line('Status', 'Could not load integration health.', 'text-red-700'));
+        }
+    }
+
+    async function runProbe() {
+        probeButton.disabled = true;
+        probeButton.textContent = 'Checking…';
+        probeBox.replaceChildren(line('Live check', 'Contacting Gemini and Google Calendar…'));
+        try {
+            const response = await fetch('/api/integrations/probe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: '{}',
+            });
+            const data = await response.json();
+            if (!response.ok) {
+                probeBox.replaceChildren(line('Live check', data.error || 'Could not run the live check.', 'text-red-700'));
+                return;
+            }
+            const results = data.results || {};
+            probeBox.replaceChildren();
+            const labels = { gemini: 'Gemini test', calendar: 'Calendar test' };
+            for (const [key, result] of Object.entries(results)) {
+                const extras = [];
+                if (result.model) extras.push(result.model);
+                if (result.http_status) extras.push(`HTTP ${result.http_status}`);
+                if (result.reason) extras.push(result.reason);
+                probeBox.append(line(
+                    labels[key] || key,
+                    `${result.status}: ${result.message || ''}${extras.length ? ` (${extras.join(', ')})` : ''}`,
+                    result.status === 'ok' ? 'text-emerald-700' : 'text-red-700'
+                ));
+            }
+            if (!Object.keys(results).length) {
+                probeBox.append(line('Live check', 'No targets were selected.'));
+            }
+        } catch (error) {
+            probeBox.replaceChildren(line('Live check', 'Could not run the live check.', 'text-red-700'));
+        } finally {
+            probeButton.disabled = false;
+            probeButton.textContent = 'Run live check';
+        }
+    }
+
+    async function syncCalendar() {
+        syncButton.disabled = true;
+        syncStatus.textContent = 'Syncing…';
+        try {
+            const response = await fetch('/api/calendar/sync-all', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: '{}',
+            });
+            const data = await response.json();
+            syncStatus.textContent = data.message || data.error || (response.ok ? 'Sync complete.' : 'Sync failed.');
+        } catch (error) {
+            syncStatus.textContent = 'Sync failed.';
+        } finally {
+            syncButton.disabled = false;
+            loadStatus();
+        }
+    }
+
+    document.getElementById('settings-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const status = document.getElementById('save-status');
+        const response = await fetch('/api/settings/preferences', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                ai: { model_tier: document.getElementById('model-tier').value },
+                progress: {
+                    track_streaks: document.getElementById('track-streaks').checked,
+                    track_time_spent: document.getElementById('track-time').checked,
+                },
+                google_calendar: {
+                    calendar_id: document.getElementById('calendar-id').value,
+                    event_prefix: document.getElementById('event-prefix').value,
+                },
+            }),
+        });
+        let data = await response.json();
+        if (!response.ok) {
+            status.textContent = data.error || 'Could not save preferences';
+            return;
+        }
+        const blocks = Array.from(document.querySelectorAll('[data-block]')).map((row) => ({
+            name: row.dataset.name,
+            description: row.dataset.description,
+            start_time: row.querySelector('.block-start').value,
+            end_time: row.querySelector('.block-end').value,
+        }));
+        const scheduleResponse = await fetch('/api/admin/schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ daily_blocks: blocks }),
+        });
+        data = await scheduleResponse.json();
+        status.textContent = scheduleResponse.ok ? 'Saved' : (data.error || 'Preferences saved; schedule update failed.');
+        loadStatus();
+    });
+
+    probeButton.addEventListener('click', runProbe);
+    syncButton.addEventListener('click', syncCalendar);
+    loadStatus();
+})();
 </script>{% endblock %}

@@ -3,16 +3,50 @@
 from datetime import datetime, timezone
 import json
 
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, current_app, jsonify, request
 from flask_login import current_user, login_required
+from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.curriculum import get_lesson, lesson_context
 from app.learning import lesson_is_available, next_unlocked_lesson
-from app.models import LessonCompletion, StudySession
+from app.models import LessonCompletion, StudySession, VideoProgress
+from app.models import PracticeWorkspace
+from app.practice import get_practice_exercise
 from app.request_data import get_json_object
 
 lessons_bp = Blueprint('lessons', __name__)
+MAX_PRACTICE_SOURCE_LENGTH = 20000
+
+MAX_VIDEO_SECONDS = 24 * 60 * 60
+VIDEO_COMPLETION_RATIO = 0.9
+
+
+def _request_seconds(value, field):
+    """Validate a non-negative numeric second value from the client."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        raise ValueError(f'{field} must be a number of seconds')
+    if value < 0 or value > MAX_VIDEO_SECONDS:
+        raise ValueError(f'{field} must be between 0 and {MAX_VIDEO_SECONDS}')
+    return int(value)
+
+
+def _video_lengths(video, client_duration):
+    """Return the clip start and length used to calculate watch progress."""
+    start = video.get('start') or 0
+    end = video.get('end')
+    if end is not None:
+        return start, max(0, end - start)
+    curated_duration = video.get('duration_seconds')
+    if client_duration:
+        return start, max(0, client_duration - start)
+    if curated_duration:
+        return start, max(0, curated_duration - start)
+    return start, None
+
+
+def _video_is_complete(watched_seconds, length):
+    return bool(length) and watched_seconds >= length * VIDEO_COMPLETION_RATIO
 
 
 @lessons_bp.route('/daily/<int:ordinal>', methods=['GET'])
@@ -27,6 +61,61 @@ def get_daily_lessons(ordinal):
     if not lesson_is_available(current_user, lesson['id']):
         return jsonify({'error': 'Lesson is locked', 'next_lesson_id': next_unlocked_lesson(current_user)}), 403
     return jsonify({'lesson': lesson_context(lesson), 'completed': lesson['id'] in completed_lesson_ids(current_user)})
+
+
+@lessons_bp.route(
+    '/practice/<lesson_id>/<exercise_id>', methods=['GET', 'PUT']
+)
+@login_required
+def practice_workspace(lesson_id, exercise_id):
+    lesson = get_lesson(lesson_id)
+    exercise = get_practice_exercise(exercise_id)
+    if not lesson or not exercise or exercise['lesson_id'] != lesson_id:
+        return jsonify({'error': 'Practice exercise not found'}), 404
+    if not lesson_is_available(current_user, lesson_id):
+        return jsonify({'error': 'Lesson is locked'}), 403
+    workspace = PracticeWorkspace.query.filter_by(
+        user_id=current_user.id, exercise_id=exercise_id
+    ).first()
+    if request.method == 'GET':
+        return jsonify({
+            'exercise': exercise,
+            'source': workspace.source if workspace else exercise['starter_code'],
+            'updated_at': workspace.updated_at.isoformat() if workspace else None,
+        })
+
+    if (
+        request.content_length is not None
+        and request.content_length > MAX_PRACTICE_SOURCE_LENGTH + 1024
+    ):
+        return jsonify({'error': 'Practice source is too large'}), 413
+    data = get_json_object()
+    source = data.get('source') if data else None
+    if not isinstance(source, str):
+        return jsonify({'error': 'Source must be text'}), 400
+    if len(source) > MAX_PRACTICE_SOURCE_LENGTH:
+        return jsonify({
+            'error': f'Source must be at most {MAX_PRACTICE_SOURCE_LENGTH} characters'
+        }), 413
+    if workspace is None:
+        workspace = PracticeWorkspace(
+            user_id=current_user.id, exercise_id=exercise_id, source=source
+        )
+        db.session.add(workspace)
+    else:
+        workspace.source = source
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        workspace = PracticeWorkspace.query.filter_by(
+            user_id=current_user.id, exercise_id=exercise_id
+        ).first()
+        if workspace is None:
+            raise
+        workspace.source = source
+        db.session.commit()
+    return jsonify({'status': 'saved', 'updated_at': workspace.updated_at.isoformat()})
 
 
 @lessons_bp.route('/complete', methods=['POST'])
@@ -72,6 +161,91 @@ def complete_lesson():
     db.session.commit()
     return jsonify({'status': 'success', 'next_lesson_id': next_unlocked_lesson(current_user),
                     'completed_lesson_id': lesson_id})
+
+
+@lessons_bp.route('/video-progress', methods=['POST'])
+@login_required
+def update_video_progress():
+    """Record the learner's furthest position in the lesson video.
+
+    Watch progress is deliberately advisory: it never unlocks lessons or
+    replaces the lesson quiz. The client is the source of playback events, so
+    this endpoint caps and validates values instead of trusting them blindly.
+    """
+    data = get_json_object()
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Request body must be a JSON object'}), 400
+    lesson_id = data.get('lesson_id')
+    lesson = get_lesson(lesson_id) if isinstance(lesson_id, str) else None
+    if not lesson:
+        return jsonify({'error': 'Lesson not found'}), 404
+    if not lesson_is_available(current_user, lesson_id):
+        return jsonify({'error': 'Lesson is locked'}), 403
+    video = lesson.get('video')
+    if not video:
+        return jsonify({'error': 'This lesson has no video'}), 404
+    try:
+        position = _request_seconds(data.get('position_seconds'), 'position_seconds')
+        duration = _request_seconds(
+            data.get('duration_seconds'), 'duration_seconds'
+        ) if data.get('duration_seconds') is not None else None
+    except ValueError as error:
+        return jsonify({'error': str(error)}), 400
+
+    clip_start, clip_length = _video_lengths(video, duration)
+    position = max(position, clip_start)
+    if clip_length is not None:
+        position = min(position, clip_start + clip_length)
+    watched_this_event = max(
+        0,
+        position - clip_start if clip_length is None else min(
+            position - clip_start, clip_length
+        ),
+    )
+
+    progress = VideoProgress.query.filter_by(
+        user_id=current_user.id, lesson_id=lesson_id
+    ).first()
+    now = datetime.now(timezone.utc)
+    if progress is None:
+        progress = VideoProgress(
+            user_id=current_user.id,
+            lesson_id=lesson_id,
+            video_id=video['id'],
+        )
+        db.session.add(progress)
+    elif progress.video_id != video['id']:
+        # A curated replacement starts a fresh watch history for the lesson.
+        progress.video_id = video['id']
+        progress.watched_seconds = 0
+        progress.completed = False
+        progress.completed_at = None
+
+    progress.watched_seconds = max(
+        progress.watched_seconds or 0, watched_this_event
+    )
+    progress.last_position = position
+    if clip_length:
+        progress.duration_seconds = clip_length
+    completed_now = (
+        not progress.completed
+        and _video_is_complete(progress.watched_seconds, clip_length)
+    )
+    if completed_now:
+        progress.completed = True
+        progress.completed_at = now
+    progress.updated_at = now
+    db.session.commit()
+    return jsonify({
+        'status': 'success',
+        'lesson_id': lesson_id,
+        'video_id': video['id'],
+        'watched_seconds': progress.watched_seconds,
+        'last_position': progress.last_position,
+        'duration_seconds': progress.duration_seconds,
+        'completed': progress.completed,
+        'just_completed': completed_now,
+    })
 
 
 @lessons_bp.route('/ask', methods=['POST'])

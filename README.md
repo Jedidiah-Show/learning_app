@@ -1,6 +1,6 @@
 # RuachAI Engineering Course
 
-A Flask and SQLite learning app for the RuachAI engineering course: 13 modules, 201 bundled lessons, lesson-based Gemini quizzes and clarification, module projects, course progress, personal study schedules, and optional Google Calendar sync. Historical subject-based progress and weekly projects remain stored as legacy records and are not mixed into the new course.
+A Flask and SQLite learning app for the RuachAI engineering course: 13 modules, 201 bundled lessons, curated lesson videos, lesson-based Gemini quizzes and clarification, module projects, course progress, personal study schedules, and optional Google Calendar sync. Historical subject-based progress and weekly projects remain stored as legacy records and are not mixed into the new course.
 
 ## Run locally
 
@@ -14,7 +14,9 @@ SECRET_KEY='replace-with-a-long-random-value' .venv/bin/python index.py
 Open `http://127.0.0.1:8080`. The default database URL is `sqlite:///../data/learning_app.db`; set `DATABASE_URL` to use a different database. Configure a persistent `SECRET_KEY` anywhere sessions must survive restarts.
 Production deployments must set `SECRET_KEY`; the app refuses to start in production without it.
 
-Production styles are precompiled into `static/css/tailwind.css`; the app does not load Tailwind's runtime CDN. After changing utility classes in templates or JavaScript, rebuild the stylesheet with `npm ci && npm run build:css`. Chart.js is loaded only on the progress page.
+Production styles are precompiled into `static/css/tailwind.css`; the app does not load Tailwind's runtime CDN. After changing utility classes in templates or JavaScript, rebuild the stylesheet with `npm ci && npm run build:css`. Rebuild the CodeMirror practice editor bundle with `npm run build:js` after changing its source. Chart.js is loaded only on the progress page.
+
+The lesson practice workspace currently provides a curated, single-file Python exercise for each lesson in the Python module. Learner source is saved in the database, so apply outstanding migrations before deployment. Python runs in a sandboxed browser frame and is not used for secure grading; the pinned Pyodide runtime is downloaded from jsDelivr on first use, so the learner's browser needs access to that CDN.
 
 The app does not create or alter database tables at startup. For a new database, apply the migrations with `flask --app index.py db upgrade`. If upgrading a database created by the previous `db.create_all()` version, first mark its existing schema as the baseline, then apply the calendar metadata migration:
 
@@ -33,7 +35,7 @@ Configure `DATABASE_URL` in the Vercel project with a persistent PostgreSQL conn
 
 The canonical course content is in `app/data/dynamoai_curriculum.json`; `app/data/dynamoai_resources.json` maps the tracker’s linked videos and articles to the Python and Backend lessons. Learners follow the lessons in order. Completing every lesson in a module unlocks its project; submitting that project with Gemini evaluation unlocks the next module. Learner-specific schedule blocks, AI model tier, progress tracking, and Calendar preferences are stored per account. Proficiency diagnostics and subject selection are no longer part of onboarding or progression.
 
-Set `GEMINI_API_KEY` to enable Gemini clarification, lesson and module quizzes, and module project evaluation. Lesson content is bundled and is not generated. The default Flash and Pro model names are configured in `config/default_config.yaml`; override them with `GEMINI_FLASH_MODEL` and `GEMINI_PRO_MODEL`. Learners can select Flash or Pro in their account settings. If a Pro request is rate-limited, it retries once with Flash. Transient provider failures (HTTP 408, 429, 500, 502, 503, 504) and network timeouts are retried with exponential backoff and jitter.
+Set `GEMINI_API_KEY` to enable Gemini clarification, lesson and module quizzes, and module project evaluation. `GOOGLE_API_KEY` is accepted as a fallback. Lesson content is bundled and is not generated. The default Flash and Pro model names are configured in `config/default_config.yaml`; override them with `GEMINI_FLASH_MODEL` and `GEMINI_PRO_MODEL`. Learners can select Flash or Pro in their account settings. If a Pro request is rate-limited, it retries once with Flash. Transient provider failures (HTTP 408, 429, 500, 502, 503, 504) and network timeouts are retried with exponential backoff and jitter. A 403 usually means the key is invalid, the Generative Language API is disabled for its Google Cloud project, or a key restriction excludes the deployment; a 429 usually means the key's quota is exhausted. Use the Settings integration health check to see which key source is active and the provider's exact response.
 
 Authenticated learners are limited to 30 Gemini requests per minute and 300 per UTC day; every provider attempt, including a retry, counts against the limit. Override the limits with `GEMINI_REQUESTS_PER_MINUTE` and `GEMINI_REQUESTS_PER_DAY`. Set `GEMINI_MAX_ATTEMPTS` to change how many times a request is sent before it is reported as failed, `GEMINI_READ_TIMEOUT` to change the response timeout in seconds, and `GEMINI_CONNECT_TIMEOUT` to change the connection timeout. Apply database migrations before deploying versions that add or change persistent data models.
 
@@ -45,9 +47,51 @@ Course completion is tracked by stable lesson ID. Existing subject/day completio
 
 No lesson-preparation worker is required. The lesson guides are served from the bundled curriculum JSON.
 
-Shared changes through `/api/admin/config` require the `ADMIN_API_TOKEN` environment variable and an `X-Admin-Token` request header. Those API changes apply only until the process restarts, so edit the YAML file for durable shared defaults. Google Calendar OAuth requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Set `GOOGLE_REDIRECT_URI` to the exact URL registered in Google Cloud Console when the app is behind a proxy or its external URL differs from Flask's callback URL; the callback path is `/api/calendar/oauth2callback`. Add that URL to the OAuth client's authorized redirect URIs and enable the Google Calendar API. Connect and sync require the app to be served over HTTPS except for localhost development, and the learner's login session must persist through Google's redirect.
+Shared changes through `/api/admin/config` require the `ADMIN_API_TOKEN` environment variable and an `X-Admin-Token` request header. Those API changes apply only until the process restarts, so edit the YAML file for durable shared defaults. Google Calendar OAuth requires `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`. Set `GOOGLE_REDIRECT_URI` to the exact URL registered in Google Cloud Console; the callback path is `/api/calendar/oauth2callback`, so the normal production value is `https://<your-domain>/api/calendar/oauth2callback`. Add that exact value to the OAuth client's authorized redirect URIs and enable the Google Calendar API in the same Google Cloud project. Connect and sync require the app to be served over HTTPS except for localhost development, and the learner's login session must persist through Google's redirect. If the OAuth consent screen is still in testing mode, add the learner as a test user and expect refresh tokens to expire after seven days; publish the OAuth app or reconnect when that happens.
+
+### Integration diagnostics
+
+Settings includes an **Integration health** panel. It reports whether the deployment has `GEMINI_API_KEY`, the configured Flash and Pro model names, whether Google OAuth is configured, the effective callback URL and whether it matches the current deployment URL, token state, and any missing database tables. The **Run live check** button sends one small Gemini request and performs one read-only Google Calendar request, then displays the provider's actionable error without exposing secret values.
+
+Scheduling a lesson now attempts a Google Calendar sync immediately when the integration is enabled and the learner is connected. Pending rows can be retried with **Sync scheduled events** in Settings. A Google 403 is classified precisely: missing scope or invalid credentials require reconnecting, while a disabled Calendar API, quota exhaustion, a bad calendar ID, or a permission problem is reported with the matching fix instead of a misleading reconnect prompt.
 
 Password recovery sends reset links through an app-owned Gmail mailbox using the Gmail API. Configure `GMAIL_SENDER_EMAIL`, `GMAIL_REFRESH_TOKEN` (authorized for the `gmail.send` scope), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and the externally reachable HTTPS `PUBLIC_APP_URL`. Do not put credentials in source control. For local development, `index.py` loads values from the root `.env` file; for Vercel, add them in the project’s Environment Variables settings and redeploy. Apply outstanding database migrations with `flask --app index.py db upgrade` before using password recovery.
+
+## Lesson videos
+
+Curated videos live beside each lesson in `app/data/dynamoai_resources.json`. A lesson resource may include:
+
+```json
+{
+  "video": {
+    "title": "A practical walkthrough",
+    "url": "https://www.youtube.com/watch?v=K5KVEU3aaeQ",
+    "channel": "Example Channel",
+    "start": 90,
+    "end": 420,
+    "duration_seconds": 600,
+    "why": "Watch this after the lesson for a worked example."
+  }
+}
+```
+
+Only `title` and `url` are required. `start` and `end` are optional second offsets for a clip; `duration_seconds` is the optional duration of the full source video. `app/videos.py` validates the YouTube id and builds the embed, thumbnail and resume metadata at startup. A malformed or non-YouTube URL is treated as no video, so the lesson still renders normally.
+
+The lesson page uses a click-to-load, privacy-enhanced player (`youtube-nocookie.com`) and reports watch position to `POST /api/lessons/video-progress`. Watching is advisory: it records progress and shows a `Watched ✓` state, but it never unlocks lessons or replaces the lesson quiz. Videos play through YouTube's official IFrame API; the app does not download, proxy or re-host them. If a video cannot be embedded, the learner gets a direct YouTube link instead.
+
+The catalog currently covers 37 of 201 lessons. Audit it at any time:
+
+```bash
+.venv/bin/python scripts/validate_videos.py
+
+# Verify privacy status, embeddability and durations with the YouTube Data API.
+YOUTUBE_API_KEY='...' .venv/bin/python scripts/validate_videos.py --online --report /tmp/video-audit.json
+
+# Opt in to writing verified channel/duration/embeddable metadata back to the JSON.
+YOUTUBE_API_KEY='...' .venv/bin/python scripts/validate_videos.py --online --write
+```
+
+The audit lists missing lessons by module, reuses, invalid URLs and non-embeddable videos. Use `--require-all` to fail when coverage is incomplete and `--strict` to fail on warnings. The YouTube API key is only needed by this script; the running app never calls YouTube's Data API. Online verification uses `videos.list` (1 quota unit per batch of 50 ids) and never uses the expensive `search.list` endpoint.
 
 ## Google Calendar sync
 
@@ -67,6 +111,8 @@ All Google Calendar mechanics live in `app/google_calendar.py`; `app/routes/cale
 Migration `c7b1f0a94d2e` adds `calendar_event.google_sync_hash`, a fingerprint of the payload each event was last pushed with. Apply it with `flask --app index.py db upgrade` before deploying the new sync code. Events whose fingerprint already matches the schedule are skipped, so a repeated sync performs no Google writes at all.
 
 Migration `5a7c1e9d2f40` adds a uniqueness constraint for learner lesson completions and renewable AI-job leases. It consolidates any duplicate completion rows while preserving their total study time. Apply outstanding migrations with `flask --app index.py db upgrade` before deploying this version.
+
+Migration `8b1c2d3e4f50` adds `video_progress`, which stores each learner's furthest watch position and completion state per lesson video. Apply it before deploying the lesson-video UI.
 
 Syncs are designed to be cheap and to survive failures:
 

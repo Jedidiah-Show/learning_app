@@ -1,0 +1,46 @@
+<div data-practice-workspace data-lesson-id="{{ lesson.id }}">
+    <script id="practice-exercises" type="application/json">{{ practice_exercises|tojson }}</script>
+    <button id="practice-launcher" class="practice-launcher" type="button">Open practice workspace</button>
+    <section id="practice-panel" class="practice-panel" aria-label="Practice workspace" hidden>
+        <header class="practice-header">
+            <div class="practice-heading">
+                <strong>Python practice</strong>
+                <span id="practice-save-status" data-state="saved" role="status">Loading exercise…</span>
+            </div>
+            <div class="practice-controls">
+                <button id="practice-collapse" type="button" aria-expanded="true" aria-label="Collapse workspace">Minimize</button>
+                <button id="practice-maximize" type="button" aria-pressed="false">Maximize</button>
+                <button id="practice-close" type="button" aria-label="Close workspace">Close</button>
+            </div>
+        </header>
+        <div class="practice-body">
+            <div class="practice-editor-column">
+                <div class="practice-toolbar">
+                    <label for="practice-exercise-select">Exercise</label>
+                    <select id="practice-exercise-select" aria-label="Choose practice exercise"></select>
+                    <button id="practice-reset" type="button">Reset starter</button>
+                    <button id="practice-run" type="button" disabled>Run checks</button>
+                </div>
+                <div id="practice-editor" class="practice-editor" aria-label="Python code editor"></div>
+                <div class="practice-output-wrap">
+                    <h3>Output</h3>
+                    <pre id="practice-output" data-state="output" aria-live="polite">Run your code to see output and checks.</pre>
+                </div>
+            </div>
+            <aside class="practice-task">
+                <p class="practice-kicker">Your task</p>
+                <h2 id="practice-task-title"></h2>
+                <p id="practice-instructions"></p>
+                <p class="practice-note">Python runs in an isolated browser frame, not on the app server. Network access is disabled. This practice runner is for learning, not secure grading.</p>
+            </aside>
+        </div>
+    </section>
+    <iframe
+        id="practice-sandbox"
+        title="Isolated Python practice runner"
+        sandbox="allow-scripts"
+        referrerpolicy="no-referrer"
+        aria-hidden="true"
+        tabindex="-1"
+    ></iframe>
+</div>

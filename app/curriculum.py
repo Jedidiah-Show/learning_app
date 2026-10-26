@@ -4,6 +4,8 @@ from functools import lru_cache
 import json
 from pathlib import Path
 
+from app.videos import build_lesson_video
+
 
 CURRICULUM_PATH = Path(__file__).parent / 'data' / 'dynamoai_curriculum.json'
 
@@ -35,6 +37,7 @@ def curriculum():
         lesson['_ordinal'] = index + 1
         lesson['_module'] = data['_module_map'][lesson['module_id']]
         lesson['resources'] = resources.get(lesson['id'], {})
+        lesson['video'] = build_lesson_video(lesson['resources'].get('video'))
     return data
 
 
@@ -66,5 +69,5 @@ def module_lessons(module_id):
 
 def lesson_context(lesson):
     """Return structured lesson material without duplicated PDF page text."""
-    excluded = {'pages', '_ordinal', '_module'}
+    excluded = {'pages', '_ordinal', '_module', 'video'}
     return {key: value for key, value in lesson.items() if key not in excluded}

@@ -71,9 +71,14 @@ class GoogleAuthorizationError(GoogleCalendarError):
 class GoogleApiError(GoogleCalendarError):
     """A Google Calendar request failed."""
 
-    def __init__(self, message, status=None):
+    def __init__(
+        self, message, status=None, reason=None, provider_message=None
+    ):
         super().__init__(message)
         self.status = status
+        self.reason = reason
+        self.provider_message = provider_message or ''
+        self.user_message = message
 
 
 class OperationResult:
@@ -90,6 +95,11 @@ class OperationResult:
 # ---------------------------------------------------------------------------
 # Configuration
 # ---------------------------------------------------------------------------
+
+
+def _clean_oauth_value(value):
+    """Strip accidental whitespace from values pasted into a dashboard."""
+    return value.strip() if isinstance(value, str) else value
 
 
 def oauth_settings(config=None):
@@ -120,7 +130,11 @@ def oauth_settings(config=None):
     )
     if not redirect_uri and has_request_context():
         redirect_uri = url_for('calendar.google_callback', _external=True)
-    return client_id, client_secret, redirect_uri
+    return (
+        _clean_oauth_value(client_id),
+        _clean_oauth_value(client_secret),
+        _clean_oauth_value(redirect_uri),
+    )
 
 
 def calendar_settings(config):
@@ -216,14 +230,37 @@ def refresh_credentials(credentials, user=None):
     try:
         credentials.refresh(GoogleRequest())
     except RefreshError as error:
-        raise GoogleAuthorizationError(
-            'Google authorization has expired; reconnect Google Calendar'
+        message = str(error).lower()
+        if any(marker in message for marker in (
+            'invalid_client',
+            'unauthorized_client',
+            'invalid_scope',
+            'redirect_uri_mismatch',
+        )):
+            raise GoogleCalendarError(
+                'Google rejected the OAuth client configuration. Check '
+                'GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, and the Google '
+                'Calendar API scope, then reconnect.'
+            ) from error
+        if any(marker in message for marker in (
+            'invalid_grant',
+            'expired',
+            'revoked',
+            'invalid authentication',
+        )):
+            raise GoogleAuthorizationError(
+                'Google authorization has expired; reconnect Google Calendar'
+            ) from error
+        raise GoogleCalendarError(
+            'Could not refresh Google Calendar authorization. Check the '
+            'OAuth configuration and try again.'
         ) from error
     except GoogleCalendarError:
         raise
     except Exception as error:
         raise GoogleCalendarError(
-            f'Could not refresh Google Calendar authorization: {error}'
+            'Could not refresh Google Calendar authorization. Check the '
+            'OAuth configuration and try again.'
         ) from error
     if user is not None:
         persist_refreshed_token(user, credentials)
@@ -404,6 +441,192 @@ def _retry_delay(attempt, error=None):
     return delay * (0.5 + random.random())
 
 
+_AUTH_REASONS = {
+    'autherror',
+    'accesstokenscopeinsufficient',
+    'accesstokenexpired',
+    'invalid_grant',
+    'unauthorized',
+}
+_DISABLED_REASONS = {
+    'accessnotconfigured',
+    'service_disabled',
+    'servicedisabled',
+}
+_QUOTA_REASONS = {
+    'dailylimitexceeded',
+    'quotaexceeded',
+    'ratelimitexceeded',
+    'resourceexhausted',
+    'userratelimitexceeded',
+}
+_NOT_FOUND_REASONS = {'notfound'}
+_PERMISSION_REASONS = {'forbidden', 'insufficientpermissions', 'notacalendaruser'}
+
+
+def _clean_provider_message(message):
+    """Return a short, single-line provider message safe to display."""
+    text = ' '.join(str(message or '').split())
+    return text[:300]
+
+
+def _http_error_info(error):
+    """Extract the useful fields from a Google HTTP error payload."""
+    payload = {}
+    content = getattr(error, 'content', None)
+    if isinstance(content, bytes):
+        try:
+            content = content.decode('utf-8')
+        except UnicodeDecodeError:
+            content = None
+    if isinstance(content, str):
+        try:
+            decoded = json.loads(content)
+        except (TypeError, ValueError):
+            decoded = None
+        if isinstance(decoded, dict):
+            payload = decoded
+
+    body = payload.get('error')
+    if not isinstance(body, dict):
+        body = {}
+
+    reasons = []
+    for key in ('errors', 'details'):
+        items = body.get(key)
+        if not isinstance(items, list):
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+            reason = item.get('reason')
+            if isinstance(reason, str) and reason:
+                reasons.append(reason)
+
+    message = body.get('message')
+    if not isinstance(message, str) or not message.strip():
+        message = getattr(error, 'reason', '')
+    status_text = body.get('status')
+    return {
+        'message': _clean_provider_message(message),
+        'reasons': reasons,
+        'status_text': status_text if isinstance(status_text, str) else '',
+    }
+
+
+def _has_reason(reasons, candidates):
+    return any(reason.lower() in candidates for reason in reasons)
+
+
+def _is_authorization_failure(status, info):
+    if status == 401:
+        return True
+    if status != 403:
+        return False
+    if _has_reason(info['reasons'], _AUTH_REASONS):
+        return True
+    message = info['message'].lower()
+    if any(marker in message for marker in (
+        'insufficient authentication scopes',
+        'invalid authentication credentials',
+        'access token expired',
+        'token has been expired or revoked',
+    )):
+        return True
+    return info['status_text'].upper() in {
+        'UNAUTHENTICATED', 'ACCESS_TOKEN_EXPIRED',
+    }
+
+
+def _is_disabled_failure(info):
+    if _has_reason(info['reasons'], _DISABLED_REASONS):
+        return True
+    message = info['message'].lower()
+    return any(marker in message for marker in (
+        'calendar api has not been used',
+        'api has not been used in project',
+        'is disabled',
+        'enable it by visiting',
+    ))
+
+
+def _is_quota_failure(info):
+    if _has_reason(info['reasons'], _QUOTA_REASONS):
+        return True
+    if info['status_text'].upper() == 'RESOURCE_EXHAUSTED':
+        return True
+    return 'quota' in info['message'].lower()
+
+
+def _is_not_found_failure(status, info):
+    return status == 404 or _has_reason(info['reasons'], _NOT_FOUND_REASONS)
+
+
+def _http_error_to_exception(error):
+    """Convert a Google HTTP error into an actionable application error."""
+    status = getattr(getattr(error, 'resp', None), 'status', None)
+    info = _http_error_info(error)
+    reason = next(
+        (item for item in info['reasons'] if item),
+        info['status_text'] or None,
+    )
+    provider_message = info['message'] or None
+
+    if _is_authorization_failure(status, info):
+        return GoogleAuthorizationError(
+            'Google authorization was rejected or is missing the Calendar '
+            'scope; reconnect Google Calendar.'
+        )
+    if _is_disabled_failure(info):
+        return GoogleApiError(
+            'The Google Calendar API is not enabled for this Google Cloud '
+            'project. Enable it in Google Cloud Console, wait a few minutes, '
+            'then retry.',
+            status=status,
+            reason=reason,
+            provider_message=provider_message,
+        )
+    if status == 429 or _is_quota_failure(info):
+        return GoogleApiError(
+            'Google Calendar API quota or rate limit was exceeded. Wait a '
+            'few minutes and retry.',
+            status=status,
+            reason=reason,
+            provider_message=provider_message,
+        )
+    if _is_not_found_failure(status, info):
+        return GoogleApiError(
+            'Google Calendar could not find the configured calendar or event. '
+            'Check the Calendar ID in Settings and make sure it still exists.',
+            status=status,
+            reason=reason,
+            provider_message=provider_message,
+        )
+    if _has_reason(info['reasons'], _PERMISSION_REASONS):
+        return GoogleApiError(
+            'Google Calendar denied access. Check that the configured '
+            'calendar exists and that the connected account can edit it.',
+            status=status,
+            reason=reason,
+            provider_message=provider_message,
+        )
+    if status is not None and 500 <= status < 600:
+        return GoogleApiError(
+            f'Google Calendar is temporarily unavailable (HTTP {status}). '
+            'Retry shortly.',
+            status=status,
+            reason=reason,
+            provider_message=provider_message,
+        )
+    detail = f' Google reported: {info["message"]}' if info['message'] else ''
+    return GoogleApiError(
+        f'Google Calendar rejected the request (HTTP {status}).{detail}',
+        status=status,
+        reason=reason,
+        provider_message=provider_message,
+    )
+
+
 def execute_request(request, attempts=MAX_ATTEMPTS):
     """Execute a Google request, retrying transient failures."""
     from googleapiclient.errors import HttpError
@@ -413,17 +636,15 @@ def execute_request(request, attempts=MAX_ATTEMPTS):
             return request.execute()
         except HttpError as error:
             status = getattr(error.resp, 'status', None)
-            if status in RETRYABLE_STATUS_CODES and attempt < attempts:
+            info = _http_error_info(error)
+            retryable = (
+                status in RETRYABLE_STATUS_CODES
+                or (status == 403 and _is_quota_failure(info))
+            )
+            if retryable and attempt < attempts:
                 time.sleep(_retry_delay(attempt, error))
                 continue
-            if status in (401, 403):
-                raise GoogleAuthorizationError(
-                    'Google Calendar authorization was rejected; '
-                    'reconnect Google Calendar'
-                ) from error
-            raise GoogleApiError(
-                f'Google Calendar request failed (status {status})', status=status
-            ) from error
+            raise _http_error_to_exception(error) from error
         except _TRANSPORT_ERRORS as error:
             if attempt < attempts:
                 time.sleep(_retry_delay(attempt))
