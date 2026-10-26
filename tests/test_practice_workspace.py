@@ -5,7 +5,9 @@ import unittest
 
 from app import create_app, db
 from app.curriculum import all_lessons, all_modules
-from app.models import CourseProject, LessonCompletion, PracticeWorkspace, User
+from app.models import (
+    CourseProject, LessonCompletion, PracticeUsageDaily, PracticeWorkspace, User,
+)
 from app.practice import all_practice_exercises, practice_exercises_for_lesson
 
 
@@ -132,6 +134,8 @@ class PracticeWorkspaceTests(unittest.TestCase):
         html = practice_lesson.get_data(as_text=True)
         self.assertIn('data-practice-workspace', html)
         self.assertIn('Open practice workspace', html)
+        self.assertIn('Pilot notice: daily aggregate counts', html)
+        self.assertIn('data-usage-url="/api/lessons/practice-usage"', html)
         self.assertIn('id="practice-sandbox"', html)
         self.assertIn('sandbox="allow-scripts"', html)
         self.assertIn('js/practice.bundle.js', html)
@@ -200,6 +204,30 @@ class PracticeWorkspaceTests(unittest.TestCase):
             '/api/lessons/practice/1.01/python-cheapest-by-provider'
         )
         self.assertEqual(response.status_code, 401)
+
+    def test_pilot_usage_records_only_allowlisted_daily_aggregates(self):
+        anonymous = self.client.post(
+            '/api/lessons/practice-usage', json={'event': 'open'}
+        )
+        self.assertEqual(anonymous.status_code, 401)
+
+        self.register('pilotlearner')
+        url = '/api/lessons/practice-usage'
+        for event in ('open', 'run', 'error', 'run'):
+            response = self.client.post(url, json={'event': event})
+            self.assertEqual(response.status_code, 200, response.get_json())
+        invalid = self.client.post(url, json={'event': 'source'})
+        self.assertEqual(invalid.status_code, 400)
+
+        with self.app.app_context():
+            counts = {
+                row.event: row.count for row in PracticeUsageDaily.query.all()
+            }
+            self.assertEqual(counts, {'open': 1, 'run': 2, 'error': 1})
+            self.assertEqual(
+                set(PracticeUsageDaily.__table__.columns.keys()),
+                {'id', 'day', 'event', 'count'},
+            )
 
 
 if __name__ == '__main__':

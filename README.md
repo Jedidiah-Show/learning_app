@@ -16,7 +16,7 @@ Production deployments must set `SECRET_KEY`; the app refuses to start in produc
 
 Production styles are precompiled into `static/css/tailwind.css`; the app does not load Tailwind's runtime CDN. After changing utility classes in templates or JavaScript, rebuild the stylesheet with `npm ci && npm run build:css`. Rebuild the CodeMirror practice editor bundle with `npm run build:js` after changing its source. Chart.js is loaded only on the progress page.
 
-The lesson practice workspace currently provides a curated, single-file Python exercise for each lesson in the Python module. Learner source is saved in the database, so apply outstanding migrations before deployment. Python runs in a sandboxed browser frame and is not used for secure grading; the pinned Pyodide runtime is downloaded from jsDelivr on first use, so the learner's browser needs access to that CDN.
+The lesson practice workspace currently provides a curated, single-file Python exercise for each lesson in the Python module. Learner source is saved in the database, so apply outstanding migrations before deployment. The local pilot also stores daily aggregate counts of workspace opens, runs, and errors without learner IDs, lesson IDs, or code; inspect them with `flask --app index.py lessons practice-usage`. Python runs in a sandboxed browser frame and is not used for secure grading; the pinned Pyodide runtime is downloaded from jsDelivr on first use, so the learner's browser needs access to that CDN.
 
 The app does not create or alter database tables at startup. For a new database, apply the migrations with `flask --app index.py db upgrade`. If upgrading a database created by the previous `db.create_all()` version, first mark its existing schema as the baseline, then apply the calendar metadata migration:
 
@@ -29,7 +29,7 @@ Only stamp an existing database after confirming it contains the original applic
 
 ## Vercel deployment
 
-Configure `DATABASE_URL` in the Vercel project with a persistent PostgreSQL connection URL. The app accepts `postgresql://` and `postgres://` URLs and uses Psycopg 3. Vercel's function filesystem is read-only except for temporary `/tmp` storage, so the SQLite fallback is only for local development and must not be used for production account data. After setting the database URL, run `flask --app index.py db upgrade` against that database before using registration or login. Migration `0d4e9a7c2f61` creates isolated RuachAI module-project storage; apply it before deploying this version.
+Configure `DATABASE_URL` in the Vercel project with a persistent PostgreSQL connection URL. The app accepts `postgresql://` and `postgres://` URLs and uses Psycopg 3. Vercel's function filesystem is read-only except for temporary `/tmp` storage, so the SQLite fallback is only for local development and must not be used for production account data. After setting the database URL, run `flask --app index.py db upgrade` against that database before using registration or login. Apply all outstanding migrations, including `a4c8e2d1f730` for saved practice workspaces and `b1e49a2d7f63` for anonymous daily pilot counters, before deploying.
 
 ## Configuration and account data
 

@@ -3,15 +3,19 @@
 from datetime import datetime, timezone
 import json
 
+import click
 from flask import Blueprint, current_app, jsonify, request
 from flask_login import current_user, login_required
+from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.curriculum import get_lesson, lesson_context
 from app.learning import lesson_is_available, next_unlocked_lesson
-from app.models import LessonCompletion, StudySession, VideoProgress
-from app.models import PracticeWorkspace
+from app.models import (
+    LessonCompletion, PracticeUsageDaily, PracticeWorkspace, StudySession,
+    VideoProgress,
+)
 from app.practice import get_practice_exercise
 from app.request_data import get_json_object
 
@@ -20,6 +24,52 @@ MAX_PRACTICE_SOURCE_LENGTH = 20000
 
 MAX_VIDEO_SECONDS = 24 * 60 * 60
 VIDEO_COMPLETION_RATIO = 0.9
+
+
+@lessons_bp.cli.command('practice-usage')
+def practice_usage_report():
+    """Print daily aggregate counts for the local practice pilot."""
+    rows = PracticeUsageDaily.query.order_by(
+        PracticeUsageDaily.day, PracticeUsageDaily.event
+    ).all()
+    click.echo('day,event,count')
+    for row in rows:
+        click.echo(f'{row.day.isoformat()},{row.event},{row.count}')
+
+
+@lessons_bp.route('/practice-usage', methods=['POST'])
+@login_required
+def record_practice_usage():
+    data = get_json_object()
+    event = data.get('event') if data else None
+    if not isinstance(event, str) or event not in {'open', 'run', 'error'}:
+        return jsonify({'error': 'Unsupported practice usage event'}), 400
+
+    today = datetime.now(timezone.utc).date()
+    conditions = (
+        PracticeUsageDaily.day == today,
+        PracticeUsageDaily.event == event,
+    )
+    result = db.session.execute(
+        update(PracticeUsageDaily)
+        .where(*conditions)
+        .values(count=PracticeUsageDaily.count + 1)
+    )
+    if result.rowcount == 0:
+        db.session.add(PracticeUsageDaily(day=today, event=event, count=1))
+        try:
+            db.session.commit()
+        except IntegrityError:
+            db.session.rollback()
+            db.session.execute(
+                update(PracticeUsageDaily)
+                .where(*conditions)
+                .values(count=PracticeUsageDaily.count + 1)
+            )
+            db.session.commit()
+    else:
+        db.session.commit()
+    return jsonify({'status': 'recorded'})
 
 
 def _request_seconds(value, field):

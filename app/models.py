@@ -142,6 +142,18 @@ class PracticeWorkspace(db.Model):
     )
 
 
+class PracticeUsageDaily(db.Model):
+    """Daily pilot counters that intentionally contain no learner identifiers."""
+    __tablename__ = 'practice_usage_daily'
+    id = db.Column(db.Integer, primary_key=True)
+    day = db.Column(db.Date, nullable=False)
+    event = db.Column(db.String(20), nullable=False)
+    count = db.Column(db.Integer, nullable=False, default=0)
+    __table_args__ = (
+        db.UniqueConstraint('day', 'event', name='unique_practice_usage_day_event'),
+    )
+
+
 class QuizResult(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)

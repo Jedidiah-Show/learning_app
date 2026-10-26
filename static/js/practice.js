@@ -20,6 +20,8 @@ if (root) {
     const runButton = document.getElementById('practice-run');
     const resetButton = document.getElementById('practice-reset');
     const iframe = document.getElementById('practice-sandbox');
+    const usageUrl = root.dataset.usageUrl;
+    const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
     let selectedExercise = null;
     let savedSource = '';
     let saveTimer = null;
@@ -43,6 +45,22 @@ if (root) {
     };
 
     const currentSource = () => editor?.state.doc.toString() ?? '';
+
+    const recordUsage = async (event) => {
+        try {
+            const response = await fetch(usageUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
+                body: JSON.stringify({event}),
+            });
+            if (!response.ok) throw new Error(`Usage tracking returned ${response.status}`);
+        } catch (error) {
+            console.warn('Could not record anonymous practice pilot usage.', error);
+        }
+    };
 
     const saveWorkspace = async () => {
         clearTimeout(saveTimer);
@@ -128,6 +146,8 @@ if (root) {
         launcher.hidden = true;
         document.getElementById('practice-collapse').setAttribute('aria-expanded', 'true');
         resizeEditor();
+        void recordUsage('open');
+        startRunner();
     };
 
     const closePanel = async () => {
@@ -154,6 +174,7 @@ if (root) {
                 runButton.disabled = false;
                 iframe.src = 'about:blank';
                 setRunOutput('Python runtime did not load. Check your connection and try again.', true);
+                void recordUsage('error');
             }, 45000);
         }
     };
@@ -180,6 +201,7 @@ if (root) {
             activeRunId = null;
             runButton.disabled = false;
             setRunOutput('Execution timed out. The browser worker was stopped; try a smaller exercise.', true);
+            void recordUsage('error');
             runnerReady = false;
             runnerStarted = false;
             iframe.src = 'about:blank';
@@ -243,8 +265,10 @@ if (root) {
         setEditorSource(selectedExercise.starter_code);
         queueSave();
     });
-    runButton.addEventListener('click', runExercise);
-    document.getElementById('practice-open-from-lesson').addEventListener('click', openPanel);
+    runButton.addEventListener('click', () => {
+        void recordUsage('run');
+        runExercise();
+    });
 
     window.addEventListener('message', (event) => {
         if (
@@ -256,6 +280,7 @@ if (root) {
             clearTimeout(runnerLoadTimeout);
             runnerReady = true;
             runButton.disabled = switching;
+            if (!queuedRun) setRunOutput('Python runtime ready. Run checks when you are ready.');
             if (queuedRun) {
                 queuedRun = false;
                 runExercise();
@@ -270,6 +295,7 @@ if (root) {
             iframe.src = 'about:blank';
             runButton.disabled = false;
             setRunOutput(event.data.text || 'Python runtime failed to load.', true);
+            void recordUsage('error');
             return;
         }
         if (event.data.type === 'run-started') {
@@ -284,6 +310,7 @@ if (root) {
             activeRunId = null;
             runButton.disabled = false;
             setRunOutput(event.data.text, event.data.type !== 'done');
+            if (event.data.type !== 'done') void recordUsage('error');
         }
     });
     void loadExercise(exerciseList[0]);
