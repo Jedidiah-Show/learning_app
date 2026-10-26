@@ -1,4 +1,4 @@
-"""Authenticated diagnostics for Gemini and Google Calendar."""
+"""Authenticated diagnostics for AI providers and Google Calendar."""
 
 from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required
@@ -7,6 +7,7 @@ from app.integrations import (
     integration_status,
     probe_calendar,
     probe_gemini,
+    probe_openrouter,
 )
 from app.request_data import get_json_object
 
@@ -30,20 +31,25 @@ def probe():
         if request.get_data(cache=True):
             return jsonify({'error': 'Request body must be a JSON object'}), 400
         data = {}
-    targets = data.get('targets', ['gemini', 'calendar'])
+    targets = data.get('targets', ['gemini', 'openrouter', 'calendar'])
     if (
         not isinstance(targets, list)
         or any(not isinstance(target, str) for target in targets)
         or len(set(targets)) != len(targets)
-        or set(targets) - {'gemini', 'calendar'}
+        or set(targets) - {'gemini', 'openrouter', 'calendar'}
     ):
         return jsonify({
-            'error': 'targets must contain only "gemini" and "calendar"',
+            'error': (
+                'targets must contain only "gemini", "openrouter", and '
+                '"calendar"'
+            ),
         }), 400
 
     results = {}
     if 'gemini' in targets:
         results['gemini'] = probe_gemini(current_user)
+    if 'openrouter' in targets:
+        results['openrouter'] = probe_openrouter(current_user)
     if 'calendar' in targets:
         results['calendar'] = probe_calendar(current_user)
     response = jsonify({'status': 'success', 'results': results})

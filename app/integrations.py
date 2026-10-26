@@ -2,7 +2,7 @@
 
 The status helpers deliberately expose configuration *state*, never secret
 values.  The live probes are explicit, read-only where possible, and return
-the provider's safe, actionable error instead of a generic failure.
+each provider's safe, actionable error instead of a generic failure.
 """
 
 from __future__ import annotations
@@ -74,6 +74,30 @@ def gemini_status():
     return {
         'configured': _present(key),
         'key_source': key_source,
+        'flash_model': (
+            flash_model.strip() if isinstance(flash_model, str) else flash_model
+        ),
+        'pro_model': (
+            pro_model.strip() if isinstance(pro_model, str) else pro_model
+        ),
+    }
+
+
+def openrouter_status():
+    """Return OpenRouter fallback configuration without exposing the API key."""
+    key = current_app.config.get('OPENROUTER_API_KEY')
+    if _present(os.environ.get('OPENROUTER_API_KEY')):
+        key_source = 'OPENROUTER_API_KEY'
+    elif _present(key):
+        key_source = 'application config'
+    else:
+        key_source = 'missing'
+    flash_model = current_app.config.get('OPENROUTER_FLASH_MODEL')
+    pro_model = current_app.config.get('OPENROUTER_PRO_MODEL')
+    return {
+        'configured': _present(key),
+        'key_source': key_source,
+        'base_url': current_app.config.get('OPENROUTER_BASE_URL'),
         'flash_model': (
             flash_model.strip() if isinstance(flash_model, str) else flash_model
         ),
@@ -198,6 +222,7 @@ def integration_status(user):
                 'GEMINI_REQUESTS_PER_DAY', 300
             ),
         },
+        'openrouter': openrouter_status(),
         'google_calendar': google_calendar_status(user),
         'database': database_status(),
     }
@@ -213,6 +238,20 @@ def _positive_env(name, default):
 
 def _probe_message(error):
     return ' '.join(str(error).split())[:400]
+
+
+def _is_temporary_provider_error(message):
+    lowered = message.lower()
+    return any(marker in lowered for marker in (
+        'http 500',
+        'http 502',
+        'http 503',
+        'http 504',
+        'high demand',
+        'overloaded',
+        'temporarily unavailable',
+        'timed out',
+    ))
 
 
 def probe_gemini(user):
@@ -250,6 +289,7 @@ def probe_gemini(user):
             model=tier,
             max_attempts=1,
             read_timeout=20,
+            allow_fallback=False,
         )
     except GeminiNotConfigured:
         return {
@@ -273,17 +313,7 @@ def probe_gemini(user):
         }
     except GeminiError as error:
         message = _probe_message(error)
-        lowered = message.lower()
-        if any(marker in lowered for marker in (
-            'http 500',
-            'http 502',
-            'http 503',
-            'http 504',
-            'high demand',
-            'overloaded',
-            'temporarily unavailable',
-            'timed out',
-        )):
+        if _is_temporary_provider_error(message):
             return {
                 'status': 'temporarily_unavailable',
                 'model': model_name,
@@ -326,6 +356,114 @@ def probe_gemini(user):
             'Gemini responded successfully.'
             if okay else
             'Gemini responded, but the probe response was not the expected JSON.'
+        ),
+    }
+
+
+def probe_openrouter(user):
+    """Send one small OpenRouter request to validate the fallback provider."""
+    from app.gemini import GeminiRateLimitExceeded
+    from app.openrouter import (
+        OpenRouterError,
+        OpenRouterNotConfigured,
+        OpenRouterRateLimited,
+        generate_json,
+    )
+
+    if not _present(current_app.config.get('OPENROUTER_API_KEY')):
+        return {
+            'status': 'not_configured',
+            'message': (
+                'OPENROUTER_API_KEY is not set. Add it in Vercel project '
+                'settings to enable the fallback provider.'
+            ),
+        }
+
+    config = get_effective_config_for_user(user)
+    tier = config.get('ai', {}).get('model_tier', 'flash')
+    if tier not in {'flash', 'pro'}:
+        tier = 'flash'
+    model_name = current_app.config[
+        'OPENROUTER_PRO_MODEL' if tier == 'pro' else 'OPENROUTER_FLASH_MODEL'
+    ]
+    if isinstance(model_name, str):
+        model_name = model_name.strip()
+    started = time.monotonic()
+    try:
+        result = generate_json(
+            'Return exactly this JSON object and nothing else: {"ok": true}',
+            model=tier,
+            max_attempts=1,
+            read_timeout=20,
+        )
+    except OpenRouterNotConfigured:
+        return {
+            'status': 'not_configured',
+            'message': (
+                'OPENROUTER_API_KEY is not set. Add it in Vercel project '
+                'settings to enable the fallback provider.'
+            ),
+        }
+    except GeminiRateLimitExceeded as error:
+        return {
+            'status': 'rate_limited',
+            'model': model_name,
+            'message': str(error),
+        }
+    except OpenRouterRateLimited as error:
+        return {
+            'status': 'rate_limited',
+            'model': model_name,
+            'message': _probe_message(error),
+        }
+    except OpenRouterError as error:
+        message = _probe_message(error)
+        if _is_temporary_provider_error(message):
+            return {
+                'status': 'temporarily_unavailable',
+                'model': model_name,
+                'message': (
+                    'OpenRouter is temporarily unavailable. This is a '
+                    'provider-side condition, not a configuration problem. '
+                    'Retry in a few minutes.'
+                ),
+                'provider_message': message,
+            }
+        return {
+            'status': 'error',
+            'model': model_name,
+            'message': message,
+        }
+    except SQLAlchemyError:
+        current_app.logger.exception('OpenRouter probe database error')
+        return {
+            'status': 'error',
+            'model': model_name,
+            'message': (
+                'OpenRouter request accounting failed. Apply outstanding '
+                'database migrations (the gemini_usage_bucket table may be '
+                'missing) and retry.'
+            ),
+        }
+    except Exception:
+        current_app.logger.exception('OpenRouter integration probe failed')
+        return {
+            'status': 'error',
+            'model': model_name,
+            'message': (
+                'OpenRouter check failed unexpectedly. Check the server logs.'
+            ),
+        }
+    okay = isinstance(result, dict) and result.get('ok') is True
+    return {
+        'status': 'ok',
+        'model': model_name,
+        'latency_ms': int((time.monotonic() - started) * 1000),
+        'message': (
+            'OpenRouter responded successfully.'
+            if okay else
+            'OpenRouter responded, but the probe response was not the expected '
+            'JSON.'
         ),
     }
 

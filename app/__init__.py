@@ -183,7 +183,26 @@ def create_app(config_override=None):
     app.config['GEMINI_PRO_MODEL'] = os.environ.get(
         'GEMINI_PRO_MODEL', 'gemini-3.1-pro-preview'
     )
-    
+    app.config['OPENROUTER_API_KEY'] = os.environ.get('OPENROUTER_API_KEY')
+    app.config['OPENROUTER_BASE_URL'] = (
+        os.environ.get('OPENROUTER_BASE_URL')
+        or 'https://openrouter.ai/api/v1'
+    )
+    app.config['OPENROUTER_FLASH_MODEL'] = (
+        os.environ.get('OPENROUTER_FLASH_MODEL')
+        or os.environ.get('OPENROUTER_MODEL')
+        or 'openrouter/auto'
+    )
+    app.config['OPENROUTER_PRO_MODEL'] = (
+        os.environ.get('OPENROUTER_PRO_MODEL')
+        or os.environ.get('OPENROUTER_MODEL')
+        or 'openrouter/auto'
+    )
+    app.config['OPENROUTER_APP_NAME'] = os.environ.get(
+        'OPENROUTER_APP_NAME', 'RuachAI'
+    )
+    app.config['OPENROUTER_SITE_URL'] = os.environ.get('OPENROUTER_SITE_URL')
+
     db.init_app(app)
     migrate.init_app(app, db)
     login_manager.init_app(app)
@@ -228,11 +247,14 @@ def create_app(config_override=None):
     app.config['GOOGLE_CLIENT_SECRET'] = os.environ.get('GOOGLE_CLIENT_SECRET') or app.config['APP_CONFIG'].get('google_client_secret') or app.config['APP_CONFIG'].get('GOOGLE_CLIENT_SECRET') or (app.config['APP_CONFIG'].get('google_calendar') or {}).get('client_secret')
     app.config['GOOGLE_REDIRECT_URI'] = os.environ.get('GOOGLE_REDIRECT_URI') or app.config['APP_CONFIG'].get('google_redirect_uri') or app.config['APP_CONFIG'].get('GOOGLE_REDIRECT_URI') or (app.config['APP_CONFIG'].get('google_calendar') or {}).get('redirect_uri')
     app.logger.info(
-        'Integration config: Gemini=%s (%s / %s), Google OAuth=%s, '
-        'Calendar redirect URI=%s',
+        'Integration config: Gemini=%s (%s / %s), OpenRouter=%s (%s / %s), '
+        'Google OAuth=%s, Calendar redirect URI=%s',
         bool(app.config.get('GEMINI_API_KEY')),
         app.config.get('GEMINI_FLASH_MODEL'),
         app.config.get('GEMINI_PRO_MODEL'),
+        bool(app.config.get('OPENROUTER_API_KEY')),
+        app.config.get('OPENROUTER_FLASH_MODEL'),
+        app.config.get('OPENROUTER_PRO_MODEL'),
         bool(app.config.get('GOOGLE_CLIENT_ID')
              and app.config.get('GOOGLE_CLIENT_SECRET')),
         app.config.get('GOOGLE_REDIRECT_URI') or 'derived from request',

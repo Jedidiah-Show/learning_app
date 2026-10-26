@@ -1,4 +1,4 @@
-"""Module projects based on the bundled course and evaluated with Gemini."""
+"""Module projects based on the bundled course and evaluated with AI."""
 
 import json
 
@@ -79,7 +79,7 @@ def get_module_project(module_id):
                     for field in ('deliverables', 'learning_goals')
                 )
             ):
-                raise GeminiError('Gemini returned an invalid module project')
+                raise GeminiError('AI returned an invalid module project')
             project.update({key: generated[key] for key in ('title', 'brief', 'deliverables', 'learning_goals')})
             generated_by_ai = True
         except GeminiError as error:
@@ -129,10 +129,10 @@ def submit_module_project(module_id):
     try:
         evaluation = generate_json(prompt, model=config.get('ai', {}).get('model_tier', 'flash'))
     except GeminiError as error:
-        current_app.logger.warning('Gemini project evaluation failed for %s: %s', module_id, error)
+        current_app.logger.warning('AI project evaluation failed for %s: %s', module_id, error)
         evaluation = {
             'score': None,
-            'summary': 'Your submission is saved. Gemini scoring is unavailable; review the rubric and record any remaining work.',
+            'summary': 'Your submission is saved. AI scoring is unavailable; review the rubric and record any remaining work.',
             'strengths': [],
             'gaps': [],
             'next_steps': ['Compare your artefact with each project deliverable and rubric criterion.'],

@@ -1,4 +1,4 @@
-"""Small, JSON-only client for Gemini 3 generation."""
+"""JSON-only AI generation with Gemini primary and OpenRouter fallback."""
 
 import json
 import os
@@ -42,21 +42,30 @@ def _post_gemini_request(url, **kwargs):
 
 
 class GeminiError(RuntimeError):
-    pass
+    """Shared AI generation error for the primary and fallback providers."""
+
+    def __init__(self, message, *, status=None, fallback_eligible=False):
+        super().__init__(message)
+        self.status = status
+        self.fallback_eligible = fallback_eligible
 
 
 class GeminiNotConfigured(GeminiError):
-    pass
+    def __init__(self, message):
+        super().__init__(message, fallback_eligible=True)
 
 
 class GeminiRateLimited(GeminiError):
-    pass
+    def __init__(self, message, *, status=429):
+        super().__init__(
+            message, status=status, fallback_eligible=True
+        )
 
 
 class GeminiRateLimitExceeded(Exception):
     def __init__(self, retry_after):
         self.retry_after = max(1, int(retry_after))
-        super().__init__('Gemini request limit reached. Please retry later.')
+        super().__init__('AI request limit reached. Please retry later.')
 
 
 def _positive_int_env(name, default):
@@ -98,7 +107,7 @@ def _record_user_request():
         else None
     )
     if insert is None:
-        raise RuntimeError(f'Gemini request limits are unsupported for {dialect}')
+        raise RuntimeError(f'AI request limits are unsupported for {dialect}')
 
     table = GeminiUsageBucket.__table__
     try:
@@ -139,24 +148,42 @@ def _record_user_request():
     db.session.commit()
 
 
-def generate_json(
-    prompt, *, model='flash', max_attempts=None, read_timeout=None
-):
+def _gemini_api_key():
     api_key = current_app.config.get('GEMINI_API_KEY')
     if isinstance(api_key, str):
         api_key = api_key.strip()
-    if not api_key:
-        raise GeminiNotConfigured('Set GEMINI_API_KEY to enable Gemini generation')
+    return api_key or None
 
-    if model not in {'flash', 'pro'}:
-        raise GeminiError('The requested Gemini model tier is invalid')
-    model_name = current_app.config[
+
+def _gemini_model_name(model):
+    config_key = (
         'GEMINI_PRO_MODEL' if model == 'pro' else 'GEMINI_FLASH_MODEL'
-    ]
+    )
+    model_name = current_app.config[config_key]
     if isinstance(model_name, str):
         model_name = model_name.strip()
-    if not re.fullmatch(r'[A-Za-z0-9._-]+', model_name):
-        raise GeminiError('The configured Gemini model name is invalid')
+    if not isinstance(model_name, str) or not re.fullmatch(
+        r'[A-Za-z0-9._-]+', model_name
+    ):
+        label = 'Pro' if model == 'pro' else 'Flash'
+        raise GeminiError(
+            f'The configured Gemini {label} model name is invalid'
+        )
+    return model_name
+
+
+def _openrouter_configured():
+    key = current_app.config.get('OPENROUTER_API_KEY')
+    return bool(isinstance(key, str) and key.strip())
+
+
+def _generate_with_gemini(
+    prompt, *, model, max_attempts=None, read_timeout=None
+):
+    api_key = _gemini_api_key()
+    if not api_key:
+        raise GeminiNotConfigured('GEMINI_API_KEY is not set')
+    model_name = _gemini_model_name(model)
     try:
         return _generate_json_for_model(
             prompt,
@@ -167,17 +194,12 @@ def generate_json(
             read_timeout=read_timeout,
         )
     except GeminiRateLimited:
-        flash_model = current_app.config['GEMINI_FLASH_MODEL']
-        if isinstance(flash_model, str):
-            flash_model = flash_model.strip()
+        flash_model = _gemini_model_name('flash')
         if model != 'pro' or flash_model == model_name:
             raise
-        if not isinstance(flash_model, str) or not re.fullmatch(
-            r'[A-Za-z0-9._-]+', flash_model
-        ):
-            raise GeminiError('The configured Gemini Flash model name is invalid')
         current_app.logger.warning(
-            'Gemini model %s is rate-limited; retrying with configured Flash model %s',
+            'Gemini model %s is rate-limited; retrying with configured Flash '
+            'model %s',
             model_name,
             flash_model,
         )
@@ -189,6 +211,88 @@ def generate_json(
             max_attempts=max_attempts,
             read_timeout=read_timeout,
         )
+
+
+def _generate_with_openrouter(
+    prompt,
+    *,
+    model,
+    max_attempts=None,
+    read_timeout=None,
+    gemini_error,
+):
+    from app.openrouter import (
+        OpenRouterError,
+        generate_json as generate_openrouter_json,
+    )
+
+    try:
+        return generate_openrouter_json(
+            prompt,
+            model=model,
+            max_attempts=max_attempts,
+            read_timeout=read_timeout,
+        )
+    except OpenRouterError as error:
+        raise GeminiError(
+            f'All AI providers failed. Gemini: {gemini_error}; '
+            f'OpenRouter: {error}',
+            status=error.status,
+        ) from error
+
+
+def generate_json(
+    prompt,
+    *,
+    model='flash',
+    max_attempts=None,
+    read_timeout=None,
+    allow_fallback=True,
+):
+    """Generate JSON with Gemini, falling back to OpenRouter when configured."""
+    if model not in {'flash', 'pro'}:
+        raise GeminiError('The requested AI model tier is invalid')
+
+    gemini_error = None
+    if _gemini_api_key():
+        try:
+            return _generate_with_gemini(
+                prompt,
+                model=model,
+                max_attempts=max_attempts,
+                read_timeout=read_timeout,
+            )
+        except GeminiError as error:
+            gemini_error = error
+            if (
+                not allow_fallback
+                or not error.fallback_eligible
+                or not _openrouter_configured()
+            ):
+                raise
+            current_app.logger.warning(
+                'Gemini generation failed (%s); trying the OpenRouter fallback',
+                error,
+            )
+    else:
+        gemini_error = GeminiNotConfigured('GEMINI_API_KEY is not set')
+        if not allow_fallback:
+            raise GeminiNotConfigured(
+                'Set GEMINI_API_KEY to enable Gemini generation'
+            )
+        if not _openrouter_configured():
+            raise GeminiNotConfigured(
+                'Set GEMINI_API_KEY or OPENROUTER_API_KEY to enable AI '
+                'generation'
+            )
+
+    return _generate_with_openrouter(
+        prompt,
+        model=model,
+        max_attempts=max_attempts,
+        read_timeout=read_timeout,
+        gemini_error=gemini_error,
+    )
 
 
 def _retry_delay(attempt, response):
@@ -282,13 +386,18 @@ def _generate_json_for_model(
                 _sleep_before_retry(attempt, None)
                 continue
             raise GeminiError(
-                f'Gemini model {model_name} timed out while generating a response'
+                f'Gemini model {model_name} timed out while generating a '
+                'response',
+                fallback_eligible=True,
             ) from error
         except requests.RequestException as error:
             if attempt < max_attempts:
                 _sleep_before_retry(attempt, None)
                 continue
-            raise GeminiError('Gemini could not be reached') from error
+            raise GeminiError(
+                'Gemini could not be reached',
+                fallback_eligible=True,
+            ) from error
 
         if response.ok:
             break
@@ -317,13 +426,18 @@ def _generate_json_for_model(
             _sleep_before_retry(attempt, response)
             continue
         raise GeminiError(
-            f'Gemini model {model_name} returned HTTP {status}{detail}'
+            f'Gemini model {model_name} returned HTTP {status}{detail}',
+            status=status,
+            fallback_eligible=status in RETRYABLE_STATUS_CODES,
         )
 
     try:
         payload = response.json()
     except ValueError as error:
-        raise GeminiError('Gemini returned an invalid response') from error
+        raise GeminiError(
+            'Gemini returned an invalid response',
+            fallback_eligible=True,
+        ) from error
 
     try:
         parts = payload['candidates'][0]['content']['parts']
@@ -344,14 +458,19 @@ def _generate_json_for_model(
                 or 'unknown reason'
             )
             raise GeminiError(
-                f'Gemini model {model_name} returned no output text ({block_reason})'
+                f'Gemini model {model_name} returned no output text '
+                f'({block_reason})',
+                fallback_eligible=True,
             )
-        text = re.sub(r'^```(?:json)?\s*|\s*```$', '', text.strip(), flags=re.IGNORECASE)
+        text = re.sub(
+            r'^```(?:json)?\s*|\s*```$', '', text.strip(), flags=re.IGNORECASE
+        )
         result = json.loads(text)
     except GeminiError:
         raise
     except (KeyError, IndexError, TypeError, json.JSONDecodeError) as error:
         raise GeminiError(
-            f'Gemini model {model_name} did not return a valid JSON response'
+            f'Gemini model {model_name} did not return a valid JSON response',
+            fallback_eligible=True,
         ) from error
     return result

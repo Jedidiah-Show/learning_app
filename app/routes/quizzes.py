@@ -1,4 +1,4 @@
-"""Gemini quizzes generated strictly from bundled lesson material."""
+"""AI-generated quizzes created strictly from bundled lesson material."""
 
 import json
 
@@ -40,7 +40,7 @@ def _quiz_for(quiz_id, quiz_type, lesson, module):
         raise
     questions = result.get('questions') if isinstance(result, dict) else None
     if not isinstance(questions, list) or len(questions) != count:
-        raise GeminiError('Gemini returned an invalid quiz')
+        raise GeminiError('AI returned an invalid quiz')
     normalized = []
     for index, item in enumerate(questions):
         if (not isinstance(item, dict) or not isinstance(item.get('question'), str)
@@ -51,7 +51,7 @@ def _quiz_for(quiz_id, quiz_type, lesson, module):
                 or not isinstance(item.get('correct_index'), int)
                 or isinstance(item.get('correct_index'), bool)
                 or item['correct_index'] not in range(4)):
-            raise GeminiError('Gemini returned an invalid quiz question')
+            raise GeminiError('AI returned an invalid quiz question')
         normalized.append({'id': f'{quiz_id}_{index}', 'question': item['question'],
                            'options': item['options'], 'correct': item['correct_index'],
                            'explanation': str(item.get('explanation', ''))})

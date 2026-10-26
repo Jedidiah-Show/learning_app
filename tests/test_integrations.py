@@ -12,8 +12,9 @@ from app import create_app, db
 from app import google_calendar as gcal
 from app.curriculum import all_lessons
 from app.gemini import GeminiError
-from app.integrations import probe_calendar, probe_gemini
+from app.integrations import probe_calendar, probe_gemini, probe_openrouter
 from app.models import User
+from app.openrouter import OpenRouterError
 
 
 def http_error(status, payload):
@@ -30,6 +31,10 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
         self.app.config.update(
             TESTING=True,
             GEMINI_API_KEY=None,
+            OPENROUTER_API_KEY=None,
+            OPENROUTER_BASE_URL='https://openrouter.ai/api/v1',
+            OPENROUTER_FLASH_MODEL='openrouter/auto',
+            OPENROUTER_PRO_MODEL='openrouter/auto',
             GOOGLE_CLIENT_ID=None,
             GOOGLE_CLIENT_SECRET=None,
             GOOGLE_REDIRECT_URI=None,
@@ -77,6 +82,7 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
     def test_status_reports_configuration_without_exposing_secrets(self):
         self.app.config.update(
             GEMINI_API_KEY='super-secret-gemini-key',
+            OPENROUTER_API_KEY='super-secret-openrouter-key',
             GOOGLE_CLIENT_ID='client-id.apps.googleusercontent.com',
             GOOGLE_CLIENT_SECRET='super-secret-google-secret',
             GOOGLE_REDIRECT_URI='https://example.test/api/calendar/oauth2callback',
@@ -88,6 +94,13 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
 
         self.assertTrue(payload['gemini']['configured'])
         self.assertEqual(payload['gemini']['key_source'], 'application config')
+        self.assertTrue(payload['openrouter']['configured'])
+        self.assertEqual(
+            payload['openrouter']['key_source'], 'application config'
+        )
+        self.assertEqual(
+            payload['openrouter']['flash_model'], 'openrouter/auto'
+        )
         self.assertTrue(payload['google_calendar']['oauth_configured'])
         self.assertEqual(
             payload['google_calendar']['redirect_uri'],
@@ -101,6 +114,7 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
         )
         self.assertTrue(payload['database']['ok'])
         self.assertNotIn('super-secret-gemini-key', body)
+        self.assertNotIn('super-secret-openrouter-key', body)
         self.assertNotIn('super-secret-google-secret', body)
 
     def test_probe_endpoint_requires_login_and_valid_targets(self):
@@ -152,25 +166,35 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
             'app.routes.integrations.probe_gemini',
             return_value={'status': 'ok', 'message': 'Gemini responded.'},
         ), patch(
+            'app.routes.integrations.probe_openrouter',
+            return_value={'status': 'ok', 'message': 'OpenRouter responded.'},
+        ), patch(
             'app.routes.integrations.probe_calendar',
             return_value={'status': 'ok', 'message': 'Calendar responded.'},
         ):
             response = self.client.post(
-                '/api/integrations/probe', json={'targets': ['gemini', 'calendar']}
+                '/api/integrations/probe',
+                json={'targets': ['gemini', 'openrouter', 'calendar']},
             )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(
             response.get_json()['results']['gemini']['status'], 'ok'
         )
         self.assertEqual(
+            response.get_json()['results']['openrouter']['status'], 'ok'
+        )
+        self.assertEqual(
             response.get_json()['results']['calendar']['status'], 'ok'
         )
 
     def test_probe_helpers_report_missing_configuration_and_connection(self):
-        self.app.config.update(GEMINI_API_KEY=None)
+        self.app.config.update(GEMINI_API_KEY=None, OPENROUTER_API_KEY=None)
         with self.app.app_context():
             user = User.query.one()
             self.assertEqual(probe_gemini(user)['status'], 'not_configured')
+            self.assertEqual(
+                probe_openrouter(user)['status'], 'not_configured'
+            )
 
         self.app.config.update(
             GEMINI_API_KEY='present',
@@ -196,6 +220,31 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
         self.assertEqual(result['status'], 'temporarily_unavailable')
         self.assertIn('provider-side', result['message'])
         self.assertIn('HTTP 503', result['provider_message'])
+
+    def test_openrouter_probe_reports_success_and_provider_demand(self):
+        self.app.config.update(OPENROUTER_API_KEY='present')
+        with self.app.app_context():
+            user = User.query.one()
+            with patch(
+                'app.openrouter.generate_json',
+                return_value={'ok': True},
+            ):
+                result = probe_openrouter(user)
+            with patch(
+                'app.openrouter.generate_json',
+                side_effect=OpenRouterError(
+                    'OpenRouter model openrouter/auto returned HTTP 503: '
+                    'This model is currently experiencing high demand.',
+                    status=503,
+                    fallback_eligible=True,
+                ),
+            ):
+                unavailable = probe_openrouter(user)
+        self.assertEqual(result['status'], 'ok')
+        self.assertIn('OpenRouter responded successfully', result['message'])
+        self.assertEqual(unavailable['status'], 'temporarily_unavailable')
+        self.assertIn('provider-side', unavailable['message'])
+        self.assertIn('HTTP 503', unavailable['provider_message'])
 
     def test_disabled_calendar_api_is_not_reported_as_expired_authorization(self):
         error = http_error(403, {
