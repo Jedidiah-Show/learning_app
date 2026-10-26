@@ -12,11 +12,29 @@ from app import db
 from app.curriculum import all_modules, curriculum, get_lesson
 from app.learning import course_progress, lesson_is_available
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
+from app.integrations import database_status
 from app.models import CalendarEvent
 from app.user_preferences import get_effective_config_for_user, get_user_preferences, set_user_preferences
 from app.request_data import get_json_object
 
 main_bp = Blueprint('main', __name__)
+
+
+@main_bp.route('/healthz')
+def healthz():
+    database = database_status()
+    commit = (os.environ.get('VERCEL_GIT_COMMIT_SHA') or '')[:7] or None
+    response = jsonify({
+        'status': 'ok' if database['ok'] else 'degraded',
+        'commit': commit,
+        'database': {
+            'ok': database['ok'],
+            'revision': database['current_revision'],
+            'missing_tables': database['missing_tables'],
+        },
+    })
+    response.headers['Cache-Control'] = 'no-store'
+    return response, 200 if database['ok'] else 503
 
 
 @main_bp.route('/')

@@ -60,6 +60,20 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
 
+    def test_healthz_reports_database_readiness_without_login(self):
+        with patch.dict(
+            os.environ,
+            {'VERCEL_GIT_COMMIT_SHA': 'd9fcbe9abcdef'},
+            clear=False,
+        ):
+            response = self.client.get('/healthz')
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload['status'], 'ok')
+        self.assertEqual(payload['commit'], 'd9fcbe9')
+        self.assertTrue(payload['database']['ok'])
+        self.assertEqual(payload['database']['missing_tables'], [])
+
     def test_status_reports_configuration_without_exposing_secrets(self):
         self.app.config.update(
             GEMINI_API_KEY='super-secret-gemini-key',
