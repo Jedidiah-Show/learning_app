@@ -193,15 +193,24 @@
                 if (result.provider_message) extras.push(result.provider_message);
                 const optionalUnconfigured = key === 'openrouter'
                     && result.status === 'not_configured';
+                const fallbackActive = key === 'gemini'
+                    && result.status === 'rate_limited'
+                    && results.openrouter
+                    && results.openrouter.status === 'ok';
                 const tone = result.status === 'ok'
                     ? 'text-emerald-700'
-                    : result.status === 'temporarily_unavailable'
-                        || optionalUnconfigured
-                        ? 'text-slate-600'
-                        : 'text-red-700';
+                    : fallbackActive
+                        ? 'text-amber-700'
+                        : result.status === 'temporarily_unavailable'
+                            || optionalUnconfigured
+                            ? 'text-slate-600'
+                            : 'text-red-700';
+                const detail = `${String(result.status).replace(/_/g, ' ')}: ${result.message || ''}${extras.length ? ` (${extras.join(', ')})` : ''}`;
                 probeBox.append(line(
                     labels[key] || key,
-                    `${String(result.status).replace(/_/g, ' ')}: ${result.message || ''}${extras.length ? ` (${extras.join(', ')})` : ''}`,
+                    fallbackActive
+                        ? `${detail} — OpenRouter fallback is active and healthy.`
+                        : detail,
                     tone
                 ));
             }

@@ -330,6 +330,20 @@ def _provider_error_message(response):
     return message if isinstance(message, str) else None
 
 
+def _is_daily_quota_error(provider_message):
+    """Return True for a quota that will not recover within a retry window."""
+    lowered = (provider_message or '').lower()
+    return any(
+        marker in lowered
+        for marker in (
+            'per day',
+            'requests per day',
+            'daily quota',
+            'daily limit',
+        )
+    )
+
+
 def _generate_json_for_model(
     prompt,
     api_key,
@@ -407,8 +421,17 @@ def _generate_json_for_model(
         detail = f': {provider_message[:500]}' if provider_message else ''
         if status == 429:
             # A rate-limited Pro request falls back to the Flash model, which
-            # the caller handles. A rate-limited Flash request is retried.
-            if tier == 'pro':
+            # the caller handles. A per-minute Flash limit is retried, but a
+            # daily quota will not recover during this request, so hand it to
+            # the fallback immediately instead of burning retries.
+            daily_quota = _is_daily_quota_error(provider_message)
+            if tier == 'pro' or daily_quota:
+                if daily_quota:
+                    current_app.logger.warning(
+                        'Gemini model %s exhausted its daily quota; skipping '
+                        'retries and trying the fallback',
+                        model_name,
+                    )
                 raise GeminiRateLimited(
                     f'Gemini model {model_name} returned HTTP 429{detail}'
                 )

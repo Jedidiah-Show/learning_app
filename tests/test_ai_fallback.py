@@ -109,6 +109,36 @@ class AIFallbackTests(unittest.TestCase):
             'Return {"ok": true}',
         )
 
+    def test_gemini_daily_quota_skips_retries_and_falls_back_immediately(self):
+        gemini_response = FakeResponse(429, {
+            'error': {
+                'message': (
+                    'You exceeded your current quota. Quota exceeded for '
+                    'metric: generate_content_free_tier_requests, limit: 20, '
+                    'description: Generate content requests per day limit '
+                    'exceeded on Free Tier.'
+                ),
+            },
+        })
+        openrouter_response = openrouter_success({'ok': True})
+        with patch(
+            'app.gemini._post_gemini_request',
+            return_value=gemini_response,
+        ) as gemini_post, patch(
+            'app.openrouter._post_openrouter_request',
+            return_value=openrouter_response,
+        ) as openrouter_post, patch(
+            'app.gemini._sleep_before_retry',
+        ) as sleep_before_retry:
+            result = generate_json(
+                'Return {"ok": true}', model='flash', max_attempts=3
+            )
+
+        self.assertEqual(result, {'ok': True})
+        self.assertEqual(gemini_post.call_count, 1)
+        self.assertEqual(openrouter_post.call_count, 1)
+        sleep_before_retry.assert_not_called()
+
     def test_openrouter_uses_a_credit_safe_default_max_tokens(self):
         with patch.dict(os.environ, {}, clear=False):
             os.environ.pop('OPENROUTER_MAX_TOKENS', None)

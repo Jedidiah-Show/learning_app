@@ -40,18 +40,37 @@
 {% block extra_scripts %}<script>
 const lessonId = {{ lesson.id|tojson }};
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
+const readJson = async (response) => { try { return await response.json(); } catch (error) { return {}; } };
+const needsSignIn = (response) => response.redirected || response.status === 401;
 document.getElementById('ask-form').addEventListener('submit', async (event) => {
-  event.preventDefault(); const answer = document.getElementById('answer'); answer.textContent = 'Thinking…';
-  const response = await fetch('/api/lessons/ask', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body:JSON.stringify({lesson_id:lessonId, question:document.getElementById('question').value})});
-  const data = await response.json(); answer.textContent = data.answer || data.error || 'Unable to answer right now.';
+  event.preventDefault(); const answer = document.getElementById('answer');
+  const question = document.getElementById('question').value.trim();
+  if (!question) { answer.textContent = 'Enter a question first.'; return; }
+  answer.textContent = 'Thinking…';
+  try {
+    const response = await fetch('/api/lessons/ask', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body:JSON.stringify({lesson_id:lessonId, question})});
+    const data = await readJson(response);
+    if (needsSignIn(response)) { answer.textContent = 'Your session expired. Sign in and try again.'; return; }
+    answer.textContent = response.ok
+      ? (data.answer || 'Unable to answer right now.')
+      : (data.error || 'Clarification is temporarily unavailable. Please retry.');
+  } catch (error) {
+    answer.textContent = 'Could not reach the AI service. Check your connection and retry.';
+  }
 });
 document.getElementById('quiz-button').addEventListener('click', async () => {
   const area = document.getElementById('quiz-area'); area.textContent = 'Preparing quiz…';
-  const response = await fetch(`/api/quizzes/lesson/${encodeURIComponent(lessonId)}`); const data = await response.json();
-  if (!response.ok) { area.textContent = data.error || 'Quiz unavailable.'; return; }
-  area.replaceChildren(); const form = document.createElement('form');
-  data.questions.forEach((q, i) => { const field = document.createElement('fieldset'); field.className='space-y-2'; const legend=document.createElement('legend'); legend.className='font-semibold'; legend.textContent=`${i+1}. ${q.question}`; field.append(legend); q.options.forEach((option,j)=>{const label=document.createElement('label');label.className='flex gap-2 text-sm';const input=document.createElement('input');input.type='radio';input.name=String(i);input.value=String(j);input.required=true;label.append(input,document.createTextNode(option));field.append(label);});form.append(field);});
-  const submit=document.createElement('button');submit.className='rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white';submit.textContent='Submit quiz';form.append(submit);form.addEventListener('submit',async(e)=>{e.preventDefault();const answers={};new FormData(form).forEach((v,k)=>answers[k]=Number(v));const r=await fetch('/api/quizzes/submit',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({quiz_id:data.quiz_id,answers})});const result=await r.json();const p=document.createElement('p');p.className='font-semibold';p.textContent=result.error||`Score: ${result.score}%`;form.replaceWith(p);});area.append(form);
+  try {
+    const response = await fetch(`/api/quizzes/lesson/${encodeURIComponent(lessonId)}`);
+    const data = await readJson(response);
+    if (needsSignIn(response)) { area.textContent = 'Your session expired. Sign in and try again.'; return; }
+    if (!response.ok) { area.textContent = data.error || 'Quiz unavailable.'; return; }
+    area.replaceChildren(); const form = document.createElement('form');
+    data.questions.forEach((q, i) => { const field = document.createElement('fieldset'); field.className='space-y-2'; const legend=document.createElement('legend'); legend.className='font-semibold'; legend.textContent=`${i+1}. ${q.question}`; field.append(legend); q.options.forEach((option,j)=>{const label=document.createElement('label');label.className='flex gap-2 text-sm';const input=document.createElement('input');input.type='radio';input.name=String(i);input.value=String(j);input.required=true;label.append(input,document.createTextNode(option));field.append(label);});form.append(field);});
+    const submit=document.createElement('button');submit.className='rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white';submit.textContent='Submit quiz';form.append(submit);form.addEventListener('submit',async(e)=>{e.preventDefault();const answers={};new FormData(form).forEach((v,k)=>answers[k]=Number(v));const p=document.createElement('p');p.className='font-semibold';try{const r=await fetch('/api/quizzes/submit',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({quiz_id:data.quiz_id,answers})});const result=await readJson(r);p.textContent=needsSignIn(r)?'Your session expired. Sign in and try again.':(result.error||`Score: ${result.score}%`);form.replaceWith(p);}catch(error){p.textContent='Could not submit the quiz. Please retry.';form.append(p);}});area.append(form);
+  } catch (error) {
+    area.textContent = 'Quiz is temporarily unavailable. Please retry.';
+  }
 });
 const completeButton=document.getElementById('complete-button'); if (completeButton) completeButton.addEventListener('click',async()=>{completeButton.disabled=true;const response=await fetch('/api/lessons/complete',{method:'POST',headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify({lesson_id:lessonId})});const data=await response.json();document.getElementById('lesson-status').textContent=data.status==='success'?'Lesson complete. Your next lesson is now available.':(data.error||'Could not save completion.');if(data.status==='success')completeButton.textContent='Completed ✓';else completeButton.disabled=false;});
 </script>{% if practice_exercises %}<script type="module" src="{{ url_for('static', filename='js/practice.bundle.js') }}"></script>{% endif %}{% endblock %}
