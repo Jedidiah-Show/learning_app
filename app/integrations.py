@@ -111,6 +111,17 @@ def openrouter_status():
     }
 
 
+def sms_recovery_status():
+    """Return SMS recovery configuration without exposing Twilio secrets."""
+    from app.sms import password_reset_sms_configured
+
+    configured = password_reset_sms_configured()
+    return {
+        'configured': configured,
+        'provider': 'Twilio' if configured else None,
+    }
+
+
 def _redirect_uri_status():
     client_id, client_secret, redirect_uri = gcal.oauth_settings()
     computed = (
@@ -227,6 +238,7 @@ def integration_status(user):
             ),
         },
         'openrouter': openrouter_status(),
+        'sms_recovery': sms_recovery_status(),
         'google_calendar': google_calendar_status(user),
         'database': database_status(),
     }

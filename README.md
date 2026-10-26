@@ -29,7 +29,7 @@ Only stamp an existing database after confirming it contains the original applic
 
 ## Vercel deployment
 
-Configure `DATABASE_URL` in the Vercel project with a persistent PostgreSQL connection URL. The app accepts `postgresql://` and `postgres://` URLs and uses Psycopg 3. Vercel's function filesystem is read-only except for temporary `/tmp` storage, so the SQLite fallback is only for local development and must not be used for production account data. After setting the database URL, run `flask --app index.py db upgrade` against that database before using registration or login. Apply all outstanding migrations, including `a4c8e2d1f730` for saved practice workspaces and `b1e49a2d7f63` for anonymous daily pilot counters, before deploying.
+Configure `DATABASE_URL` in the Vercel project with a persistent PostgreSQL connection URL. The app accepts `postgresql://` and `postgres://` URLs and uses Psycopg 3. Vercel's function filesystem is read-only except for temporary `/tmp` storage, so the SQLite fallback is only for local development and must not be used for production account data. After setting the database URL, run `flask --app index.py db upgrade` against that database before using registration or login. Apply all outstanding migrations, including `a4c8e2d1f730` for saved practice workspaces, `b1e49a2d7f63` for anonymous daily pilot counters, and `9f3c2a7b5d10` for unique recovery phone numbers, before deploying.
 
 ## Configuration and account data
 
@@ -55,7 +55,7 @@ Shared changes through `/api/admin/config` require the `ADMIN_API_TOKEN` environ
 
 ### Integration diagnostics
 
-Settings includes an **Integration health** panel. It reports whether the deployment has `GEMINI_API_KEY` or `OPENROUTER_API_KEY`, the configured model names, whether Google OAuth is configured, the effective callback URL and whether it matches the current deployment URL, token state, and any missing database tables. The **Run live check** button sends one small request to each configured AI provider and performs one read-only Google Calendar request, then displays each provider's actionable error without exposing secret values.
+Settings includes an **Integration health** panel. It reports whether the deployment has `GEMINI_API_KEY` or `OPENROUTER_API_KEY`, the configured model names, whether Google OAuth is configured, the effective callback URL and whether it matches the current deployment URL, token state, whether SMS password recovery is configured, and any missing database tables. The **Run live check** button sends one small request to each configured AI provider and performs one read-only Google Calendar request, then displays each provider's actionable error without exposing secret values.
 
 On a Vercel preview deployment the panel can note that OAuth is configured for a different host. That is expected: preview URLs are temporary. Open the stable production alias whose callback is registered in Google Cloud to connect Calendar, or update `GOOGLE_REDIRECT_URI` and register the new URL. If the database section reports missing tables, apply migrations against the production database with `flask db upgrade`; do not use `db.create_all()` in production.
 
@@ -63,7 +63,9 @@ A public `GET /healthz` endpoint returns `200` when the database schema is ready
 
 Scheduling a lesson now attempts a Google Calendar sync immediately when the integration is enabled and the learner is connected. Pending rows can be retried with **Sync scheduled events** in Settings. A Google 403 is classified precisely: missing scope or invalid credentials require reconnecting, while a disabled Calendar API, quota exhaustion, a bad calendar ID, or a permission problem is reported with the matching fix instead of a misleading reconnect prompt.
 
-Password recovery sends reset links through an app-owned Gmail mailbox using the Gmail API. Configure `GMAIL_SENDER_EMAIL`, `GMAIL_REFRESH_TOKEN` (authorized for the `gmail.send` scope), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and the externally reachable HTTPS `PUBLIC_APP_URL`. Do not put credentials in source control. For local development, `index.py` loads values from the root `.env` file; for Vercel, add them in the project’s Environment Variables settings and redeploy. Apply outstanding database migrations with `flask --app index.py db upgrade` before using password recovery.
+Password recovery accepts the email address or the optional phone number on the account. A phone number must include its country code and is normalized to an E.164-style value such as `+15551234567`; recovery phone numbers are unique. When Twilio is configured, a phone-number match sends the time-limited reset link by SMS. Otherwise, or if SMS delivery fails, the link is sent to the account email. Email delivery uses an app-owned Gmail mailbox through the Gmail API. Configure `GMAIL_SENDER_EMAIL`, `GMAIL_REFRESH_TOKEN` (authorized for the `gmail.send` scope), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and the externally reachable HTTPS `PUBLIC_APP_URL`. To enable SMS, also set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`. Do not put credentials in source control. For local development, `index.py` loads values from the root `.env` file; for Vercel, add them in the project’s Environment Variables settings and redeploy. Apply outstanding database migrations with `flask --app index.py db upgrade` before using password recovery.
+
+Migration `9f3c2a7b5d10` adds the unique constraint for optional recovery phone numbers. Apply it before allowing learners to save phone numbers in production.
 
 ## Lesson videos
 

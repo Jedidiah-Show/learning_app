@@ -6,6 +6,7 @@ from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from app.models import PasswordResetToken, User
+from app.phone import PhoneError, normalize_phone
 from datetime import datetime, timedelta, timezone
 import hashlib
 import os
@@ -20,6 +21,50 @@ def safe_local_redirect(target):
         return False
     ref = urlsplit(urljoin(request.host_url, target))
     return ref.scheme in {'http', 'https'} and ref.netloc == request.host
+
+
+def _password_reset_identifier(raw_identifier):
+    if not isinstance(raw_identifier, str) or not raw_identifier.strip():
+        return None, None
+    identifier = raw_identifier.strip()
+    if '@' in identifier:
+        return 'email', identifier.lower()
+    try:
+        return 'phone', normalize_phone(identifier)
+    except PhoneError:
+        return None, None
+
+
+def _password_reset_channels(user, identifier_kind, email_available, sms_available):
+    """Choose delivery methods, preferring the identifier the learner used."""
+    channels = []
+    if identifier_kind == 'phone' and user.phone and sms_available:
+        channels.append('sms')
+    if user.email and email_available:
+        channels.append('email')
+    if user.phone and sms_available and 'sms' not in channels:
+        channels.append('sms')
+    return channels
+
+
+def _deliver_password_reset(user, channels, reset_url):
+    """Try each configured channel and return the one that succeeded."""
+    from app.mail import send_password_reset_email
+    from app.sms import send_password_reset_sms
+
+    for channel in channels:
+        try:
+            if channel == 'sms':
+                send_password_reset_sms(user.phone, reset_url)
+            else:
+                send_password_reset_email(user.email, reset_url)
+            return channel
+        except Exception:
+            current_app.logger.exception(
+                'Could not send password recovery %s for user %s',
+                channel, user.id,
+            )
+    return None
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -54,18 +99,42 @@ def login():
 @auth_bp.route('/forgot-password', methods=['GET', 'POST'])
 def forgot_password():
     from app.mail import password_reset_mail_configured
-    recovery_available = bool(current_app.config.get('TESTING')) or password_reset_mail_configured()
-    if request.method == 'GET':
-        return render_template('auth/forgot_password.html', recovery_available=recovery_available)
-    if not recovery_available:
-        return render_template('auth/forgot_password.html', recovery_available=False), 503
+    from app.sms import password_reset_sms_configured
 
-    email = request.form.get('email')
-    if not isinstance(email, str) or not email.strip():
-        flash('Enter the email address on your account.', 'error')
-        return render_template('auth/forgot_password.html', recovery_available=True, recovery_email=email), 200
-    user = User.query.filter_by(email=email.strip().lower()).first()
-    if user and user.email:
+    email_available = password_reset_mail_configured()
+    sms_available = password_reset_sms_configured()
+    recovery_available = (
+        bool(current_app.config.get('TESTING'))
+        or email_available
+        or sms_available
+    )
+    context = {
+        'recovery_available': recovery_available,
+        'email_recovery_available': email_available,
+        'sms_recovery_available': sms_available,
+    }
+    if request.method == 'GET':
+        return render_template('auth/forgot_password.html', **context)
+    if not recovery_available:
+        return render_template('auth/forgot_password.html', **context), 503
+
+    raw_identifier = request.form.get('identifier')
+    if raw_identifier is None:
+        raw_identifier = request.form.get('email')
+    identifier_kind, identifier = _password_reset_identifier(raw_identifier)
+    if not identifier_kind:
+        flash('Enter the email address or phone number on your account.', 'error')
+        return render_template(
+            'auth/forgot_password.html',
+            recovery_identifier=raw_identifier or '',
+            **context,
+        ), 200
+
+    if identifier_kind == 'email':
+        user = User.query.filter_by(email=identifier).first()
+    else:
+        user = User.query.filter_by(phone=identifier).first()
+    if user:
         now = datetime.now(timezone.utc)
         recent = PasswordResetToken.query.filter(
             PasswordResetToken.user_id == user.id,
@@ -74,36 +143,31 @@ def forgot_password():
             PasswordResetToken.expires_at > now,
         ).first()
         if not recent:
-            raw_token = secrets.token_urlsafe(32)
-            token = PasswordResetToken(
-                user_id=user.id,
-                token_hash=hashlib.sha256(raw_token.encode('utf-8')).hexdigest(),
-                expires_at=now + timedelta(minutes=30),
+            channels = _password_reset_channels(
+                user, identifier_kind, email_available, sms_available
             )
-            db.session.add(token)
-            db.session.commit()
-            public_url = os.environ.get('PUBLIC_APP_URL', '').rstrip('/')
-            reset_url = (
-                public_url
-                + url_for('auth.reset_password', token=raw_token)
-            )
-            try:
-                if not current_app.config.get('TESTING'):
-                    from app.mail import send_password_reset_email
-                    send_password_reset_email(user.email, reset_url)
-            except Exception:
-                db.session.delete(token)
+            if channels:
+                raw_token = secrets.token_urlsafe(32)
+                token = PasswordResetToken(
+                    user_id=user.id,
+                    token_hash=hashlib.sha256(
+                        raw_token.encode('utf-8')
+                    ).hexdigest(),
+                    expires_at=now + timedelta(minutes=30),
+                )
+                db.session.add(token)
                 db.session.commit()
-                current_app.logger.exception(
-                    'Could not send password recovery email for user %s', user.id
+                public_url = os.environ.get('PUBLIC_APP_URL', '').rstrip('/')
+                reset_url = (
+                    public_url
+                    + url_for('auth.reset_password', token=raw_token)
                 )
-                flash(
-                    'If an account exists for that email, password reset instructions will be sent.',
-                    'success',
-                )
-                return redirect(url_for('auth.login'))
+                if not _deliver_password_reset(user, channels, reset_url):
+                    db.session.delete(token)
+                    db.session.commit()
     flash(
-        'If an account exists for that email, password reset instructions will be sent.',
+        'If an account exists for that email or phone number, password reset '
+        'instructions will be sent.',
         'success',
     )
     return redirect(url_for('auth.login'))
@@ -157,11 +221,18 @@ def register():
     if request.method == 'POST':
         username = (request.form.get('username') or '').strip()
         email = (request.form.get('email') or '').strip().lower()
+        raw_phone = (request.form.get('phone') or '').strip()
         password = request.form.get('password')
         full_name = (request.form.get('full_name') or '').strip()
 
-        values = {'username': username, 'email': email, 'full_name': full_name}
+        values = {
+            'username': username,
+            'email': email,
+            'phone': raw_phone,
+            'full_name': full_name,
+        }
         errors = {}
+        phone = None
         if not username:
             errors['username'] = 'Enter a username.'
         elif len(username) > 80:
@@ -170,6 +241,14 @@ def register():
             errors['email'] = 'Enter your email address.'
         elif len(email) > 120 or '@' not in email:
             errors['email'] = 'Enter a valid email address.'
+        if raw_phone:
+            if len(raw_phone) > 50:
+                errors['phone'] = 'Phone number must be 50 characters or fewer.'
+            else:
+                try:
+                    phone = normalize_phone(raw_phone)
+                except PhoneError as error:
+                    errors['phone'] = str(error)
         if not isinstance(password, str) or len(password) < 8:
             errors['password'] = 'Use a password with at least 8 characters.'
         elif password != request.form.get('confirm_password', password):
@@ -184,6 +263,8 @@ def register():
             errors['username'] = 'That username is already in use.'
         if email and User.query.filter_by(email=email).first():
             errors['email'] = 'An account with that email already exists.'
+        if phone and User.query.filter_by(phone=phone).first():
+            errors['phone'] = 'That phone number is already in use.'
         if errors:
             return render_template(
                 'auth/register.html', values=values, errors=errors,
@@ -193,6 +274,7 @@ def register():
         user = User(
             username=username,
             email=email,
+            phone=phone,
             full_name=full_name,
             password_hash=generate_password_hash(password),
             created_at=datetime.now(timezone.utc),
@@ -209,7 +291,7 @@ def register():
             session['_post_setup_next'] = next_page
         return redirect(url_for('main.index'))
     
-    return render_template('auth/register.html')
+    return render_template('auth/register.html', values={}, errors={})
 
 @auth_bp.route('/logout', methods=['POST'])
 @login_required
@@ -244,8 +326,23 @@ def update_account():
     phone = (raw_phone or '').strip() if raw_phone is not None else None
     if email is not None and len(email) > 120:
         return jsonify({'error': 'Email must be 120 characters or fewer'}), 400
-    if phone is not None and len(phone) > 50:
-        return jsonify({'error': 'Phone must be 50 characters or fewer'}), 400
+    if phone:
+        try:
+            phone = normalize_phone(phone)
+        except PhoneError as error:
+            if request.is_json:
+                return {'error': str(error)}, 400
+            flash(str(error), 'error')
+            return redirect(url_for('auth.profile'))
+        if User.query.filter(
+            User.phone == phone, User.id != current_user.id
+        ).first():
+            if request.is_json:
+                return {'error': 'Phone number already exists'}, 400
+            flash('Phone number already exists', 'error')
+            return redirect(url_for('auth.profile'))
+    elif phone is not None:
+        phone = None
     
     # Update email
     if email is not None and email != (current_user.email or ''):
@@ -259,7 +356,7 @@ def update_account():
     
     # Update phone
     if phone is not None:
-        current_user.phone = phone or None
+        current_user.phone = phone
     
     # Update password
     if new_password:

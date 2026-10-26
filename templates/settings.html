@@ -39,6 +39,7 @@
     function renderStatus(data) {
         const gemini = data.gemini || {};
         const openrouter = data.openrouter || {};
+        const sms = data.sms_recovery || {};
         const calendar = data.google_calendar || {};
         const database = data.database || {};
         statusBox.replaceChildren();
@@ -62,6 +63,13 @@
                 ? `configured · ${openrouter.flash_model} / ${openrouter.pro_model} · ${openrouter.max_tokens} max output tokens`
                 : 'not configured — optional fallback; set OPENROUTER_API_KEY in Vercel',
             openrouter.configured ? 'text-emerald-700' : 'text-slate-600'
+        ));
+        statusBox.append(line(
+            'SMS recovery',
+            sms.configured
+                ? `configured · ${sms.provider || 'SMS provider'}`
+                : 'not configured — phone recovery falls back to the account email; set TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_FROM_NUMBER, and PUBLIC_APP_URL',
+            sms.configured ? 'text-emerald-700' : 'text-slate-600'
         ));
         statusBox.append(line(
             'Google OAuth',
