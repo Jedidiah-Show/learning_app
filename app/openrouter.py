@@ -281,7 +281,7 @@ def generate_json(
     headers = {
         'Authorization': f'Bearer {api_key}',
         'Content-Type': 'application/json',
-        'X-Title': current_app.config.get('OPENROUTER_APP_NAME') or 'RuachAI',
+        'X-Title': current_app.config.get('OPENROUTER_APP_NAME') or 'RUACH',
     }
     site_url = current_app.config.get('OPENROUTER_SITE_URL')
     if isinstance(site_url, str) and site_url.strip():

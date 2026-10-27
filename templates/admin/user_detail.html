@@ -1,5 +1,5 @@
 {% extends "admin/base.html" %}
-{% block title %}{{ account.username or account.email or ('User #' ~ account.id) }} · Admin{% endblock %}
+{% block title %}{{ account.username or account.email or ('User #' ~ account.id) }} · RUACH Admin{% endblock %}
 {% block content %}
 <div class="mb-6">
     <a href="{{ url_for('admin_portal.users') }}" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800">← All users</a>

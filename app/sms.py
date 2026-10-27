@@ -38,7 +38,7 @@ def send_password_reset_sms(recipient, reset_url):
             'From': from_number,
             'To': recipient,
             'Body': (
-                'RuachAI password reset requested. Use this link within '
+                'RUACH password reset requested. Use this link within '
                 f'30 minutes: {reset_url} If you did not request this, '
                 'ignore this message.'
             ),

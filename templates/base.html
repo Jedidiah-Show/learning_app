@@ -4,7 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <title>{% block title %}RuachAI Engineering Course{% endblock %}</title>
+    <meta name="theme-color" content="#083D2E">
+    <meta name="description" content="RUACH Engineering Course — rooted in faith. Built for tomorrow.">
+    <title>{% block title %}RUACH Engineering Course{% endblock %}</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
+    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
     <script>
         try {
             const savedTheme = localStorage.getItem('ruachai-theme');
@@ -32,11 +39,11 @@
     <header class="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0 z-50 shadow-sm {% if current_user.is_authenticated %}lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:flex-col lg:border-r lg:border-b-0{% endif %}">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 {% if current_user.is_authenticated %}lg:max-w-none lg:h-full lg:flex lg:flex-col lg:px-4 lg:py-4{% endif %}">
             <div class="flex min-h-16 items-center justify-between gap-2 sm:gap-3 {% if current_user.is_authenticated %}lg:flex-col lg:items-stretch lg:min-h-0 lg:gap-4{% endif %}">
-                <a href="{{ url_for('main.index') if current_user.is_authenticated else url_for('auth.login') }}" class="app-brand flex items-center space-x-2 sm:space-x-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 flex-shrink-0 {% if current_user.is_authenticated %}lg:px-2{% endif %}" aria-label="RuachAI Engineering Course home">
-                    <span class="brand-mark">✦</span>
+                <a href="{{ url_for('main.index') if current_user.is_authenticated else url_for('auth.login') }}" class="app-brand flex items-center space-x-2 sm:space-x-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 flex-shrink-0 {% if current_user.is_authenticated %}lg:px-2{% endif %}" aria-label="RUACH Engineering Course home">
+                    <span class="brand-mark"><img src="{{ url_for('static', filename='img/ruach-icon-96.png') }}" alt="" width="40" height="40" loading="eager"></span>
                     <div class="brand-copy">
-                        <h1 class="text-base sm:text-lg font-bold text-slate-800 leading-tight">RuachAI</h1>
-                        {% if current_user.is_authenticated %}<p class="text-xs text-slate-500 hidden sm:block lg:block">Engineering Course</p>{% else %}<p class="text-xs text-slate-500 hidden sm:block">From AI ideas to production systems</p>{% endif %}
+                        <h1 class="brand-wordmark">RUACH</h1>
+                        {% if current_user.is_authenticated %}<p class="brand-subtitle hidden sm:block lg:block">Engineering Course</p>{% else %}<p class="brand-subtitle hidden sm:block">Spirit · Connection · Growth</p>{% endif %}
                     </div>
                 </a>
                 {% if current_user.is_authenticated %}
@@ -120,7 +127,7 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 py-4 mt-8 app-footer {% if current_user.is_authenticated %}lg:ml-64{% endif %}">
         <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
-            RuachAI Engineering Course <span class="text-slate-300">·</span> From AI ideas to production systems
+            RUACH Engineering Course <span class="text-slate-300">·</span> Rooted in faith. Built for tomorrow.
         </div>
     </footer>
     

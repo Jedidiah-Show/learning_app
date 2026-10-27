@@ -1,4 +1,4 @@
-"""Read-only access to the versioned RuachAI course bundled with the app."""
+"""Read-only access to the versioned RUACH course bundled with the app."""
 
 from functools import lru_cache
 import json
@@ -183,9 +183,9 @@ def _reading_minutes(lesson):
 def curriculum():
     with CURRICULUM_PATH.open(encoding='utf-8') as source:
         data = json.load(source)
-    data['course']['title'] = 'RuachAI Engineering Course'
+    data['course']['title'] = 'RUACH Engineering Course'
     data['course']['description'] = (
-        'The RuachAI engineering course: 13 modules and 201 lessons, '
+        'The RUACH engineering course: 13 modules and 201 lessons, '
         'from Python and backend engineering through production AI systems.'
     )
     resources_path = Path(__file__).parent / 'data' / 'dynamoai_resources.json'
@@ -194,10 +194,10 @@ def curriculum():
     modules = data.get('modules', [])
     lessons = data.get('lessons', [])
     if len(lessons) != data.get('course', {}).get('total_lessons'):
-        raise ValueError('RuachAI curriculum lesson count does not match its manifest')
+        raise ValueError('RUACH curriculum lesson count does not match its manifest')
     module_ids = {module['id'] for module in modules}
     if any(lesson.get('module_id') not in module_ids for lesson in lessons):
-        raise ValueError('RuachAI curriculum contains a lesson with an unknown module')
+        raise ValueError('RUACH curriculum contains a lesson with an unknown module')
     data['_module_map'] = {module['id']: module for module in modules}
     data['_lesson_map'] = {lesson['id']: lesson for lesson in lessons}
     for module in modules:

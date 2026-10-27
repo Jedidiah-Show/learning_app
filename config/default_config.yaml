@@ -1,5 +1,5 @@
 app:
-  name: "RuachAI Engineering Course"
+  name: "RUACH Engineering Course"
   version: "2.0.0"
   curriculum_days: 201 # Compatibility name: number of lessons in the bundled curriculum.
 
@@ -14,7 +14,7 @@ schedule:
     - name: "study"
       start_time: "18:00"
       end_time: "20:00"
-      description: "RuachAI Engineering Course study session"
+      description: "RUACH Engineering Course study session"
 
 quizzes:
   questions_per_quiz: 5
@@ -24,7 +24,7 @@ google_calendar:
   enabled: true
   calendar_id: "primary"
   reminder_minutes: [30, 10]
-  event_prefix: "[RuachAI Engineering Course]"
+  event_prefix: "[RUACH Engineering Course]"
 
 progress:
   track_streaks: true

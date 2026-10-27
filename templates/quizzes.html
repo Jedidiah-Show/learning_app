@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Quizzes · RuachAI{% endblock %}
+{% block title %}Quizzes · RUACH{% endblock %}
 {% block content %}
 <header class="mb-6"><p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Lesson practice</p><h2 class="mt-2 text-3xl font-bold">Quizzes based on course lessons</h2><p class="mt-2 text-slate-600">Gemini creates questions from the selected lesson or completed module.</p></header>
 <div class="space-y-4">{% for module in modules %}<details class="rounded-2xl border bg-white p-5"><summary class="cursor-pointer font-bold">Module {{ module.number }} · {{ module.title }}</summary><div class="mt-4 grid gap-2 sm:grid-cols-2">{% for lesson in module.lessons %}<a class="rounded-lg border p-3 text-sm hover:border-indigo-400" href="{{ url_for('main.lesson_detail', lesson_id=lesson.id) }}">{{ lesson.id }} · {{ lesson.title }} <span class="block text-indigo-700">Open lesson quiz →</span></a>{% endfor %}</div><button class="mt-4 rounded-lg bg-violet-700 px-4 py-2 font-semibold text-white" data-module="{{ module.id }}">Generate module quiz</button><div id="module-quiz-{{ module.id }}" class="mt-4"></div></details>{% endfor %}</div>

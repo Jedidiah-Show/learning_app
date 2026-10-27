@@ -1,18 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Login · RuachAI Engineering Course{% endblock %}
+{% block title %}Sign in · RUACH Engineering Course{% endblock %}
 
 {% block content %}
 <div class="auth-layout">
     <aside class="auth-story" aria-label="About your learning journey">
         <div class="auth-story-content">
-            <span class="auth-kicker">LEARN WITH INTENTION</span>
-            <h2>Small steps.<br>Deep understanding.</h2>
-            <p>A focused space to build real confidence, one study session at a time.</p>
-            <div class="auth-promise"><span aria-hidden="true">✦</span><span>Pick up where you left off and keep your momentum.</span></div>
+            <img class="auth-brand-logo" src="{{ url_for('static', filename='img/ruach-logo.png') }}" alt="RUACH" width="124" height="124">
+            <span class="auth-kicker">SPIRIT · CONNECTION · GROWTH</span>
+            <h2>Rooted in faith.<br>Built for tomorrow.</h2>
+            <p>A learning community where knowledge, character and calling grow together.</p>
+            <div class="auth-promise"><span aria-hidden="true">✦</span><span>Pick up where you left off and keep growing with intention.</span></div>
         </div>
         <div class="auth-orbit orbit-a"></div><div class="auth-orbit orbit-b"></div>
-        <span class="auth-story-foot">YOUR NEXT CHAPTER STARTS HERE</span>
+        <span class="auth-story-foot">RUACH · SPIRIT · CONNECTION · GROWTH</span>
     </aside>
     <div class="auth-card-wrap">
         <div class="auth-card">
@@ -49,7 +50,7 @@
                 </div>
             </form>
 
-            <div class="auth-switch"><span>New to RuachAI?</span><a href="{{ url_for('auth.register', next=request.args.get('next')) if request.args.get('next') else url_for('auth.register') }}" class="auth-link">Create an account</a></div>
+            <div class="auth-switch"><span>New to RUACH?</span><a href="{{ url_for('auth.register', next=request.args.get('next')) if request.args.get('next') else url_for('auth.register') }}" class="auth-link">Create an account</a></div>
             <div class="mt-4 border-t border-slate-200 pt-4 text-center">
                 <a href="{{ url_for('admin_portal.login') }}" class="inline-flex items-center gap-2 text-xs font-semibold text-slate-500 transition hover:text-indigo-600">
                     <span aria-hidden="true">🛡️</span>

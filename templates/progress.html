@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Course Progress · RuachAI{% endblock %}
+{% block title %}Course Progress · RUACH{% endblock %}
 {% block content %}
 <header class="mb-6"><p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Your learning record</p><h2 class="mt-2 text-3xl font-bold">Course progress</h2><p class="mt-2 text-slate-600">{{ progress.completed_lessons }} of {{ progress.total_lessons }} lessons · {{ progress.completed_projects }} of {{ progress.total_projects }} projects.</p></header>
 <div class="space-y-3">{% for module in progress.modules %}<article class="rounded-2xl border bg-white p-5"><div class="flex justify-between gap-3"><div><p class="text-xs font-semibold uppercase text-slate-500">Module {{ module.number }}</p><h3 class="font-bold">{{ module.title }}</h3></div><span class="text-sm text-slate-600">{{ module.completed_lessons }}/{{ module.total_lessons }}</span></div><div class="mt-3 h-2 rounded-full bg-slate-100"><div class="h-full rounded-full bg-indigo-600" style="width:{{ (module.completed_lessons / module.total_lessons * 100)|round }}%"></div></div></article>{% endfor %}</div>

@@ -412,7 +412,7 @@ class LearningProject(db.Model):
 
 
 class CourseProject(db.Model):
-    """Projects for the fixed RuachAI course, isolated from legacy weekly projects."""
+    """Projects for the fixed RUACH course, isolated from legacy weekly projects."""
     __tablename__ = 'course_project'
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)

@@ -1,6 +1,10 @@
-# RuachAI Engineering Course
+# RUACH Engineering Course
 
-A Flask and SQLite learning app for the RuachAI engineering course: 13 modules, 201 bundled lessons, curated lesson videos, lesson-based Gemini quizzes and clarification, module projects, course progress, personal study schedules, and optional Google Calendar sync. Historical subject-based progress and weekly projects remain stored as legacy records and are not mixed into the new course.
+> **Spirit · Connection · Growth**
+>
+> *Rooted in faith. Built for tomorrow.*
+
+A Flask and SQLite learning app for the RUACH engineering course: 13 modules, 201 bundled lessons, curated lesson videos, lesson-based Gemini quizzes and clarification, module projects, course progress, personal study schedules, and optional Google Calendar sync. Historical subject-based progress and weekly projects remain stored as legacy records and are not mixed into the new course.
 
 ## Run locally
 
@@ -49,7 +53,7 @@ Generated quizzes and module projects are stored per learner. Bundled lessons ar
 
 When Gemini is enabled, lesson context and project submissions are sent to Google's Gemini API for clarification, quiz generation, or project evaluation; account credentials and identifiers are not included. If Gemini is temporarily unavailable and OpenRouter is configured, the same prompt is sent to OpenRouter's chat completions endpoint instead. Provider rejections, blocked/empty responses, timeouts, truncated responses, and malformed JSON are reported instead of being treated as successful generation. Generated quizzes and project evaluations are validated before they are stored.
 
-Course completion is tracked by stable lesson ID. Existing subject/day completion rows and weekly project submissions are retained but are not treated as completions in the RuachAI sequence. Module projects have a separate table so legacy weekly project records cannot unlock new modules accidentally. Calendar schedule records retain their historical day-number column; current values correspond to lesson ordinals.
+Course completion is tracked by stable lesson ID. Existing subject/day completion rows and weekly project submissions are retained but are not treated as completions in the RUACH sequence. Module projects have a separate table so legacy weekly project records cannot unlock new modules accidentally. Calendar schedule records retain their historical day-number column; current values correspond to lesson ordinals.
 
 No lesson-preparation worker is required. The lesson guides are served from the bundled curriculum JSON.
 

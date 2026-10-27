@@ -1,13 +1,14 @@
 {% extends "admin/base.html" %}
-{% block title %}Administrator Sign In · RuachAI{% endblock %}
+{% block title %}Administrator Sign In · RUACH{% endblock %}
 
 {% block public_content %}
-<div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-4 py-12">
+<div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-brand-950 via-brand-900 to-slate-950 px-4 py-12">
     <div class="w-full max-w-md">
         <div class="mb-8 text-center">
-            <span class="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-red-500/15 text-3xl ring-1 ring-inset ring-red-400/30" aria-hidden="true">🛡️</span>
-            <h1 class="mt-5 text-2xl font-bold text-white">RuachAI Admin Portal</h1>
-            <p class="mt-2 text-sm text-slate-400">Restricted area. Administrator credentials required.</p>
+            <img src="{{ url_for('static', filename='img/ruach-logo.png') }}" alt="RUACH" width="104" height="104" class="mx-auto h-24 w-24 rounded-3xl border border-gold-400/50 object-cover shadow-2xl shadow-black/40">
+            <p class="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-gold-300">Spirit · Connection · Growth</p>
+            <h1 class="mt-2 font-display text-2xl font-bold text-white">RUACH Admin Portal</h1>
+            <p class="mt-2 text-sm text-brand-200">Restricted area. Administrator credentials required.</p>
         </div>
 
         <div class="rounded-2xl bg-white p-6 shadow-2xl shadow-black/40 sm:p-8">
@@ -52,9 +53,9 @@
         </div>
 
         <div class="mt-6 text-center">
-            <a href="{{ url_for('auth.login') }}" class="text-sm font-semibold text-slate-300 transition hover:text-white">← Back to learner sign-in</a>
+            <a href="{{ url_for('auth.login') }}" class="text-sm font-semibold text-brand-200 transition hover:text-white">← Back to learner sign-in</a>
         </div>
-        <p class="mt-6 text-center text-[11px] leading-relaxed text-slate-500">
+        <p class="mt-6 text-center text-[11px] leading-relaxed text-brand-200">
             Administrator sessions expire {{ admin_session_minutes }} minutes after sign-in.
             Every account change is recorded in the audit log.
         </p>

@@ -1,4 +1,4 @@
-"""Account-specific schedule and preferences for the RuachAI engineering course."""
+"""Account-specific schedule and preferences for the RUACH engineering course."""
 
 from copy import deepcopy
 import json
@@ -7,6 +7,25 @@ from flask import current_app
 
 from app import merge_config
 from app.models import UserConfig, UserSchedule
+
+_LEGACY_BRAND_STRINGS = (
+    ('RuachAI Engineering Course', 'RUACH Engineering Course'),
+    ('RuachAI course', 'RUACH course'),
+    ('The RuachAI engineering course', 'The RUACH engineering course'),
+)
+
+
+def _normalize_brand_text(value):
+    """Keep saved preferences consistent with the current brand name."""
+    if isinstance(value, str):
+        for old, new in _LEGACY_BRAND_STRINGS:
+            value = value.replace(old, new)
+        return value
+    if isinstance(value, list):
+        return [_normalize_brand_text(item) for item in value]
+    if isinstance(value, dict):
+        return {key: _normalize_brand_text(item) for key, item in value.items()}
+    return value
 
 
 def _user_config(user):
@@ -21,7 +40,7 @@ def get_effective_schedule_for_user(user):
         if schedule:
             blocks = schedule.get_daily_blocks()
             if blocks is not None:
-                return blocks
+                return _normalize_brand_text(blocks)
     config = current_app.config.get('APP_CONFIG', {}) or {}
     return deepcopy((config.get('schedule') or {}).get('daily_blocks', []))
 
@@ -41,7 +60,7 @@ def get_effective_config_for_user(user=None):
         config.pop(key, None)
     calendar_config = config.get('google_calendar') or {}
     calendar_config.pop('client_secret', None)
-    return config
+    return _normalize_brand_text(config)
 
 
 def get_user_preferences(user):

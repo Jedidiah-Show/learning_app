@@ -24,7 +24,7 @@ def validate_app_config(config):
         raise ValueError('Configuration must contain an app object')
     days = app_config.get('curriculum_days')
     if not isinstance(days, int) or isinstance(days, bool) or days != 201:
-        raise ValueError('app.curriculum_days must match the 201-lesson RuachAI engineering course')
+        raise ValueError('app.curriculum_days must match the 201-lesson RUACH engineering course')
     schedule = config.get('schedule')
     if not isinstance(schedule, dict) or not isinstance(schedule.get('daily_blocks'), list):
         raise ValueError('schedule must contain daily_blocks')
@@ -194,7 +194,7 @@ def create_app(config_override=None):
             'connect_args': {
                 'connect_timeout': int(os.environ.get('DB_CONNECT_TIMEOUT', '10')),
                 'application_name': os.environ.get(
-                    'DB_APPLICATION_NAME', 'ruachai-learning-app'
+                    'DB_APPLICATION_NAME', 'ruach-learning-app'
                 ),
             },
         }
@@ -227,7 +227,7 @@ def create_app(config_override=None):
         or 'openrouter/auto'
     )
     app.config['OPENROUTER_APP_NAME'] = os.environ.get(
-        'OPENROUTER_APP_NAME', 'RuachAI'
+        'OPENROUTER_APP_NAME', 'RUACH'
     )
     app.config['OPENROUTER_SITE_URL'] = os.environ.get('OPENROUTER_SITE_URL')
 

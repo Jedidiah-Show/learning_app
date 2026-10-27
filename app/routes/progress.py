@@ -1,4 +1,4 @@
-"""Progress API for the fixed RuachAI lesson sequence."""
+"""Progress API for the fixed RUACH lesson sequence."""
 
 from flask import Blueprint, jsonify
 from flask_login import current_user, login_required

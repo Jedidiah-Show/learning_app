@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% block title %}Module Projects · RuachAI{% endblock %}
+{% block title %}Module Projects · RUACH{% endblock %}
 {% block content %}
 <header class="mb-7"><p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Build and apply</p><h2 class="mt-2 text-3xl font-bold">Module projects</h2><p class="mt-2 text-slate-600">Each module’s project uses the brief in the curriculum. Complete all module lessons first; Gemini evaluates your submitted work against the brief.</p></header>
 <div class="space-y-4">{% for module in modules %}<section id="module-{{ module.id }}" class="rounded-2xl border bg-white p-5"><div class="flex flex-wrap items-center justify-between gap-3"><div><p class="text-xs font-semibold uppercase text-indigo-600">Module {{ module.number }}</p><h3 class="text-lg font-bold">{{ module.title }}</h3><p class="mt-1 text-sm text-slate-600">{{ module.project }}</p></div>{% if module.id in completed_modules %}<span class="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">Complete ✓</span>{% endif %}</div><button class="mt-4 rounded-lg border border-indigo-200 px-4 py-2 font-semibold text-indigo-700" data-open="{{ module.id }}">Open project</button><div id="project-{{ module.id }}" class="mt-4"></div></section>{% endfor %}</div>

@@ -13,7 +13,7 @@ from app import google_calendar as gcal
 from app.curriculum import all_lessons
 from app.gemini import GeminiError
 from app.integrations import probe_calendar, probe_gemini, probe_openrouter
-from app.models import User
+from app.models import User, UserConfig, UserSchedule
 from app.openrouter import OpenRouterError
 
 
@@ -138,6 +138,37 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
         response = self.client.get('/settings')
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Integration health', response.data)
+
+    def test_saved_preferences_use_the_current_brand_name(self):
+        with self.app.app_context():
+            user = User.query.one()
+            db.session.add(UserSchedule(
+                user_id=user.id,
+                daily_blocks=json.dumps([{
+                    'name': 'study',
+                    'start_time': '18:00',
+                    'end_time': '20:00',
+                    'description': 'RuachAI Engineering Course study session',
+                }]),
+            ))
+            db.session.add(UserConfig(
+                user_id=user.id,
+                extra_config=json.dumps({
+                    'preferences': {
+                        'google_calendar': {
+                            'event_prefix': '[RuachAI Engineering Course]',
+                        },
+                    },
+                }),
+            ))
+            db.session.commit()
+
+        response = self.client.get('/settings')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn(b'RuachAI', response.data)
+        self.assertIn(b'RUACH Engineering Course study session', response.data)
+        self.assertIn(b'[RUACH Engineering Course]', response.data)
 
     def test_scheduling_syncs_immediately_when_calendar_is_connected(self):
         class Plan:

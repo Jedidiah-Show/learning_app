@@ -92,7 +92,7 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertEqual(sum(len(module['lessons']) for module in all_modules()), 201)
         self.assertEqual(
             curriculum()['course']['title'],
-            'RuachAI Engineering Course',
+            'RUACH Engineering Course',
         )
 
     def test_registration_starts_the_fixed_course_without_proficiency_setup(self):
