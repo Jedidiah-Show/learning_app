@@ -122,6 +122,8 @@ class RuachAICourseTests(unittest.TestCase):
         first_page = self.client.get(f"/lesson/{lessons[0]['id']}")
         self.assertEqual(first_page.status_code, 200)
         self.assertIn(b'aria-controls="app-navigation"', first_page.data)
+        self.assertIn(b'data-theme-toggle', first_page.data)
+        self.assertIn(b'class="nav-icon"', first_page.data)
         self.assertIn(b'Next lesson locked', first_page.data)
         self.assertIn('disabled>← Previous lesson'.encode(), first_page.data)
         self.assertIn(b'disabled data-next-lesson-id=', first_page.data)

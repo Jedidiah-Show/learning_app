@@ -4,15 +4,33 @@
     document.addEventListener('click', (event) => {
         const navButton = event.target.closest('[data-toggle-nav]');
         if (navButton) {
-            const navigation = document.getElementById(navButton.getAttribute('aria-controls'));
-            if (!navigation) return;
-            const expanded = navButton.getAttribute('aria-expanded') === 'true';
-            navButton.setAttribute('aria-expanded', String(!expanded));
-            navButton.setAttribute('aria-label', expanded ? 'Show navigation' : 'Hide navigation');
-            navigation.hidden = expanded;
-            navButton.querySelector('[data-nav-toggle-label]').textContent = expanded
-                ? 'Show navigation'
-                : 'Hide navigation';
+            const collapsed = document.documentElement.classList.toggle('nav-collapsed');
+            navButton.setAttribute('aria-pressed', String(!collapsed));
+            navButton.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
+            navButton.querySelector('[data-nav-toggle-label]').textContent = collapsed
+                ? 'Expand navigation'
+                : 'Collapse navigation';
+            try {
+                localStorage.setItem('ruachai-navigation', collapsed ? 'collapsed' : 'expanded');
+            } catch (error) {
+                // The navigation remains usable when browser storage is unavailable.
+            }
+            return;
+        }
+
+        const themeButton = event.target.closest('[data-theme-toggle]');
+        if (themeButton) {
+            const theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark';
+            document.documentElement.dataset.theme = theme;
+            const isDark = theme === 'dark';
+            themeButton.setAttribute('aria-label', `Switch to ${isDark ? 'light' : 'dark'} mode`);
+            themeButton.querySelector('[data-theme-label]').textContent = `${isDark ? 'Light' : 'Dark'} mode`;
+            themeButton.querySelector('[data-theme-icon]').textContent = isDark ? '☀️' : '🌙';
+            try {
+                localStorage.setItem('ruachai-theme', theme);
+            } catch (error) {
+                // The selected theme remains active until the page is reloaded.
+            }
             return;
         }
 
@@ -28,6 +46,24 @@
         button.textContent = reveal ? 'Hide' : 'Show';
         button.setAttribute('aria-pressed', String(reveal));
     });
+
+    const navButton = document.querySelector('[data-toggle-nav]');
+    if (navButton) {
+        const collapsed = document.documentElement.classList.contains('nav-collapsed');
+        navButton.setAttribute('aria-pressed', String(!collapsed));
+        navButton.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
+        navButton.querySelector('[data-nav-toggle-label]').textContent = collapsed
+            ? 'Expand navigation'
+            : 'Collapse navigation';
+    }
+
+    const themeButton = document.querySelector('[data-theme-toggle]');
+    if (themeButton) {
+        const isDark = document.documentElement.dataset.theme === 'dark';
+        themeButton.setAttribute('aria-label', `Switch to ${isDark ? 'light' : 'dark'} mode`);
+        themeButton.querySelector('[data-theme-label]').textContent = `${isDark ? 'Light' : 'Dark'} mode`;
+        themeButton.querySelector('[data-theme-icon]').textContent = isDark ? '☀️' : '🌙';
+    }
 
     const token = document.querySelector('meta[name="csrf-token"]')?.content;
     const nativeFetch = window.fetch.bind(window);

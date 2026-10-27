@@ -5,33 +5,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <title>{% block title %}RuachAI Engineering Course{% endblock %}</title>
+    <script>
+        try {
+            const savedTheme = localStorage.getItem('ruachai-theme');
+            document.documentElement.dataset.theme = savedTheme
+                || (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            const savedNavigation = localStorage.getItem('ruachai-navigation');
+            if (savedNavigation === 'collapsed'
+                || (!savedNavigation && matchMedia('(max-width: 760px)').matches)) {
+                document.documentElement.classList.add('nav-collapsed');
+            }
+        } catch (error) {
+            document.documentElement.dataset.theme =
+                matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        }
+    </script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_head %}{% endblock %}
 </head>
-<body class="min-h-screen bg-slate-50 font-['Inter'] app-shell {% if request.endpoint and request.endpoint.startswith('auth.') and request.endpoint != 'auth.profile' %}auth-shell{% endif %}">
+<body class="min-h-screen bg-slate-50 font-['Inter'] app-shell {% if current_user.is_authenticated %}has-sidebar{% endif %} {% if request.endpoint and request.endpoint.startswith('auth.') and request.endpoint != 'auth.profile' %}auth-shell{% endif %}">
     <!-- Header Navigation -->
     <header class="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0 z-50 shadow-sm">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex min-h-16 items-center justify-between gap-3">
-                <a href="{{ url_for('main.index') if current_user.is_authenticated else url_for('auth.login') }}" class="flex items-center space-x-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label="RuachAI Engineering Course home">
+                <a href="{{ url_for('main.index') if current_user.is_authenticated else url_for('auth.login') }}" class="app-brand flex items-center space-x-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500" aria-label="RuachAI Engineering Course home">
                     <span class="brand-mark">✦</span>
-                    <div>
+                    <div class="brand-copy">
                         <h1 class="text-lg font-bold text-slate-800 leading-tight">RuachAI</h1>
                         {% if current_user.is_authenticated %}<p class="text-xs text-slate-500">Engineering Course</p>{% else %}<p class="text-xs text-slate-500">From AI ideas to production systems</p>{% endif %}
                     </div>
                 </a>
                 {% if current_user.is_authenticated %}
-                <button type="button" class="app-nav-toggle" data-toggle-nav aria-label="Hide navigation" aria-controls="app-navigation" aria-expanded="true">
+                <button type="button" class="app-nav-toggle" data-toggle-nav aria-label="Collapse navigation" aria-controls="app-navigation" aria-pressed="false">
                     <span aria-hidden="true">☰</span>
-                    <span data-nav-toggle-label>Hide navigation</span>
+                    <span data-nav-toggle-label>Collapse navigation</span>
                 </button>
                 {% endif %}
-                <div class="flex min-w-0 items-center space-x-3">
+                <div class="app-user-menu flex min-w-0 items-center space-x-3">
+                    <button type="button" class="theme-toggle" data-theme-toggle aria-label="Switch to dark mode">
+                        <span data-theme-icon aria-hidden="true">🌙</span>
+                        <span data-theme-label>Dark mode</span>
+                    </button>
                     <!-- User Menu -->
                     {% if current_user.is_authenticated %}
                     <div class="flex items-center space-x-2">
-                        <a href="{{ url_for('auth.profile') }}" class="text-sm text-slate-600 hover:text-indigo-600 flex items-center space-x-1">
+                        <a href="{{ url_for('auth.profile') }}" class="user-profile-link text-sm text-slate-600 hover:text-indigo-600 flex items-center space-x-1">
                             <span>👤</span>
                             <span>{{ current_user.username or current_user.full_name or 'User' }}</span>
                         </a>
@@ -50,26 +69,29 @@
                 </div>
             </div>
             {% if current_user.is_authenticated %}<nav id="app-navigation" class="app-nav flex flex-wrap gap-1 py-2" aria-label="Main navigation">
-                    <a href="{{ url_for('main.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.index' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        📊 Dashboard
+                    <a aria-label="Dashboard" title="Dashboard" href="{{ url_for('main.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.index' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">Dashboard</span>
                     </a>
-                    <a href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.lessons' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        📖 Course Lessons
+                    <a aria-label="Course lessons" title="Course lessons" href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.lessons' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">📖</span><span class="nav-label">Course Lessons</span>
                     </a>
-                    <a href="{{ url_for('main.schedule') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.schedule' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        📅 Schedule
+                    <a aria-label="Practice Lab" title="Practice Lab" href="{{ url_for('practice.practice_index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint and request.endpoint.startswith('practice.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">💻</span><span class="nav-label">Practice Lab</span>
                     </a>
-                    <a href="{{ url_for('main.quizzes') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.quizzes' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        🎯 Quizzes
+                    <a aria-label="Schedule" title="Schedule" href="{{ url_for('main.schedule') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.schedule' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">📅</span><span class="nav-label">Schedule</span>
                     </a>
-                    <a href="{{ url_for('projects.project_page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'projects.project_page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        🧩 Projects
+                    <a aria-label="Quizzes" title="Quizzes" href="{{ url_for('main.quizzes') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.quizzes' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">🎯</span><span class="nav-label">Quizzes</span>
                     </a>
-                    <a href="{{ url_for('main.progress') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.progress' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        📈 Progress
+                    <a aria-label="Projects" title="Projects" href="{{ url_for('projects.project_page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'projects.project_page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">🧩</span><span class="nav-label">Projects</span>
                     </a>
-                    <a href="{{ url_for('main.settings') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.settings' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        ⚙️ Settings
+                    <a aria-label="Progress" title="Progress" href="{{ url_for('main.progress') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.progress' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">📈</span><span class="nav-label">Progress</span>
+                    </a>
+                    <a aria-label="Settings" title="Settings" href="{{ url_for('main.settings') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.settings' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">⚙️</span><span class="nav-label">Settings</span>
                     </a>
                 </nav>{% endif %}
         </div>
