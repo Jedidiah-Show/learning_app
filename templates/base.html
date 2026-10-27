@@ -75,9 +75,6 @@
                     <a aria-label="Course lessons" title="Course lessons" href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.lessons' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">📖</span><span class="nav-label">Course Lessons</span>
                     </a>
-                    <a aria-label="Practice Lab" title="Practice Lab" href="{{ url_for('practice.practice_index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint and request.endpoint.startswith('practice.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">💻</span><span class="nav-label">Practice Lab</span>
-                    </a>
                     <a aria-label="Schedule" title="Schedule" href="{{ url_for('main.schedule') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.schedule' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">📅</span><span class="nav-label">Schedule</span>
                     </a>

@@ -310,7 +310,7 @@ def create_app(config_override=None):
     from app.routes.auth import auth_bp
     from app.routes.projects import projects_bp
     from app.routes.integrations import integrations_bp
-    
+
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(progress_bp, url_prefix='/api/progress')
