@@ -7,7 +7,7 @@ h1,h2,h3,h4,.section-title { font-family:Inter,system-ui,-apple-system,'Segoe UI
 .app-nav::-webkit-scrollbar { height:6px; }
 .app-nav::-webkit-scrollbar-track { background:transparent; }
 .app-nav::-webkit-scrollbar-thumb { background:#c7c5d6;border-radius:999px; }
-.nav-link { transition:background .18s ease,color .18s ease,transform .18s ease; white-space:nowrap;flex-shrink:0; }
+.nav-link { transition:background .18s ease,color .18s ease,transform .18s ease; white-space:nowrap;flex-shrink:0; display:flex;align-items:center;gap:8px; }
 .nav-link:hover { transform:translateY(-1px); }
 .app-nav-toggle { display:inline-flex;align-items:center;gap:8px;flex:none;padding:8px 11px;border:1px solid #e5e7eb;border-radius:10px;background:white;color:#475569;font-size:12px;font-weight:700; }
 .app-nav-toggle:hover { border-color:#c7c5f3;background:#f8f7ff;color:#5049bd; }
