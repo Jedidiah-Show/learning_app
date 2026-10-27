@@ -20,6 +20,19 @@ from app.request_data import get_json_object
 main_bp = Blueprint('main', __name__)
 
 
+def admin_required(f):
+    from functools import wraps
+
+    @wraps(f)
+    @login_required
+    def decorated_function(*args, **kwargs):
+        if not getattr(current_user, 'is_admin', False):
+            abort(403)
+        return f(*args, **kwargs)
+
+    return decorated_function
+
+
 @main_bp.route('/healthz')
 def healthz():
     database = database_status()
@@ -206,3 +219,52 @@ def update_preferences():
             current_app.logger.exception('Could not reconcile Calendar preferences for user %s', current_user.id)
             return jsonify({'error': 'Preferences saved, but Calendar sync is incomplete. Retry to finish syncing.'}), 502
     return jsonify({'status': 'success'})
+
+
+@main_bp.route('/admin')
+@admin_required
+def admin_dashboard():
+    from app.models import User, LessonCompletion, CourseProject, StudySession, PracticeUsageDaily
+    from sqlalchemy import func
+    total_users = User.query.count()
+    active_users = User.query.filter(User.last_active.isnot(None)).count()
+    total_completions = LessonCompletion.query.filter_by(completed=True).count()
+    total_projects = CourseProject.query.filter_by(completed=True).count()
+    return render_template('admin/dashboard.html',
+                           config=get_effective_config_for_user(current_user),
+                           user=current_user,
+                           total_users=total_users,
+                           active_users=active_users,
+                           total_completions=total_completions,
+                           total_projects=total_projects)
+
+
+@main_bp.route('/admin/users')
+@admin_required
+def admin_users():
+    from app.models import User
+    users = User.query.order_by(User.created_at.desc()).all()
+    return render_template('admin/users.html',
+                           config=get_effective_config_for_user(current_user),
+                           user=current_user,
+                           users=users)
+
+
+@main_bp.route('/admin/analytics')
+@admin_required
+def admin_analytics():
+    from app.models import User, LessonCompletion, CourseProject
+    from sqlalchemy import func
+    from datetime import datetime, timedelta
+    # Completions per day (last 30 days)
+    completions = db.session.query(
+        func.date(LessonCompletion.completed_at).label('date'),
+        func.count(LessonCompletion.id).label('count')
+    ).filter(
+        LessonCompletion.completed == True,
+        LessonCompletion.completed_at >= datetime.utcnow() - timedelta(days=30)
+    ).group_by(func.date(LessonCompletion.completed_at)).all()
+    return render_template('admin/analytics.html',
+                           config=get_effective_config_for_user(current_user),
+                           user=current_user,
+                           completions=completions)

@@ -30,6 +30,7 @@ class User(UserMixin, db.Model):
     created_at = db.Column(db.DateTime, default=utcnow)
     last_active = db.Column(db.DateTime, default=utcnow)
     subjects_configured = db.Column(db.Boolean, default=False)
+    is_admin = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
     
     progress = db.relationship('Progress', backref='user', lazy=True, cascade='all, delete-orphan')
     lesson_completions = db.relationship('LessonCompletion', backref='user', lazy=True, cascade='all, delete-orphan')

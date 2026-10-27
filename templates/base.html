@@ -81,6 +81,11 @@
                         <a href="{{ url_for('main.settings') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.settings' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                             <span class="nav-icon" aria-hidden="true">⚙️</span><span class="nav-label">Settings</span>
                         </a>
+                        {% if current_user.is_admin %}
+                        <a href="{{ url_for('main.admin_dashboard') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint and request.endpoint.startswith('main.admin') %}bg-red-50 text-red-700{% else %}text-red-600 hover:text-red-700 hover:bg-red-50{% endif %}">
+                            <span class="nav-icon" aria-hidden="true">🛡️</span><span class="nav-label">Admin Portal</span>
+                        </a>
+                        {% endif %}
                         <div class="nav-account-actions">
                         <a href="{{ url_for('auth.profile') }}" aria-label="Profile" title="Profile" class="nav-link nav-profile-link px-3 py-2 text-xs font-semibold rounded-md text-slate-600 hover:text-indigo-600 hover:bg-slate-50 flex items-center gap-2">
                             <span class="nav-icon" aria-hidden="true">👤</span>
