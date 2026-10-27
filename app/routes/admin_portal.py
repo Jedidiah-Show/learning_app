@@ -75,7 +75,10 @@ def _safe_admin_next(target):
     """Only allow redirects back into the admin portal."""
     if not isinstance(target, str):
         return None
-    if target.startswith('//') or '\\' in target:
+    target = target.strip()
+    if target.endswith('?'):
+        target = target[:-1]
+    if not target or target.startswith('//') or '\\' in target:
         return None
     if target == '/admin' or target.startswith('/admin/') or target.startswith('/admin?'):
         return target
@@ -154,7 +157,9 @@ def login():
         return redirect(url_for('admin_portal.dashboard'))
 
     identifier = ''
+    next_page = request.args.get('next') or ''
     if request.method == 'POST':
+        next_page = request.form.get('next') or next_page
         identifier = (
             request.form.get('identifier')
             or request.form.get('username')
@@ -190,9 +195,7 @@ def login():
                 detail='Administrator signed in to the portal.',
             )
             db.session.commit()
-            target = _safe_admin_next(
-                request.args.get('next') or request.form.get('next')
-            )
+            target = _safe_admin_next(next_page)
             return redirect(target or url_for('admin_portal.dashboard'))
         current_app.logger.warning(
             'Failed administrator sign-in for %r from %s',
@@ -203,7 +206,7 @@ def login():
     return render_template(
         'admin/login.html',
         identifier=identifier,
-        next_page=request.args.get('next', ''),
+        next_page=next_page,
     )
 
 

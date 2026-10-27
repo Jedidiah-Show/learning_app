@@ -163,6 +163,27 @@ class AdminPortalTests(unittest.TestCase):
         # The learner session is untouched by an expired admin session.
         self.assertEqual(self.client.get('/').status_code, 200)
 
+    def test_admin_login_stays_inside_the_portal(self):
+        client = self.app.test_client()
+        response = client.post('/admin/login', data={
+            'identifier': 'admin',
+            'password': 'secure-pass-123',
+            'next': '/admin/users?',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(response.headers['Location'].endswith('/admin/users'))
+
+        other = self.app.test_client()
+        response = other.post('/admin/login', data={
+            'identifier': 'admin',
+            'password': 'secure-pass-123',
+            'next': 'https://evil.example/phish',
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            response.headers['Location'].rstrip('/').endswith('/admin')
+        )
+
     def test_learner_logout_clears_the_admin_grant(self):
         self._login_admin()
         self.assertEqual(self.client.get('/admin').status_code, 200)
