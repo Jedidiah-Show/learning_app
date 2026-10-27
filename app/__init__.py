@@ -385,7 +385,9 @@ def create_app(config_override=None):
         return response
 
     from app.videos import format_duration
+    from app.curriculum import readable_paragraphs
     app.jinja_env.filters['duration'] = format_duration
+    app.jinja_env.filters['readable'] = readable_paragraphs
 
     # Make config available to all templates
     @app.context_processor

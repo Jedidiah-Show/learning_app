@@ -4,7 +4,10 @@
 <header class="mb-7">
   <p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Complete curriculum</p>
   <h2 class="mt-2 text-3xl font-bold text-slate-900">AI Engineering course</h2>
-  <p class="mt-2 text-slate-600">Lessons unlock in order. Complete each module’s lessons and project to continue to the next module.</p>
+  <p class="mt-2 max-w-3xl text-slate-600">Lessons unlock in order. Complete each module’s lessons and project to continue to the next module.</p>
+  <div class="mt-4 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+    <strong>New to this?</strong> Start with the first unlocked lesson. Every lesson begins with a plain-language overview, explains each idea one at a time, and ends with a short self-check.
+  </div>
 </header>
 <div class="space-y-5">
 {% for module in modules %}
@@ -20,7 +23,11 @@
     <ol class="divide-y divide-slate-100">
     {% for lesson in module.lessons %}
       <li class="flex items-center justify-between gap-4 px-5 py-3">
-        <div class="min-w-0"><span class="mr-2 text-xs font-semibold text-slate-400">{{ lesson.id }}</span><span class="font-medium text-slate-800">{{ lesson.title }}</span>{% if lesson.video %}<span class="video-badge" title="Includes a lesson video">▶ Video</span>{% endif %}</div>
+        <div class="min-w-0">
+          <div><span class="mr-2 text-xs font-semibold text-slate-400">{{ lesson.id }}</span><span class="font-medium text-slate-800">{{ lesson.title }}</span>{% if lesson.video %}<span class="video-badge" title="Includes a lesson video">▶ Video</span>{% endif %}</div>
+          {% if lesson.subtitle %}<p class="lesson-row-subtitle">{{ lesson.subtitle }}</p>{% endif %}
+          {% if lesson.reading_minutes %}<p class="mt-1 text-xs text-slate-400">About {{ lesson.reading_minutes }} min</p>{% endif %}
+        </div>
         {% if lesson.id in completed_ids %}
           <a class="shrink-0 text-sm font-semibold text-emerald-700" href="{{ url_for('main.lesson_detail', lesson_id=lesson.id) }}">Completed ✓</a>
         {% elif lesson.id == next_lesson_id %}

@@ -109,6 +109,77 @@
     };
 })();
 
+// Beginner-friendly lesson aids: view mode, reading progress, and saved tasks.
+(() => {
+    const modeToggle = document.querySelector('[data-beginner-toggle]');
+    if (modeToggle) {
+        modeToggle.checked = document.documentElement.classList.contains('beginner-mode');
+        modeToggle.addEventListener('change', () => {
+            document.documentElement.classList.toggle('beginner-mode', modeToggle.checked);
+            try {
+                localStorage.setItem(
+                    'ruachai-lesson-mode',
+                    modeToggle.checked ? 'beginner' : 'full'
+                );
+            } catch (error) {
+                // The chosen view still applies until the page is reloaded.
+            }
+        });
+    }
+
+    const progressBar = document.querySelector('[data-reading-progress]');
+    if (progressBar) {
+        const update = () => {
+            const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+            const ratio = scrollable > 0 ? Math.min(1, window.scrollY / scrollable) : 0;
+            progressBar.style.width = `${Math.round(ratio * 100)}%`;
+        };
+        update();
+        window.addEventListener('scroll', update, { passive: true });
+        window.addEventListener('resize', update);
+    }
+
+    const taskList = document.querySelector('[data-lesson-tasks]');
+    if (taskList) {
+        const key = `ruachai-tasks-${taskList.dataset.lessonId}`;
+        let saved = [];
+        try {
+            const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+            if (Array.isArray(parsed)) saved = parsed.map(String);
+        } catch (error) {
+            saved = [];
+        }
+        const boxes = taskList.querySelectorAll('input[type="checkbox"]');
+        boxes.forEach((box) => {
+            if (saved.includes(box.dataset.taskIndex)) {
+                box.checked = true;
+                box.closest('li')?.classList.add('is-done');
+            }
+            box.addEventListener('change', () => {
+                box.closest('li')?.classList.toggle('is-done', box.checked);
+                const done = [...boxes]
+                    .filter((item) => item.checked)
+                    .map((item) => item.dataset.taskIndex);
+                try {
+                    localStorage.setItem(key, JSON.stringify(done));
+                } catch (error) {
+                    // Progress still shows for this visit.
+                }
+            });
+        });
+    }
+
+    document.querySelectorAll('[data-open-practice]').forEach((link) => {
+        link.addEventListener('click', (event) => {
+            const launcher = document.getElementById('practice-launcher');
+            if (!launcher) return;
+            event.preventDefault();
+            launcher.click();
+            launcher.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        });
+    });
+})();
+
 // Lesson video: privacy-enhanced, click-to-load YouTube player with progress.
 (() => {
     const sections = document.querySelectorAll('[data-lesson-video]');

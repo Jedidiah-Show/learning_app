@@ -15,6 +15,9 @@
                 || (!savedNavigation && matchMedia('(max-width: 760px)').matches)) {
                 document.documentElement.classList.add('nav-collapsed');
             }
+            if (localStorage.getItem('ruachai-lesson-mode') !== 'full') {
+                document.documentElement.classList.add('beginner-mode');
+            }
         } catch (error) {
             document.documentElement.dataset.theme =
                 matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
