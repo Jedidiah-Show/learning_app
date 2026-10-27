@@ -1,6 +1,6 @@
 """Course pages and learner preferences."""
 
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 import hmac
 import json
 import os
@@ -18,6 +18,11 @@ from app.user_preferences import get_effective_config_for_user, get_user_prefere
 from app.request_data import get_json_object
 
 main_bp = Blueprint('main', __name__)
+
+
+def _naive_utcnow():
+    """UTC now stored the same way the models persist DateTime columns."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
 
 
 def admin_required(f):
@@ -225,13 +230,12 @@ def update_preferences():
 @main_bp.route('/admin')
 @admin_required
 def admin_dashboard():
-    from app.models import User, LessonCompletion, CourseProject, StudySession
+    from app.models import User, LessonCompletion, CourseProject
     from app.curriculum import all_lessons, all_modules
     from sqlalchemy import func
-    from datetime import datetime, timedelta
     total_users = User.query.count()
     active_users = User.query.filter(
-        User.last_active >= datetime.utcnow() - timedelta(days=30)
+        User.last_active >= _naive_utcnow() - timedelta(days=30)
     ).count()
     total_completions = LessonCompletion.query.filter_by(completed=True).count()
     total_projects = CourseProject.query.filter_by(completed=True).count()
@@ -283,10 +287,9 @@ def admin_users():
 @main_bp.route('/admin/analytics')
 @admin_required
 def admin_analytics():
-    from app.models import User, LessonCompletion, CourseProject
+    from app.models import LessonCompletion
     from sqlalchemy import func
-    from datetime import datetime, timedelta
-    since = datetime.utcnow() - timedelta(days=30)
+    since = _naive_utcnow() - timedelta(days=30)
     completions = db.session.query(
         func.date(LessonCompletion.completed_at).label('date'),
         func.count(LessonCompletion.id).label('count')
