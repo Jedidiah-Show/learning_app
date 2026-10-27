@@ -42,12 +42,14 @@
                     <span data-nav-toggle-label>Menu</span>
                 </button>
                 {% endif %}
+                {% if not current_user.is_authenticated %}
                 <div class="app-user-menu flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
-                    <button type="button" class="theme-toggle flex-shrink-0 lg:hidden" data-theme-toggle aria-label="Switch to dark mode">
+                    <button type="button" class="theme-toggle flex-shrink-0" data-theme-toggle aria-label="Switch to dark mode">
                         <span data-theme-icon aria-hidden="true">🌙</span>
                         <span data-theme-label class="hidden sm:inline">Dark mode</span>
                     </button>
                 </div>
+                {% endif %}
             </div>
             {% if current_user.is_authenticated %}<nav id="app-navigation" class="app-nav flex gap-1 py-2 lg:flex-col lg:flex-1 lg:gap-1 lg:py-4 lg:overflow-y-auto" aria-label="Main navigation">
                     <a aria-label="Dashboard" title="Dashboard" href="{{ url_for('main.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.index' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
@@ -68,24 +70,26 @@
                     <a aria-label="Progress" title="Progress" href="{{ url_for('main.progress') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.progress' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">📈</span><span class="nav-label">Progress</span>
                     </a>
-                    <div class="lg:mt-auto lg:pt-4 lg:border-t lg:border-slate-200 space-y-1">
-                        <button type="button" class="theme-toggle w-full justify-start hidden lg:flex" data-theme-toggle aria-label="Switch to dark mode">
+                    <div class="nav-utility-group">
+                        <button type="button" class="theme-toggle w-full justify-start" data-theme-toggle aria-label="Switch to dark mode">
                             <span data-theme-icon aria-hidden="true">🌙</span>
                             <span data-theme-label>Dark mode</span>
                         </button>
-                        <a href="{{ url_for('auth.profile') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md text-slate-600 hover:text-indigo-600 hover:bg-slate-50 flex items-center gap-2">
-                            <span class="nav-icon" aria-hidden="true">👤</span>
-                            <span class="nav-label">{{ current_user.username or current_user.full_name or 'Profile' }}</span>
-                        </a>
                         <a href="{{ url_for('main.settings') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.settings' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                             <span class="nav-icon" aria-hidden="true">⚙️</span><span class="nav-label">Settings</span>
                         </a>
-                        <form method="POST" action="{{ url_for('auth.logout') }}" class="w-full">
+                        <div class="nav-account-actions">
+                        <a href="{{ url_for('auth.profile') }}" aria-label="Profile" title="Profile" class="nav-link nav-profile-link px-3 py-2 text-xs font-semibold rounded-md text-slate-600 hover:text-indigo-600 hover:bg-slate-50 flex items-center gap-2">
+                            <span class="nav-icon" aria-hidden="true">👤</span>
+                            <span class="nav-label">{{ current_user.username or current_user.full_name or 'Profile' }}</span>
+                        </a>
+                        <form method="POST" action="{{ url_for('auth.logout') }}" class="nav-logout-form">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                            <button type="submit" class="nav-link w-full text-left px-3 py-2 text-xs font-semibold rounded-md text-slate-600 hover:text-red-600 hover:bg-red-50">
+                            <button type="submit" aria-label="Log out" title="Log out" class="nav-link nav-logout-link w-full text-left px-3 py-2 text-xs font-semibold rounded-md text-slate-600 hover:text-red-600 hover:bg-red-50">
                                 <span class="nav-icon" aria-hidden="true">🚪</span><span class="nav-label">Logout</span>
                             </button>
                         </form>
+                        </div>
                     </div>
                 </nav>{% endif %}
         </div>

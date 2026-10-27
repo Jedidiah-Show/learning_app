@@ -238,6 +238,49 @@ html[data-theme="dark"] .subject-progress-card,
 html[data-theme="dark"] .event-row,
 html[data-theme="dark"] .quiz-choice { background:#171b2a;border-color:var(--app-border);color:var(--app-text); }
 
+/* Keep account actions together at the foot of the sidebar. */
+body.has-sidebar #app-navigation { min-height:0; }
+body.has-sidebar .nav-utility-group { display:flex;flex-direction:column;gap:5px;width:100%;margin-top:auto;padding-top:16px;border-top:1px solid var(--app-border); }
+body.has-sidebar .nav-utility-group .theme-toggle { order:0;width:100%; }
+body.has-sidebar .nav-account-actions { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:6px;width:100%; }
+body.has-sidebar .nav-account-actions .nav-link { min-width:0;justify-content:center;padding-right:7px;padding-left:7px; }
+body.has-sidebar .nav-account-actions .nav-label { min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap; }
+body.has-sidebar .nav-logout-form { min-width:0; }
+body.has-sidebar .nav-account-actions .nav-link:hover { transform:none; }
+html.nav-collapsed body.has-sidebar .nav-utility-group { align-items:center; }
+html.nav-collapsed body.has-sidebar .nav-account-actions { grid-template-columns:1fr 1fr; }
+html.nav-collapsed body.has-sidebar .nav-account-actions .nav-link { width:100%;gap:0;padding:11px 4px; }
+html.nav-collapsed body.has-sidebar .nav-account-actions .nav-icon { width:auto; }
+html.nav-collapsed body.has-sidebar .nav-account-actions .nav-logout-link { justify-content:center; }
+html.nav-collapsed body.has-sidebar .nav-account-actions .nav-label { display:none; }
+html.nav-collapsed body.has-sidebar .nav-utility-group .theme-toggle { width:100%;justify-content:center; }
+html.nav-collapsed body.has-sidebar .nav-utility-group [data-theme-label] { display:none; }
+
+/* On phones, use a top bar and an overlay drawer so content keeps the full viewport. */
+@media (max-width:760px) {
+    body.has-sidebar > header { position:sticky;inset:auto;width:100%;height:auto;max-height:none;overflow:visible;border-right:0;border-bottom:1px solid var(--app-border); }
+    body.has-sidebar > header > .max-w-7xl { display:block;width:100%;height:auto;padding:8px 14px; }
+    body.has-sidebar > header .min-h-16 { min-height:48px;flex-direction:row;align-items:center;justify-content:space-between;gap:10px; }
+    body.has-sidebar .app-brand { padding:0; }
+    body.has-sidebar .app-nav-toggle { display:inline-flex; }
+    body.has-sidebar #app-navigation { position:absolute;z-index:60;top:100%;left:0;display:flex;width:min(19rem,90vw);height:calc(100dvh - 65px);max-height:calc(100dvh - 65px);margin:0;padding:12px;background:var(--app-sidebar);border:1px solid var(--app-border);border-top:0;border-radius:0 0 16px 0;box-shadow:0 18px 35px rgba(25,30,58,.18);overflow-y:auto; }
+    html.nav-collapsed body.has-sidebar #app-navigation { display:none; }
+    html:not(.nav-collapsed) body.has-sidebar #app-navigation { align-items:stretch; }
+    body.has-sidebar .app-nav .nav-link { min-height:44px; }
+    body.has-sidebar .nav-utility-group { margin-top:auto; }
+    body.has-sidebar > main,html.nav-collapsed body.has-sidebar > main,html:not(.nav-collapsed) body.has-sidebar > main { width:100%;min-height:calc(100vh - 110px);margin:0;padding:22px 18px; }
+    body.has-sidebar > footer,html.nav-collapsed body.has-sidebar > footer,html:not(.nav-collapsed) body.has-sidebar > footer { width:100%;margin:0; }
+    html.nav-collapsed body.has-sidebar > header > .max-w-7xl { align-items:stretch;padding:8px 14px; }
+    html:not(.nav-collapsed) body.has-sidebar .brand-copy { display:block; }
+    html:not(.nav-collapsed) body.has-sidebar .nav-label { display:inline; }
+    html:not(.nav-collapsed) body.has-sidebar .nav-account-actions { grid-template-columns:1fr 1fr; }
+}
+@media (max-width:420px) {
+    body.has-sidebar > main,html.nav-collapsed body.has-sidebar > main,html:not(.nav-collapsed) body.has-sidebar > main { padding:18px 13px; }
+    body.has-sidebar .app-brand .brand-mark { width:35px;height:35px; }
+    body.has-sidebar .app-nav-toggle { padding:7px 10px; }
+}
+
 @media (max-width:760px) {
     body.has-sidebar > header { width:4.75rem; }
     html.nav-collapsed body.has-sidebar > main { width:calc(100% - 4.75rem);margin-left:4.75rem;padding:20px 16px; }

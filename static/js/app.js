@@ -5,17 +5,39 @@
         const navButton = event.target.closest('[data-toggle-nav]');
         if (navButton) {
             const collapsed = document.documentElement.classList.toggle('nav-collapsed');
+            const isMobile = window.matchMedia('(max-width: 760px)').matches;
             navButton.setAttribute('aria-pressed', String(!collapsed));
-            navButton.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
+            navButton.setAttribute('aria-expanded', String(!collapsed));
+            navButton.setAttribute('aria-label', collapsed
+                ? (isMobile ? 'Open navigation' : 'Expand navigation')
+                : (isMobile ? 'Close navigation' : 'Collapse navigation'));
             navButton.querySelector('[data-nav-toggle-label]').textContent = collapsed
-                ? 'Expand navigation'
-                : 'Collapse navigation';
+                ? (isMobile ? 'Menu' : 'Expand navigation')
+                : (isMobile ? 'Close' : 'Collapse navigation');
             try {
                 localStorage.setItem('ruachai-navigation', collapsed ? 'collapsed' : 'expanded');
             } catch (error) {
                 // The navigation remains usable when browser storage is unavailable.
             }
             return;
+        }
+
+        const navigationLink = event.target.closest('#app-navigation a');
+        if (navigationLink && window.matchMedia('(max-width: 760px)').matches) {
+            document.documentElement.classList.add('nav-collapsed');
+            const toggle = document.querySelector('[data-toggle-nav]');
+            if (toggle) {
+                toggle.setAttribute('aria-pressed', 'false');
+                toggle.setAttribute('aria-expanded', 'false');
+                toggle.setAttribute('aria-label', 'Open navigation');
+                const label = toggle.querySelector('[data-nav-toggle-label]');
+                if (label) label.textContent = 'Menu';
+            }
+            try {
+                localStorage.setItem('ruachai-navigation', 'collapsed');
+            } catch (error) {
+                // Navigation remains usable when browser storage is unavailable.
+            }
         }
 
         const themeButton = event.target.closest('[data-theme-toggle]');
@@ -50,11 +72,15 @@
     const navButton = document.querySelector('[data-toggle-nav]');
     if (navButton) {
         const collapsed = document.documentElement.classList.contains('nav-collapsed');
+        const isMobile = window.matchMedia('(max-width: 760px)').matches;
         navButton.setAttribute('aria-pressed', String(!collapsed));
-        navButton.setAttribute('aria-label', collapsed ? 'Expand navigation' : 'Collapse navigation');
+        navButton.setAttribute('aria-expanded', String(!collapsed));
+        navButton.setAttribute('aria-label', collapsed
+            ? (isMobile ? 'Open navigation' : 'Expand navigation')
+            : (isMobile ? 'Close navigation' : 'Collapse navigation'));
         navButton.querySelector('[data-nav-toggle-label]').textContent = collapsed
-            ? 'Expand navigation'
-            : 'Collapse navigation';
+            ? (isMobile ? 'Menu' : 'Expand navigation')
+            : (isMobile ? 'Close' : 'Collapse navigation');
     }
 
     const themeButton = document.querySelector('[data-theme-toggle]');
