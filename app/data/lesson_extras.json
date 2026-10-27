@@ -1,0 +1,30 @@
+{
+ "1.01": {
+  "answers": [
+   "Appending to a list while looping over it makes the loop see the new items, so each new item is processed again, doubling totals.",
+   "dict.get(\"price\", 0.0) returns 0.0 when the key is missing, hiding that the price data is actually missing instead of zero.",
+   "A list comprehension builds the whole list in memory, so a 4 GB file would need more memory than available, causing crashes.",
+   "The bottom frame of a traceback shows where the exception was raised, which is usually the real cause because earlier frames only show the path that led there.",
+   "Running a file directly adds its directory to sys.path, while python -m runs the module as part of the package, adding the package root and keeping relative imports working.",
+   "If the calculated average equals the expected value and the count matches the number of rows processed, you can be sure the average used the intended rows."
+  ],
+  "concepts": [
+   {
+    "example": "If a list is empty, the if statement sees it as false and skips the block.",
+    "plain": "In Python, some values are considered true or false when used in conditions. Empty lists, empty strings, zero, and None are false; anything else is true. This rule helps decide if a loop should run or if a value is present.",
+    "title": "The data shapes you will meet"
+   },
+   {
+    "example": "You can make a list of squares by writing [x*x for x in numbers].",
+    "plain": "A comprehension lets you create a new list, dictionary, or generator in one line by looping over items. It can also filter items with a condition. It is a quick way to transform data.",
+    "title": "Comprehensions and lazy iteration"
+   },
+   {
+    "example": "If a division by zero occurs, the traceback shows the line with the division and the earlier calls that led to it.",
+    "plain": "When Python crashes, it prints a traceback that shows the chain of function calls leading to the error. The bottom line is where the error happened, and the lines above show how the program got there.",
+    "title": "Tracebacks and the run loop"
+   }
+  ],
+  "intro": "This lesson teaches the basic Python skills needed for AI projects. It shows how to handle data correctly, avoid common mistakes, and read error messages. Knowing these basics makes later work easier and less frustrating."
+ }
+}
