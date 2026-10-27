@@ -29,7 +29,7 @@ Only stamp an existing database after confirming it contains the original applic
 
 ## Vercel deployment
 
-Configure `DATABASE_URL` in the Vercel project with a persistent PostgreSQL connection URL. The app accepts `postgresql://` and `postgres://` URLs and uses Psycopg 3. Vercel's function filesystem is read-only except for temporary `/tmp` storage, so the SQLite fallback is only for local development and must not be used for production account data. After setting the database URL, run `flask --app index.py db upgrade` against that database before using registration or login. Apply all outstanding migrations, including `a4c8e2d1f730` for saved practice workspaces, `b1e49a2d7f63` for anonymous daily pilot counters, `9f3c2a7b5d10` for unique recovery phone numbers, and `c3d4e5f6a7b8` for session versioning and shared rate-limit counters, before deploying. Set `TOKEN_ENCRYPTION_KEY` to a stable random value (for example `python -c "import secrets; print(secrets.token_urlsafe(32))"`) and keep it alongside `SECRET_KEY` in Vercel project settings; rotating either value requires learners to reconnect Google Calendar.
+Configure `DATABASE_URL` in the Vercel project with a persistent PostgreSQL connection URL. The app accepts `postgresql://` and `postgres://` URLs and uses Psycopg 3. Vercel's function filesystem is read-only except for temporary `/tmp` storage, so the SQLite fallback is only for local development and must not be used for production account data. After setting the database URL, run `flask --app index.py db upgrade` against that database before using registration or login. Apply all outstanding migrations, including `a4c8e2d1f730` for saved practice workspaces, `b1e49a2d7f63` for anonymous daily pilot counters, `9f3c2a7b5d10` for unique recovery phone numbers, `c3d4e5f6a7b8` for session versioning and shared rate-limit counters, and `b7c1e2f3a4d5` for the administrator portal and account status, before deploying. Set `TOKEN_ENCRYPTION_KEY` to a stable random value (for example `python -c "import secrets; print(secrets.token_urlsafe(32))"`) and keep it alongside `SECRET_KEY` in Vercel project settings; rotating either value requires learners to reconnect Google Calendar.
 
 ## Configuration and account data
 
@@ -68,6 +68,22 @@ Scheduling a lesson now attempts a Google Calendar sync immediately when the int
 Password recovery accepts the email address or the optional phone number on the account. A phone number must include its country code and is normalized to an E.164-style value such as `+15551234567`; recovery phone numbers are unique. When Twilio is configured, a phone-number match sends the time-limited reset link by SMS. Otherwise, or if SMS delivery fails, the link is sent to the account email. Email delivery uses an app-owned Gmail mailbox through the Gmail API. Configure `GMAIL_SENDER_EMAIL`, `GMAIL_REFRESH_TOKEN` (authorized for the `gmail.send` scope), `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and the externally reachable HTTPS `PUBLIC_APP_URL`. To enable SMS, also set `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, and `TWILIO_FROM_NUMBER`. Do not put credentials in source control. For local development, `index.py` loads values from the root `.env` file; for Vercel, add them in the project’s Environment Variables settings and redeploy. Apply outstanding database migrations with `flask --app index.py db upgrade` before using password recovery.
 
 Migration `9f3c2a7b5d10` adds the unique constraint for optional recovery phone numbers. Apply it before allowing learners to save phone numbers in production.
+
+## Administrator portal
+
+The administrator portal is a separate application surface at `/admin` with its own sign-in page at `/admin/login`; the learner login page links to it. A learner session never grants admin access. An administrator signs in with an account whose `user.is_admin` flag is true, and the portal session expires 30 minutes after sign-in. Signing in through the learner portal does not create an admin grant, and signing out of the learner portal or leaving the admin portal revokes it.
+
+Administrators can search, filter, and page through accounts; create users; edit profile details; reset passwords; grant or remove admin access; activate or deactivate accounts; and permanently delete accounts after typing the username or email to confirm. Password and credential changes rotate `auth_version`, so existing learner sessions are signed out. The portal refuses to remove your own admin access, deactivate or delete your own account, or remove the last active administrator. Admin pages are served with `Cache-Control: no-store`, and admin sign-in is rate limited.
+
+Every account-changing action, plus admin sign-in and sign-out, is written to `admin_audit_log` with the acting administrator, target account, IP address, time, and a short detail. The `/admin/audit` page exposes the trail with filters and pagination.
+
+Migration `b7c1e2f3a4d5` adds `user.is_active` and `admin_audit_log`. Apply it before deploying the portal. To grant the first administrator, set the flag on an existing account:
+
+```sql
+UPDATE "user" SET is_admin = true WHERE email = 'admin@example.com';
+```
+
+The administrator then signs in at `/admin/login`. Anyone with this flag can manage every account, so grant it sparingly.
 
 ## Lesson videos
 
