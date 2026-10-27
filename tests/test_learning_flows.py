@@ -116,6 +116,31 @@ class RuachAICourseTests(unittest.TestCase):
             completion = LessonCompletion.query.one()
             self.assertEqual(completion.time_spent_minutes, 20)
 
+    def test_lesson_navigation_respects_completion_and_course_order(self):
+        self.register()
+        lessons = all_lessons()
+        first_page = self.client.get(f"/lesson/{lessons[0]['id']}")
+        self.assertEqual(first_page.status_code, 200)
+        self.assertIn(b'aria-controls="app-navigation"', first_page.data)
+        self.assertIn(b'Next lesson locked', first_page.data)
+        self.assertIn('disabled>← Previous lesson'.encode(), first_page.data)
+        self.assertIn(b'disabled data-next-lesson-id=', first_page.data)
+
+        self.complete_lesson(lessons[0]['id'])
+        first_page = self.client.get(f"/lesson/{lessons[0]['id']}")
+        self.assertIn(
+            f'href="/lesson/{lessons[1]["id"]}">Next lesson'.encode(),
+            first_page.data,
+        )
+        self.assertEqual(
+            self.client.get(f"/lesson/{lessons[1]['id']}").status_code,
+            200,
+        )
+        self.assertIn(
+            f'href="/lesson/{lessons[0]["id"]}">← Previous lesson'.encode(),
+            self.client.get(f"/lesson/{lessons[1]['id']}").data,
+        )
+
     def test_lesson_material_includes_curriculum_resources(self):
         self.register()
         lesson = all_lessons()[0]

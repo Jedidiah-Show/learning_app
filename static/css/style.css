@@ -2,10 +2,18 @@
 * { box-sizing:border-box; }
 body { color:var(--ink); font-family:Inter,system-ui,-apple-system,'Segoe UI',sans-serif; background:#f7f8fc !important; }
 h1,h2,h3,h4,.section-title { font-family:Inter,system-ui,-apple-system,'Segoe UI',sans-serif; }
-.app-nav { overflow-x:auto; scrollbar-width:none; }
-.app-nav::-webkit-scrollbar { display:none; }
+.app-nav { align-items:flex-start; }
+.app-nav[hidden] { display:none; }
 .nav-link { transition:background .18s ease,color .18s ease,transform .18s ease; white-space:nowrap; }
 .nav-link:hover { transform:translateY(-1px); }
+.app-nav-toggle { display:inline-flex;align-items:center;gap:8px;flex:none;padding:8px 11px;border:1px solid #e5e7eb;border-radius:10px;background:white;color:#475569;font-size:12px;font-weight:700; }
+.app-nav-toggle:hover { border-color:#c7c5f3;background:#f8f7ff;color:#5049bd; }
+.app-nav-toggle:focus-visible { outline:3px solid rgba(99,91,219,.28);outline-offset:2px; }
+.app-nav-toggle[aria-expanded="false"] { color:#5049bd; }
+.lesson-navigation { grid-column:1 / -1;display:flex;justify-content:space-between;gap:12px; }
+.lesson-navigation a,.lesson-navigation button { display:inline-flex;align-items:center;justify-content:center;min-height:44px;padding:10px 16px;border:1px solid #e2e3ec;border-radius:12px;background:white;color:#454d60;font-size:14px;font-weight:700;text-decoration:none; }
+.lesson-navigation a:hover { border-color:#c9c7f1;background:#f8f7ff;color:#5049bd; }
+.lesson-navigation button:disabled { cursor:not-allowed;background:#f1f5f9;color:#94a3b8; }
 .app-shell main { min-height:calc(100vh - 145px); }
 .dashboard-hero { min-height:260px; background:linear-gradient(115deg,#29275e 0%,#4c48a8 53%,#7770ed 100%); }
 .hero-orb { position:absolute; border-radius:999px; border:1px solid rgba(255,255,255,.14); background:rgba(255,255,255,.05); pointer-events:none; }
@@ -51,8 +59,9 @@ h1,h2,h3,h4,.section-title { font-family:Inter,system-ui,-apple-system,'Segoe UI
 .quiz-choice:hover { border-color:#aaa6eb;background:#f8f7ff; }.quiz-choice.selected { border-color:#746de0;background:#f1f0ff;color:#403aa7;box-shadow:0 0 0 2px rgba(116,109,224,.12); }
 .lesson-section { animation:fade-up .35s ease both; }.lesson-section:nth-child(2) { animation-delay:.04s; }.lesson-section:nth-child(3) { animation-delay:.08s; }
 @keyframes fade-up { from { opacity:0;transform:translateY(7px); } to { opacity:1;transform:translateY(0); } }
-@media (max-width:1100px) { .app-nav { max-width:45vw; }.countdown-card { display:none; } }
-@media (max-width:760px) { .app-nav { position:fixed;z-index:60;left:10px;right:10px;bottom:10px;max-width:none;justify-content:flex-start;padding:8px;border:1px solid #e8e8f0;border-radius:18px;background:rgba(255,255,255,.96);box-shadow:0 8px 28px rgba(25,31,60,.14);backdrop-filter:blur(15px); }.app-nav .nav-link { padding:10px 12px;font-size:11px; }.app-shell main { padding-bottom:90px; }.page-intro { align-items:flex-start;flex-direction:column;padding:20px; }.hero-progress { width:100%; }.dashboard-hero { padding:25px 22px; }.chart-wrap { height:220px; } }
+@media (max-width:1100px) { .countdown-card { display:none; } }
+@media (max-width:760px) { .app-nav { flex-direction:column; }.app-nav .nav-link { width:100%;padding:10px 12px;font-size:12px; }.app-nav-toggle { padding:8px; }.app-nav-toggle [data-nav-toggle-label] { display:none; }.app-shell main { padding-bottom:24px; }.page-intro { align-items:flex-start;flex-direction:column;padding:20px; }.hero-progress { width:100%; }.dashboard-hero { padding:25px 22px; }.chart-wrap { height:220px; } }
+@media (max-width:420px) { .brand-mark { width:34px;height:34px; }.app-shell > header .max-w-7xl { padding-left:12px;padding-right:12px; }.app-shell > header .text-sm { font-size:12px; }.lesson-navigation a,.lesson-navigation button { flex:1;padding:9px 10px;font-size:12px; } }
 @media (prefers-reduced-motion:reduce) { *,*::before,*::after { scroll-behavior:auto !important;animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important; } }
 
 /* Shared navigation and authentication experience */

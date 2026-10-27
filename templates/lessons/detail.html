@@ -34,11 +34,19 @@
 {% for title, items in [('Key terms', lesson.key_terms), ('Common mistakes', lesson.common_mistakes), ('Production notes', lesson.production_notes), ('Checkpoint checklist', lesson.checklist), ('Short questions', lesson.questions), ('Tasks', lesson.tasks)] %}{% if items %}<section class="rounded-2xl border bg-white p-6"><h2 class="text-xl font-bold">{{ title }}</h2><ul class="mt-3 list-disc space-y-2 pl-5 text-slate-700">{% for item in items %}<li>{% if item is mapping %}<strong>{{ item.term }}</strong> {{ item.definition }}{% else %}{{ item }}{% endif %}</li>{% endfor %}</ul></section>{% endif %}{% endfor %}
 {% if lesson.resources %}<section class="rounded-2xl border bg-white p-6"><h2 class="text-xl font-bold">Further learning</h2><div class="mt-3 flex flex-wrap gap-3">{% for resource_type, resource in lesson.resources.items() %}{% if not (resource_type == 'video' and lesson.video) %}<a class="rounded-lg border px-4 py-3 text-sm font-semibold text-indigo-700 hover:border-indigo-400" href="{{ resource.url }}" target="_blank" rel="noopener noreferrer"><span class="block text-xs uppercase text-slate-500">{{ resource_type }}</span>{{ resource.title }} ↗</a>{% endif %}{% endfor %}</div></section>{% endif %}
 <section class="rounded-2xl border bg-white p-6"><h2 class="text-xl font-bold">Ask Gemini for clarification</h2><form id="ask-form" class="mt-3"><label for="question" class="sr-only">Your question</label><textarea id="question" class="w-full rounded-xl border p-3" rows="3" maxlength="2000" placeholder="What would you like clarified?"></textarea><button class="mt-2 rounded-lg bg-violet-700 px-4 py-2 font-semibold text-white">Ask</button></form><div id="answer" class="mt-3 whitespace-pre-line text-slate-700"></div></section>
-</article><aside class="h-fit space-y-3 rounded-2xl border bg-white p-5"><p class="font-bold">Lesson actions</p><button id="quiz-button" class="w-full rounded-lg border border-indigo-200 px-3 py-2 font-semibold text-indigo-700">Take lesson quiz</button><div id="quiz-area" class="space-y-3"></div>{% if completed %}<p class="rounded-lg bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">Lesson completed ✓</p>{% else %}<button id="complete-button" class="w-full rounded-lg bg-indigo-600 px-3 py-2 font-semibold text-white">Mark lesson complete</button>{% endif %}<p id="lesson-status" class="text-sm text-slate-600"></p></aside></div>
+</article><aside class="h-fit space-y-3 rounded-2xl border bg-white p-5"><p class="font-bold">Lesson actions</p><button id="quiz-button" class="w-full rounded-lg border border-indigo-200 px-3 py-2 font-semibold text-indigo-700">Take lesson quiz</button><div id="quiz-area" class="space-y-3"></div>{% if completed %}<p class="rounded-lg bg-emerald-50 p-3 text-sm font-semibold text-emerald-800">Lesson completed ✓</p>{% else %}<button id="complete-button" class="w-full rounded-lg bg-indigo-600 px-3 py-2 font-semibold text-white">Mark lesson complete</button>{% endif %}<p id="lesson-status" class="text-sm text-slate-600"></p></aside>
+<nav class="lesson-navigation" aria-label="Lesson navigation">
+  {% if previous_lesson %}<a href="{{ url_for('main.lesson_detail', lesson_id=previous_lesson.id) }}">← Previous lesson</a>{% else %}<button type="button" disabled>← Previous lesson</button>{% endif %}
+  {% if next_lesson %}
+    {% if next_lesson_available %}<a id="next-lesson-button" href="{{ url_for('main.lesson_detail', lesson_id=next_lesson.id) }}">Next lesson →</a>
+    {% else %}<button id="next-lesson-button" type="button" disabled data-next-lesson-id="{{ next_lesson.id }}" data-next-lesson-url="{{ url_for('main.lesson_detail', lesson_id=next_lesson.id) }}">{% if completed %}Module project required →{% else %}Next lesson locked 🔒{% endif %}</button>{% endif %}
+  {% else %}<button type="button" disabled>Course complete ✓</button>{% endif %}
+</nav></div>
 {% if practice_exercises %}{% include "lessons/_practice_workspace.html" %}{% endif %}
 {% endblock %}
 {% block extra_scripts %}<script>
 const lessonId = {{ lesson.id|tojson }};
+const nextLessonId = {{ (next_lesson.id if next_lesson else none)|tojson }};
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
 const readJson = async (response) => { try { return await response.json(); } catch (error) { return {}; } };
 const needsSignIn = (response) => response.redirected || response.status === 401;
@@ -125,6 +133,16 @@ if (completeButton) completeButton.addEventListener('click', async () => {
     status.textContent = 'Lesson complete. Your next lesson is now available.';
     completeButton.textContent = 'Completed ✓';
     completed = true;
+    const nextButton = document.getElementById('next-lesson-button');
+    if (nextButton && nextLessonId && data.next_lesson_id === nextLessonId) {
+      const link = document.createElement('a');
+      link.id = 'next-lesson-button';
+      link.href = nextButton.dataset.nextLessonUrl;
+      link.textContent = 'Next lesson →';
+      nextButton.replaceWith(link);
+    } else if (nextButton) {
+      nextButton.textContent = 'Module project required →';
+    }
   } catch (error) {
     status.textContent = 'Could not save completion. Check your connection and retry.';
     completeButton.textContent = 'Mark lesson complete';

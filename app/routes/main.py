@@ -9,7 +9,7 @@ from flask import Blueprint, abort, current_app, jsonify, render_template
 from flask_login import current_user, login_required
 
 from app import db
-from app.curriculum import all_modules, curriculum, get_lesson
+from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
 from app.learning import course_progress, lesson_is_available
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
 from app.integrations import database_status
@@ -111,11 +111,22 @@ def lesson_detail(lesson_id):
         ).first()
         if video_progress and video_progress.video_id != lesson['video']['id']:
             video_progress = None
+    lessons = all_lessons()
+    ordinal = lesson['_ordinal'] - 1
+    previous_lesson = lessons[ordinal - 1] if ordinal > 0 else None
+    next_lesson = lessons[ordinal + 1] if ordinal + 1 < len(lessons) else None
+    completed = lesson_id in completed_lesson_ids(current_user)
     return render_template('lessons/detail.html', lesson=lesson, module=lesson['_module'],
-                           completed=lesson_id in completed_lesson_ids(current_user),
+                           completed=completed,
                            practice_exercises=practice_exercises_for_lesson(lesson_id),
                            next_lesson_id=course_progress(current_user)['next_lesson_id'],
                            video_progress=video_progress,
+                           previous_lesson=previous_lesson,
+                           next_lesson=next_lesson,
+                           next_lesson_available=(
+                               next_lesson is not None
+                               and lesson_is_available(current_user, next_lesson['id'])
+                           ),
                            config=get_effective_config_for_user(current_user), user=current_user)
 
 

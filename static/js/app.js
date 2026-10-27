@@ -2,6 +2,20 @@
 
 (() => {
     document.addEventListener('click', (event) => {
+        const navButton = event.target.closest('[data-toggle-nav]');
+        if (navButton) {
+            const navigation = document.getElementById(navButton.getAttribute('aria-controls'));
+            if (!navigation) return;
+            const expanded = navButton.getAttribute('aria-expanded') === 'true';
+            navButton.setAttribute('aria-expanded', String(!expanded));
+            navButton.setAttribute('aria-label', expanded ? 'Show navigation' : 'Hide navigation');
+            navigation.hidden = expanded;
+            navButton.querySelector('[data-nav-toggle-label]').textContent = expanded
+                ? 'Show navigation'
+                : 'Hide navigation';
+            return;
+        }
+
         const button = event.target.closest('[data-toggle-password]');
         if (!button) return;
         const fields = button.dataset.togglePassword
