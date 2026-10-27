@@ -166,7 +166,8 @@ html.nav-collapsed body.has-sidebar .app-nav .nav-link { padding:12px 8px;justif
 html.nav-collapsed body.has-sidebar .app-nav .nav-link:hover { transform:none; }
 html.nav-collapsed body.has-sidebar .app-nav .nav-link.bg-indigo-50 { box-shadow:none; }
 body.has-sidebar:has(#app-navigation[hidden]) #app-navigation { display:none; }
-.theme-toggle { cursor:pointer;white-space:nowrap; }
+.theme-toggle { cursor:pointer;white-space:nowrap;display:inline-flex;align-items:center;gap:8px; }
+.theme-toggle[hidden] { display:none !important; }
 .lesson-navigation a,.lesson-navigation button { text-align:center; }
 html[data-theme="dark"] body.has-sidebar > header { background:var(--app-sidebar); }
 html[data-theme="dark"] body.has-sidebar .app-nav .nav-link:hover { background:var(--app-sidebar-hover);color:#c5c1ff; }
