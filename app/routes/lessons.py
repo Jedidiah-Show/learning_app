@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.curriculum import get_lesson, lesson_context
-from app.learning import lesson_is_available, next_unlocked_lesson
+from app.learning import lesson_is_available, next_course_action, next_unlocked_lesson
 from app.models import (
     LessonCompletion, PracticeUsageDaily, PracticeWorkspace, StudySession,
     VideoProgress,
@@ -97,6 +97,19 @@ def _video_lengths(video, client_duration):
 
 def _video_is_complete(watched_seconds, length):
     return bool(length) and watched_seconds >= length * VIDEO_COMPLETION_RATIO
+
+
+def _next_course_payload():
+    """Return the learner's next lesson and any blocking module project."""
+    action = next_course_action(current_user)
+    return {
+        'next_lesson_id': (
+            action['lesson_id']
+            if action and action['type'] == 'lesson'
+            else None
+        ),
+        'next_action': action,
+    }
 
 
 @lessons_bp.route('/daily/<int:ordinal>', methods=['GET'])
@@ -192,7 +205,7 @@ def complete_lesson():
     now = datetime.now(timezone.utc)
     if completion and completion.completed:
         return jsonify({'status': 'success', 'already_completed': True,
-                        'next_lesson_id': next_unlocked_lesson(current_user)})
+                        **_next_course_payload()})
     if completion is None:
         completion = LessonCompletion(user_id=current_user.id, lesson_id=lesson_id,
                                       subject_id=lesson['module_id'],
@@ -231,10 +244,10 @@ def complete_lesson():
         return jsonify({
             'status': 'success',
             'already_completed': True,
-            'next_lesson_id': next_unlocked_lesson(current_user),
+            **_next_course_payload(),
             'completed_lesson_id': lesson_id,
         })
-    return jsonify({'status': 'success', 'next_lesson_id': next_unlocked_lesson(current_user),
+    return jsonify({'status': 'success', **_next_course_payload(),
                     'completed_lesson_id': lesson_id})
 
 

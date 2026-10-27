@@ -289,14 +289,18 @@
   {% if previous_lesson %}<a href="{{ url_for('main.lesson_detail', lesson_id=previous_lesson.id) }}">← Previous lesson</a>{% else %}<button type="button" disabled>← Previous lesson</button>{% endif %}
   {% if next_lesson %}
     {% if next_lesson_available %}<a id="next-lesson-button" href="{{ url_for('main.lesson_detail', lesson_id=next_lesson.id) }}">Next lesson →</a>
-    {% else %}<button id="next-lesson-button" type="button" disabled data-next-lesson-id="{{ next_lesson.id }}" data-next-lesson-url="{{ url_for('main.lesson_detail', lesson_id=next_lesson.id) }}">{% if completed %}Module project required →{% else %}Next lesson locked 🔒{% endif %}</button>{% endif %}
-  {% else %}<button type="button" disabled>Course complete ✓</button>{% endif %}
+    {% elif completed and next_action and next_action.type == 'project' %}<a id="next-lesson-button" href="{{ projects_url }}#module-{{ next_action.module_id }}">Open Module {{ next_action.module_number }} project →</a>
+    {% else %}<button id="next-lesson-button" type="button" disabled data-next-lesson-id="{{ next_lesson.id }}" data-next-lesson-url="{{ url_for('main.lesson_detail', lesson_id=next_lesson.id) }}">Next lesson locked 🔒</button>{% endif %}
+  {% elif next_action and next_action.type == 'project' %}<a id="next-lesson-button" href="{{ projects_url }}#module-{{ next_action.module_id }}">Open Module {{ next_action.module_number }} project →</a>
+  {% else %}<button id="next-lesson-button" type="button" disabled>Course complete ✓</button>{% endif %}
 </nav>
 {% if practice_exercises %}<div id="practice-anchor">{% include "lessons/_practice_workspace.html" %}</div>{% endif %}
 {% endblock %}
 {% block extra_scripts %}<script>
 const lessonId = {{ lesson.id|tojson }};
 const nextLessonId = {{ (next_lesson.id if next_lesson else none)|tojson }};
+const projectsUrl = {{ projects_url|tojson }};
+const projectUrl = (action) => `${projectsUrl}#module-${encodeURIComponent(action.module_id)}`;
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
 const readJson = async (response) => { try { return await response.json(); } catch (error) { return {}; } };
 const needsSignIn = (response) => response.redirected || response.status === 401;
@@ -382,22 +386,33 @@ if (completeButton) completeButton.addEventListener('click', async () => {
       completeButton.textContent = 'Mark lesson complete';
       return;
     }
-    status.textContent = 'Lesson complete. Your next lesson is now available.';
+    status.textContent = 'Lesson complete.';
     completeButton.textContent = 'Completed ✓';
     completed = true;
     const nextButton = document.getElementById('next-lesson-button');
+    const nextAction = data.next_action;
     if (nextButton && nextLessonId && data.next_lesson_id === nextLessonId) {
+      status.textContent = 'Lesson complete. Your next lesson is now available.';
       const link = document.createElement('a');
       link.id = 'next-lesson-button';
       link.href = nextButton.dataset.nextLessonUrl;
       link.textContent = 'Next lesson →';
       nextButton.replaceWith(link);
-    } else if (nextButton) {
-      nextButton.textContent = 'Open next lesson →';
-      nextButton.disabled = false;
-      if (nextButton.dataset.nextLessonUrl) {
-        nextButton.addEventListener('click', () => { window.location.href = nextButton.dataset.nextLessonUrl; });
+    } else if (nextAction && nextAction.type === 'project') {
+      status.textContent = `Lesson complete. Submit the Module ${nextAction.module_number} project to unlock the next module.`;
+      const link = document.createElement('a');
+      link.id = 'next-lesson-button';
+      link.href = projectUrl(nextAction);
+      link.textContent = `Open Module ${nextAction.module_number} project →`;
+      if (nextButton) {
+        nextButton.replaceWith(link);
+      } else {
+        document.querySelector('.lesson-navigation').append(link);
       }
+    } else if (nextButton) {
+      status.textContent = 'Lesson complete. You have finished the course.';
+      nextButton.textContent = 'Course complete ✓';
+      nextButton.disabled = true;
     }
   } catch (error) {
     status.textContent = 'Could not save completion. Check your connection and retry.';

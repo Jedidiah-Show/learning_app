@@ -143,6 +143,46 @@ class RuachAICourseTests(unittest.TestCase):
             self.client.get(f"/lesson/{lessons[1]['id']}").data,
         )
 
+    def test_completing_a_module_points_to_its_project_before_the_next_module(self):
+        self.register()
+        first_module = all_modules()[0]
+        next_module = all_modules()[1]
+        lessons = all_lessons()
+        last_lesson = first_module['lessons'][-1]
+        last_index = next(
+            index for index, lesson in enumerate(lessons)
+            if lesson['id'] == last_lesson['id']
+        )
+        next_module_lesson = lessons[last_index + 1]
+        self.assertEqual(next_module_lesson['module_id'], next_module['id'])
+
+        for lesson in first_module['lessons'][:-1]:
+            self.complete_lesson(lesson['id'])
+        result = self.complete_lesson(last_lesson['id'])
+
+        self.assertIsNone(result['next_lesson_id'])
+        self.assertEqual(result['next_action']['type'], 'project')
+        self.assertEqual(
+            result['next_action']['module_id'], first_module['id']
+        )
+        self.assertEqual(
+            self.client.get(f"/lesson/{next_module_lesson['id']}").status_code,
+            403,
+        )
+
+        page = self.client.get(f"/lesson/{last_lesson['id']}")
+        self.assertEqual(page.status_code, 200)
+        html = page.get_data(as_text=True)
+        self.assertIn(
+            f'href="/projects#module-{first_module["id"]}"', html
+        )
+        self.assertIn(
+            f'Open Module {first_module["number"]} project', html
+        )
+        self.assertNotIn(
+            f'href="/lesson/{next_module_lesson["id"]}"', html
+        )
+
     def test_lesson_material_includes_curriculum_resources(self):
         self.register()
         lesson = all_lessons()[0]

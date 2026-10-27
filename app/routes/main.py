@@ -2,7 +2,7 @@
 
 import os
 
-from flask import Blueprint, abort, current_app, jsonify, render_template
+from flask import Blueprint, abort, current_app, jsonify, render_template, url_for
 from flask_login import current_user, login_required
 
 from app import db
@@ -114,10 +114,13 @@ def lesson_detail(lesson_id):
     previous_lesson = lessons[ordinal - 1] if ordinal > 0 else None
     next_lesson = lessons[ordinal + 1] if ordinal + 1 < len(lessons) else None
     completed = lesson_id in completed_lesson_ids(current_user)
+    progress = course_progress(current_user)
     return render_template('lessons/detail.html', lesson=lesson, module=lesson['_module'],
                            completed=completed,
                            practice_exercises=practice_exercises_for_lesson(lesson_id),
-                           next_lesson_id=course_progress(current_user)['next_lesson_id'],
+                           next_lesson_id=progress['next_lesson_id'],
+                           next_action=progress['next_action'],
+                           projects_url=url_for('projects.project_page'),
                            video_progress=video_progress,
                            previous_lesson=previous_lesson,
                            next_lesson=next_lesson,
