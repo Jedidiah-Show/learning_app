@@ -252,6 +252,9 @@ def create_app(config_override=None):
             user = User.query.get(int(user_id))
         if user is None:
             return None
+        if not getattr(user, 'is_active', True):
+            session.clear()
+            return None
         try:
             session_version = int(session.get('auth_version'))
         except (TypeError, ValueError):
@@ -307,12 +310,14 @@ def create_app(config_override=None):
     from app.routes.quizzes import quizzes_bp
     from app.routes.calendar import calendar_bp
     from app.routes.admin import admin_bp
+    from app.routes.admin_portal import admin_portal_bp
     from app.routes.auth import auth_bp
     from app.routes.projects import projects_bp
     from app.routes.integrations import integrations_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
+    app.register_blueprint(admin_portal_bp, url_prefix='/admin')
     app.register_blueprint(progress_bp, url_prefix='/api/progress')
     app.register_blueprint(lessons_bp, url_prefix='/api/lessons')
     app.register_blueprint(quizzes_bp, url_prefix='/api/quizzes')

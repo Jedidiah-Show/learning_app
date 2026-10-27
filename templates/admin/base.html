@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}Admin Portal · RuachAI{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="min-h-screen bg-slate-100 text-slate-900 antialiased">
+{% if admin_authenticated %}
+{% set nav_items = [
+    ('admin_portal.dashboard', 'Dashboard', '📊',
+     request.endpoint == 'admin_portal.dashboard'),
+    ('admin_portal.users', 'Users', '👥',
+     request.endpoint in ['admin_portal.users', 'admin_portal.user_detail', 'admin_portal.create_user']),
+    ('admin_portal.analytics', 'Analytics', '📈',
+     request.endpoint == 'admin_portal.analytics'),
+    ('admin_portal.audit_log', 'Audit log', '🧾',
+     request.endpoint == 'admin_portal.audit_log'),
+] %}
+<header class="sticky top-0 z-50 bg-slate-900 text-slate-100 shadow-lg shadow-slate-900/20">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <div class="flex min-h-16 items-center justify-between gap-3">
+            <a href="{{ url_for('admin_portal.dashboard') }}" class="flex items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400">
+                <span class="grid h-9 w-9 place-items-center rounded-xl bg-red-500/15 text-lg ring-1 ring-inset ring-red-400/30" aria-hidden="true">🛡️</span>
+                <span class="leading-tight">
+                    <span class="block text-sm font-bold tracking-wide">RuachAI Admin</span>
+                    <span class="block text-[11px] text-slate-400">Control centre</span>
+                </span>
+            </a>
+
+            <nav class="hidden items-center gap-1 md:flex" aria-label="Admin navigation">
+                {% for endpoint, label, icon, active in nav_items %}
+                <a href="{{ url_for(endpoint) }}" class="rounded-lg px-3 py-2 text-xs font-semibold transition {% if active %}bg-white/15 text-white{% else %}text-slate-300 hover:bg-white/10 hover:text-white{% endif %}">
+                    <span class="mr-1.5" aria-hidden="true">{{ icon }}</span>{{ label }}
+                </a>
+                {% endfor %}
+            </nav>
+
+            <div class="flex items-center gap-2">
+                <div class="hidden text-right leading-tight sm:block">
+                    <span class="block max-w-40 truncate text-xs font-semibold">{{ current_user.username or current_user.full_name or current_user.email }}</span>
+                    <span class="block text-[11px] text-slate-400">Administrator</span>
+                </div>
+                <a href="{{ url_for('admin_portal.exit_portal') }}" class="rounded-lg px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white">Learner portal</a>
+                <form method="POST" action="{{ url_for('admin_portal.logout') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                    <button type="submit" class="rounded-lg bg-red-500 px-3 py-2 text-xs font-semibold text-white transition hover:bg-red-400">Sign out</button>
+                </form>
+            </div>
+        </div>
+
+        <nav class="flex gap-1 overflow-x-auto pb-2 md:hidden" aria-label="Admin navigation">
+            {% for endpoint, label, icon, active in nav_items %}
+            <a href="{{ url_for(endpoint) }}" class="whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold transition {% if active %}bg-white/15 text-white{% else %}text-slate-300 hover:bg-white/10 hover:text-white{% endif %}">
+                <span class="mr-1.5" aria-hidden="true">{{ icon }}</span>{{ label }}
+            </a>
+            {% endfor %}
+        </nav>
+    </div>
+</header>
+
+<main class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+    {% include "admin/_flashes.html" %}
+    {% block content %}{% endblock %}
+</main>
+
+<footer class="border-t border-slate-200 bg-white py-4">
+    <div class="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-2 px-4 text-xs text-slate-500 sm:px-6 lg:px-8">
+        <span>RuachAI Administrator Portal</span>
+        <span>Admin sessions expire after {{ admin_session_minutes }} minutes · all changes are audited</span>
+    </div>
+</footer>
+{% else %}
+{% block public_content %}{% endblock %}
+{% endif %}
+
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

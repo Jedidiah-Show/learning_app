@@ -1,0 +1,63 @@
+{% extends "admin/base.html" %}
+{% block title %}Administrator Sign In · RuachAI{% endblock %}
+
+{% block public_content %}
+<div class="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 px-4 py-12">
+    <div class="w-full max-w-md">
+        <div class="mb-8 text-center">
+            <span class="mx-auto grid h-16 w-16 place-items-center rounded-2xl bg-red-500/15 text-3xl ring-1 ring-inset ring-red-400/30" aria-hidden="true">🛡️</span>
+            <h1 class="mt-5 text-2xl font-bold text-white">RuachAI Admin Portal</h1>
+            <p class="mt-2 text-sm text-slate-400">Restricted area. Administrator credentials required.</p>
+        </div>
+
+        <div class="rounded-2xl bg-white p-6 shadow-2xl shadow-black/40 sm:p-8">
+            {% include "admin/_flashes.html" %}
+
+            {% if current_user.is_authenticated and current_user.is_admin %}
+            <div class="mb-5 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-900">
+                You are signed in as <strong>{{ current_user.email or current_user.username }}</strong>.
+                For security, re-enter your password to open the administrator portal.
+            </div>
+            {% elif current_user.is_authenticated %}
+            <div class="mb-5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                The current learner account does not have administrator access.
+                Sign in with an administrator account to continue.
+            </div>
+            {% endif %}
+
+            <form method="POST" action="{{ url_for('admin_portal.login') }}" class="space-y-5">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="next" value="{{ next_page }}">
+                <div>
+                    <label for="identifier" class="mb-2 block text-sm font-medium text-slate-700">Username or email</label>
+                    <input type="text" id="identifier" name="identifier" autocomplete="username" required
+                           value="{{ identifier or (current_user.email if current_user.is_authenticated else '') }}"
+                           class="auth-input w-full"
+                           placeholder="Administrator username or email">
+                </div>
+                <div>
+                    <label for="password" class="mb-2 block text-sm font-medium text-slate-700">Password</label>
+                    <input type="password" id="password" name="password" autocomplete="current-password" required
+                           class="auth-input w-full"
+                           placeholder="Enter your password">
+                </div>
+                <button type="submit" class="auth-submit w-full">
+                    Open admin portal <span aria-hidden="true">→</span>
+                </button>
+            </form>
+
+            <p class="mt-5 text-center text-xs text-slate-500">
+                Only accounts with administrator privileges can sign in here.
+            </p>
+        </div>
+
+        <div class="mt-6 text-center">
+            <a href="{{ url_for('auth.login') }}" class="text-sm font-semibold text-slate-300 transition hover:text-white">← Back to learner sign-in</a>
+        </div>
+        <p class="mt-6 text-center text-[11px] leading-relaxed text-slate-500">
+            Administrator sessions expire {{ admin_session_minutes }} minutes after sign-in.
+            Every account change is recorded in the audit log.
+        </p>
+    </div>
+</div>
+{% endblock %}

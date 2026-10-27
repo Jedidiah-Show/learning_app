@@ -18,6 +18,10 @@ auth_bp = Blueprint('auth', __name__)
 
 
 def _set_auth_session(user):
+    # Signing in through the learner portal never carries an existing admin
+    # grant forward; administrators must re-authenticate inside /admin.
+    session.pop('admin_user_id', None)
+    session.pop('admin_authenticated_at', None)
     session['auth_version'] = int(user.auth_version or 0)
 
 
@@ -102,7 +106,7 @@ def login():
         user = User.query.filter(
             (User.username == username) | (User.email == email)
         ).first()
-        if user and _password_matches(user, password):
+        if user and user.is_active and _password_matches(user, password):
             login_user(user)
             _set_auth_session(user)
             user.last_active = datetime.now(timezone.utc)
@@ -351,6 +355,8 @@ def register():
 @login_required
 def logout():
     logout_user()
+    session.pop('admin_user_id', None)
+    session.pop('admin_authenticated_at', None)
     flash('You have been logged out', 'info')
     return redirect(url_for('auth.login'))
 

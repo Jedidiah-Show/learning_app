@@ -31,6 +31,11 @@ class User(UserMixin, db.Model):
     last_active = db.Column(db.DateTime, default=utcnow)
     subjects_configured = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
+    # Overrides UserMixin.is_active so deactivated accounts cannot sign in and
+    # active sessions are rejected by the user loader after the version bump.
+    is_active = db.Column(
+        db.Boolean, default=True, nullable=False, server_default='1'
+    )
     
     progress = db.relationship('Progress', backref='user', lazy=True, cascade='all, delete-orphan')
     lesson_completions = db.relationship('LessonCompletion', backref='user', lazy=True, cascade='all, delete-orphan')
@@ -520,3 +525,26 @@ class ReviewItem(db.Model):
 
     def get_options(self):
         return json.loads(self.options) if self.options else []
+
+
+class AdminAuditLog(db.Model):
+    """Immutable trail of administrative changes for accountability."""
+    __tablename__ = 'admin_audit_log'
+    id = db.Column(db.Integer, primary_key=True)
+    admin_user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True
+    )
+    action = db.Column(db.String(80), nullable=False)
+    target_user_id = db.Column(db.Integer, nullable=True)
+    detail = db.Column(db.Text)
+    ip_address = db.Column(db.String(64))
+    created_at = db.Column(
+        db.DateTime, nullable=False, default=utcnow, index=True
+    )
+    __table_args__ = (
+        db.Index('idx_admin_audit_admin', 'admin_user_id'),
+        db.Index('idx_admin_audit_target', 'target_user_id'),
+        db.Index('idx_admin_audit_action', 'action'),
+    )
+
+    admin = db.relationship('User', foreign_keys=[admin_user_id])

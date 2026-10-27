@@ -28,13 +28,14 @@ REQUIRED_TABLES = (
     'video_progress',
     'practice_workspace',
     'rate_limit_counter',
+    'admin_audit_log',
 )
 
 # Columns that newer application code reads on every request. A missing column
 # here is a deployment fault (migrations were not applied) that would otherwise
 # surface as a 500 on the first page load rather than as a failed health check.
 REQUIRED_COLUMNS = {
-    'user': ('auth_version', 'is_admin'),
+    'user': ('auth_version', 'is_admin', 'is_active'),
 }
 
 
