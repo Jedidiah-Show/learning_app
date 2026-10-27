@@ -41,6 +41,7 @@ _TRANSPORT_ERRORS = _TRANSPORT_ERRORS + (OSError, socket.timeout)
 CALENDAR_SCOPE = 'https://www.googleapis.com/auth/calendar.events'
 GOOGLE_AUTHORIZATION_URI = 'https://accounts.google.com/o/oauth2/auth'
 GOOGLE_TOKEN_URI = 'https://oauth2.googleapis.com/token'
+GOOGLE_REVOKE_URI = 'https://oauth2.googleapis.com/revoke'
 
 #: HTTP statuses that are worth retrying because they are transient.
 RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
@@ -203,6 +204,39 @@ def needs_refresh(credentials):
         return False
     moment = _as_utc(expiry)
     return moment <= datetime.now(timezone.utc) + timedelta(seconds=REFRESH_SKEW_SECONDS)
+
+
+def revoke_authorization(user):
+    """Best-effort revocation of the learner's Google OAuth grant.
+
+    Revocation is deliberately non-blocking: a learner must still be able to
+    disconnect from this app when Google is temporarily unreachable.  The
+    local tokens are cleared by the caller regardless of the result.
+    """
+    token = user.google_refresh_token or user.google_access_token
+    if not token:
+        return False
+    try:
+        import requests
+
+        response = requests.post(
+            GOOGLE_REVOKE_URI,
+            data={'token': token},
+            headers={'Content-Type': 'application/x-www-form-urlencoded'},
+            timeout=5,
+        )
+        if 200 <= response.status_code < 300:
+            return True
+        current_app.logger.warning(
+            'Google rejected token revocation for user %s (status=%s)',
+            getattr(user, 'id', None), response.status_code,
+        )
+    except Exception:
+        current_app.logger.warning(
+            'Could not revoke Google authorization for user %s',
+            getattr(user, 'id', None), exc_info=True,
+        )
+    return False
 
 
 def persist_refreshed_token(user, credentials):

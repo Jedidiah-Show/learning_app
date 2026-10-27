@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
-from datetime import date, time
+from datetime import date, time, timedelta
 import hmac
 import os
 import re
@@ -146,6 +146,16 @@ def create_app(config_override=None):
     # Never use a public, hard-coded Flask signing key for account sessions.
     # Set SECRET_KEY in the environment to keep sessions valid across restarts.
     app.config['SECRET_KEY'] = secret_key or os.urandom(32)
+    app.config['TOKEN_ENCRYPTION_KEY'] = os.environ.get('TOKEN_ENCRYPTION_KEY')
+    app.config.update(
+        SESSION_COOKIE_HTTPONLY=True,
+        SESSION_COOKIE_SECURE=production,
+        SESSION_COOKIE_SAMESITE='Lax',
+        REMEMBER_COOKIE_HTTPONLY=True,
+        REMEMBER_COOKIE_SECURE=production,
+        REMEMBER_COOKIE_SAMESITE='Lax',
+        PERMANENT_SESSION_LIFETIME=timedelta(days=14),
+    )
     database_url = next((
         os.environ.get(key)
         for key in (
@@ -174,6 +184,24 @@ def create_app(config_override=None):
         database_url or 'sqlite:///../data/learning_app.db'
     )
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    if database_url and database_url.startswith('postgresql+psycopg://'):
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'pool_pre_ping': True,
+            'pool_recycle': int(os.environ.get('DB_POOL_RECYCLE', '300')),
+            'pool_size': int(os.environ.get('DB_POOL_SIZE', '5')),
+            'max_overflow': int(os.environ.get('DB_MAX_OVERFLOW', '5')),
+            'pool_timeout': int(os.environ.get('DB_POOL_TIMEOUT', '30')),
+            'connect_args': {
+                'connect_timeout': int(os.environ.get('DB_CONNECT_TIMEOUT', '10')),
+                'application_name': os.environ.get(
+                    'DB_APPLICATION_NAME', 'ruachai-learning-app'
+                ),
+            },
+        }
+    elif database_url and database_url.startswith('sqlite'):
+        app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+            'connect_args': {'timeout': 30},
+        }
     app.config['GEMINI_API_KEY'] = (
         os.environ.get('GEMINI_API_KEY') or os.environ.get('GOOGLE_API_KEY')
     )
@@ -219,9 +247,21 @@ def create_app(config_override=None):
     def load_user(user_id):
         from app.models import User
         try:
-            return db.session.get(User, int(user_id))
+            user = db.session.get(User, int(user_id))
         except Exception:
-            return User.query.get(int(user_id))
+            user = User.query.get(int(user_id))
+        if user is None:
+            return None
+        try:
+            session_version = int(session.get('auth_version'))
+        except (TypeError, ValueError):
+            session_version = None
+        if session_version is None or session_version != int(user.auth_version or 0):
+            # A password/email/phone change rotates auth_version.  Sessions
+            # created before the change are no longer accepted.
+            session.clear()
+            return None
+        return user
     
     # Load app config
     app.config['APP_CONFIG'] = load_config()
@@ -294,6 +334,7 @@ def create_app(config_override=None):
         return None
 
     from app.gemini import GeminiRateLimitExceeded
+    from app.rate_limit import RateLimitExceeded, rate_limit_response
 
     @app.errorhandler(GeminiRateLimitExceeded)
     def gemini_rate_limit_exceeded(error):
@@ -301,7 +342,48 @@ def create_app(config_override=None):
         response.status_code = 429
         response.headers['Retry-After'] = str(error.retry_after)
         return response
-    
+
+    @app.errorhandler(RateLimitExceeded)
+    def request_rate_limit_exceeded(error):
+        return rate_limit_response(error)
+
+    @app.after_request
+    def add_security_headers(response):
+        response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+        response.headers.setdefault('X-Frame-Options', 'SAMEORIGIN')
+        response.headers.setdefault(
+            'Referrer-Policy', 'strict-origin-when-cross-origin'
+        )
+        response.headers.setdefault(
+            'Permissions-Policy',
+            'camera=(), microphone=(), geolocation=(), payment=()',
+        )
+        response.headers.setdefault('Cross-Origin-Opener-Policy', 'same-origin')
+        response.headers.setdefault(
+            'Cross-Origin-Resource-Policy', 'same-origin'
+        )
+        # Keep the policy report-only until the remaining inline scripts and
+        # styles are migrated to nonces/hashed files.  Report-only still makes
+        # violations visible without breaking existing lessons or YouTube.
+        response.headers.setdefault(
+            'Content-Security-Policy-Report-Only',
+            "default-src 'self'; "
+            "base-uri 'self'; "
+            "object-src 'none'; "
+            "frame-ancestors 'self'; "
+            "form-action 'self'; "
+            "script-src 'self' 'unsafe-inline' "
+            "https://www.youtube.com https://www.youtube-nocookie.com "
+            "https://www.gstatic.com; "
+            "style-src 'self' 'unsafe-inline'; "
+            "img-src 'self' data: https://i.ytimg.com https://*.ytimg.com; "
+            "font-src 'self' data:; "
+            "frame-src 'self' https://www.youtube.com "
+            "https://www.youtube-nocookie.com; "
+            "connect-src 'self';",
+        )
+        return response
+
     from app.videos import format_duration
     app.jinja_env.filters['duration'] = format_duration
 

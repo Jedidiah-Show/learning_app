@@ -921,14 +921,15 @@ def sync_all_to_google():
 @calendar_bp.route('/disconnect', methods=['POST'])
 @login_required
 def disconnect_google():
-    """Forget the stored Google authorization for this learner."""
+    """Revoke and forget the stored Google authorization for this learner."""
     user = current_user
+    revoked = gcal.revoke_authorization(user)
     user.google_access_token = None
     user.google_refresh_token = None
     user.token_expiry = None
     db.session.commit()
     flash('Google Calendar has been disconnected.', 'info')
-    return jsonify({'status': 'success'})
+    return jsonify({'status': 'success', 'google_revoked': revoked})
 
 
 @calendar_bp.route('/auth/google')

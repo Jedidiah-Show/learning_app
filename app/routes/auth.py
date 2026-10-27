@@ -1,12 +1,13 @@
 from flask import (
     Blueprint, current_app, render_template, request, redirect, url_for,
-    flash, jsonify,
+    flash, jsonify, session,
 )
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
 from app import db
 from app.models import PasswordResetToken, User
 from app.phone import PhoneError, normalize_phone
+from app.rate_limit import client_ip, enforce_rate_limit, identity_hash
 from datetime import datetime, timedelta, timezone
 import hashlib
 import os
@@ -14,6 +15,22 @@ import secrets
 from urllib.parse import urljoin, urlsplit
 
 auth_bp = Blueprint('auth', __name__)
+
+
+def _set_auth_session(user):
+    session['auth_version'] = int(user.auth_version or 0)
+
+
+def _bump_auth_version(user):
+    user.auth_version = int(user.auth_version or 0) + 1
+    return user.auth_version
+
+
+def _password_matches(user, password):
+    return bool(
+        user.password_hash and isinstance(password, str)
+        and check_password_hash(user.password_hash, password)
+    )
 
 
 def safe_local_redirect(target):
@@ -75,15 +92,19 @@ def login():
         username = request.form.get('username') or request.form.get('email')
         password = request.form.get('password')
         email = username.strip().lower() if isinstance(username, str) else username
+        enforce_rate_limit(
+            'login-ip', 20, 300, client_ip()
+        )
+        enforce_rate_limit(
+            'login-account', 8, 300,
+            f'{client_ip()}:{identity_hash(email or username)}',
+        )
         user = User.query.filter(
             (User.username == username) | (User.email == email)
         ).first()
-        if (
-            user and user.password_hash
-            and isinstance(password, str)
-            and check_password_hash(user.password_hash, password)
-        ):
+        if user and _password_matches(user, password):
             login_user(user)
+            _set_auth_session(user)
             user.last_active = datetime.now(timezone.utc)
             db.session.commit()
             next_page = request.args.get('next') or request.form.get('next')
@@ -121,6 +142,11 @@ def forgot_password():
     raw_identifier = request.form.get('identifier')
     if raw_identifier is None:
         raw_identifier = request.form.get('email')
+    enforce_rate_limit('forgot-ip', 5, 900, client_ip())
+    enforce_rate_limit(
+        'forgot-identifier', 3, 900,
+        f'{client_ip()}:{identity_hash(raw_identifier)}',
+    )
     identifier_kind, identifier = _password_reset_identifier(raw_identifier)
     if not identifier_kind:
         flash('Enter the email address or phone number on your account.', 'error')
@@ -175,6 +201,11 @@ def forgot_password():
 
 @auth_bp.route('/reset-password/<token>', methods=['GET', 'POST'])
 def reset_password(token):
+    if request.method == 'POST':
+        enforce_rate_limit(
+            'reset-password', 20, 3600,
+            f'{client_ip()}:{identity_hash(token)}',
+        )
     token_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
     reset_token = PasswordResetToken.query.filter_by(
         token_hash=token_hash, used_at=None
@@ -204,6 +235,7 @@ def reset_password(token):
         flash('This password reset link is invalid or expired.', 'error')
         return redirect(url_for('auth.forgot_password'))
     user.password_hash = generate_password_hash(password)
+    user.auth_version = int(user.auth_version or 0) + 1
     now = datetime.now(timezone.utc)
     PasswordResetToken.query.filter_by(user_id=user.id).update(
         {'used_at': now}, synchronize_session=False
@@ -219,6 +251,7 @@ def register():
         return redirect(url_for('main.index'))
     
     if request.method == 'POST':
+        enforce_rate_limit('register-ip', 10, 3600, client_ip())
         username = (request.form.get('username') or '').strip()
         email = (request.form.get('email') or '').strip().lower()
         raw_phone = (request.form.get('phone') or '').strip()
@@ -281,8 +314,29 @@ def register():
             last_active=datetime.now(timezone.utc)
         )
         db.session.add(user)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception as error:
+            from sqlalchemy.exc import IntegrityError
+            if not isinstance(error, IntegrityError):
+                raise
+            db.session.rollback()
+            if User.query.filter_by(username=username).first():
+                errors['username'] = 'That username is already in use.'
+            if email and User.query.filter_by(email=email).first():
+                errors['email'] = 'An account with that email already exists.'
+            if phone and User.query.filter_by(phone=phone).first():
+                errors['phone'] = 'That phone number is already in use.'
+            if not errors:
+                errors['form'] = (
+                    'Registration could not be completed. Please try again.'
+                )
+            return render_template(
+                'auth/register.html', values=values, errors=errors,
+                next_page=request.form.get('next', ''),
+            ), 200
         login_user(user)
+        _set_auth_session(user)
         flash('Registration successful!', 'success')
         # Keep the destination through the required first-run setup.
         next_page = request.form.get('next', '')
@@ -309,7 +363,8 @@ def profile():
 @auth_bp.route('/account/update', methods=['POST'])
 @login_required
 def update_account():
-    from werkzeug.security import generate_password_hash, check_password_hash
+    from sqlalchemy.exc import IntegrityError
+
     data = request.get_json(silent=True) if request.is_json else request.form
     if not hasattr(data, 'get'):
         return jsonify({'error': 'Request body must be an object'}), 400
@@ -324,8 +379,12 @@ def update_account():
         return jsonify({'error': 'Account fields must be strings'}), 400
     email = (raw_email or '').strip().lower() if raw_email is not None else None
     phone = (raw_phone or '').strip() if raw_phone is not None else None
-    if email is not None and len(email) > 120:
-        return jsonify({'error': 'Email must be 120 characters or fewer'}), 400
+    if email is not None and (
+        len(email) > 120 or (email and '@' not in email)
+    ):
+        return jsonify(
+            {'error': 'Enter a valid email address of 120 characters or fewer'}
+        ), 400
     if phone:
         try:
             phone = normalize_phone(phone)
@@ -334,6 +393,33 @@ def update_account():
                 return {'error': str(error)}, 400
             flash(str(error), 'error')
             return redirect(url_for('auth.profile'))
+    elif phone is not None:
+        phone = None
+
+    email_changed = (
+        email is not None and (email or None) != (current_user.email or None)
+    )
+    phone_changed = (
+        phone is not None and (phone or None) != (current_user.phone or None)
+    )
+    password_changed = bool(new_password)
+
+    if email_changed or phone_changed or password_changed:
+        if not _password_matches(current_user, current_password):
+            if request.is_json:
+                return {'error': 'Current password is incorrect'}, 400
+            flash('Current password is incorrect', 'error')
+            return redirect(url_for('auth.profile'))
+
+    if email_changed and email:
+        if User.query.filter(
+            User.email == email, User.id != current_user.id
+        ).first():
+            if request.is_json:
+                return {'error': 'Email already exists'}, 400
+            flash('Email already exists', 'error')
+            return redirect(url_for('auth.profile'))
+    if phone_changed and phone:
         if User.query.filter(
             User.phone == phone, User.id != current_user.id
         ).first():
@@ -341,44 +427,91 @@ def update_account():
                 return {'error': 'Phone number already exists'}, 400
             flash('Phone number already exists', 'error')
             return redirect(url_for('auth.profile'))
-    elif phone is not None:
-        phone = None
-    
-    # Update email
-    if email is not None and email != (current_user.email or ''):
-        if email:
-            if User.query.filter(User.email == email, User.id != current_user.id).first():
-                if request.is_json:
-                    return {'error': 'Email already exists'}, 400
-                flash('Email already exists', 'error')
-                return redirect(url_for('auth.profile'))
+    if password_changed and len(new_password) < 8:
+        if request.is_json:
+            return {'error': 'Password must be at least 8 characters'}, 400
+        flash('Password must be at least 8 characters', 'error')
+        return redirect(url_for('auth.profile'))
+
+    if email_changed:
         current_user.email = email or None
-    
-    # Update phone
-    if phone is not None:
+    if phone_changed:
         current_user.phone = phone
-    
-    # Update password
-    if new_password:
-        if not current_password or not current_user.password_hash or not check_password_hash(current_user.password_hash, current_password):
-            if request.is_json:
-                return {'error': 'Current password is incorrect'}, 400
-            flash('Current password is incorrect', 'error')
-            return redirect(url_for('auth.profile'))
-        if len(new_password) < 8:
-            if request.is_json:
-                return {'error': 'Password must be at least 8 characters'}, 400
-            flash('Password must be at least 8 characters', 'error')
-            return redirect(url_for('auth.profile'))
+    if password_changed:
         current_user.password_hash = generate_password_hash(new_password)
         PasswordResetToken.query.filter_by(user_id=current_user.id).update(
             {'used_at': datetime.now(timezone.utc)}, synchronize_session=False
         )
-    
-    db.session.commit()
+
+    if email_changed or phone_changed or password_changed:
+        _bump_auth_version(current_user)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        if request.is_json:
+            return {'error': 'Email or phone number already exists'}, 400
+        flash('Email or phone number already exists', 'error')
+        return redirect(url_for('auth.profile'))
+
+    if email_changed or phone_changed or password_changed:
+        _set_auth_session(current_user)
     if request.is_json:
         return {'status': 'success'}
     flash('Account updated successfully', 'success')
+    return redirect(url_for('auth.profile'))
+
+
+def _account_action_payload():
+    if request.is_json:
+        data = request.get_json(silent=True)
+        return data if isinstance(data, dict) else {}
+    return request.form
+
+
+def _force_local_requested(data):
+    value = data.get('force_local')
+    if isinstance(value, bool):
+        return value
+    return str(value or '').lower() in {'1', 'true', 'yes', 'on'}
+
+
+def _run_calendar_cleanup(user):
+    """Return ``(complete, error)`` without making local account actions fail."""
+    from app.routes.calendar import (
+        perform_user_calendar_cleanup, prepare_user_calendar_cleanup,
+    )
+
+    try:
+        cleanup = prepare_user_calendar_cleanup(user)
+        return perform_user_calendar_cleanup(cleanup, user.id), None
+    except Exception as error:
+        db.session.rollback()
+        current_app.logger.exception(
+            'Could not clean up Google Calendar for user %s', user.id
+        )
+        return False, error
+
+
+def _calendar_cleanup_required_response(action, force_local):
+    if force_local:
+        return None
+    if request.is_json:
+        return {
+            'error': (
+                'Could not finish removing Google Calendar events; your '
+                f'account was not changed so {action} was not completed. '
+                'Retry after reconnecting, or resend with '
+                '"force_local": true to continue without remote cleanup.'
+            ),
+            'force_local_required': True,
+        }, 502
+    flash(
+        'Could not finish removing your Google Calendar events. Your account '
+        'was not changed. Retry after reconnecting, or select "continue '
+        f'locally" and submit again to {action} without remote cleanup.',
+        'error',
+    )
     return redirect(url_for('auth.profile'))
 
 
@@ -387,42 +520,26 @@ def update_account():
 def delete_account():
     user = current_user
     user_id = user.id
-    current_password = request.form.get('current_password')
-    if request.is_json:
-        data = request.get_json(silent=True)
-        current_password = data.get('current_password') if isinstance(data, dict) else None
-    if (
-        not user.password_hash or not isinstance(current_password, str)
-        or not check_password_hash(user.password_hash, current_password)
-    ):
+    data = _account_action_payload()
+    current_password = data.get('current_password')
+    force_local = _force_local_requested(data)
+    if not _password_matches(user, current_password):
         if request.is_json:
             return {'error': 'Current password is incorrect'}, 400
         flash('Current password is incorrect', 'error')
         return redirect(url_for('auth.profile'))
-    # Delete all related data explicitly for safety
+
     try:
-        from app.routes.calendar import (
-            perform_user_calendar_cleanup, prepare_user_calendar_cleanup,
-        )
-        try:
-            calendar_cleanup = prepare_user_calendar_cleanup(user)
-            calendar_cleanup_complete = perform_user_calendar_cleanup(
-                calendar_cleanup, user_id
-            )
-        except Exception:
-            current_app.logger.exception(
-                'Could not prepare Calendar cleanup for deleted user %s', user_id
-            )
-            calendar_cleanup_complete = False
+        from app import google_calendar as gcal
+
+        calendar_cleanup_complete, _ = _run_calendar_cleanup(user)
         if not calendar_cleanup_complete:
-            db.session.rollback()
-            if request.is_json:
-                return {'error': 'Could not remove Google Calendar events; account was not deleted'}, 502
-            flash(
-                'Could not remove your Google Calendar events. Your account was not deleted; retry after reconnecting.',
-                'error',
+            response = _calendar_cleanup_required_response(
+                'delete your account', force_local
             )
-            return redirect(url_for('auth.profile'))
+            if response is not None:
+                return response
+        google_revoked = gcal.revoke_authorization(user)
         db.session.delete(user)
         db.session.commit()
         logout_user()
@@ -430,7 +547,9 @@ def delete_account():
         if request.is_json:
             return {
                 'status': 'success',
-                'calendar_cleanup_complete': True,
+                'calendar_cleanup_complete': calendar_cleanup_complete,
+                'force_local': force_local and not calendar_cleanup_complete,
+                'google_revoked': google_revoked,
             }
         return redirect(url_for('auth.login'))
     except Exception:
@@ -446,49 +565,37 @@ def delete_account():
 def reset_account():
     user = current_user
     user_id = user.id
-    current_password = request.form.get('current_password')
-    if request.is_json:
-        data = request.get_json(silent=True)
-        current_password = data.get('current_password') if isinstance(data, dict) else None
-    if (
-        not user.password_hash or not isinstance(current_password, str)
-        or not check_password_hash(user.password_hash, current_password)
-    ):
+    data = _account_action_payload()
+    current_password = data.get('current_password')
+    force_local = _force_local_requested(data)
+    if not _password_matches(user, current_password):
         if request.is_json:
             return {'error': 'Current password is incorrect'}, 400
         flash('Current password is incorrect', 'error')
         return redirect(url_for('auth.profile'))
+
     try:
-        from app.routes.calendar import (
-            perform_user_calendar_cleanup, prepare_user_calendar_cleanup,
-        )
-        try:
-            calendar_cleanup = prepare_user_calendar_cleanup(user)
-            calendar_cleanup_complete = perform_user_calendar_cleanup(
-                calendar_cleanup, user_id
-            )
-        except Exception:
-            current_app.logger.exception(
-                'Could not prepare Calendar cleanup for reset user %s', user_id
-            )
-            calendar_cleanup_complete = False
+        from app import google_calendar as gcal
+
+        calendar_cleanup_complete, _ = _run_calendar_cleanup(user)
         if not calendar_cleanup_complete:
-            db.session.rollback()
-            if request.is_json:
-                return {'error': 'Could not remove Google Calendar events; account was not reset'}, 502
-            flash(
-                'Could not remove your Google Calendar events. Your account was not reset; retry after reconnecting.',
-                'error',
+            response = _calendar_cleanup_required_response(
+                'reset your account', force_local
             )
-            return redirect(url_for('auth.profile'))
+            if response is not None:
+                return response
+        google_revoked = gcal.revoke_authorization(user)
         user = User.query.filter_by(id=user_id).with_for_update().populate_existing().one()
-        # Delete all user data but keep the user account
-        from app.models import (Progress, LessonCompletion, QuizResult, StudySession, 
-                                UserSubjectConfig, ProficiencyTest, CalendarEvent,
-                                UserSubject, UserSchedule, UserConfig,
-                                SubjectCurriculum, LearningProject, CourseProject,
-                                GeminiUsageBucket, AIBackgroundJob, ReviewItem,
-                                VideoProgress)
+        # Delete all user data but keep the account.  The AI usage bucket is
+        # intentionally preserved so resetting cannot be used to bypass the
+        # shared per-learner quota.
+        from app.models import (
+            Progress, LessonCompletion, QuizResult, StudySession,
+            UserSubjectConfig, ProficiencyTest, CalendarEvent,
+            UserSubject, UserSchedule, UserConfig,
+            SubjectCurriculum, LearningProject, CourseProject,
+            AIBackgroundJob, ReviewItem, VideoProgress, PracticeWorkspace,
+        )
         Progress.query.filter_by(user_id=user.id).delete()
         LessonCompletion.query.filter_by(user_id=user.id).delete()
         VideoProgress.query.filter_by(user_id=user.id).delete()
@@ -500,7 +607,7 @@ def reset_account():
         SubjectCurriculum.query.filter_by(user_id=user.id).delete()
         LearningProject.query.filter_by(user_id=user.id).delete()
         CourseProject.query.filter_by(user_id=user.id).delete()
-        GeminiUsageBucket.query.filter_by(user_id=user.id).delete()
+        PracticeWorkspace.query.filter_by(user_id=user.id).delete()
         AIBackgroundJob.query.filter_by(user_id=user.id).delete()
         ReviewItem.query.filter_by(user_id=user.id).delete()
         PasswordResetToken.query.filter_by(user_id=user.id).delete()
@@ -509,14 +616,19 @@ def reset_account():
         UserConfig.query.filter_by(user_id=user.id).delete()
         user.google_access_token = None
         user.google_refresh_token = None
+        user.google_id = None
         user.token_expiry = None
         user.subjects_configured = False
+        _bump_auth_version(user)
         db.session.commit()
+        _set_auth_session(user)
         flash('Account reset successfully', 'success')
         if request.is_json:
             return {
                 'status': 'success',
-                'calendar_cleanup_complete': True,
+                'calendar_cleanup_complete': calendar_cleanup_complete,
+                'force_local': force_local and not calendar_cleanup_complete,
+                'google_revoked': google_revoked,
             }
         return redirect(url_for('main.index'))
     except Exception:

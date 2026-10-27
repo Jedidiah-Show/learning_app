@@ -87,14 +87,20 @@ class AccountRecoveryTests(unittest.TestCase):
     def test_account_update_normalizes_and_checks_phone(self):
         self.register(phone='+15551234567')
         updated = self.client.post(
-            '/account/update', json={'phone': '+1 (555) 765-4321'}
+            '/account/update', json={
+                'phone': '+1 (555) 765-4321',
+                'current_password': 'secure-pass-123',
+            }
         )
         self.assertEqual(updated.status_code, 200, updated.get_json())
         with self.app.app_context():
             self.assertEqual(User.query.one().phone, '+15557654321')
 
         invalid = self.client.post(
-            '/account/update', json={'phone': '555 765 4321'}
+            '/account/update', json={
+                'phone': '555 765 4321',
+                'current_password': 'secure-pass-123',
+            }
         )
         self.assertEqual(invalid.status_code, 400)
         self.assertIn('country code', invalid.get_json()['error'].lower())
@@ -107,7 +113,10 @@ class AccountRecoveryTests(unittest.TestCase):
             ))
             db.session.commit()
         duplicate = self.client.post(
-            '/account/update', json={'phone': '+1 555 000 1111'}
+            '/account/update', json={
+                'phone': '+1 555 000 1111',
+                'current_password': 'secure-pass-123',
+            }
         )
         self.assertEqual(duplicate.status_code, 400)
         self.assertIn('already exists', duplicate.get_json()['error'].lower())

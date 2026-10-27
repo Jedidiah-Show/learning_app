@@ -29,7 +29,7 @@ Only stamp an existing database after confirming it contains the original applic
 
 ## Vercel deployment
 
-Configure `DATABASE_URL` in the Vercel project with a persistent PostgreSQL connection URL. The app accepts `postgresql://` and `postgres://` URLs and uses Psycopg 3. Vercel's function filesystem is read-only except for temporary `/tmp` storage, so the SQLite fallback is only for local development and must not be used for production account data. After setting the database URL, run `flask --app index.py db upgrade` against that database before using registration or login. Apply all outstanding migrations, including `a4c8e2d1f730` for saved practice workspaces, `b1e49a2d7f63` for anonymous daily pilot counters, and `9f3c2a7b5d10` for unique recovery phone numbers, before deploying.
+Configure `DATABASE_URL` in the Vercel project with a persistent PostgreSQL connection URL. The app accepts `postgresql://` and `postgres://` URLs and uses Psycopg 3. Vercel's function filesystem is read-only except for temporary `/tmp` storage, so the SQLite fallback is only for local development and must not be used for production account data. After setting the database URL, run `flask --app index.py db upgrade` against that database before using registration or login. Apply all outstanding migrations, including `a4c8e2d1f730` for saved practice workspaces, `b1e49a2d7f63` for anonymous daily pilot counters, `9f3c2a7b5d10` for unique recovery phone numbers, and `c3d4e5f6a7b8` for session versioning and shared rate-limit counters, before deploying. Set `TOKEN_ENCRYPTION_KEY` to a stable random value (for example `python -c "import secrets; print(secrets.token_urlsafe(32))"`) and keep it alongside `SECRET_KEY` in Vercel project settings; rotating either value requires learners to reconnect Google Calendar.
 
 ## Configuration and account data
 
@@ -43,6 +43,8 @@ A 403 from Gemini usually means the key is invalid, the Generative Language API 
 
 Authenticated learners are limited to 30 AI provider requests per minute and 300 per UTC day; every provider attempt, including retries and fallback attempts, counts against the limit. Override the limits with `GEMINI_REQUESTS_PER_MINUTE` and `GEMINI_REQUESTS_PER_DAY`. Set `GEMINI_MAX_ATTEMPTS` and `OPENROUTER_MAX_ATTEMPTS` to change how many times a provider is attempted before it is reported as failed. Use `GEMINI_READ_TIMEOUT`/`OPENROUTER_READ_TIMEOUT` and `GEMINI_CONNECT_TIMEOUT`/`OPENROUTER_CONNECT_TIMEOUT` to change response and connection timeouts. Apply database migrations before deploying versions that add or change persistent data models.
 
+Each AI request has a bounded execution budget. `AI_REQUEST_DEADLINE_SECONDS` defaults to 50 seconds; Gemini receives roughly the first 65% and OpenRouter falls back with the remaining time, so a slow provider cannot consume the whole serverless invocation (`vercel.json` sets a 60-second function limit). After a transient Gemini failure, the app skips Gemini for `AI_PROVIDER_COOLDOWN_SECONDS` (default 30) and sends requests to OpenRouter; a Gemini 429 uses `AI_RATE_LIMIT_COOLDOWN_SECONDS` (default 60). HTTP 400, 401, and 403 configuration or credential failures never open that circuit and never trigger the fallback. Provider `Retry-After` headers are preserved, and exhausted rate limits return HTTP 429 with `Retry-After` instead of a generic 503.
+
 Generated quizzes and module projects are stored per learner. Bundled lessons are shared and versioned with the application. Prompt contracts live in `app/routes/lessons.py`, `app/routes/quizzes.py`, and `app/routes/projects.py`; bump a content type's version when its prompt or output contract changes, and include that version in generated-content cache keys when cache invalidation is needed.
 
 When Gemini is enabled, lesson context and project submissions are sent to Google's Gemini API for clarification, quiz generation, or project evaluation; account credentials and identifiers are not included. If Gemini is temporarily unavailable and OpenRouter is configured, the same prompt is sent to OpenRouter's chat completions endpoint instead. Provider rejections, blocked/empty responses, timeouts, truncated responses, and malformed JSON are reported instead of being treated as successful generation. Generated quizzes and project evaluations are validated before they are stored.
@@ -55,7 +57,7 @@ Shared changes through `/api/admin/config` require the `ADMIN_API_TOKEN` environ
 
 ### Integration diagnostics
 
-Settings includes an **Integration health** panel. It reports whether the deployment has `GEMINI_API_KEY` or `OPENROUTER_API_KEY`, the configured model names, whether Google OAuth is configured, the effective callback URL and whether it matches the current deployment URL, token state, whether SMS password recovery is configured, and any missing database tables. The **Run live check** button sends one small request to each configured AI provider and performs one read-only Google Calendar request, then displays each provider's actionable error without exposing secret values.
+Settings includes an **Integration health** panel. It reports whether the deployment has `GEMINI_API_KEY` or `OPENROUTER_API_KEY`, the configured model names, the AI request deadline and any active Gemini cooldown, whether Google OAuth is configured, the effective callback URL and whether it matches the current deployment URL, token state, whether SMS password recovery is configured, and any missing database tables. The **Run live check** button sends one small request to each configured AI provider and performs one read-only Google Calendar request, then displays each provider's actionable error without exposing secret values. Probe results are cached for 30 seconds per learner and the endpoint is rate-limited so repeated clicks do not burn provider quota.
 
 On a Vercel preview deployment the panel can note that OAuth is configured for a different host. That is expected: preview URLs are temporary. Open the stable production alias whose callback is registered in Google Cloud to connect Calendar, or update `GOOGLE_REDIRECT_URI` and register the new URL. If the database section reports missing tables, apply migrations against the production database with `flask db upgrade`; do not use `db.create_all()` in production.
 
@@ -130,16 +132,22 @@ Syncs are designed to be cheap and to survive failures:
 - **Batched requests.** Inserts, updates and deletes are submitted through Google's batch endpoint (50 operations per request). A failed batch falls back to individual calls, and a failed operation inside a batch is retried on its own.
 - **Bounded retries.** HTTP 429, 500, 502, 503 and 504 responses and transport errors are retried up to four times with exponential backoff and jitter, honouring `Retry-After`. HTTP 401 and 403 are reported as an expired authorization that the learner must fix by reconnecting.
 - **Nothing is lost.** The local plan is committed before Google is called, so unfinished work stays flagged as `sync_pending` or `delete_pending` on the event and is retried by the next sync. Account deletion and progress resets remove the learner's Google events in a batch before the local rows are dropped.
-- **Cleanup remains retryable.** If Google Calendar cannot delete every event, account deletion or reset is stopped before local data or credentials are removed. Retry after the connection is available; already-deleted remote events are treated as successful on retry.
+- **Cleanup remains retryable, but local control is explicit.** If Google Calendar cannot delete every event, the first deletion or reset is refused before local data or credentials are removed. Retry after reconnecting, or use the profile form's explicit “continue locally” option (`force_local` in the JSON API) to proceed with local cleanup while remote events may remain. Already-deleted remote events are treated as successful on retry. Google OAuth grants are revoked best-effort on disconnect, reset, and deletion.
 - **Self-healing.** A block that is put back into the schedule restores the event instead of removing it, and an event that was deleted on Google's side is recreated under its original identifier when an update reports it missing.
 - **Reused connections.** The Calendar service is cached per learner while the access token is unchanged, and access tokens are refreshed five minutes before they expire and persisted with the expiry stored as naive UTC.
 
 Learners who have not connected Google Calendar can still schedule blocks and change their schedule, event prefix, reminders or calendar ID. Those changes are applied locally and reported as pending instead of failing the request; `/api/calendar/status` and the schedule page show what still needs to be synced.
 
+## Session and request security
+
+Successful login and registration store a per-user `auth_version` in the session. Password resets and password, email, or phone changes rotate that version and invalidate other sessions; the current session stays valid after a change made from it. Changing email, phone, or password requires the current password. Login, registration, password recovery, password reset, and integration probes use database-backed fixed-window rate limits shared across serverless instances and return `Retry-After` on HTTP 429. Production session cookies are `Secure`, `HttpOnly`, and `SameSite=Lax` (not `Strict`, so the Google OAuth callback keeps its session). Security headers include a report-only Content Security Policy while the remaining inline scripts and styles are migrated to nonces.
+
+Google OAuth access and refresh tokens are encrypted at the application layer before they are stored; existing plaintext rows remain readable and are encrypted on the next write. Set a stable `TOKEN_ENCRYPTION_KEY` in production. Tokens are never included in logs or diagnostic responses.
+
 ## Tests
 
 ```bash
-.venv/bin/python -m unittest discover -s tests -v
+.venv/bin/python -m pytest -q
 ```
 
-Tests use isolated temporary SQLite databases. The application UI is rendered from `templates/` and assets in `static/`.
+Tests use isolated temporary SQLite databases and do not need provider or OAuth credentials. The GitHub Actions workflow in `.github/workflows/ci.yml` installs `requirements.txt`, compiles the Python sources, runs `pip check`, and executes the full test suite. It also rebuilds the Tailwind CSS and practice bundle and fails if the committed assets are stale. The application UI is rendered from `templates/` and assets in `static/`.

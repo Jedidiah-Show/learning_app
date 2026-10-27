@@ -27,6 +27,7 @@ REQUIRED_TABLES = (
     'gemini_usage_bucket',
     'video_progress',
     'practice_workspace',
+    'rate_limit_counter',
 )
 
 
@@ -224,9 +225,18 @@ def database_status():
 
 def integration_status(user):
     """Return the safe configuration snapshot shown in Settings."""
+    from app.gemini import (
+        provider_cooldown_seconds,
+        request_deadline_seconds,
+    )
+
     config = get_effective_config_for_user(user)
     return {
         'app_url': request.url_root.rstrip('/') if has_request_context() else None,
+        'ai_runtime': {
+            'request_deadline_seconds': request_deadline_seconds(),
+            'gemini_cooldown_seconds': provider_cooldown_seconds('gemini'),
+        },
         'gemini': {
             **gemini_status(),
             'model_tier': config.get('ai', {}).get('model_tier', 'flash'),

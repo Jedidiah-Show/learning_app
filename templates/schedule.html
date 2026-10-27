@@ -8,5 +8,30 @@
 <section class="mt-7 rounded-2xl border bg-white p-6"><h3 class="font-bold">Calendar connection</h3><p class="mt-2 text-sm text-slate-600">Manage Google Calendar access and your study block times in <a class="font-semibold text-indigo-700" href="{{ url_for('main.settings') }}">Settings</a>.</p></section>
 {% endblock %}
 {% block extra_scripts %}{% if next_lesson %}<script>
-document.getElementById('schedule-next').addEventListener('click',async()=>{const result=document.getElementById('calendar-result');result.textContent='Scheduling…';const response=await fetch('/api/calendar/schedule',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({lesson_id:{{ next_lesson.id|tojson }}})});const data=await response.json();result.textContent=data.error||data.message||'Study session scheduled.';});
+document.getElementById('schedule-next').addEventListener('click', async (event) => {
+    const button = event.currentTarget;
+    const result = document.getElementById('calendar-result');
+    button.disabled = true;
+    result.textContent = 'Scheduling…';
+    try {
+        const response = await fetch('/api/calendar/schedule', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ lesson_id: {{ next_lesson.id|tojson }} }),
+        });
+        let data = {};
+        try { data = await response.json(); } catch (error) { data = {}; }
+        if (response.redirected || response.status === 401) {
+            result.textContent = 'Your session expired. Sign in and try again.';
+            return;
+        }
+        result.textContent = data.error
+            || data.message
+            || (response.ok ? 'Study session scheduled.' : `Could not schedule the session (HTTP ${response.status}).`);
+    } catch (error) {
+        result.textContent = 'Could not schedule the session. Check your connection and retry.';
+    } finally {
+        button.disabled = false;
+    }
+});
 </script>{% endif %}{% endblock %}

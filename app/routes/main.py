@@ -144,8 +144,19 @@ def update_preferences():
                 not isinstance(calendar[field], str)
                 or not calendar[field].strip()
                 or len(calendar[field]) > 200
+                or any(character in calendar[field] for character in '\r\n')
             ):
-                return jsonify({'error': f'{field} must be a non-empty string of at most 200 characters'}), 400
+                return jsonify({'error': f'{field} must be a non-empty single-line string of at most 200 characters'}), 400
+            if isinstance(calendar.get(field), str):
+                calendar[field] = calendar[field].strip()
+        if 'enabled' in calendar and not isinstance(calendar['enabled'], bool):
+            return jsonify({'error': 'enabled must be true or false'}), 400
+        if 'reminder_minutes' in calendar and (
+            not isinstance(calendar['reminder_minutes'], int)
+            or isinstance(calendar['reminder_minutes'], bool)
+            or not 0 <= calendar['reminder_minutes'] <= 10080
+        ):
+            return jsonify({'error': 'reminder_minutes must be an integer between 0 and 10080'}), 400
         previous_config = get_effective_config_for_user(current_user)
         if (
             'calendar_id' in calendar

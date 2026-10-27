@@ -4,6 +4,7 @@ import json
 
 from flask import Blueprint, current_app, jsonify, render_template
 from flask_login import current_user, login_required
+from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.curriculum import all_modules, get_module
@@ -91,7 +92,14 @@ def get_module_project(module_id):
                                  project=json.dumps(project, ensure_ascii=False),
                                  is_ai_generated=generated_by_ai)
         db.session.add(record)
-        db.session.commit()
+        try:
+            db.session.commit()
+        except IntegrityError:
+            # A concurrent request opened the same module project first.
+            db.session.rollback()
+            record = _record(module)
+            if record is None:
+                raise
     return jsonify({'module_id': module_id, 'project': record.get_project(),
                     'submission': record.submission, 'evaluation': record.get_evaluation(),
                     'completed': record.completed,
@@ -128,6 +136,7 @@ def submit_module_project(module_id):
     )
     try:
         evaluation = generate_json(prompt, model=config.get('ai', {}).get('model_tier', 'flash'))
+        evaluation_source = 'ai'
     except GeminiError as error:
         current_app.logger.warning('AI project evaluation failed for %s: %s', module_id, error)
         evaluation = {
@@ -138,17 +147,42 @@ def submit_module_project(module_id):
             'next_steps': ['Compare your artefact with each project deliverable and rubric criterion.'],
             'evaluation_source': 'local',
         }
-    if (not isinstance(evaluation, dict) or not isinstance(evaluation.get('summary'), str)
-            or (evaluation.get('score') is not None and (
+        evaluation_source = 'local'
+    def _valid_text_list(value):
+        return (
+            isinstance(value, list)
+            and len(value) <= 20
+            and all(
+                isinstance(item, str) and item.strip() and len(item) <= 2000
+                for item in value
+            )
+        )
+
+    if (
+        not isinstance(evaluation, dict)
+        or not isinstance(evaluation.get('summary'), str)
+        or not evaluation['summary'].strip()
+        or len(evaluation['summary']) > 6000
+        or (
+            evaluation.get('score') is not None
+            and (
                 not isinstance(evaluation.get('score'), int)
                 or isinstance(evaluation.get('score'), bool)
                 or not 0 <= evaluation['score'] <= 100
-            ))):
-        return jsonify({'error': 'Project evaluation returned an invalid result. Please retry.'}), 503
+            )
+        )
+        or any(
+            not _valid_text_list(evaluation.get(field, []))
+            for field in ('strengths', 'gaps', 'next_steps')
+        )
+    ):
+        return jsonify({
+            'error': 'Project evaluation returned an invalid result. Please retry.'
+        }), 503
+    evaluation['evaluation_source'] = evaluation_source
     record.submission = submission.strip()
     record.evaluation = json.dumps(evaluation, ensure_ascii=False)
     record.completed = True
-    record.is_ai_generated = True
     db.session.commit()
     return jsonify({'completed': True, 'evaluation': evaluation})
 

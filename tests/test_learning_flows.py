@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from app import create_app, db
 from app.curriculum import all_lessons, all_modules, curriculum
-from app.gemini import GeminiError
+from app.gemini import GeminiError, GeminiRateLimited
 from app.models import (
     CourseProject, LessonCompletion, Quiz, QuizResult, User, VideoProgress,
 )
@@ -167,6 +167,81 @@ class RuachAICourseTests(unittest.TestCase):
             self.assertEqual(quiz.day_number, lesson['_ordinal'])
             self.assertEqual(quiz.subject_id, lesson['module_id'])
 
+    def test_lesson_quiz_generation_maps_provider_rate_limit_to_429(self):
+        self.register()
+        lesson = all_lessons()[0]
+        with patch(
+            'app.gemini.generate_json',
+            side_effect=GeminiRateLimited(
+                'Gemini per-minute limit reached.', retry_after=9
+            ),
+        ):
+            response = self.client.get(f"/api/quizzes/lesson/{lesson['id']}")
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.headers['Retry-After'], '9')
+        payload = response.get_json()
+        self.assertEqual(payload['retry_after'], 9)
+        self.assertIn('limit', payload['error'].lower())
+
+    def test_concurrent_quiz_generation_returns_the_stored_quiz(self):
+        self.register()
+        lesson = all_lessons()[0]
+        quiz_id = f"dynamoai_lesson_{lesson['id']}"
+        questions = [{
+            'question': f'Racing question {index}?',
+            'options': ['A', 'B', 'C', 'D'],
+            'correct_index': 0,
+            'explanation': 'A is correct.',
+        } for index in range(5)]
+        normalized = [{
+            'id': f'{quiz_id}_{index}',
+            'question': item['question'],
+            'options': item['options'],
+            'correct': 0,
+            'explanation': item['explanation'],
+        } for index, item in enumerate(questions)]
+
+        def generate_and_seed(*args, **kwargs):
+            # Simulate another request committing the same quiz while this
+            # request was waiting on the provider.
+            db.session.remove()
+            with db.engine.begin() as connection:
+                connection.execute(Quiz.__table__.insert().values(
+                    quiz_id=quiz_id,
+                    quiz_type='lesson',
+                    subject_id=lesson['module_id'],
+                    day_number=lesson['_ordinal'],
+                    week_number=lesson['_module']['number'] + 1,
+                    questions=json.dumps(normalized),
+                    passing_threshold=70,
+                    is_ai_generated=True,
+                ))
+            return {'questions': questions}
+
+        with patch('app.gemini.generate_json', side_effect=generate_and_seed):
+            response = self.client.get(f"/api/quizzes/lesson/{lesson['id']}")
+        self.assertEqual(response.status_code, 200, response.get_json())
+        self.assertEqual(response.get_json()['quiz_id'], quiz_id)
+        with self.app.app_context():
+            self.assertEqual(Quiz.query.filter_by(quiz_id=quiz_id).count(), 1)
+
+    def test_lesson_clarification_maps_provider_rate_limit_to_429(self):
+        self.register()
+        lesson = all_lessons()[0]
+        with patch(
+            'app.gemini.generate_json',
+            side_effect=GeminiRateLimited(
+                'Gemini per-minute limit reached.', retry_after=11
+            ),
+        ):
+            response = self.client.post('/api/lessons/ask', json={
+                'lesson_id': lesson['id'],
+                'question': 'Can you clarify the main idea?',
+            })
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.headers['Retry-After'], '11')
+        self.assertEqual(response.get_json()['retry_after'], 11)
+
     def test_module_quiz_generates_questions_for_the_module(self):
         self.register()
         module = all_modules()[0]
@@ -239,6 +314,53 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertFalse(payload['is_ai_generated'])
         with self.app.app_context():
             self.assertEqual(CourseProject.query.count(), 1)
+
+    def test_project_submission_validates_ai_evaluation_and_records_result(self):
+        self.register()
+        module = all_modules()[0]
+        for lesson in module['lessons']:
+            self.complete_lesson(lesson['id'])
+        opened = self.client.get(f"/api/projects/module/{module['id']}")
+        self.assertEqual(opened.status_code, 200)
+
+        submission = (
+            'I built the requested artefact, tested each deliverable, and '
+            'recorded the verification output for review.'
+        )
+        with patch(
+            'app.gemini.generate_json',
+            return_value={'score': 101, 'summary': 'Invalid score.'},
+        ):
+            rejected = self.client.post(
+                f"/api/projects/module/{module['id']}/submit",
+                json={'submission': submission},
+            )
+        self.assertEqual(rejected.status_code, 503)
+        with self.app.app_context():
+            self.assertFalse(CourseProject.query.one().completed)
+
+        evaluation = {
+            'score': 88,
+            'summary': 'The artefact meets the brief with minor gaps.',
+            'strengths': ['Working implementation', 'Clear verification'],
+            'gaps': ['Add one edge-case test'],
+            'next_steps': ['Document the remaining edge case'],
+        }
+        with patch('app.gemini.generate_json', return_value=evaluation):
+            accepted = self.client.post(
+                f"/api/projects/module/{module['id']}/submit",
+                json={'submission': submission},
+            )
+        self.assertEqual(accepted.status_code, 200, accepted.get_json())
+        payload = accepted.get_json()
+        self.assertTrue(payload['completed'])
+        self.assertEqual(payload['evaluation']['score'], 88)
+        self.assertEqual(payload['evaluation']['evaluation_source'], 'ai')
+        with self.app.app_context():
+            record = CourseProject.query.one()
+            self.assertTrue(record.completed)
+            # Evaluation provenance must not overwrite how the brief was made.
+            self.assertFalse(record.is_ai_generated)
 
     def test_users_have_independent_course_progress(self):
         self.register('firstlearner')

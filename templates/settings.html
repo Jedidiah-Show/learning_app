@@ -42,9 +42,20 @@
         const sms = data.sms_recovery || {};
         const calendar = data.google_calendar || {};
         const database = data.database || {};
+        const runtime = data.ai_runtime || {};
         statusBox.replaceChildren();
         if (data.app_url) {
             statusBox.append(line('Deployment URL', data.app_url));
+        }
+        if (runtime.request_deadline_seconds) {
+            statusBox.append(line(
+                'AI runtime',
+                `request deadline ${runtime.request_deadline_seconds}s`
+                    + (runtime.gemini_cooldown_seconds
+                        ? ` · Gemini cooling down for ${runtime.gemini_cooldown_seconds}s after a transient failure`
+                        : ' · no provider cooldown active'),
+                runtime.gemini_cooldown_seconds ? 'text-amber-700' : 'text-slate-600'
+            ));
         }
         statusBox.append(line(
             'Gemini',
@@ -247,40 +258,53 @@
     document.getElementById('settings-form').addEventListener('submit', async (event) => {
         event.preventDefault();
         const status = document.getElementById('save-status');
-        const response = await fetch('/api/settings/preferences', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                ai: { model_tier: document.getElementById('model-tier').value },
-                progress: {
-                    track_streaks: document.getElementById('track-streaks').checked,
-                    track_time_spent: document.getElementById('track-time').checked,
-                },
-                google_calendar: {
-                    calendar_id: document.getElementById('calendar-id').value,
-                    event_prefix: document.getElementById('event-prefix').value,
-                },
-            }),
-        });
-        let data = await response.json();
-        if (!response.ok) {
-            status.textContent = data.error || 'Could not save preferences';
-            return;
+        const submitButton = event.currentTarget.querySelector('button');
+        if (submitButton) submitButton.disabled = true;
+        status.textContent = 'Saving…';
+        try {
+            const response = await fetch('/api/settings/preferences', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    ai: { model_tier: document.getElementById('model-tier').value },
+                    progress: {
+                        track_streaks: document.getElementById('track-streaks').checked,
+                        track_time_spent: document.getElementById('track-time').checked,
+                    },
+                    google_calendar: {
+                        calendar_id: document.getElementById('calendar-id').value,
+                        event_prefix: document.getElementById('event-prefix').value,
+                    },
+                }),
+            });
+            let data = {};
+            try { data = await response.json(); } catch (error) { data = {}; }
+            if (!response.ok) {
+                status.textContent = data.error || `Could not save preferences (HTTP ${response.status}).`;
+                return;
+            }
+            const blocks = Array.from(document.querySelectorAll('[data-block]')).map((row) => ({
+                name: row.dataset.name,
+                description: row.dataset.description,
+                start_time: row.querySelector('.block-start').value,
+                end_time: row.querySelector('.block-end').value,
+            }));
+            const scheduleResponse = await fetch('/api/admin/schedule', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ daily_blocks: blocks }),
+            });
+            let scheduleData = {};
+            try { scheduleData = await scheduleResponse.json(); } catch (error) { scheduleData = {}; }
+            status.textContent = scheduleResponse.ok
+                ? 'Saved'
+                : (scheduleData.error || 'Preferences saved; schedule update failed.');
+            loadStatus();
+        } catch (error) {
+            status.textContent = 'Could not save preferences. Check your connection and try again.';
+        } finally {
+            if (submitButton) submitButton.disabled = false;
         }
-        const blocks = Array.from(document.querySelectorAll('[data-block]')).map((row) => ({
-            name: row.dataset.name,
-            description: row.dataset.description,
-            start_time: row.querySelector('.block-start').value,
-            end_time: row.querySelector('.block-end').value,
-        }));
-        const scheduleResponse = await fetch('/api/admin/schedule', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ daily_blocks: blocks }),
-        });
-        data = await scheduleResponse.json();
-        status.textContent = scheduleResponse.ok ? 'Saved' : (data.error || 'Preferences saved; schedule update failed.');
-        loadStatus();
     });
 
     probeButton.addEventListener('click', runProbe);

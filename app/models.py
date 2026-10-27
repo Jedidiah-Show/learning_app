@@ -1,4 +1,5 @@
 from app import db
+from app.encrypted_types import EncryptedText
 from datetime import datetime, date, timezone
 from flask_login import UserMixin
 import json
@@ -20,9 +21,12 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=True)
     full_name = db.Column(db.String(120), nullable=True)
     google_id = db.Column(db.String(255), nullable=True)
-    google_access_token = db.Column(db.Text, nullable=True)
-    google_refresh_token = db.Column(db.Text, nullable=True)
+    google_access_token = db.Column(EncryptedText, nullable=True)
+    google_refresh_token = db.Column(EncryptedText, nullable=True)
     token_expiry = db.Column(db.DateTime, nullable=True)
+    auth_version = db.Column(
+        db.Integer, nullable=False, default=0, server_default='0'
+    )
     created_at = db.Column(db.DateTime, default=utcnow)
     last_active = db.Column(db.DateTime, default=utcnow)
     subjects_configured = db.Column(db.Boolean, default=False)
@@ -439,6 +443,21 @@ class PasswordResetToken(db.Model):
     __table_args__ = (
         db.Index('idx_password_reset_user', 'user_id'),
         db.Index('idx_password_reset_expiry', 'expires_at'),
+    )
+
+
+class RateLimitCounter(db.Model):
+    """A fixed-window counter shared by all application instances."""
+    __tablename__ = 'rate_limit_counter'
+    id = db.Column(db.Integer, primary_key=True)
+    bucket = db.Column(db.String(255), nullable=False)
+    window_start = db.Column(db.DateTime, nullable=False)
+    count = db.Column(db.Integer, nullable=False, default=0)
+    __table_args__ = (
+        db.UniqueConstraint(
+            'bucket', 'window_start', name='uq_rate_limit_bucket_window'
+        ),
+        db.Index('idx_rate_limit_window', 'window_start'),
     )
 
 

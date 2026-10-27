@@ -191,6 +191,8 @@ if (root) {
         activeRunId = runId;
         runButton.disabled = true;
         setRunOutput('Running in the browser…');
+        // The iframe is sandboxed without allow-same-origin, so its origin is
+        // opaque. The sandbox itself validates the sender origin and parent.
         iframe.contentWindow.postMessage({
             type: 'run',
             runId,

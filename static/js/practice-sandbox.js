@@ -20,12 +20,22 @@
             pyodide.setStdout({batched: sendOutput});
             pyodide.setStderr({batched: sendOutput});
             self.fetch = () => Promise.reject(new Error('Network access is disabled in practice exercises.'));
+            self.XMLHttpRequest = class {
+                open() {
+                    throw new Error('Network access is disabled in practice exercises.');
+                }
+            };
             self.WebSocket = undefined;
             self.EventSource = undefined;
+            if (self.navigator) {
+                self.navigator.sendBeacon = () => false;
+            }
+            self.importScripts = () => {
+                throw new Error('Additional scripts are disabled in practice exercises.');
+            };
             self.WebTransport = undefined;
             self.Worker = undefined;
             self.SharedWorker = undefined;
-            self.importScripts = () => { throw new Error('Loading external scripts is disabled.'); };
             self.postMessage({type: 'ready'});
             self.onmessage = async ({data}) => {
                 if (data.type !== 'run') return;
@@ -46,7 +56,14 @@
     let worker;
     let runTimer;
     let activeRunId = null;
-    const sendToParent = (message) => parent.postMessage(message, '*');
+    const appOrigin = (() => {
+        try {
+            return document.referrer ? new URL(document.referrer).origin : null;
+        } catch (error) {
+            return null;
+        }
+    })();
+    const sendToParent = (message) => parent.postMessage(message, appOrigin || '*');
     const startWorker = () => {
         worker = new Worker(workerUrl);
         worker.onmessage = ({data}) => {
@@ -64,7 +81,12 @@
     };
     startWorker();
     addEventListener('message', (event) => {
-        if (event.source !== parent || !event.data || event.data.type !== 'run') return;
+        if (
+            event.source !== parent
+            || (appOrigin && event.origin !== appOrigin)
+            || !event.data
+            || event.data.type !== 'run'
+        ) return;
         activeRunId = event.data.runId;
         clearTimeout(runTimer);
         sendToParent({type: 'run-started', runId: event.data.runId});

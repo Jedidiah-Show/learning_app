@@ -1,11 +1,15 @@
 import json
 import os
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
 from app import create_app
-from app.gemini import GeminiError, generate_json
+from app.gemini import (
+    GeminiError, GeminiRateLimited, _generate_json_for_model,
+    ai_error_response, generate_json, provider_cooldown_seconds,
+)
 from app.openrouter import DEFAULT_MAX_TOKENS
 
 
@@ -238,6 +242,77 @@ class AIFallbackTests(unittest.TestCase):
         self.assertIn('All AI providers failed', message)
         self.assertIn('Gemini high demand', message)
         self.assertIn('OpenRouter high demand', message)
+
+    def test_expired_deadline_does_not_send_a_provider_request(self):
+        with patch('app.gemini._post_gemini_request') as gemini_post:
+            with self.assertRaises(GeminiError) as raised:
+                _generate_json_for_model(
+                    'Return {"ok": true}', 'test-key', 'gemini-test-flash',
+                    deadline=time.monotonic() - 1,
+                )
+        self.assertIn('deadline', str(raised.exception).lower())
+        gemini_post.assert_not_called()
+
+    def test_transient_failure_opens_a_short_circuit_for_the_next_request(self):
+        gemini_response = FakeResponse(503, {
+            'error': {'message': 'Gemini high demand.'},
+        })
+        openrouter_response = openrouter_success({'ok': True})
+        with patch(
+            'app.gemini._post_gemini_request',
+            return_value=gemini_response,
+        ) as gemini_post, patch(
+            'app.openrouter._post_openrouter_request',
+            return_value=openrouter_response,
+        ) as openrouter_post:
+            self.assertEqual(
+                generate_json('Return {"ok": true}', max_attempts=1),
+                {'ok': True},
+            )
+            self.assertGreater(provider_cooldown_seconds('gemini'), 0)
+            self.assertEqual(
+                generate_json('Return {"ok": true}', max_attempts=1),
+                {'ok': True},
+            )
+
+        self.assertEqual(gemini_post.call_count, 1)
+        self.assertEqual(openrouter_post.call_count, 2)
+
+    def test_auth_failure_does_not_open_the_fallback_circuit(self):
+        gemini_response = FakeResponse(403, {
+            'error': {'message': 'The caller does not have permission.'},
+        })
+        with patch(
+            'app.gemini._post_gemini_request',
+            return_value=gemini_response,
+        ), patch(
+            'app.openrouter._post_openrouter_request',
+        ) as openrouter_post:
+            with self.assertRaises(GeminiError):
+                generate_json('Return {"ok": true}', max_attempts=1)
+
+        self.assertEqual(provider_cooldown_seconds('gemini'), 0)
+        openrouter_post.assert_not_called()
+
+    def test_provider_retry_after_is_preserved_and_mapped_to_http_429(self):
+        gemini_response = FakeResponse(429, {
+            'error': {'message': 'Rate limit exceeded.'},
+        })
+        gemini_response.headers = {'Retry-After': '17'}
+        with patch(
+            'app.gemini._post_gemini_request',
+            return_value=gemini_response,
+        ):
+            with self.assertRaises(GeminiRateLimited) as raised:
+                _generate_json_for_model(
+                    'Return {"ok": true}', 'test-key', 'gemini-test-flash',
+                    max_attempts=1,
+                )
+        self.assertEqual(raised.exception.retry_after, 17)
+        response = ai_error_response(raised.exception)
+        self.assertEqual(response.status_code, 429)
+        self.assertEqual(response.headers['Retry-After'], '17')
+        self.assertEqual(response.get_json()['retry_after'], 17)
 
 
 if __name__ == '__main__':

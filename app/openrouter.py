@@ -24,6 +24,7 @@ DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_CONNECT_TIMEOUT = 5
 DEFAULT_READ_TIMEOUT = 120
 DEFAULT_MAX_TOKENS = 4096
+DEFAULT_RETRY_AFTER_SECONDS = 60
 RETRYABLE_STATUS_CODES = frozenset({408, 429, 500, 502, 503, 504})
 MAX_BACKOFF_SECONDS = 30
 
@@ -44,10 +45,13 @@ def _post_openrouter_request(url, **kwargs):
 
 
 class OpenRouterError(RuntimeError):
-    def __init__(self, message, *, status=None, fallback_eligible=False):
+    def __init__(
+        self, message, *, status=None, fallback_eligible=False, retry_after=None
+    ):
         super().__init__(message)
         self.status = status
         self.fallback_eligible = fallback_eligible
+        self.retry_after = retry_after
 
 
 class OpenRouterNotConfigured(OpenRouterError):
@@ -56,8 +60,13 @@ class OpenRouterNotConfigured(OpenRouterError):
 
 
 class OpenRouterRateLimited(OpenRouterError):
-    def __init__(self, message, *, status=429):
-        super().__init__(message, status=status, fallback_eligible=True)
+    def __init__(
+        self, message, *, status=429, retry_after=DEFAULT_RETRY_AFTER_SECONDS
+    ):
+        super().__init__(
+            message, status=status, fallback_eligible=True,
+            retry_after=retry_after,
+        )
 
 
 def _positive_int_env(name, default):
@@ -129,8 +138,34 @@ def _retry_delay(attempt, response):
     return delay + random.uniform(0, 0.5)
 
 
-def _sleep_before_retry(attempt, response):
+def _remaining(deadline):
+    if deadline is None:
+        return None
+    return deadline - time.monotonic()
+
+
+def _can_retry(deadline):
+    remaining = _remaining(deadline)
+    return remaining is None or remaining > 1
+
+
+def _retry_after_seconds(response, default=DEFAULT_RETRY_AFTER_SECONDS):
+    if response is None:
+        return default
+    value = response.headers.get('Retry-After')
+    if value is None:
+        return default
+    try:
+        return max(1, int(float(value)))
+    except (TypeError, ValueError):
+        return default
+
+
+def _sleep_before_retry(attempt, response, deadline=None):
     delay = _retry_delay(attempt, response)
+    remaining = _remaining(deadline)
+    if remaining is not None:
+        delay = min(delay, max(0, remaining - 1))
     current_app.logger.info(
         'Retrying OpenRouter generation in %.1fs (attempt %s)', delay, attempt
     )
@@ -217,7 +252,8 @@ def _response_text(payload, model_name):
 
 
 def generate_json(
-    prompt, *, model='flash', max_attempts=None, read_timeout=None
+    prompt, *, model='flash', max_attempts=None, read_timeout=None,
+    deadline=None
 ):
     """Generate a JSON object through OpenRouter."""
     api_key = _api_key()
@@ -254,6 +290,18 @@ def generate_json(
     url = f'{base_url}/chat/completions'
     response = None
     for attempt in range(1, max_attempts + 1):
+        remaining = _remaining(deadline)
+        if remaining is not None and remaining <= 1:
+            raise OpenRouterError(
+                'The AI request deadline expired before OpenRouter could '
+                'respond',
+                fallback_eligible=True,
+            )
+        attempt_connect_timeout = connect_timeout
+        attempt_read_timeout = read_timeout
+        if remaining is not None:
+            attempt_connect_timeout = max(1, min(connect_timeout, int(remaining)))
+            attempt_read_timeout = max(1, min(read_timeout, int(remaining)))
         # Reuse the Gemini quota table so fallback attempts cannot bypass the
         # application's per-user request limits.
         from app.gemini import _record_user_request
@@ -264,11 +312,11 @@ def generate_json(
                 url,
                 headers=headers,
                 json=request_payload,
-                timeout=(connect_timeout, read_timeout),
+                timeout=(attempt_connect_timeout, attempt_read_timeout),
             )
         except requests.Timeout as error:
-            if attempt < max_attempts:
-                _sleep_before_retry(attempt, None)
+            if attempt < max_attempts and _can_retry(deadline):
+                _sleep_before_retry(attempt, None, deadline)
                 continue
             raise OpenRouterError(
                 f'OpenRouter model {model_name} timed out while generating '
@@ -276,8 +324,8 @@ def generate_json(
                 fallback_eligible=True,
             ) from error
         except requests.RequestException as error:
-            if attempt < max_attempts:
-                _sleep_before_retry(attempt, None)
+            if attempt < max_attempts and _can_retry(deadline):
+                _sleep_before_retry(attempt, None, deadline)
                 continue
             raise OpenRouterError(
                 'OpenRouter could not be reached',
@@ -291,11 +339,12 @@ def generate_json(
         provider_message = _provider_error_message(response)
         detail = f': {provider_message[:500]}' if provider_message else ''
         if status == 429:
-            if attempt < max_attempts:
-                _sleep_before_retry(attempt, response)
+            if attempt < max_attempts and _can_retry(deadline):
+                _sleep_before_retry(attempt, response, deadline)
                 continue
             raise OpenRouterRateLimited(
-                f'OpenRouter model {model_name} returned HTTP 429{detail}'
+                f'OpenRouter model {model_name} returned HTTP 429{detail}',
+                retry_after=_retry_after_seconds(response),
             )
         if status == 402:
             raise OpenRouterError(
@@ -305,13 +354,16 @@ def generate_json(
                 status=status,
                 fallback_eligible=False,
             )
-        if status in RETRYABLE_STATUS_CODES and attempt < max_attempts:
+        if (
+            status in RETRYABLE_STATUS_CODES and attempt < max_attempts
+            and _can_retry(deadline)
+        ):
             current_app.logger.warning(
                 'OpenRouter model %s returned HTTP %s; retrying '
                 '(attempt %s of %s)',
                 model_name, status, attempt, max_attempts,
             )
-            _sleep_before_retry(attempt, response)
+            _sleep_before_retry(attempt, response, deadline)
             continue
         raise OpenRouterError(
             f'OpenRouter model {model_name} returned HTTP {status}{detail}',

@@ -208,7 +208,32 @@ def complete_lesson():
             start_time=now, end_time=now, duration_minutes=minutes,
             subjects_studied=json.dumps([lesson['module_id']]), completed=True,
         ))
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        # Two tabs completed the same lesson at once. The unique constraint
+        # makes one request the winner; treat the other as already completed
+        # while still preserving the time the learner spent in this tab.
+        db.session.rollback()
+        completion = LessonCompletion.query.filter_by(
+            user_id=current_user.id, lesson_id=lesson_id
+        ).first()
+        if completion is None or not completion.completed:
+            raise
+        if minutes:
+            db.session.add(StudySession(
+                user_id=current_user.id, session_type='lesson', date=now.date(),
+                start_time=now, end_time=now, duration_minutes=minutes,
+                subjects_studied=json.dumps([lesson['module_id']]),
+                completed=True,
+            ))
+            db.session.commit()
+        return jsonify({
+            'status': 'success',
+            'already_completed': True,
+            'next_lesson_id': next_unlocked_lesson(current_user),
+            'completed_lesson_id': lesson_id,
+        })
     return jsonify({'status': 'success', 'next_lesson_id': next_unlocked_lesson(current_user),
                     'completed_lesson_id': lesson_id})
 
@@ -324,7 +349,10 @@ def ask_lesson_question():
         result = generate_json(prompt, model=get_effective_model())
     except GeminiError as error:
         current_app.logger.warning('Gemini lesson clarification failed: %s', error)
-        return jsonify({'error': 'Clarification is temporarily unavailable. Please retry.'}), 503
+        from app.gemini import ai_error_response
+        return ai_error_response(
+            error, 'Clarification is temporarily unavailable. Please retry.'
+        )
     answer = result.get('answer') if isinstance(result, dict) else None
     if not isinstance(answer, str) or not answer.strip():
         return jsonify({'error': 'Clarification is temporarily unavailable. Please retry.'}), 503
