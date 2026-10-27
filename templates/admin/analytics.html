@@ -2,29 +2,48 @@
 {% block title %}Analytics · Admin{% endblock %}
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <div class="mb-8 flex items-center justify-between">
+  <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
     <div>
       <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Analytics</h1>
-      <p class="mt-2 text-gray-600 dark:text-gray-400">Learning progress and engagement metrics</p>
+      <p class="mt-2 text-gray-600 dark:text-gray-400">Learning activity in the last 30 days (since {{ since }}).</p>
     </div>
     <a href="{{ url_for('main.admin_dashboard') }}" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
       ← Back to Dashboard
     </a>
   </div>
 
+  {% set max_count = (completions|map(attribute='count')|max) if completions else 0 %}
   <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
-    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Lesson Completions (Last 30 Days)</h2>
+    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Lesson completions per day</h2>
     {% if completions %}
-    <div class="space-y-2">
+    <div class="flex items-end gap-2 h-48 overflow-x-auto pb-2">
       {% for c in completions %}
-      <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded">
-        <span class="text-gray-700 dark:text-gray-300">{{ c.date }}</span>
-        <span class="px-3 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded-full font-semibold">{{ c.count }} completions</span>
+      {% set height = ((c.count / max_count) * 100)|round|int if max_count else 0 %}
+      <div class="flex flex-col items-center justify-end h-full min-w-6 flex-1" title="{{ c.date }}: {{ c.count }}">
+        <span class="text-xs text-gray-500 dark:text-gray-400 mb-1">{{ c.count }}</span>
+        <div class="w-full bg-indigo-500 rounded-t" style="height: {{ height if height > 2 else 2 }}%"></div>
+        <span class="text-[10px] text-gray-400 mt-1 rotate-45 origin-left">{{ c.date }}</span>
       </div>
       {% endfor %}
     </div>
     {% else %}
-    <p class="text-gray-500 dark:text-gray-400 text-center py-8">No completions in the last 30 days</p>
+    <p class="text-gray-500 dark:text-gray-400 text-center py-8">No completions in the last 30 days.</p>
+    {% endif %}
+  </div>
+
+  <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6">
+    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Completions by module</h2>
+    {% if module_counts %}
+    <div class="space-y-2">
+      {% for module_id, count in module_counts|sort %}
+      <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded">
+        <span class="text-gray-700 dark:text-gray-300">Module {{ module_id }}</span>
+        <span class="px-3 py-1 bg-indigo-100 dark:bg-indigo-900 text-indigo-800 dark:text-indigo-200 rounded-full font-semibold text-sm">{{ count }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    {% else %}
+    <p class="text-gray-500 dark:text-gray-400 text-center py-8">No module activity recorded yet.</p>
     {% endif %}
   </div>
 </div>

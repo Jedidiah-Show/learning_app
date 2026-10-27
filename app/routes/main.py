@@ -44,6 +44,7 @@ def healthz():
             'ok': database['ok'],
             'revision': database['current_revision'],
             'missing_tables': database['missing_tables'],
+            'missing_columns': database.get('missing_columns', []),
         },
     })
     response.headers['Cache-Control'] = 'no-store'
@@ -224,30 +225,59 @@ def update_preferences():
 @main_bp.route('/admin')
 @admin_required
 def admin_dashboard():
-    from app.models import User, LessonCompletion, CourseProject, StudySession, PracticeUsageDaily
+    from app.models import User, LessonCompletion, CourseProject, StudySession
+    from app.curriculum import all_lessons, all_modules
     from sqlalchemy import func
+    from datetime import datetime, timedelta
     total_users = User.query.count()
-    active_users = User.query.filter(User.last_active.isnot(None)).count()
+    active_users = User.query.filter(
+        User.last_active >= datetime.utcnow() - timedelta(days=30)
+    ).count()
     total_completions = LessonCompletion.query.filter_by(completed=True).count()
     total_projects = CourseProject.query.filter_by(completed=True).count()
-    return render_template('admin/dashboard.html',
-                           config=get_effective_config_for_user(current_user),
-                           user=current_user,
-                           total_users=total_users,
-                           active_users=active_users,
-                           total_completions=total_completions,
-                           total_projects=total_projects)
+    total_lessons = len(all_lessons())
+    total_modules = len(all_modules())
+    recent_completions = LessonCompletion.query.filter_by(
+        completed=True
+    ).order_by(LessonCompletion.completed_at.desc()).limit(10).all()
+    return render_template(
+        'admin/dashboard.html',
+        config=get_effective_config_for_user(current_user),
+        user=current_user,
+        total_users=total_users,
+        active_users=active_users,
+        total_completions=total_completions,
+        total_projects=total_projects,
+        total_lessons=total_lessons,
+        total_modules=total_modules,
+        recent_completions=recent_completions,
+    )
 
 
 @main_bp.route('/admin/users')
 @admin_required
 def admin_users():
-    from app.models import User
+    from app.models import User, LessonCompletion
+    from sqlalchemy import func
+    from app.curriculum import all_lessons
+    total_lessons = len(all_lessons())
     users = User.query.order_by(User.created_at.desc()).all()
-    return render_template('admin/users.html',
-                           config=get_effective_config_for_user(current_user),
-                           user=current_user,
-                           users=users)
+    progress_by_user = dict(
+        db.session.query(
+            LessonCompletion.user_id,
+            func.count(LessonCompletion.id),
+        ).filter(
+            LessonCompletion.completed.is_(True)
+        ).group_by(LessonCompletion.user_id).all()
+    )
+    return render_template(
+        'admin/users.html',
+        config=get_effective_config_for_user(current_user),
+        user=current_user,
+        users=users,
+        total_lessons=total_lessons,
+        progress_by_user=progress_by_user,
+    )
 
 
 @main_bp.route('/admin/analytics')
@@ -256,15 +286,61 @@ def admin_analytics():
     from app.models import User, LessonCompletion, CourseProject
     from sqlalchemy import func
     from datetime import datetime, timedelta
-    # Completions per day (last 30 days)
+    since = datetime.utcnow() - timedelta(days=30)
     completions = db.session.query(
         func.date(LessonCompletion.completed_at).label('date'),
         func.count(LessonCompletion.id).label('count')
     ).filter(
-        LessonCompletion.completed == True,
-        LessonCompletion.completed_at >= datetime.utcnow() - timedelta(days=30)
-    ).group_by(func.date(LessonCompletion.completed_at)).all()
-    return render_template('admin/analytics.html',
-                           config=get_effective_config_for_user(current_user),
-                           user=current_user,
-                           completions=completions)
+        LessonCompletion.completed.is_(True),
+        LessonCompletion.completed_at >= since,
+    ).group_by(func.date(LessonCompletion.completed_at)).order_by(
+        func.date(LessonCompletion.completed_at)
+    ).all()
+    module_counts = db.session.query(
+        LessonCompletion.subject_id,
+        func.count(LessonCompletion.id),
+    ).filter(
+        LessonCompletion.completed.is_(True)
+    ).group_by(LessonCompletion.subject_id).all()
+    return render_template(
+        'admin/analytics.html',
+        config=get_effective_config_for_user(current_user),
+        user=current_user,
+        completions=completions,
+        module_counts=module_counts,
+        since=since.date(),
+    )
+
+
+@main_bp.route('/admin/users/<int:user_id>')
+@admin_required
+def admin_user_detail(user_id):
+    from app.models import User, LessonCompletion, CourseProject, StudySession
+    from sqlalchemy import func
+    from app.curriculum import all_lessons
+    from app.learning import course_progress
+    account = User.query.get_or_404(user_id)
+    progress = course_progress(account)
+    total_minutes = db.session.query(
+        func.coalesce(func.sum(StudySession.duration_minutes), 0)
+    ).filter(StudySession.user_id == account.id).scalar()
+    return render_template(
+        'admin/user_detail.html',
+        config=get_effective_config_for_user(current_user),
+        user=current_user,
+        account=account,
+        progress=progress,
+        total_minutes=int(total_minutes or 0),
+    )
+
+
+@main_bp.route('/admin/users/<int:user_id>/role', methods=['POST'])
+@admin_required
+def admin_set_role(user_id):
+    from app.models import User
+    account = User.query.get_or_404(user_id)
+    if account.id == current_user.id:
+        return jsonify({'error': 'You cannot change your own admin access'}), 400
+    account.is_admin = not account.is_admin
+    db.session.commit()
+    return jsonify({'status': 'success', 'is_admin': account.is_admin})

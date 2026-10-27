@@ -4,126 +4,78 @@
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
   <div class="mb-8">
     <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
-    <p class="mt-2 text-gray-600 dark:text-gray-400">Monitor and manage your learning platform</p>
+    <p class="mt-2 text-gray-600 dark:text-gray-400">Monitor learners, course progress, and platform health.</p>
   </div>
 
   <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <div class="flex items-center">
-        <div class="flex-shrink-0 bg-indigo-100 dark:bg-indigo-900 rounded-md p-3">
-          <svg class="h-6 w-6 text-indigo-600 dark:text-indigo-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-          </svg>
-        </div>
-        <div class="ml-4">
-          <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total Users</p>
-          <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ total_users }}</p>
-        </div>
-      </div>
+      <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Total users</p>
+      <p class="mt-2 text-3xl font-semibold text-gray-900 dark:text-white">{{ total_users }}</p>
+      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">{{ active_users }} active in the last 30 days</p>
     </div>
-
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <div class="flex items-center">
-        <div class="flex-shrink-0 bg-green-100 dark:bg-green-900 rounded-md p-3">
-          <svg class="h-6 w-6 text-green-600 dark:text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-        </div>
-        <div class="ml-4">
-          <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Lesson Completions</p>
-          <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ total_completions }}</p>
-        </div>
-      </div>
+      <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Lesson completions</p>
+      <p class="mt-2 text-3xl font-semibold text-gray-900 dark:text-white">{{ total_completions }}</p>
+      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">across {{ total_lessons }} lessons</p>
     </div>
-
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <div class="flex items-center">
-        <div class="flex-shrink-0 bg-yellow-100 dark:bg-yellow-900 rounded-md p-3">
-          <svg class="h-6 w-6 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
-          </svg>
-        </div>
-        <div class="ml-4">
-          <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Projects Completed</p>
-          <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ total_projects }}</p>
-        </div>
-      </div>
+      <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Projects completed</p>
+      <p class="mt-2 text-3xl font-semibold text-gray-900 dark:text-white">{{ total_projects }}</p>
+      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">across {{ total_modules }} module projects</p>
     </div>
-
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
-      <div class="flex items-center">
-        <div class="flex-shrink-0 bg-purple-100 dark:bg-purple-900 rounded-md p-3">
-          <svg class="h-6 w-6 text-purple-600 dark:text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-          </svg>
-        </div>
-        <div class="ml-4">
-          <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Active Users</p>
-          <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ active_users }}</p>
-        </div>
-      </div>
+      <p class="text-sm font-medium text-gray-600 dark:text-gray-400">Avg. lessons / learner</p>
+      <p class="mt-2 text-3xl font-semibold text-gray-900 dark:text-white">{{ ((total_completions / total_users)|round(1)) if total_users else 0 }}</p>
+      <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">engagement snapshot</p>
     </div>
   </div>
 
   <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Quick Actions</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Quick actions</h2>
       </div>
-      <div class="p-6 space-y-4">
-        <a href="{{ url_for('main.admin_users') }}" class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
-          <svg class="h-5 w-5 text-indigo-600 dark:text-indigo-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"></path>
-          </svg>
-          <div>
-            <p class="font-medium text-gray-900 dark:text-white">Manage Users</p>
-            <p class="text-sm text-gray-600 dark:text-gray-400">View and manage all registered users</p>
-          </div>
+      <div class="p-6 space-y-3">
+        <a href="{{ url_for('main.admin_users') }}" class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+          <span class="font-medium text-gray-900 dark:text-white">👥 Manage users</span>
+          <span class="text-sm text-gray-500 dark:text-gray-400">View progress & roles →</span>
         </a>
-        <a href="{{ url_for('main.admin_analytics') }}" class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
-          <svg class="h-5 w-5 text-green-600 dark:text-green-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
-          </svg>
-          <div>
-            <p class="font-medium text-gray-900 dark:text-white">View Analytics</p>
-            <p class="text-sm text-gray-600 dark:text-gray-400">Track learning progress and engagement</p>
-          </div>
+        <a href="{{ url_for('main.admin_analytics') }}" class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+          <span class="font-medium text-gray-900 dark:text-white">📊 View analytics</span>
+          <span class="text-sm text-gray-500 dark:text-gray-400">Daily activity →</span>
         </a>
-        <a href="{{ url_for('main.lessons') }}" class="flex items-center p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
-          <svg class="h-5 w-5 text-yellow-600 dark:text-yellow-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"></path>
-          </svg>
-          <div>
-            <p class="font-medium text-gray-900 dark:text-white">View Curriculum</p>
-            <p class="text-sm text-gray-600 dark:text-gray-400">Browse all lessons and modules</p>
-          </div>
+        <a href="{{ url_for('main.lessons') }}" class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+          <span class="font-medium text-gray-900 dark:text-white">📖 Browse curriculum</span>
+          <span class="text-sm text-gray-500 dark:text-gray-400">{{ total_lessons }} lessons →</span>
+        </a>
+        <a href="{{ url_for('main.settings') }}" class="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-600 transition">
+          <span class="font-medium text-gray-900 dark:text-white">⚙️ Integration health</span>
+          <span class="text-sm text-gray-500 dark:text-gray-400">Providers & database →</span>
         </a>
       </div>
     </div>
 
     <div class="bg-white dark:bg-gray-800 rounded-lg shadow">
       <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">System Status</h2>
+        <h2 class="text-lg font-semibold text-gray-900 dark:text-white">Recent completions</h2>
       </div>
       <div class="p-6">
-        <div class="space-y-4">
-          <div class="flex items-center justify-between">
-            <span class="text-gray-600 dark:text-gray-400">Application</span>
-            <span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 dark:bg-green-900 dark:text-green-200 rounded-full">Running</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-gray-600 dark:text-gray-400">Database</span>
-            <span class="px-2 py-1 text-xs font-semibold text-green-800 bg-green-100 dark:bg-green-900 dark:text-green-200 rounded-full">Connected</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-gray-600 dark:text-gray-400">Lessons</span>
-            <span class="text-gray-900 dark:text-white font-medium">201</span>
-          </div>
-          <div class="flex items-center justify-between">
-            <span class="text-gray-600 dark:text-gray-400">Modules</span>
-            <span class="text-gray-900 dark:text-white font-medium">13</span>
-          </div>
-        </div>
+        {% if recent_completions %}
+        <ul class="space-y-3">
+          {% for completion in recent_completions %}
+          <li class="flex items-center justify-between text-sm">
+            <span class="text-gray-700 dark:text-gray-300">
+              Lesson <span class="font-mono">{{ completion.lesson_id }}</span>
+            </span>
+            <span class="text-gray-500 dark:text-gray-400">
+              {{ completion.completed_at.strftime('%Y-%m-%d %H:%M') if completion.completed_at else '—' }}
+            </span>
+          </li>
+          {% endfor %}
+        </ul>
+        {% else %}
+        <p class="text-sm text-gray-500 dark:text-gray-400">No lesson completions recorded yet.</p>
+        {% endif %}
       </div>
     </div>
   </div>

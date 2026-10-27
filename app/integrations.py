@@ -30,6 +30,13 @@ REQUIRED_TABLES = (
     'rate_limit_counter',
 )
 
+# Columns that newer application code reads on every request. A missing column
+# here is a deployment fault (migrations were not applied) that would otherwise
+# surface as a 500 on the first page load rather than as a failed health check.
+REQUIRED_COLUMNS = {
+    'user': ('auth_version', 'is_admin'),
+}
+
 
 def _present(value):
     return bool(isinstance(value, str) and value.strip())
@@ -199,19 +206,34 @@ def database_status():
     """Return migration/table readiness without returning connection data."""
     try:
         with db.engine.connect() as connection:
-            tables = set(inspect(connection).get_table_names())
+            inspector = inspect(connection)
+            tables = set(inspector.get_table_names())
             revision = None
             if 'alembic_version' in tables:
                 revision = connection.execute(
                     text('SELECT version_num FROM alembic_version')
                 ).scalar()
+            missing_columns = []
+            for table, columns in REQUIRED_COLUMNS.items():
+                if table not in tables:
+                    continue
+                present = {
+                    column['name']
+                    for column in inspector.get_columns(table)
+                }
+                missing_columns.extend(
+                    f'{table}.{column}'
+                    for column in columns
+                    if column not in present
+                )
         missing = sorted(
             table for table in REQUIRED_TABLES if table not in tables
         )
         return {
-            'ok': not missing,
+            'ok': not missing and not missing_columns,
             'current_revision': revision,
             'missing_tables': missing,
+            'missing_columns': missing_columns,
         }
     except Exception:
         current_app.logger.exception('Could not inspect integration tables')
@@ -219,6 +241,7 @@ def database_status():
             'ok': False,
             'current_revision': None,
             'missing_tables': [],
+            'missing_columns': [],
             'error': 'Database metadata could not be read. Check the server logs.',
         }
 

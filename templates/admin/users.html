@@ -2,56 +2,65 @@
 {% block title %}Manage Users · Admin{% endblock %}
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <div class="mb-8 flex items-center justify-between">
+  <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
     <div>
       <h1 class="text-3xl font-bold text-gray-900 dark:text-white">Manage Users</h1>
-      <p class="mt-2 text-gray-600 dark:text-gray-400">All registered users on the platform</p>
+      <p class="mt-2 text-gray-600 dark:text-gray-400">{{ users|length }} registered learner{{ '' if users|length == 1 else 's' }}</p>
     </div>
     <a href="{{ url_for('main.admin_dashboard') }}" class="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600">
       ← Back to Dashboard
     </a>
   </div>
 
-  <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-hidden">
+  <div class="bg-white dark:bg-gray-800 shadow rounded-lg overflow-x-auto">
     <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
       <thead class="bg-gray-50 dark:bg-gray-700">
         <tr>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">ID</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">User</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Email</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Progress</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Joined</th>
-          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Last Active</th>
+          <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Last active</th>
           <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Role</th>
         </tr>
       </thead>
       <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
         {% for u in users %}
+        {% set done = progress_by_user.get(u.id, 0) %}
+        {% set percent = ((done / total_lessons) * 100)|round|int if total_lessons else 0 %}
         <tr class="hover:bg-gray-50 dark:hover:bg-gray-700">
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900 dark:text-white">{{ u.id }}</td>
           <td class="px-6 py-4 whitespace-nowrap">
-            <div class="flex items-center">
-              <div class="flex-shrink-0 h-10 w-10">
-                <div class="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
-                  <span class="text-indigo-600 dark:text-indigo-400 font-medium">{{ u.username[0].upper() if u.username else u.email[0].upper() }}</span>
-                </div>
+            <a href="{{ url_for('main.admin_user_detail', user_id=u.id) }}" class="flex items-center group">
+              <div class="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center flex-shrink-0">
+                <span class="text-indigo-600 dark:text-indigo-400 font-medium">{{ (u.username or u.email or 'U')[0]|upper }}</span>
               </div>
               <div class="ml-4">
-                <div class="text-sm font-medium text-gray-900 dark:text-white">{{ u.username or 'N/A' }}</div>
-                <div class="text-sm text-gray-500 dark:text-gray-400">{{ u.full_name or '' }}</div>
+                <div class="text-sm font-medium text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400">{{ u.username or 'Unnamed learner' }}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">{{ u.full_name or ('#' ~ u.id) }}</div>
               </div>
+            </a>
+          </td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ u.email or '—' }}</td>
+          <td class="px-6 py-4 whitespace-nowrap">
+            <div class="flex items-center gap-2">
+              <div class="w-24 h-2 rounded-full bg-gray-200 dark:bg-gray-600 overflow-hidden">
+                <div class="h-2 rounded-full bg-indigo-500" style="width: {{ percent }}%"></div>
+              </div>
+              <span class="text-xs text-gray-600 dark:text-gray-300">{{ done }}/{{ total_lessons }}</span>
             </div>
           </td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ u.email or 'N/A' }}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ u.created_at.strftime('%Y-%m-%d') if u.created_at else 'N/A' }}</td>
-          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ u.last_active.strftime('%Y-%m-%d %H:%M') if u.last_active else 'N/A' }}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ u.created_at.strftime('%Y-%m-%d') if u.created_at else '—' }}</td>
+          <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ u.last_active.strftime('%Y-%m-%d %H:%M') if u.last_active else '—' }}</td>
           <td class="px-6 py-4 whitespace-nowrap">
             {% if u.is_admin %}
             <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-red-100 dark:bg-red-900 text-red-800 dark:text-red-200">Admin</span>
             {% else %}
-            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">User</span>
+            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-200">Learner</span>
             {% endif %}
           </td>
         </tr>
+        {% else %}
+        <tr><td colspan="6" class="px-6 py-10 text-center text-sm text-gray-500 dark:text-gray-400">No registered users yet.</td></tr>
         {% endfor %}
       </tbody>
     </table>

@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+{% block title %}{{ account.username or account.email }} · Admin{% endblock %}
+{% block content %}
+<div class="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="mb-8 flex flex-wrap items-center justify-between gap-4">
+    <div>
+      <a href="{{ url_for('main.admin_users') }}" class="text-sm font-semibold text-indigo-700 dark:text-indigo-400">← All users</a>
+      <h1 class="mt-2 text-3xl font-bold text-gray-900 dark:text-white">{{ account.username or 'Unnamed learner' }}</h1>
+      <p class="mt-1 text-gray-600 dark:text-gray-400">{{ account.email or 'No email on file' }}</p>
+    </div>
+    <div class="flex items-center gap-2">
+      {% if account.id == current_user.id %}
+      <span class="px-3 py-2 text-sm rounded-lg bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">This is your account</span>
+      {% else %}
+      <button type="button" data-role-toggle data-user-id="{{ account.id }}" data-is-admin="{{ 'true' if account.is_admin else 'false' }}"
+              class="px-4 py-2 rounded-lg text-sm font-semibold {% if account.is_admin %}bg-amber-100 text-amber-800 hover:bg-amber-200{% else %}bg-indigo-600 text-white hover:bg-indigo-700{% endif %}">
+        {% if account.is_admin %}Remove admin access{% else %}Grant admin access{% endif %}
+      </button>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+      <p class="text-sm text-gray-500 dark:text-gray-400">Lessons completed</p>
+      <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ progress.completed_lessons }} / {{ progress.total_lessons }}</p>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+      <p class="text-sm text-gray-500 dark:text-gray-400">Projects completed</p>
+      <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ progress.completed_projects }} / {{ progress.total_projects }}</p>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+      <p class="text-sm text-gray-500 dark:text-gray-400">Study time</p>
+      <p class="text-2xl font-semibold text-gray-900 dark:text-white">{{ total_minutes }} min</p>
+    </div>
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-5">
+      <p class="text-sm text-gray-500 dark:text-gray-400">Last active</p>
+      <p class="text-lg font-semibold text-gray-900 dark:text-white">{{ account.last_active.strftime('%Y-%m-%d %H:%M') if account.last_active else '—' }}</p>
+    </div>
+  </div>
+
+  <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+    <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Module progress</h2>
+    <div class="space-y-3">
+      {% for module in progress.modules %}
+      {% set pct = ((module.completed_lessons / module.total_lessons) * 100)|round|int if module.total_lessons else 0 %}
+      <div>
+        <div class="flex items-center justify-between text-sm mb-1">
+          <span class="text-gray-700 dark:text-gray-300">{{ module.number }} · {{ module.title }}</span>
+          <span class="text-gray-500 dark:text-gray-400">{{ module.completed_lessons }}/{{ module.total_lessons }}</span>
+        </div>
+        <div class="w-full h-2 rounded-full bg-gray-200 dark:bg-gray-600 overflow-hidden">
+          <div class="h-2 rounded-full bg-indigo-500" style="width: {{ pct }}%"></div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+<script>
+const roleButton = document.querySelector('[data-role-toggle]');
+if (roleButton) {
+  roleButton.addEventListener('click', async () => {
+    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    roleButton.disabled = true;
+    try {
+      const response = await fetch(`/admin/users/${roleButton.dataset.userId}/role`, {
+        method: 'POST',
+        headers: {'X-CSRF-Token': csrf},
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) { alert(data.error || 'Could not update role.'); return; }
+      window.location.reload();
+    } catch (error) {
+      alert('Could not update role. Check your connection and retry.');
+    } finally {
+      roleButton.disabled = false;
+    }
+  });
+}
+</script>
+{% endblock %}

@@ -406,4 +406,4 @@ if (completeButton) completeButton.addEventListener('click', async () => {
     completeButton.disabled = completed;
   }
 });
-</script>{% endblock %}
+</script>{% if practice_exercises %}<script type="module" src="{{ url_for('static', filename='js/practice.bundle.js') }}"></script>{% endif %}{% endblock %}
