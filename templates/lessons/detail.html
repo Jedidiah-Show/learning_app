@@ -416,14 +416,7 @@ if (completeButton) completeButton.addEventListener('click', async () => {
     completed = true;
     const nextButton = document.getElementById('next-lesson-button');
     const nextAction = data.next_action;
-    if (nextButton && nextLessonId && data.next_lesson_id === nextLessonId) {
-      status.textContent = 'Lesson complete. Your next lesson is now available.';
-      const link = document.createElement('a');
-      link.id = 'next-lesson-button';
-      link.href = nextButton.dataset.nextLessonUrl;
-      link.textContent = 'Next lesson →';
-      nextButton.replaceWith(link);
-    } else if (nextAction && nextAction.type === 'project') {
+    if (nextAction && nextAction.type === 'project') {
       status.textContent = `Lesson complete. Submit the Module ${nextAction.module_number} project to unlock the next module.`;
       const link = document.createElement('a');
       link.id = 'next-lesson-button';
@@ -434,6 +427,16 @@ if (completeButton) completeButton.addEventListener('click', async () => {
       } else {
         document.querySelector('.lesson-navigation').append(link);
       }
+      setTimeout(() => { window.location.href = projectUrl(nextAction); }, 800);
+      return;
+    } else if (nextButton && nextLessonId && data.next_lesson_id === nextLessonId) {
+      status.textContent = 'Lesson complete. Loading your next lesson…';
+      window.location.href = nextButton.dataset.nextLessonUrl;
+      return;
+    } else if (data.next_lesson_id) {
+      status.textContent = 'Lesson complete. Loading your next lesson…';
+      window.location.href = `/lesson/${data.next_lesson_id}`;
+      return;
     } else if (nextButton) {
       status.textContent = 'Lesson complete. You have finished the course.';
       nextButton.textContent = 'Course complete ✓';

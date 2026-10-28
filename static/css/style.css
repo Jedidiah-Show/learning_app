@@ -39,7 +39,7 @@ html[data-theme="dark"] .auth-brand-logo { border-color:rgba(212,175,55,.62); }
     .auth-brand-logo { width:66px; height:66px; margin-bottom:14px; border-radius:18px; }
     .brand-subtitle { display:none; }
 }
-.app-nav { align-items:flex-start;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;scrollbar-width:thin;scrollbar-color:#CBC5B6 transparent;-webkit-overflow-scrolling:touch;max-width:100%; }
+.app-nav { align-items:flex-start;flex-wrap:nowrap;overflow-x:auto;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#CBC5B6 transparent;-webkit-overflow-scrolling:touch;max-width:100%;max-height:100%; }
 .app-nav[hidden] { display:none; }
 .app-nav::-webkit-scrollbar { height:6px; }
 .app-nav::-webkit-scrollbar-track { background:transparent; }
@@ -172,7 +172,7 @@ body.has-sidebar > header .min-h-16 { min-height:0;flex-direction:column;align-i
 body.has-sidebar .app-brand { justify-content:flex-start;padding:0 6px; }
 body.has-sidebar .app-user-menu { align-items:flex-start;flex-wrap:wrap;gap:10px;margin-top:6px;padding:0 6px; }
 body.has-sidebar .theme-toggle { order:1; }
-body.has-sidebar #app-navigation { display:flex;flex-direction:column;flex-wrap:nowrap;gap:4px;width:100%;margin-top:18px;padding:16px 0;border-top:1px solid var(--app-border); }
+body.has-sidebar #app-navigation { display:flex;flex-direction:column;flex-wrap:nowrap;gap:4px;width:100%;margin-top:18px;padding:16px 0;border-top:1px solid var(--app-border);min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--app-border) transparent; } body.has-sidebar #app-navigation::-webkit-scrollbar { width:6px; } body.has-sidebar #app-navigation::-webkit-scrollbar-track { background:transparent; } body.has-sidebar #app-navigation::-webkit-scrollbar-thumb { background:var(--app-border);border-radius:999px; }
 body.has-sidebar .app-nav .nav-link { display:flex;align-items:center;gap:12px;width:100%;min-height:44px;padding:10px 12px;white-space:normal;border-radius:12px;font-size:13px;transition:all .18s ease; }
 body.has-sidebar .app-nav .nav-link:hover { background:var(--app-sidebar-hover);color:#247044;transform:translateX(4px); }
 body.has-sidebar .app-nav .nav-link.bg-indigo-50 { background:var(--app-sidebar-active);color:#247044;font-weight:700;box-shadow:inset 3px 0 0 #2E8F55; }

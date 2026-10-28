@@ -61,7 +61,7 @@
                 </div>
                 {% endif %}
             </div>
-            {% if current_user.is_authenticated %}<nav id="app-navigation" class="app-nav flex gap-1 py-2 lg:flex-col lg:flex-1 lg:gap-1 lg:py-4 lg:overflow-y-auto" aria-label="Main navigation">
+            {% if current_user.is_authenticated %}<nav id="app-navigation" class="app-nav flex gap-1 py-2 lg:flex-col lg:flex-1 lg:gap-1 lg:py-4 lg:overflow-y-auto lg:overflow-x-hidden lg:max-h-full" aria-label="Main navigation">
                     <a aria-label="Dashboard" title="Dashboard" href="{{ url_for('main.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.index' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">Dashboard</span>
                     </a>
