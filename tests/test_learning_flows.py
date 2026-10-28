@@ -325,6 +325,38 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertEqual(response.headers['Retry-After'], '11')
         self.assertEqual(response.get_json()['retry_after'], 11)
 
+    def test_lesson_tutor_greeting_introduces_ruach_ai_without_ai_request(self):
+        self.register()
+        lesson = all_lessons()[0]
+        with patch('app.gemini.generate_json') as generate:
+            response = self.client.post('/api/lessons/ask', json={
+                'lesson_id': lesson['id'],
+                'question': 'Hello!',
+            })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('Ruach-AI', response.get_json()['answer'])
+        self.assertEqual(response.get_json()['in_scope'], True)
+        generate.assert_not_called()
+
+    def test_lesson_tutor_uses_fixed_redirect_for_out_of_scope_response(self):
+        self.register()
+        lesson = all_lessons()[0]
+        with patch(
+            'app.gemini.generate_json',
+            return_value={
+                'in_scope': False,
+                'answer': 'An unrelated answer that must not be shown.',
+            },
+        ):
+            response = self.client.post('/api/lessons/ask', json={
+                'lesson_id': lesson['id'],
+                'question': 'Tell me about an unrelated topic.',
+            })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('RUACH AI Engineering course', response.get_json()['answer'])
+        self.assertNotIn('unrelated answer', response.get_json()['answer'])
+        self.assertFalse(response.get_json()['in_scope'])
+
     def test_module_quiz_generates_questions_for_the_module(self):
         self.register()
         module = all_modules()[0]
