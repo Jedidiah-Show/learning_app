@@ -9,7 +9,7 @@
         <h2 class="mt-2 text-xl font-bold text-slate-800 mb-6">Your RUACH profile</h2>
         
         <div class="flex items-center gap-4 mb-6">
-            <div class="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-2xl font-bold overflow-hidden border-2 border-emerald-200">
+            <div class="w-20 h-20 rounded-full bg-emerald-600 flex items-center justify-center text-white text-2xl font-bold overflow-hidden border-2 border-emerald-200">
                 {% if user.profile_photo %}
                 <img src="{{ user.profile_photo }}" alt="{{ user.full_name or user.username }}" class="w-full h-full object-cover">
                 {% else %}

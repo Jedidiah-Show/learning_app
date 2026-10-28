@@ -158,6 +158,14 @@ def create_app(config_override=None):
         REMEMBER_COOKIE_SAMESITE='Lax',
         PERMANENT_SESSION_LIFETIME=timedelta(days=14),
     )
+    from werkzeug.exceptions import RequestEntityTooLarge
+
+    @app.errorhandler(RequestEntityTooLarge)
+    def handle_file_too_large(e):
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'File is too large. Maximum size is 2MB.'}), 413
+        flash('Profile photo is too large. Maximum size is 2MB.', 'error')
+        return redirect(url_for('auth.profile'))
     database_url = next((
         os.environ.get(key)
         for key in (
