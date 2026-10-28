@@ -377,6 +377,14 @@ def create_app(config_override=None):
             'Cross-Origin-Resource-Policy', 'same-origin'
         )
         response.headers.setdefault('X-Powered-By', 'RUACH')
+        if request.path.startswith('/static/pyodide/'):
+            # The practice iframe is sandboxed to an opaque origin. Permit its
+            # worker to import the self-hosted Pyodide runtime and WebAssembly.
+            response.headers['Access-Control-Allow-Origin'] = '*'
+            response.headers['Cross-Origin-Resource-Policy'] = 'cross-origin'
+            response.headers['Cache-Control'] = (
+                'public, max-age=31536000, immutable'
+            )
         # Keep the policy report-only until the remaining inline scripts and
         # styles are migrated to nonces/hashed files.  Report-only still makes
         # violations visible without breaking existing lessons or YouTube.
