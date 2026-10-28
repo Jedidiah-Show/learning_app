@@ -394,6 +394,10 @@ def create_app(config_override=None):
             response.headers['Cache-Control'] = (
                 'public, max-age=31536000, immutable'
             )
+        elif request.path == '/static/js/practice-sandbox.js':
+            # The sandboxed iframe has an opaque origin, so its public runner
+            # script must be embeddable despite the app-wide same-origin policy.
+            response.headers['Cross-Origin-Resource-Policy'] = 'cross-origin'
         # Keep the policy report-only until the remaining inline scripts and
         # styles are migrated to nonces/hashed files.  Report-only still makes
         # violations visible without breaking existing lessons or YouTube.

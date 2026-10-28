@@ -142,6 +142,13 @@ class PracticeWorkspaceTests(unittest.TestCase):
         sandbox = self.client.get('/static/practice-sandbox.html')
         self.assertEqual(sandbox.status_code, 200)
         sandbox.close()
+        sandbox_script = self.client.get('/static/js/practice-sandbox.js')
+        self.assertEqual(sandbox_script.status_code, 200)
+        self.assertEqual(
+            sandbox_script.headers['Cross-Origin-Resource-Policy'],
+            'cross-origin',
+        )
+        sandbox_script.close()
         bundle = self.client.get('/static/js/practice.bundle.js')
         self.assertEqual(bundle.status_code, 200)
         bundle.close()
