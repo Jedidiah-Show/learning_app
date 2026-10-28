@@ -65,8 +65,15 @@
         if (!fields.length) return;
         const reveal = fields.some((field) => field.type === 'password');
         fields.forEach((field) => { field.type = reveal ? 'text' : 'password'; });
-        button.textContent = reveal ? 'Hide' : 'Show';
         button.setAttribute('aria-pressed', String(reveal));
+        button.setAttribute('aria-label', reveal ? 'Hide password' : 'Show password');
+        button.title = reveal ? 'Hide password' : 'Show password';
+        const icon = button.querySelector('.password-toggle-icon');
+        if (icon) {
+            icon.textContent = reveal ? '🙈' : '👁';
+        } else {
+            button.textContent = reveal ? '🙈' : '👁';
+        }
     });
 
     const navButton = document.querySelector('[data-toggle-nav]');
