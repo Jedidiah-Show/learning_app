@@ -420,6 +420,15 @@ def update_account():
         if not _allowed_photo_file(photo_file.filename):
             flash('Profile photo must be a PNG, JPG, JPEG, GIF, or WebP image.', 'error')
             return redirect(url_for('auth.profile'))
+        if photo_file.content_length and photo_file.content_length > 2 * 1024 * 1024:
+            flash('Profile photo must be 2MB or smaller.', 'error')
+            return redirect(url_for('auth.profile'))
+        photo_file.seek(0, os.SEEK_END)
+        size = photo_file.tell()
+        photo_file.seek(0)
+        if size > 2 * 1024 * 1024:
+            flash('Profile photo must be 2MB or smaller.', 'error')
+            return redirect(url_for('auth.profile'))
         upload_folder = current_app.config.get('UPLOAD_FOLDER') or os.path.join(current_app.instance_path, 'uploads')
         os.makedirs(upload_folder, exist_ok=True)
         ext = photo_file.filename.rsplit('.', 1)[1].lower()

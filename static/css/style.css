@@ -177,6 +177,9 @@ body.has-sidebar .app-nav .nav-link { display:flex;align-items:center;gap:12px;w
 body.has-sidebar .app-nav .nav-link:hover { background:var(--app-sidebar-hover);color:#247044;transform:translateX(4px); }
 body.has-sidebar .app-nav .nav-link.bg-indigo-50 { background:var(--app-sidebar-active);color:#247044;font-weight:700;box-shadow:inset 3px 0 0 #2E8F55; }
 body.has-sidebar .nav-icon { display:inline-grid;width:24px;flex:none;place-items:center;font-size:18px; }
+body.has-sidebar .nav-profile-icon { width:24px;height:24px; }
+body.has-sidebar .nav-profile-icon img,
+body.has-sidebar .nav-profile-icon span { width:24px;height:24px;border-radius:9999px; }
 body.has-sidebar .app-nav-toggle,.theme-toggle { display:inline-flex;align-items:center;justify-content:flex-start;gap:9px;min-height:40px;padding:8px 12px;border:1px solid var(--app-border);border-radius:12px;background:var(--app-surface);color:var(--app-text);font-size:12px;font-weight:700;transition:all .18s ease; }
 body.has-sidebar .app-nav-toggle:hover,.theme-toggle:hover { border-color:#B8E0C8;background:var(--app-sidebar-hover);color:#247044; }
 body.has-sidebar .app-nav-toggle:focus-visible,.theme-toggle:focus-visible { outline:3px solid rgba(63,174,107,.28);outline-offset:2px; }
