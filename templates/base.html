@@ -74,8 +74,14 @@
                     <a aria-label="Quizzes" title="Quizzes" href="{{ url_for('main.quizzes') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.quizzes' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🎯</span><span class="nav-label">Quizzes</span>
                     </a>
+                    <a aria-label="Review center" title="Review center" href="{{ url_for('main.review') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.review' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">🧠</span><span class="nav-label">Review Center</span>
+                    </a>
                     <a aria-label="Projects" title="Projects" href="{{ url_for('projects.project_page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'projects.project_page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🧩</span><span class="nav-label">Projects</span>
+                    </a>
+                    <a aria-label="Portfolio" title="Portfolio" href="{{ url_for('projects.portfolio_page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'projects.portfolio_page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">🗂️</span><span class="nav-label">Portfolio</span>
                     </a>
                     <a aria-label="Progress" title="Progress" href="{{ url_for('main.progress') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.progress' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">📈</span><span class="nav-label">Progress</span>

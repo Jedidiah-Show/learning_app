@@ -24,7 +24,7 @@ from app.curriculum import all_lessons, all_modules
 from app.integrations import database_status
 from app.learning import course_progress
 from app.models import (
-    AdminAuditLog, CourseProject, LessonCompletion, PasswordResetToken,
+    AdminAuditLog, CourseProject, LessonCompletion, PasswordResetToken, QuizResult,
     StudySession, User,
 )
 from app.phone import PhoneError, normalize_phone
@@ -778,6 +778,48 @@ def analytics():
     ).filter(
         LessonCompletion.completed.is_(True)
     ).group_by(LessonCompletion.subject_id).all()
+    module_lessons = {module['id']: {lesson['id'] for lesson in module['lessons']}
+                      for module in all_modules()}
+    learner_module_lessons = {}
+    for learner_id, module_id, lesson_id in db.session.query(
+        LessonCompletion.user_id, LessonCompletion.subject_id,
+        LessonCompletion.lesson_id,
+    ).join(User, User.id == LessonCompletion.user_id).filter(
+        LessonCompletion.completed.is_(True), User.is_active.is_(True),
+        User.is_admin.is_(False),
+    ).all():
+        learner_module_lessons.setdefault((learner_id, module_id), set()).add(lesson_id)
+    project_counts = dict(db.session.query(
+        CourseProject.module_id, func.count(CourseProject.id),
+    ).join(User, User.id == CourseProject.user_id).filter(
+        CourseProject.completed.is_(True), User.is_active.is_(True),
+        User.is_admin.is_(False),
+    ).group_by(CourseProject.module_id).all())
+    active_learners = User.query.filter(
+        User.is_active.is_(True), User.is_admin.is_(False)
+    ).count()
+    module_funnel = []
+    for module in all_modules():
+        module_id = module['id']
+        started = sum(
+            bool(learner_module_lessons.get((learner_id, module_id)))
+            for learner_id, grouped_module_id in learner_module_lessons
+            if grouped_module_id == module_id
+        )
+        finished = sum(
+            lessons.issuperset(module_lessons[module_id])
+            for (learner_id, grouped_module_id), lessons in learner_module_lessons.items()
+            if grouped_module_id == module_id
+        )
+        module_funnel.append({
+            'number': module['number'], 'title': module['title'],
+            'started': started, 'finished': finished,
+            'projects': project_counts.get(module_id, 0),
+        })
+    quiz_summary = db.session.query(
+        func.count(QuizResult.id), func.avg(QuizResult.score),
+        func.sum(QuizResult.passed.cast(db.Integer)),
+    ).filter(QuizResult.taken_at >= since).one()
     top_learners = db.session.query(
         User.id,
         User.username,
@@ -795,6 +837,9 @@ def analytics():
         completions=completions,
         signups=signups,
         module_counts=module_counts,
+        module_funnel=module_funnel,
+        active_learners=active_learners,
+        quiz_summary=quiz_summary,
         top_learners=top_learners,
         total_users=User.query.count(),
         active_accounts=User.query.filter(User.is_active.is_(True)).count(),

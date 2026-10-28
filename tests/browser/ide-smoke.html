@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="referrer" content="no-referrer">
+<title>Browser Python runtime smoke test</title>
+<body>
+<p id="status">Waiting for the isolated Python runtime…</p>
+<pre id="output"></pre>
+<iframe id="runner" title="Isolated Python runner" sandbox="allow-scripts" referrerpolicy="same-origin" src="/static/practice-sandbox.html"></iframe>
+<script>
+const runner = document.getElementById('runner');
+const status = document.getElementById('status');
+const output = document.getElementById('output');
+window.addEventListener('message', (event) => {
+  if (event.source !== runner.contentWindow) return;
+  const message = event.data || {};
+  console.log('python-runtime-message', message.type, message.text || '');
+  if (message.type === 'ready') {
+    status.textContent = 'Runtime ready';
+    runner.contentWindow.postMessage({type: 'run', runId: 1, code: 'assert (6 * 7) == 42\nprint("All checks passed.")'}, '*');
+  } else if (message.type === 'output') {
+    output.textContent += message.text;
+  } else if (message.type === 'done') {
+    status.textContent = 'Run completed';
+    output.textContent = message.text;
+  } else if (message.type === 'error') {
+    status.textContent = 'Runtime error';
+    output.textContent = message.text;
+  }
+});
+</script>
+</body>
+</html>

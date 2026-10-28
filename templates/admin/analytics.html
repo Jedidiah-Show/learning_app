@@ -10,7 +10,7 @@
     <a href="{{ url_for('admin_portal.dashboard') }}" class="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">← Dashboard</a>
 </div>
 
-<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+<div class="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
     <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
         <p class="text-sm font-medium text-slate-500">Total accounts</p>
         <p class="mt-2 text-3xl font-bold text-slate-900">{{ total_users }}</p>
@@ -27,7 +27,19 @@
         <p class="text-sm font-medium text-slate-500">Signups (30d)</p>
         <p class="mt-2 text-3xl font-bold text-slate-900">{{ signups|sum(attribute='count') }}</p>
     </div>
+    <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+        <p class="text-sm font-medium text-slate-500">Quiz pass rate (30d)</p>
+        {% set pass_count = quiz_summary[2] or 0 %}
+        <p class="mt-2 text-3xl font-bold text-slate-900">{{ ((pass_count / quiz_summary[0]) * 100)|round|int if quiz_summary[0] else 0 }}%</p>
+        <p class="mt-1 text-xs text-slate-500">{{ quiz_summary[0] }} attempts · {{ '%.1f'|format(quiz_summary[1]) if quiz_summary[1] is not none else '—' }}% average score</p>
+    </div>
 </div>
+
+<section class="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-slate-900">Course cohort progression</h2>
+    <p class="mt-1 text-sm text-slate-500">Active learners: {{ active_learners }}. Counts show learners who started and finished each module and submitted its project.</p>
+    <div class="mt-4 overflow-x-auto"><table class="w-full min-w-[620px] text-left text-sm"><thead><tr class="border-b text-slate-500"><th class="py-2">Module</th><th class="py-2">Started</th><th class="py-2">Lessons complete</th><th class="py-2">Project complete</th></tr></thead><tbody>{% for row in module_funnel %}<tr class="border-b last:border-0"><td class="py-2 pr-3">{{ row.number }} · {{ row.title }}</td><td class="py-2">{{ row.started }}</td><td class="py-2">{{ row.finished }}</td><td class="py-2">{{ row.projects }}</td></tr>{% endfor %}</tbody></table></div>
+</section>
 
 {% set max_completion = (completions|map(attribute='count')|max) if completions else 0 %}
 <section class="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">

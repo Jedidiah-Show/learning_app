@@ -134,5 +134,69 @@
     "instructions": "Implement encode_report(report). Serialize a JSON object with sorted keys and compact separators. Reject non-finite numbers such as NaN instead of emitting non-standard JSON. Return the JSON text.",
     "starter_code": "import json\n\n\ndef encode_report(report):\n    # TODO: return deterministic JSON and reject NaN/Infinity.\n    raise NotImplementedError\n\n\nprint(encode_report({\"provider\": \"Cobalt\", \"models\": 2}))",
     "checks_code": "encoded = encode_report({\"provider\": \"Cobalt\", \"models\": 2})\nassert encoded == '{\"models\":2,\"provider\":\"Cobalt\"}'\nassert json.loads(encoded) == {\"models\": 2, \"provider\": \"Cobalt\"}\ntry:\n    encode_report({\"score\": float(\"nan\")})\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"Non-finite numbers must be rejected\")\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "backend-normalize-http-headers",
+    "lesson_id": "2.02",
+    "title": "Normalize an HTTP header map",
+    "instructions": "This is a Python simulation of backend request handling; it opens no network connection. Implement normalize_headers(headers) to lowercase header names, strip surrounding whitespace from names and values, and let the last duplicate name win.",
+    "starter_code": "def normalize_headers(headers):\n    # TODO: normalize a list of (name, value) pairs.\n    raise NotImplementedError\n\n\nprint(normalize_headers([('Content-Type', ' application/json ')]))",
+    "checks_code": "assert normalize_headers([('Content-Type', ' application/json '), ('X-Trace', ' a '), ('content-type', 'text/plain')]) == {'content-type': 'text/plain', 'x-trace': 'a'}\nassert normalize_headers([]) == {}\nprint('All checks passed.')"
+  },
+  {
+    "id": "rag-rank-chunks",
+    "lesson_id": "5.02",
+    "title": "Rank retrieved chunks by token overlap",
+    "instructions": "This is a local retrieval simulation using token overlap, not a vector database. Implement rank_chunks(query, chunks, limit) to rank chunk dictionaries by the number of distinct query words they contain, highest first, preserving original order for ties, and return at most limit chunks.",
+    "starter_code": "def rank_chunks(query, chunks, limit):\n    # TODO: score and rank chunks locally.\n    raise NotImplementedError\n\n\nchunks = [{'id': 'a', 'text': 'retrieval uses embeddings'}, {'id': 'b', 'text': 'retrieval augmented generation'}]\nprint(rank_chunks('retrieval generation', chunks, 2))",
+    "checks_code": "chunks = [{'id': 'a', 'text': 'retrieval uses embeddings'}, {'id': 'b', 'text': 'retrieval augmented generation'}, {'id': 'c', 'text': 'generation retrieval'}]\nassert [c['id'] for c in rank_chunks('retrieval generation', chunks, 2)] == ['b', 'c']\nassert rank_chunks('no match', chunks, 0) == []\nprint('All checks passed.')"
+  },
+  {
+    "id": "agent-enforce-tool-budget",
+    "lesson_id": "6.01",
+    "title": "Enforce an agent tool-call budget",
+    "instructions": "This is an in-memory agent control-loop simulation; it calls no external tools. Implement run_steps(actions, allowed_tools, max_calls) and return accepted tool names in order. Ignore unapproved tools and stop after max_calls accepted calls.",
+    "starter_code": "def run_steps(actions, allowed_tools, max_calls):\n    # TODO: apply tool allowlisting and a call budget.\n    raise NotImplementedError\n\n\nprint(run_steps(['search', 'email', 'search'], {'search'}, 1))",
+    "checks_code": "assert run_steps(['search', 'email', 'search'], {'search'}, 1) == ['search']\nassert run_steps(['email'], {'search'}, 3) == []\nassert run_steps(['search', 'search'], {'search'}, 0) == []\nprint('All checks passed.')"
+  },
+  {
+    "id": "mcp-validate-tool-call",
+    "lesson_id": "8.01",
+    "title": "Validate a tool call against an allowlist",
+    "instructions": "This is a local Model Context Protocol (MCP) message simulation and does not connect to an MCP server. Implement validate_tool_call(call, tools) to accept only a dictionary with an allowlisted name and dictionary arguments; return a normalized copy or raise ValueError.",
+    "starter_code": "def validate_tool_call(call, tools):\n    # TODO: validate tool name and argument shape.\n    raise NotImplementedError\n\n\nprint(validate_tool_call({'name': 'lookup', 'arguments': {'term': 'RAG'}}, {'lookup'}))",
+    "checks_code": "assert validate_tool_call({'name': 'lookup', 'arguments': {'term': 'RAG'}}, {'lookup'}) == {'name': 'lookup', 'arguments': {'term': 'RAG'}}\nfor call in [{'name': 'delete', 'arguments': {}}, {'name': 'lookup', 'arguments': []}, {}]:\n    try: validate_tool_call(call, {'lookup'})\n    except ValueError: pass\n    else: raise AssertionError('Invalid tool calls must fail')\nprint('All checks passed.')"
+  },
+  {
+    "id": "production-capped-retry-delays",
+    "lesson_id": "9.01",
+    "title": "Plan bounded retry delays",
+    "instructions": "Implement retry_delays(attempts, base_seconds, cap_seconds) using exponential backoff, capped at cap_seconds. Reject negative attempts, non-positive base, or a cap below the base. This pure simulation does not make requests or sleep.",
+    "starter_code": "def retry_delays(attempts, base_seconds, cap_seconds):\n    # TODO: calculate bounded exponential delays.\n    raise NotImplementedError\n\n\nprint(retry_delays(4, 1, 5))",
+    "checks_code": "assert retry_delays(4, 1, 5) == [1, 2, 4, 5]\nassert retry_delays(0, 1, 5) == []\nfor values in [(-1, 1, 5), (2, 0, 5), (2, 3, 2)]:\n    try: retry_delays(*values)\n    except ValueError: pass\n    else: raise AssertionError('Invalid retry policy must fail')\nprint('All checks passed.')"
+  },
+  {
+    "id": "deployment-validate-container-config",
+    "lesson_id": "10.01",
+    "title": "Validate a container service configuration",
+    "instructions": "This is a configuration simulation; it does not build or run a container. Implement validate_service(config) to require a non-empty image, an integer port from 1 to 65535, and a list of string health-check commands. Return a normalized copy or raise ValueError.",
+    "starter_code": "def validate_service(config):\n    # TODO: validate the container service config.\n    raise NotImplementedError\n\n\nprint(validate_service({'image': 'ruach-api:1', 'port': 8000, 'healthcheck': ['python', '-V']}))",
+    "checks_code": "valid = {'image': 'ruach-api:1', 'port': 8000, 'healthcheck': ['python', '-V']}\nassert validate_service(valid) == valid\nassert valid['port'] == 8000\nfor bad in [{'image': '', 'port': 80, 'healthcheck': []}, {'image': 'app', 'port': 70000, 'healthcheck': []}, {'image': 'app', 'port': True, 'healthcheck': []}, {'image': 'app', 'port': 80, 'healthcheck': 'python'}]:\n    try: validate_service(bad)\n    except ValueError: pass\n    else: raise AssertionError('Invalid service config must fail')\nprint('All checks passed.')"
+  },
+  {
+    "id": "system-design-route-by-budget",
+    "lesson_id": "11.01",
+    "title": "Route requests within a budget",
+    "instructions": "Implement choose_provider(providers, max_cost) to select the eligible provider with the lowest cost. Ignore disabled providers and costs above the budget; break ties by provider name. Return None if none qualify.",
+    "starter_code": "def choose_provider(providers, max_cost):\n    # TODO: select the cheapest enabled provider within budget.\n    raise NotImplementedError\n\n\nprint(choose_provider([{'name': 'A', 'cost': 0.01, 'enabled': True}], 0.02))",
+    "checks_code": "providers = [{'name': 'Beta', 'cost': 0.01, 'enabled': True}, {'name': 'Alpha', 'cost': 0.01, 'enabled': True}, {'name': 'Fast', 'cost': 0.02, 'enabled': False}]\nassert choose_provider(providers, 0.01)['name'] == 'Alpha'\nassert choose_provider(providers, 0.005) is None\nprint('All checks passed.')"
+  },
+  {
+    "id": "capstone-requirement-checklist",
+    "lesson_id": "12.01",
+    "title": "Turn requirements into acceptance checks",
+    "instructions": "Implement acceptance_checklist(requirements) to trim whitespace, remove empty entries, remove case-insensitive duplicates, and preserve the first occurrence order. This is a local planning exercise.",
+    "starter_code": "def acceptance_checklist(requirements):\n    # TODO: normalize and deduplicate requirements.\n    raise NotImplementedError\n\n\nprint(acceptance_checklist([' log requests ', 'Test retrieval']))",
+    "checks_code": "assert acceptance_checklist([' log requests ', '', 'Test retrieval', 'LOG REQUESTS', ' test retrieval ']) == ['log requests', 'Test retrieval']\nassert acceptance_checklist([]) == []\nprint('All checks passed.')"
   }
 ]

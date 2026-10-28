@@ -1,6 +1,7 @@
 """Module projects based on the bundled course and evaluated with AI."""
 
 import json
+from urllib.parse import urlsplit
 
 from flask import Blueprint, current_app, jsonify, render_template
 from flask_login import current_user, login_required
@@ -102,6 +103,7 @@ def get_module_project(module_id):
                 raise
     return jsonify({'module_id': module_id, 'project': record.get_project(),
                     'submission': record.submission, 'evaluation': record.get_evaluation(),
+                    'repository_url': record.repository_url, 'demo_url': record.demo_url,
                     'completed': record.completed,
                     'is_ai_generated': record.is_ai_generated})
 
@@ -115,6 +117,22 @@ def submit_module_project(module_id):
     submission = data.get('submission')
     if not isinstance(submission, str) or not 30 <= len(submission.strip()) <= 20000:
         return jsonify({'error': 'Submission must be between 30 and 20000 characters'}), 400
+    def _https_url(field):
+        value = data.get(field, '')
+        if not isinstance(value, str) or len(value) > 500:
+            raise ValueError(f'{field} must be a valid HTTPS URL')
+        value = value.strip()
+        if not value:
+            return None
+        parsed = urlsplit(value)
+        if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password:
+            raise ValueError(f'{field} must be a valid HTTPS URL')
+        return value
+    try:
+        repository_url = _https_url('repository_url')
+        demo_url = _https_url('demo_url')
+    except ValueError as error:
+        return jsonify({'error': str(error)}), 400
     module = get_module(module_id)
     if not module:
         return jsonify({'error': 'Module not found'}), 404
@@ -132,7 +150,9 @@ def submit_module_project(module_id):
         'Return JSON only: {"score":0,"summary":"...","strengths":["..."],'
         '"gaps":["..."],"next_steps":["..."]}.\n'
         f"Project: {json.dumps(record.get_project(), ensure_ascii=False)}\n"
-        f"Submission: {json.dumps(submission.strip(), ensure_ascii=False)}"
+        f"Submission: {json.dumps(submission.strip(), ensure_ascii=False)}\n"
+        f"Repository URL: {repository_url or 'not provided'}\n"
+        f"Demo URL: {demo_url or 'not provided'}"
     )
     try:
         evaluation = generate_json(prompt, model=config.get('ai', {}).get('model_tier', 'flash'))
@@ -181,6 +201,54 @@ def submit_module_project(module_id):
         }), 503
     evaluation['evaluation_source'] = evaluation_source
     record.submission = submission.strip()
+    record.repository_url = repository_url
+    record.demo_url = demo_url
+    record.evaluation = json.dumps(evaluation, ensure_ascii=False)
+    # A saved submission is not automatically a passed project. Learners can
+    # revise low scoring work and retry; AI outages never unlock a module.
+    record.completed = bool(
+        evaluation_source == 'ai' and evaluation.get('score') is not None
+        and evaluation['score'] >= 70
+    )
+    db.session.commit()
+    return jsonify({'completed': record.completed, 'evaluation': evaluation})
+
+
+@projects_bp.route('/portfolio')
+@login_required
+def portfolio_page():
+    records = CourseProject.query.filter_by(user_id=current_user.id).order_by(
+        CourseProject.updated_at.desc()
+    ).all()
+    modules_by_id = {module['id']: module for module in all_modules()}
+    projects = [{
+        'module': modules_by_id.get(item.module_id),
+        'project': item.get_project(),
+        'repository_url': item.repository_url,
+        'demo_url': item.demo_url,
+        'completed': item.completed,
+        'evaluation': item.get_evaluation(),
+    } for item in records if item.submission and item.module_id in modules_by_id]
+    return render_template('portfolio.html', user=current_user, projects=projects)
+
+
+@projects_bp.route('/api/projects/module/<module_id>/self-attest', methods=['POST'])
+@login_required
+def self_attest_module_project(module_id):
+    module = get_module(module_id)
+    if not module:
+        return jsonify({'error': 'Module not found'}), 404
+    if not module_project_is_available(current_user, module_id):
+        return jsonify({'error': 'Complete every lesson in this module first'}), 409
+    record = _record(module)
+    if record is None or not record.submission:
+        return jsonify({'error': 'Save a project submission before reviewing the rubric'}), 409
+    data = get_json_object()
+    if not isinstance(data, dict) or data.get('reviewed_rubric') is not True:
+        return jsonify({'error': 'Confirm that you reviewed the rubric'}), 400
+    evaluation = record.get_evaluation() or {}
+    evaluation['learner_reviewed_rubric'] = True
+    evaluation['evaluation_source'] = evaluation.get('evaluation_source', 'local')
     record.evaluation = json.dumps(evaluation, ensure_ascii=False)
     record.completed = True
     db.session.commit()

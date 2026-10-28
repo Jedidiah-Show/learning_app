@@ -37,15 +37,21 @@ function renderProject(area, data) {
     }
     if (data.evaluation) {
         const result = document.createElement('div');
-        result.className = 'mt-3 rounded-lg bg-emerald-50 p-3';
+        result.className = 'mt-3 rounded-lg ' + (data.completed ? 'bg-emerald-50' : 'bg-amber-50') + ' p-3';
         result.textContent = data.evaluation.score == null
             ? data.evaluation.summary
             : `Evaluation · ${data.evaluation.score}% · ${data.evaluation.summary}`;
         area.append(result);
+        [...(data.evaluation.gaps || []), ...(data.evaluation.next_steps || [])].forEach((detail) => {
+            const note = document.createElement('p');
+            note.className = 'mt-2 text-sm text-slate-700';
+            note.textContent = detail;
+            area.append(note);
+        });
     }
 }
 
-function appendSubmissionForm(area, id) {
+function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = '', savedDemo = '') {
     const form = document.createElement('form');
     form.className = 'mt-4';
     const text = document.createElement('textarea');
@@ -53,12 +59,21 @@ function appendSubmissionForm(area, id) {
     text.minLength = 30;
     text.maxLength = 20000;
     text.rows = 7;
+    text.value = savedSubmission || '';
     text.placeholder = 'Describe your artefact, decisions, and verification…';
     text.className = 'w-full rounded-xl border p-3';
+    const repository = document.createElement('input');
+    repository.type = 'url'; repository.placeholder = 'Repository URL (optional, HTTPS)';
+    repository.value = savedRepository || ''; repository.maxLength = 500;
+    repository.className = 'mt-3 w-full rounded-xl border p-3';
+    const demo = document.createElement('input');
+    demo.type = 'url'; demo.placeholder = 'Live demo URL (optional, HTTPS)';
+    demo.value = savedDemo || ''; demo.maxLength = 500;
+    demo.className = 'mt-3 w-full rounded-xl border p-3';
     const submit = document.createElement('button');
     submit.className = 'mt-2 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white';
     submit.textContent = 'Submit for Gemini evaluation';
-    form.append(text, submit);
+    form.append(text, repository, demo, submit);
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         submit.disabled = true;
@@ -72,7 +87,7 @@ function appendSubmissionForm(area, id) {
                         'Content-Type': 'application/json',
                         'X-CSRF-Token': csrf,
                     },
-                    body: JSON.stringify({submission: text.value}),
+                    body: JSON.stringify({submission: text.value, repository_url: repository.value, demo_url: demo.value}),
                 },
             );
             const result = await readJson(response);
@@ -92,9 +107,19 @@ function appendSubmissionForm(area, id) {
             }
             const evaluation = result.evaluation || {};
             message.textContent = evaluation.score == null
-                ? (evaluation.summary || 'Submission saved.')
+                ? (evaluation.summary || 'Submission saved. Review the rubric before marking complete.')
                 : `Score: ${evaluation.score}% · ${evaluation.summary}`;
-            form.replaceWith(message);
+            form.prepend(message);
+            if (result.completed) {
+                const badge = document.createElement('p');
+                badge.className = 'mt-2 font-semibold text-emerald-700';
+                badge.textContent = 'Project passed ✓';
+                form.replaceWith(badge);
+            } else {
+                text.value = text.value;
+                submit.textContent = 'Revise and resubmit';
+                appendSelfReview(area, id);
+            }
         } catch (error) {
             const message = document.createElement('p');
             message.className = 'mt-3 text-sm text-rose-700';
@@ -106,6 +131,42 @@ function appendSubmissionForm(area, id) {
         }
     });
     area.append(form);
+}
+
+function appendSelfReview(area, id) {
+    if (area.querySelector('[data-self-review]')) return;
+    const label = document.createElement('label');
+    label.className = 'mt-4 flex items-start gap-2 text-sm';
+    const check = document.createElement('input');
+    check.type = 'checkbox';
+    const copy = document.createElement('span');
+    copy.textContent = 'I compared my work with every deliverable and rubric criterion, and I am ready to move on.';
+    label.append(check, copy);
+    const button = document.createElement('button');
+    button.type = 'button';
+    button.dataset.selfReview = 'true';
+    button.className = 'mt-2 rounded-lg border px-4 py-2 font-semibold';
+    button.textContent = 'Complete after my rubric review';
+    button.disabled = true;
+    check.addEventListener('change', () => { button.disabled = !check.checked; });
+    button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+            const response = await fetch(`/api/projects/module/${encodeURIComponent(id)}/self-attest`, {
+                method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+                body: JSON.stringify({reviewed_rubric: check.checked}),
+            });
+            const result = await readJson(response);
+            if (!response.ok) throw new Error(result.error || 'Could not complete project.');
+            label.remove(); button.replaceWith(Object.assign(document.createElement('p'), {
+                className: 'mt-3 font-semibold text-emerald-700', textContent: 'Project completed after rubric review ✓',
+            }));
+        } catch (error) {
+            button.disabled = false;
+            area.append(Object.assign(document.createElement('p'), {className: 'text-sm text-rose-700', textContent: error.message}));
+        }
+    });
+    area.append(label, button);
 }
 
 document.querySelectorAll('[data-open]').forEach((button) => {
@@ -126,7 +187,10 @@ document.querySelectorAll('[data-open]').forEach((button) => {
                 return;
             }
             renderProject(area, data);
-            if (!data.completed) appendSubmissionForm(area, id);
+            if (!data.completed) {
+                appendSubmissionForm(area, id, data.submission || '', data.repository_url || '', data.demo_url || '');
+                if (data.submission) appendSelfReview(area, id);
+            }
         } catch (error) {
             area.textContent = 'Could not load the project. Check your connection and retry.';
         } finally {

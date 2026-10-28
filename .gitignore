@@ -11,3 +11,5 @@ data/*.db-*
 .env*
 client_secret*.json
 node_modules/
+test-results/
+playwright-report/

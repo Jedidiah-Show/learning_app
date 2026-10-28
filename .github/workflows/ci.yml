@@ -51,3 +51,19 @@ jobs:
           node --check static/js/practice-sandbox.js
       - name: Verify compiled assets are current
         run: git diff --exit-code -- static/css/tailwind.css static/js/practice.bundle.js
+
+  browser-ide:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - name: Install frontend tools
+        run: npm ci
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+      - name: Verify the browser Python runtime
+        run: npm run test:browser

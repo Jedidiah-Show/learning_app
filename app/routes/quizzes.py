@@ -9,7 +9,7 @@ from sqlalchemy.exc import IntegrityError
 from app import db
 from app.curriculum import get_lesson, get_module, lesson_context, lesson_ordinal
 from app.learning import lesson_is_available, module_project_is_available
-from app.models import Quiz, QuizResult
+from app.models import Quiz, QuizResult, ReviewItem
 from app.request_data import get_json_object
 
 quizzes_bp = Blueprint('quizzes', __name__)
@@ -171,6 +171,37 @@ def submit_quiz():
                         answers_data=json.dumps(normalized), evaluation=json.dumps(evaluation),
                         passed=passed)
     db.session.add(result)
+    # Missed questions enter the learner's spaced-review queue. Repeated
+    # misses reset the interval so the concept returns sooner.
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    for index, question in enumerate(questions):
+        if normalized[str(index)] == question['correct']:
+            continue
+        item = ReviewItem.query.filter_by(
+            user_id=current_user.id, quiz_id=quiz.quiz_id,
+            question_id=question.get('id', f'{quiz.quiz_id}_{index}'),
+        ).first()
+        if item is None:
+            item = ReviewItem(
+                user_id=current_user.id, quiz_id=quiz.quiz_id,
+                question_id=question.get('id', f'{quiz.quiz_id}_{index}'),
+                subject_id=quiz.subject_id or '', question=question['question'],
+                options=json.dumps(question['options'], ensure_ascii=False),
+                correct_index=question['correct'],
+                explanation=question.get('explanation', ''), due_at=now,
+                interval_days=1, repetitions=0, active=True,
+            )
+            db.session.add(item)
+        else:
+            item.question = question['question']
+            item.options = json.dumps(question['options'], ensure_ascii=False)
+            item.correct_index = question['correct']
+            item.explanation = question.get('explanation', '')
+            item.due_at = now
+            item.interval_days = 1
+            item.repetitions = 0
+            item.active = True
     db.session.commit()
     return jsonify({'score': score, 'passed': passed, 'correct': correct,
                     'total': len(questions), 'review': [
@@ -178,4 +209,51 @@ def submit_quiz():
                          'your_answer': normalized[str(index)],
                          'explanation': question.get('explanation', '')}
                         for index, question in enumerate(questions)
-                    ]})
+                    ], 'missed_questions_added': len(questions) - correct})
+
+
+@quizzes_bp.route('/review', methods=['GET'])
+@login_required
+def review_queue():
+    from datetime import datetime, timezone
+    now = datetime.now(timezone.utc)
+    items = ReviewItem.query.filter_by(
+        user_id=current_user.id, active=True
+    ).filter(ReviewItem.due_at <= now).order_by(ReviewItem.due_at).limit(50).all()
+    return jsonify({'due_count': len(items), 'items': [
+        {'id': item.id, 'question': item.question,
+         'options': item.get_options(), 'subject_id': item.subject_id}
+        for item in items
+    ]})
+
+
+@quizzes_bp.route('/review/<int:item_id>', methods=['POST'])
+@login_required
+def answer_review_item(item_id):
+    from datetime import datetime, timedelta, timezone
+    item = ReviewItem.query.filter_by(
+        id=item_id, user_id=current_user.id, active=True
+    ).first()
+    if item is None:
+        return jsonify({'error': 'Review item not found'}), 404
+    data = get_json_object()
+    answer = data.get('answer') if isinstance(data, dict) else None
+    if not isinstance(answer, int) or isinstance(answer, bool) or answer not in range(len(item.get_options())):
+        return jsonify({'error': 'Choose a valid answer'}), 400
+    correct = answer == item.correct_index
+    now = datetime.now(timezone.utc)
+    if correct:
+        intervals = [1, 3, 7, 14, 30]
+        item.repetitions += 1
+        item.interval_days = intervals[min(item.repetitions - 1, len(intervals) - 1)]
+        item.due_at = now + timedelta(days=item.interval_days)
+        if item.repetitions >= 5:
+            item.active = False
+    else:
+        item.repetitions = 0
+        item.interval_days = 1
+        item.due_at = now + timedelta(hours=1)
+    db.session.commit()
+    return jsonify({'correct': correct, 'correct_index': item.correct_index,
+                    'explanation': item.explanation or '', 'completed': not item.active,
+                    'next_due': item.due_at.isoformat()})

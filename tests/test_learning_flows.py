@@ -8,7 +8,7 @@ from app import create_app, db
 from app.curriculum import all_lessons, all_modules, curriculum
 from app.gemini import GeminiError, GeminiRateLimited
 from app.models import (
-    CourseProject, LessonCompletion, Quiz, QuizResult, User, VideoProgress,
+    CourseProject, LessonCompletion, Quiz, QuizResult, ReviewItem, User, VideoProgress,
 )
 
 
@@ -464,7 +464,9 @@ class RuachAICourseTests(unittest.TestCase):
         with patch('app.gemini.generate_json', return_value=evaluation):
             accepted = self.client.post(
                 f"/api/projects/module/{module['id']}/submit",
-                json={'submission': submission},
+                json={'submission': submission,
+                      'repository_url': 'https://github.com/learner/project',
+                      'demo_url': 'https://demo.example.test'},
             )
         self.assertEqual(accepted.status_code, 200, accepted.get_json())
         payload = accepted.get_json()
@@ -474,8 +476,73 @@ class RuachAICourseTests(unittest.TestCase):
         with self.app.app_context():
             record = CourseProject.query.one()
             self.assertTrue(record.completed)
+            self.assertEqual(record.repository_url, 'https://github.com/learner/project')
+            self.assertEqual(record.demo_url, 'https://demo.example.test')
             # Evaluation provenance must not overwrite how the brief was made.
             self.assertFalse(record.is_ai_generated)
+        portfolio = self.client.get('/portfolio')
+        self.assertEqual(portfolio.status_code, 200)
+        self.assertIn(b'https://github.com/learner/project', portfolio.data)
+
+    def test_missed_quiz_answers_enter_spaced_review_and_are_rescheduled(self):
+        self.register()
+        with self.app.app_context():
+            quiz = Quiz(
+                quiz_id='review-test', quiz_type='lesson', subject_id='01',
+                day_number=1, week_number=1,
+                questions=json.dumps([
+                    {'id': 'review-q1', 'question': 'Which is correct?',
+                     'options': ['A', 'B', 'C', 'D'], 'correct': 2,
+                     'explanation': 'C is correct.'},
+                ]),
+                passing_threshold=70,
+            )
+            db.session.add(quiz)
+            db.session.commit()
+        submitted = self.client.post('/api/quizzes/submit', json={
+            'quiz_id': 'review-test', 'answers': {'0': 0},
+        })
+        self.assertEqual(submitted.status_code, 200)
+        self.assertEqual(submitted.get_json()['missed_questions_added'], 1)
+        queue = self.client.get('/api/quizzes/review').get_json()
+        self.assertEqual(queue['due_count'], 1)
+        item_id = queue['items'][0]['id']
+        reviewed = self.client.post(
+            f'/api/quizzes/review/{item_id}', json={'answer': 2},
+        )
+        self.assertEqual(reviewed.status_code, 200)
+        self.assertTrue(reviewed.get_json()['correct'])
+        with self.app.app_context():
+            item = ReviewItem.query.one()
+            self.assertEqual(item.repetitions, 1)
+            self.assertEqual(item.interval_days, 1)
+        self.assertEqual(self.client.get('/api/quizzes/review').get_json()['due_count'], 0)
+
+    def test_project_can_be_completed_after_explicit_rubric_self_review(self):
+        self.register()
+        module = all_modules()[0]
+        for lesson in module['lessons']:
+            self.complete_lesson(lesson['id'])
+        self.client.get(f"/api/projects/module/{module['id']}")
+        submission = 'I built an artefact, checked every requirement and documented my test results.'
+        with patch('app.gemini.generate_json', side_effect=GeminiError('provider unavailable')):
+            saved = self.client.post(
+                f"/api/projects/module/{module['id']}/submit",
+                json={'submission': submission},
+            )
+        self.assertEqual(saved.status_code, 200)
+        self.assertFalse(saved.get_json()['completed'])
+        rejected = self.client.post(
+            f"/api/projects/module/{module['id']}/self-attest",
+            json={'reviewed_rubric': False},
+        )
+        self.assertEqual(rejected.status_code, 400)
+        accepted = self.client.post(
+            f"/api/projects/module/{module['id']}/self-attest",
+            json={'reviewed_rubric': True},
+        )
+        self.assertEqual(accepted.status_code, 200)
+        self.assertTrue(accepted.get_json()['completed'])
 
     def test_users_have_independent_course_progress(self):
         self.register('firstlearner')

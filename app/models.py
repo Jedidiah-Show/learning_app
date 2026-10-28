@@ -435,6 +435,8 @@ class CourseProject(db.Model):
     project = db.Column(db.Text, nullable=False)
     is_ai_generated = db.Column(db.Boolean, default=False, server_default=db.false(), nullable=False)
     submission = db.Column(db.Text)
+    repository_url = db.Column(db.String(500))
+    demo_url = db.Column(db.String(500))
     evaluation = db.Column(db.Text)
     completed = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)

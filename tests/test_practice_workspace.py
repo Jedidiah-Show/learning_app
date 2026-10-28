@@ -104,12 +104,15 @@ class PracticeWorkspaceTests(unittest.TestCase):
         expected_python_lessons = {
             f'1.{lesson_number:02d}' for lesson_number in range(1, 18)
         }
+        expected_guided_lessons = {
+            '2.02', '5.02', '6.01', '8.01', '9.01', '10.01', '11.01', '12.01'
+        }
         self.assertEqual(
             {
                 exercise['lesson_id']
                 for exercise in all_practice_exercises().values()
             },
-            expected_python_lessons,
+            expected_python_lessons | expected_guided_lessons,
         )
         for exercise in all_practice_exercises().values():
             with self.subTest(exercise=exercise['id']):
@@ -149,6 +152,13 @@ class PracticeWorkspaceTests(unittest.TestCase):
             'cross-origin',
         )
         sandbox_script.close()
+        runtime_wasm = self.client.get('/static/pyodide/0.27.7/pyodide.asm.wasm')
+        self.assertEqual(runtime_wasm.status_code, 200)
+        self.assertEqual(runtime_wasm.headers['Access-Control-Allow-Origin'], '*')
+        self.assertEqual(
+            runtime_wasm.headers['Cross-Origin-Resource-Policy'], 'cross-origin'
+        )
+        runtime_wasm.close()
         bundle = self.client.get('/static/js/practice.bundle.js')
         self.assertEqual(bundle.status_code, 200)
         bundle.close()

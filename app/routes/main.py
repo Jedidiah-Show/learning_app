@@ -11,7 +11,7 @@ from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
 from app.learning import course_progress, lesson_is_available
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
 from app.integrations import database_status
-from app.models import CalendarEvent
+from app.models import CalendarEvent, LessonCompletion, QuizResult, ReviewItem, StudySession
 from app.user_preferences import get_effective_config_for_user, get_user_preferences, set_user_preferences
 from app.request_data import get_json_object
 
@@ -90,8 +90,47 @@ def schedule():
 @main_bp.route('/progress')
 @login_required
 def progress():
-    return render_template('progress.html', config=get_effective_config_for_user(current_user),
-                           user=current_user, progress=course_progress(current_user))
+    from datetime import date, datetime, timedelta, timezone
+    config = get_effective_config_for_user(current_user)
+    completions = LessonCompletion.query.filter_by(
+        user_id=current_user.id, completed=True
+    ).all()
+    dates = {item.completed_at.date() for item in completions if item.completed_at}
+    streak = 0
+    cursor = date.today()
+    if cursor not in dates:
+        cursor -= timedelta(days=1)
+    while cursor in dates:
+        streak += 1
+        cursor -= timedelta(days=1)
+    if not config.get('progress', {}).get('track_streaks', True):
+        streak = 0
+    quizzes = QuizResult.query.filter_by(user_id=current_user.id).order_by(
+        QuizResult.taken_at.desc()
+    ).limit(10).all()
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=30)
+    minutes = db.session.query(db.func.coalesce(db.func.sum(StudySession.duration_minutes), 0)).filter(
+        StudySession.user_id == current_user.id, StudySession.date >= cutoff.date()
+    ).scalar() or 0
+    due_reviews = ReviewItem.query.filter_by(user_id=current_user.id, active=True).filter(
+        ReviewItem.due_at <= now
+    ).count()
+    analytics = {
+        'streak': streak, 'minutes_30d': minutes, 'due_reviews': due_reviews,
+        'quiz_results': quizzes,
+    }
+    if not config.get('progress', {}).get('track_time_spent', True):
+        minutes = 0
+    return render_template('progress.html', config=config,
+                           user=current_user, progress=course_progress(current_user),
+                           analytics=analytics)
+
+
+@main_bp.route('/review')
+@login_required
+def review():
+    return render_template('review.html', user=current_user)
 
 
 @main_bp.route('/settings')

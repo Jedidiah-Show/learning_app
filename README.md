@@ -18,9 +18,20 @@ SECRET_KEY='replace-with-a-long-random-value' .venv/bin/python index.py
 Open `http://127.0.0.1:8080`. The default database URL is `sqlite:///../data/learning_app.db`; set `DATABASE_URL` to use a different database. Configure a persistent `SECRET_KEY` anywhere sessions must survive restarts.
 Production deployments must set `SECRET_KEY`; the app refuses to start in production without it.
 
-Production styles are precompiled into `static/css/tailwind.css`; the app does not load Tailwind's runtime CDN. After changing utility classes in templates or JavaScript, rebuild the stylesheet with `npm ci && npm run build:css`. Rebuild the CodeMirror practice editor bundle with `npm run build:js` after changing its source. Chart.js is loaded only on the progress page.
+Production styles are precompiled into `static/css/tailwind.css`; the app does not load Tailwind's runtime CDN. After changing utility classes in templates or JavaScript, rebuild the stylesheet with `npm ci && npm run build:css`. Rebuild the CodeMirror practice editor bundle with `npm run build:js` after changing its source.
 
-The lesson practice workspace currently provides a curated, single-file Python exercise for each lesson in the Python module. Learner source is saved in the database, so apply outstanding migrations before deployment. The local pilot also stores daily aggregate counts of workspace opens, runs, and errors without learner IDs, lesson IDs, or code; inspect them with `flask --app index.py lessons practice-usage`. Python runs in a sandboxed browser frame and is not used for secure grading; the pinned Pyodide runtime is downloaded from jsDelivr on first use, so the learner's browser needs access to that CDN.
+The lesson practice workspace provides curated Python exercises in the Python module and guided Python simulations for backend, RAG, agents, MCP, production, deployment, system design and capstone topics. The simulations run locally and do not connect to real services. Learner source is saved in the database, so apply outstanding migrations before deployment. The local pilot also stores daily aggregate counts of workspace opens, runs, and errors without learner IDs, lesson IDs, or code; inspect them with `flask --app index.py lessons practice-usage`. Python runs in a sandboxed browser frame and is not used for secure grading; Pyodide is served from the app first, then jsDelivr or unpkg as fallbacks.
+
+Missed quiz questions enter the Review Center and return on a spaced schedule. Correct reviews extend the interval; missed reviews come back sooner. The progress page summarizes study streaks, opt-in study time and recent quiz scores. Tutor conversations persist in the current browser's local storage per learner and lesson; **New chat** clears that local history. Module projects can be resubmitted after feedback, require a passing evaluator score or an explicit rubric self-review to complete, and support optional HTTPS repository/demo links shown in the learner's portfolio.
+
+The IDE runtime has a Playwright browser smoke test that loads the real sandboxed worker and runs a Python assertion:
+
+```bash
+npx playwright install chromium
+npm run test:browser
+```
+
+The GitHub Actions browser job installs Chromium and runs the same smoke test, including the app's `Cross-Origin-Resource-Policy: cross-origin` requirement for the isolated iframe worker.
 
 The app does not create or alter database tables at startup. For a new database, apply the migrations with `flask --app index.py db upgrade`. If upgrading a database created by the previous `db.create_all()` version, first mark its existing schema as the baseline, then apply the calendar metadata migration:
 

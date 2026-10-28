@@ -273,6 +273,10 @@
       </div>
       <form id="ask-form" class="lesson-ask-form tutor-composer">
         <label for="question" class="sr-only">Your question</label>
+        <label for="tutor-mode" class="sr-only">Tutor response style</label>
+        <select id="tutor-mode" class="mb-2 rounded-lg border px-3 py-2 text-sm">
+          <option value="explain">Explain</option><option value="hint">Give me a hint</option><option value="quiz">Quiz me</option><option value="code_review">Review my code</option>
+        </select>
         <textarea id="question" rows="2" maxlength="2000" placeholder="Ask a question or follow up…"></textarea>
         <div class="tutor-composer-footer">
           <span>Enter to send · Shift+Enter for a new line</span>
@@ -346,7 +350,15 @@ const needsSignIn = (response) => response.redirected || response.status === 401
 const tutorChat = document.getElementById('answer');
 const tutorQuestion = document.getElementById('question');
 const tutorSend = document.getElementById('ask-send');
-const tutorHistory = [];
+const tutorMode = document.getElementById('tutor-mode');
+const tutorStorageKey = `ruachai-tutor-{{ current_user.id }}-${lessonId}`;
+let tutorHistory = [];
+try {
+  const saved = JSON.parse(localStorage.getItem(tutorStorageKey) || '[]');
+  if (Array.isArray(saved)) tutorHistory = saved.filter((item) =>
+    item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string'
+  ).slice(-8);
+} catch (error) { tutorHistory = []; }
 const addTutorMessage = (role, text, state = '') => {
   const message = document.createElement('article');
   message.className = `tutor-message tutor-message-${role}${state ? ` ${state}` : ''}`;
@@ -360,6 +372,10 @@ const addTutorMessage = (role, text, state = '') => {
   tutorChat.scrollTop = tutorChat.scrollHeight;
   return message;
 };
+if (tutorHistory.length) {
+  tutorChat.replaceChildren();
+  tutorHistory.forEach((item) => addTutorMessage(item.role, item.content));
+}
 document.getElementById('ask-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const question = tutorQuestion.value.trim();
@@ -372,7 +388,7 @@ document.getElementById('ask-form').addEventListener('submit', async (event) => 
     const response = await fetch('/api/lessons/ask', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
-      body: JSON.stringify({lesson_id: lessonId, question, history: tutorHistory.slice(-8)}),
+      body: JSON.stringify({lesson_id: lessonId, question, mode: tutorMode.value, history: tutorHistory.slice(-8)}),
     });
     const data = await readJson(response);
     pending.remove();
@@ -387,6 +403,8 @@ document.getElementById('ask-form').addEventListener('submit', async (event) => 
     const answer = data.answer || 'I could not answer that just now. Please try again.';
     addTutorMessage('assistant', answer);
     tutorHistory.push({role: 'user', content: question}, {role: 'assistant', content: answer});
+    tutorHistory = tutorHistory.slice(-8);
+    try { localStorage.setItem(tutorStorageKey, JSON.stringify(tutorHistory)); } catch (error) {}
   } catch (error) {
     pending.remove();
     addTutorMessage('assistant', 'Could not reach the tutor. Check your connection and try again.', 'is-error');
@@ -402,7 +420,8 @@ tutorQuestion.addEventListener('keydown', (event) => {
   }
 });
 document.getElementById('ask-reset').addEventListener('click', () => {
-  tutorHistory.length = 0;
+  tutorHistory = [];
+  try { localStorage.removeItem(tutorStorageKey); } catch (error) {}
   tutorChat.replaceChildren();
   addTutorMessage('assistant', 'Hi, I’m Ruach-AI, your tutor for the RUACH AI Engineering course. What would you like to understand better in this lesson?');
   tutorQuestion.focus();
@@ -454,13 +473,22 @@ document.getElementById('quiz-button').addEventListener('click', async () => {
   }
 });
 const completeButton=document.getElementById('complete-button');
+let activeSeconds = 0;
+let visibleSince = document.visibilityState === 'visible' ? Date.now() : null;
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') visibleSince = Date.now();
+  else if (visibleSince !== null) { activeSeconds += (Date.now() - visibleSince) / 1000; visibleSince = null; }
+});
 if (completeButton) completeButton.addEventListener('click', async () => {
   const status = document.getElementById('lesson-status');
   completeButton.disabled = true;
   completeButton.textContent = 'Saving…';
   let completed = false;
   try {
-    const response = await fetch('/api/lessons/complete', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body:JSON.stringify({lesson_id:lessonId})});
+    const trackingEnabled = {{ config.progress.track_time_spent|tojson }};
+    const elapsedSeconds = Math.floor(activeSeconds + (visibleSince === null ? 0 : (Date.now() - visibleSince) / 1000));
+    const trackedMinutes = trackingEnabled ? Math.min(1440, Math.max(0, Math.round(elapsedSeconds / 60))) : 0;
+    const response = await fetch('/api/lessons/complete', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body:JSON.stringify({lesson_id:lessonId, time_spent_minutes:trackedMinutes})});
     const data = await readJson(response);
     if (needsSignIn(response)) {
       status.textContent = 'Your session expired. Sign in and try again.';

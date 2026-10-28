@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Review Center · RUACH{% endblock %}
+{% block content %}
+<header class="mb-6"><p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Spaced practice</p><h1 class="mt-2 text-3xl font-bold">Review center</h1><p class="mt-2 text-slate-600">Questions you missed return here. Correct answers come back at gradually longer intervals.</p></header>
+<section id="review-card" class="max-w-3xl rounded-2xl border bg-white p-6" aria-live="polite"><p>Loading your review queue…</p></section>
+{% endblock %}
+{% block extra_scripts %}<script>
+const root = document.getElementById('review-card');
+const csrf = document.querySelector('meta[name="csrf-token"]').content;
+let queue = [];
+let position = 0;
+const h = (tag, className, text) => { const el = document.createElement(tag); if (className) el.className = className; if (text) el.textContent = text; return el; };
+async function loadQueue() {
+  try {
+    const response = await fetch('/api/quizzes/review');
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Could not load reviews.');
+    queue = data.items || [];
+    position = 0;
+    showNext();
+  } catch (error) { root.replaceChildren(h('p', 'text-rose-700', error.message)); }
+}
+function showNext() {
+  root.replaceChildren();
+  if (position >= queue.length) {
+    root.append(h('h2', 'text-xl font-bold', 'You’re caught up for now'));
+    root.append(h('p', 'mt-2 text-slate-600', queue.length ? 'Your next review items will appear when they are due.' : 'Missed quiz questions will appear here for another practice round.'));
+    root.append(Object.assign(h('a', 'mt-4 inline-block font-semibold text-indigo-700', 'Back to progress →'), {href: '/progress'}));
+    return;
+  }
+  const item = queue[position];
+  root.append(h('p', 'text-sm font-semibold text-indigo-700', `Question ${position + 1} of ${queue.length}`));
+  root.append(h('h2', 'mt-3 text-lg font-bold', item.question));
+  const form = document.createElement('form');
+  form.className = 'mt-4 space-y-3';
+  item.options.forEach((option, index) => {
+    const label = h('label', 'flex cursor-pointer gap-3 rounded-xl border p-3');
+    const input = document.createElement('input'); input.type = 'radio'; input.name = 'answer'; input.value = String(index); input.required = true;
+    label.append(input, document.createTextNode(option)); form.append(label);
+  });
+  const submit = h('button', 'rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white', 'Check answer');
+  form.append(submit); root.append(form);
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault(); submit.disabled = true;
+    try {
+      const response = await fetch(`/api/quizzes/review/${item.id}`, {method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf}, body: JSON.stringify({answer: Number(new FormData(form).get('answer'))})});
+      const result = await response.json();
+      if (!response.ok) throw new Error(result.error || 'Could not save this review.');
+      root.append(h('p', `mt-4 font-semibold ${result.correct ? 'text-emerald-700' : 'text-amber-700'}`, result.correct ? 'Correct. You’ll see this again later.' : `Not quite. The correct choice is: ${item.options[result.correct_index]}`));
+      if (result.explanation) root.append(h('p', 'mt-2 text-slate-700', result.explanation));
+      const next = h('button', 'mt-4 rounded-lg border px-4 py-2 font-semibold', position + 1 < queue.length ? 'Next question' : 'Finish review');
+      root.append(next); next.addEventListener('click', () => { position += 1; showNext(); });
+    } catch (error) { submit.disabled = false; root.append(h('p', 'mt-2 text-rose-700', error.message)); }
+  });
+}
+loadQueue();
+</script>{% endblock %}
