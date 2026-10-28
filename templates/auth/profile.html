@@ -75,10 +75,7 @@
                     <label class="block text-sm font-medium text-slate-600 mb-1">Full Name</label>
                     <input type="text" name="full_name" value="{{ user.full_name or '' }}" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="Enter full name">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-600 mb-1">Profile Photo URL</label>
-                    <input type="url" name="profile_photo" value="{{ user.profile_photo or '' }}" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="Or paste image URL">
-                </div>
+                <p class="text-sm text-slate-500 md:col-span-2">Use the profile picture above to upload, crop, or remove your photo.</p>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -134,15 +131,15 @@
     </div>
 </div>
 
-<div id="photo-editor-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4">
+<div id="photo-editor-modal" class="fixed inset-0 bg-black/60 hidden items-center justify-center z-50 p-4" role="dialog" aria-modal="true" aria-labelledby="photo-editor-title">
     <div class="bg-white rounded-xl max-w-md w-full p-6 space-y-4">
         <div class="flex items-center justify-between">
-            <h3 class="text-lg font-bold text-slate-800">Edit Profile Picture</h3>
+            <h3 id="photo-editor-title" class="text-lg font-bold text-slate-800">Edit Profile Picture</h3>
             <button type="button" id="photo-editor-close" class="text-slate-500 hover:text-slate-700">✕</button>
         </div>
         <div class="flex flex-col items-center gap-4">
             <div class="relative w-48 h-48 rounded-full overflow-hidden border-4 border-emerald-200 bg-slate-100">
-                <img id="photo-editor-preview" src="" alt="Preview" class="absolute w-full h-full object-cover" style="transform: scale(1) translate(0px,0px);">
+                <img id="photo-editor-preview" src="{{ user.profile_photo or '' }}" alt="Profile picture crop preview" class="absolute w-full h-full object-cover cursor-grab" style="transform: scale(1) translate(0px,0px);touch-action:none;">
             </div>
             <div class="w-full space-y-2">
                 <label class="text-sm text-slate-600">Zoom</label>
@@ -150,18 +147,20 @@
                 <div class="flex gap-2">
                     <input type="file" id="photo-editor-file" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" class="text-sm text-slate-600">
                 </div>
+                <p id="photo-editor-status" class="text-xs text-slate-500" role="status">Choose a photo, then adjust its crop.</p>
             </div>
         </div>
-        <div class="flex gap-3">
+        <div class="flex flex-wrap gap-3">
             <button type="button" id="photo-editor-cancel" class="flex-1 px-4 py-2 border border-slate-300 rounded-lg text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
-            <button type="button" id="photo-editor-save" class="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700">Save</button>
+            {% if user.profile_photo %}<button type="button" id="photo-editor-remove" class="px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 rounded-lg">Remove photo</button>{% endif %}
+            <button type="button" id="photo-editor-save" class="flex-1 px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700">Save photo</button>
         </div>
     </div>
 </div>
 
 <form id="photo-upload-form" method="POST" action="{{ url_for('auth.update_account') }}" enctype="multipart/form-data" class="hidden">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-    <input type="hidden" name="current_password" value="">
+    <input type="hidden" name="remove_profile_photo" id="remove-profile-photo" value="">
     <input type="file" name="profile_photo_file" id="photo-upload-input">
 </form>
 
@@ -177,7 +176,10 @@
     const zoom = document.getElementById('photo-zoom');
     const uploadForm = document.getElementById('photo-upload-form');
     const uploadInput = document.getElementById('photo-upload-input');
-    const display = document.getElementById('profile-photo-display');
+    const status = document.getElementById('photo-editor-status');
+    const removeButton = document.getElementById('photo-editor-remove');
+    const removeInput = document.getElementById('remove-profile-photo');
+    const cropViewport = preview.parentElement;
     
     let scale = 1;
     let posX = 0, posY = 0;
@@ -185,6 +187,12 @@
     let selectedFile = null;
     
     function openModal() {
+        selectedFile = null;
+        fileInput.value = '';
+        scale = 1; posX = 0; posY = 0;
+        zoom.value = 1;
+        preview.style.transform = 'scale(1) translate(0px,0px)';
+        status.textContent = 'Choose a photo, then adjust its crop.';
         modal.classList.remove('hidden');
         modal.classList.add('flex');
     }
@@ -221,31 +229,75 @@
         updateTransform();
     });
     
-    preview.parentElement.addEventListener('mousedown', (e) => {
+    cropViewport.addEventListener('pointerdown', (e) => {
         dragging = true;
         startX = e.clientX; startY = e.clientY;
         startPosX = posX; startPosY = posY;
+        cropViewport.setPointerCapture(e.pointerId);
     });
-    document.addEventListener('mousemove', (e) => {
+    document.addEventListener('pointermove', (e) => {
         if (!dragging) return;
         posX = startPosX + (e.clientX - startX);
         posY = startPosY + (e.clientY - startY);
         updateTransform();
     });
-    document.addEventListener('mouseup', () => { dragging = false; });
+    document.addEventListener('pointerup', () => { dragging = false; });
+    document.addEventListener('pointercancel', () => { dragging = false; });
     
     function updateTransform() {
         preview.style.transform = `scale(${scale}) translate(${posX/scale}px, ${posY/scale}px)`;
     }
     
-    saveBtn.addEventListener('click', () => {
+    async function makeCroppedPhoto(file) {
+        const bitmap = await createImageBitmap(file);
+        try {
+            const frameSize = cropViewport.clientWidth || 192;
+            const sourceSide = Math.min(bitmap.width, bitmap.height);
+            const cropSide = sourceSide / scale;
+            const centerX = bitmap.width / 2 - posX * sourceSide / (frameSize * scale);
+            const centerY = bitmap.height / 2 - posY * sourceSide / (frameSize * scale);
+            const left = Math.max(0, Math.min(bitmap.width - cropSide, centerX - cropSide / 2));
+            const top = Math.max(0, Math.min(bitmap.height - cropSide, centerY - cropSide / 2));
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const context = canvas.getContext('2d');
+            context.fillStyle = '#ffffff';
+            context.fillRect(0, 0, canvas.width, canvas.height);
+            context.drawImage(bitmap, left, top, cropSide, cropSide, 0, 0, 512, 512);
+            const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+            if (!blob) throw new Error('The photo could not be cropped. Try another image.');
+            return new File([blob], 'profile-photo.jpg', {type: 'image/jpeg'});
+        } finally {
+            bitmap.close?.();
+        }
+    }
+
+    saveBtn.addEventListener('click', async () => {
         if (!selectedFile) {
-            closeModal();
+            status.textContent = 'Choose a photo first.';
             return;
         }
-        const dt = new DataTransfer();
-        dt.items.add(selectedFile);
-        uploadInput.files = dt.files;
+        saveBtn.disabled = true;
+        saveBtn.textContent = 'Saving…';
+        status.textContent = 'Cropping and saving your photo…';
+        try {
+            const croppedPhoto = await makeCroppedPhoto(selectedFile);
+            if (croppedPhoto.size > 2 * 1024 * 1024) {
+                throw new Error('The cropped photo is too large. Choose a smaller image.');
+            }
+            const transfer = new DataTransfer();
+            transfer.items.add(croppedPhoto);
+            uploadInput.files = transfer.files;
+            uploadForm.submit();
+        } catch (error) {
+            status.textContent = error.message || 'The photo could not be saved. Try another image.';
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save photo';
+        }
+    });
+    removeButton?.addEventListener('click', () => {
+        removeInput.value = 'true';
         uploadForm.submit();
     });
 })();

@@ -1,12 +1,11 @@
 from flask import (
     Blueprint, current_app, render_template, request, redirect, url_for,
-    flash, jsonify, session,
+    flash, jsonify, session, Response, abort,
 )
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 from app import db
-from app.models import PasswordResetToken, User
+from app.models import PasswordResetToken, User, UserProfilePhoto
 from app.phone import PhoneError, normalize_phone
 from app.rate_limit import client_ip, enforce_rate_limit, identity_hash
 from datetime import datetime, timedelta, timezone
@@ -22,6 +21,23 @@ ALLOWED_PHOTO_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
 
 def _allowed_photo_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_PHOTO_EXTENSIONS
+
+
+def _photo_mime_type(filename, content):
+    """Match the claimed extension to a supported raster image signature."""
+    extension = filename.rsplit('.', 1)[1].lower()
+    signatures = {
+        'png': ('image/png', lambda value: value.startswith(b'\x89PNG\r\n\x1a\n')),
+        'jpg': ('image/jpeg', lambda value: value.startswith(b'\xff\xd8\xff')),
+        'jpeg': ('image/jpeg', lambda value: value.startswith(b'\xff\xd8\xff')),
+        'gif': ('image/gif', lambda value: value.startswith((b'GIF87a', b'GIF89a'))),
+        'webp': (
+            'image/webp',
+            lambda value: len(value) >= 12 and value[:4] == b'RIFF' and value[8:12] == b'WEBP',
+        ),
+    }
+    match = signatures.get(extension)
+    return match[0] if match and match[1](content) else None
 
 
 def _set_auth_session(user):
@@ -382,6 +398,18 @@ def profile():
     return render_template('auth/profile.html', user=current_user)
 
 
+@auth_bp.route('/profile-photo/<int:user_id>')
+@login_required
+def profile_photo(user_id):
+    if user_id != current_user.id and not current_user.is_admin:
+        abort(404)
+    photo = UserProfilePhoto.query.filter_by(user_id=user_id).first_or_404()
+    response = Response(photo.data, mimetype=photo.mime_type)
+    response.headers['Cache-Control'] = 'private, no-cache, max-age=0'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
+
+
 @auth_bp.route('/account/update', methods=['POST'])
 @login_required
 def update_account():
@@ -396,6 +424,9 @@ def update_account():
     raw_profile_photo = data.get('profile_photo')
     current_password = data.get('current_password')
     new_password = data.get('new_password')
+    remove_profile_photo = str(data.get('remove_profile_photo') or '').lower() in {
+        '1', 'true', 'yes', 'on',
+    }
     if any(
         value is not None and not isinstance(value, str)
         for value in (raw_email, raw_phone, current_password, new_password, raw_full_name, raw_profile_photo)
@@ -416,27 +447,27 @@ def update_account():
         full_name = None
 
     photo_file = request.files.get('profile_photo_file')
+    photo_file_uploaded = False
+    photo_data = None
+    photo_mime_type = None
     if photo_file and photo_file.filename:
         if not _allowed_photo_file(photo_file.filename):
             flash('Profile photo must be a PNG, JPG, JPEG, GIF, or WebP image.', 'error')
             return redirect(url_for('auth.profile'))
-        if photo_file.content_length and photo_file.content_length > 2 * 1024 * 1024:
+        photo_data = photo_file.read(2 * 1024 * 1024 + 1)
+        if len(photo_data) > 2 * 1024 * 1024:
             flash('Profile photo must be 2MB or smaller.', 'error')
             return redirect(url_for('auth.profile'))
-        photo_file.seek(0, os.SEEK_END)
-        size = photo_file.tell()
-        photo_file.seek(0)
-        if size > 2 * 1024 * 1024:
-            flash('Profile photo must be 2MB or smaller.', 'error')
+        photo_mime_type = _photo_mime_type(photo_file.filename, photo_data)
+        if not photo_mime_type:
+            flash('Choose a valid PNG, JPG, GIF, or WebP image.', 'error')
             return redirect(url_for('auth.profile'))
-        upload_folder = current_app.config.get('UPLOAD_FOLDER') or os.path.join(current_app.instance_path, 'uploads')
-        os.makedirs(upload_folder, exist_ok=True)
-        ext = photo_file.filename.rsplit('.', 1)[1].lower()
-        filename = f"user_{current_user.id}_{uuid.uuid4().hex}.{ext}"
-        filename = secure_filename(filename)
-        photo_path = os.path.join(upload_folder, filename)
-        photo_file.save(photo_path)
-        profile_photo = url_for('main.uploaded_file', filename=filename)
+        profile_photo = url_for(
+            'auth.profile_photo', user_id=current_user.id, v=uuid.uuid4().hex
+        )
+        photo_file_uploaded = True
+    elif remove_profile_photo:
+        profile_photo = None
 
     if email is not None and (
         len(email) > 120 or (email and '@' not in email)
@@ -464,7 +495,7 @@ def update_account():
     full_name_changed = (
         full_name is not None and (full_name or None) != (current_user.full_name or None)
     )
-    profile_photo_changed = (
+    profile_photo_changed = remove_profile_photo or (
         profile_photo is not None and (profile_photo or None) != (current_user.profile_photo or None)
     )
     password_changed = bool(new_password)
@@ -504,7 +535,18 @@ def update_account():
         current_user.phone = phone
     if full_name_changed and full_name is not None:
         current_user.full_name = full_name
-    if profile_photo_changed and profile_photo is not None:
+    if photo_file_uploaded:
+        photo = UserProfilePhoto.query.filter_by(user_id=current_user.id).first()
+        if photo is None:
+            photo = UserProfilePhoto(user_id=current_user.id)
+            db.session.add(photo)
+        photo.data = photo_data
+        photo.mime_type = photo_mime_type
+        current_user.profile_photo = profile_photo
+    elif remove_profile_photo:
+        UserProfilePhoto.query.filter_by(user_id=current_user.id).delete()
+        current_user.profile_photo = None
+    elif profile_photo_changed and profile_photo is not None:
         current_user.profile_photo = profile_photo
     if password_changed:
         current_user.password_hash = generate_password_hash(new_password)

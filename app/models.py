@@ -75,6 +75,18 @@ class User(UserMixin, db.Model):
         cascade='all, delete-orphan',
     )
 
+
+class UserProfilePhoto(db.Model):
+    """Durable profile photo bytes stored separately from frequently-read users."""
+    __tablename__ = 'user_profile_photo'
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), primary_key=True
+    )
+    data = db.Column(db.LargeBinary, nullable=False)
+    mime_type = db.Column(db.String(32), nullable=False)
+    updated_at = db.Column(db.DateTime, nullable=False, default=utcnow, onupdate=utcnow)
+
+
 class Progress(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
