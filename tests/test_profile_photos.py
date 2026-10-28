@@ -68,6 +68,8 @@ class ProfilePhotoTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertIn('nav-label">photo-learner</span>', page)
         self.assertIn('name="profile_photo_file"', page)
+        self.assertIn('Horizontal focus', page)
+        self.assertIn('Vertical focus', page)
         self.assertNotIn('photo-editor-modal', page)
 
     def test_photo_can_be_removed_and_invalid_image_content_is_rejected(self):

@@ -93,14 +93,14 @@
                         <label class="block text-sm font-medium text-slate-600 mb-1">Current Password</label>
                         <div class="relative">
                             <input type="password" id="profile-current-password" name="current_password" autocomplete="current-password" class="w-full border border-slate-300 rounded-lg px-3 py-2 pr-10">
-                            <button type="button" data-toggle-password="profile-current-password" aria-pressed="false" aria-label="Show password" title="Show password" class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-emerald-700"><span class="password-toggle-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></span></button>
+                            <button type="button" data-toggle-password="profile-current-password" aria-pressed="false" aria-label="Show password" title="Show password" class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center p-1 text-slate-500 hover:text-emerald-700"><span class="password-toggle-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></span></button>
                         </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-600 mb-1">New Password (optional)</label>
                         <div class="relative">
                             <input type="password" id="profile-new-password" name="new_password" autocomplete="new-password" class="w-full border border-slate-300 rounded-lg px-3 py-2 pr-10" minlength="8">
-                            <button type="button" data-toggle-password="profile-new-password" aria-pressed="false" aria-label="Show password" title="Show password" class="absolute inset-y-0 right-0 flex items-center px-3 text-slate-500 hover:text-emerald-700"><span class="password-toggle-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></span></button>
+                            <button type="button" data-toggle-password="profile-new-password" aria-pressed="false" aria-label="Show password" title="Show password" class="absolute right-2 top-1/2 -translate-y-1/2 flex items-center justify-center p-1 text-slate-500 hover:text-emerald-700"><span class="password-toggle-icon"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg></span></button>
                         </div>
                     </div>
                 </div>
@@ -110,16 +110,34 @@
         <div class="mt-6 border-t border-slate-200 pt-5">
             <h4 class="text-base font-semibold text-slate-800 mb-2">Profile Picture</h4>
             <p class="text-sm text-slate-600 mb-4">Choose a picture to display beside your username. PNG, JPG, GIF, or WebP; up to 2MB.</p>
-            <form method="POST" action="{{ url_for('auth.update_account') }}" enctype="multipart/form-data" class="flex flex-col sm:flex-row sm:items-end gap-3">
+            <form id="profile-photo-form" method="POST" action="{{ url_for('auth.update_account') }}" enctype="multipart/form-data" class="space-y-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                <div class="flex-1">
+                <div class="flex flex-col sm:flex-row sm:items-end gap-3">
+                  <div class="flex-1">
                     <label for="profile-photo-upload" class="block text-sm font-medium text-slate-700 mb-1">Choose picture</label>
                     <input type="file" name="profile_photo_file" id="profile-photo-upload" accept="image/png,image/jpeg,image/gif,image/webp" required class="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-3 file:py-2 file:font-semibold file:text-emerald-700 hover:file:bg-emerald-100">
+                  </div>
+                  <button id="profile-photo-save" type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700">Save picture</button>
+                  {% if user.profile_photo %}
+                  <button type="submit" name="remove_profile_photo" value="true" formnovalidate class="px-4 py-2 border border-rose-200 text-rose-700 rounded-lg text-sm font-semibold hover:bg-rose-50">Remove</button>
+                  {% endif %}
                 </div>
-                <button type="submit" class="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-semibold hover:bg-emerald-700">Save picture</button>
-                {% if user.profile_photo %}
-                <button type="submit" name="remove_profile_photo" value="true" formnovalidate class="px-4 py-2 border border-rose-200 text-rose-700 rounded-lg text-sm font-semibold hover:bg-rose-50">Remove</button>
-                {% endif %}
+                <p id="profile-photo-status" class="text-xs text-slate-500" role="status">Choose an image to preview and adjust its focus.</p>
+                <div id="profile-photo-editor" class="hidden rounded-xl border border-slate-200 bg-slate-50 p-4">
+                    <div class="flex flex-col sm:flex-row items-center gap-5">
+                        <div id="profile-photo-crop-frame" class="w-48 h-48 shrink-0 overflow-hidden rounded-full border-4 border-emerald-200 bg-white">
+                            <img id="profile-photo-preview" alt="Profile picture crop preview" class="w-full h-full object-cover" style="object-position:50% 50%">
+                        </div>
+                        <div class="w-full space-y-4">
+                            <p class="text-sm font-medium text-slate-700">Adjust the preview so your face stays inside the circle.</p>
+                            <label for="profile-photo-focus-x" class="block text-xs font-medium text-slate-600">Horizontal focus</label>
+                            <input id="profile-photo-focus-x" type="range" min="0" max="100" value="50" class="w-full">
+                            <label for="profile-photo-focus-y" class="block text-xs font-medium text-slate-600">Vertical focus</label>
+                            <input id="profile-photo-focus-y" type="range" min="0" max="100" value="50" class="w-full">
+                            <button id="profile-photo-original" type="submit" formnovalidate class="hidden text-sm font-semibold text-emerald-700 underline">Upload original instead</button>
+                        </div>
+                    </div>
+                </div>
             </form>
         </div>
     </div>
@@ -143,5 +161,97 @@
         </div>
     </div>
 </div>
+
+<script>
+(function () {
+    const form = document.getElementById('profile-photo-form');
+    const fileInput = document.getElementById('profile-photo-upload');
+    const editor = document.getElementById('profile-photo-editor');
+    const frame = document.getElementById('profile-photo-crop-frame');
+    const preview = document.getElementById('profile-photo-preview');
+    const focusX = document.getElementById('profile-photo-focus-x');
+    const focusY = document.getElementById('profile-photo-focus-y');
+    const saveButton = document.getElementById('profile-photo-save');
+    const originalButton = document.getElementById('profile-photo-original');
+    const status = document.getElementById('profile-photo-status');
+    let previewUrl = null;
+
+    function updateFocus() {
+        preview.style.objectPosition = `${focusX.value}% ${focusY.value}%`;
+    }
+
+    fileInput.addEventListener('change', () => {
+        const file = fileInput.files && fileInput.files[0];
+        fileInput.setCustomValidity('');
+        originalButton.classList.add('hidden');
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        if (!file) {
+            editor.classList.add('hidden');
+            status.textContent = 'Choose an image to preview and adjust its focus.';
+            return;
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            editor.classList.add('hidden');
+            status.textContent = 'The image must be 2MB or smaller.';
+            fileInput.setCustomValidity('Choose an image that is 2MB or smaller.');
+            return;
+        }
+        focusX.value = '50';
+        focusY.value = '50';
+        updateFocus();
+        previewUrl = URL.createObjectURL(file);
+        preview.onload = () => {
+            editor.classList.remove('hidden');
+            status.textContent = 'Drag the sliders to position your face in the preview, then save.';
+        };
+        preview.onerror = () => {
+            editor.classList.add('hidden');
+            status.textContent = 'The image preview could not be opened. You can upload the original image.';
+            originalButton.classList.remove('hidden');
+        };
+        preview.src = previewUrl;
+    });
+
+    focusX.addEventListener('input', updateFocus);
+    focusY.addEventListener('input', updateFocus);
+
+    form.addEventListener('submit', async (event) => {
+        if (event.submitter && (event.submitter.name === 'remove_profile_photo' || event.submitter === originalButton)) return;
+        const file = fileInput.files && fileInput.files[0];
+        if (!file || !preview.naturalWidth || !window.fetch || !window.FormData) return;
+
+        event.preventDefault();
+        saveButton.disabled = true;
+        saveButton.textContent = 'Saving…';
+        status.textContent = 'Preparing your selected crop…';
+        try {
+            const size = frame.clientWidth;
+            const scale = Math.max(size / preview.naturalWidth, size / preview.naturalHeight);
+            const cropSize = size / scale;
+            const left = ((preview.naturalWidth * scale - size) * (Number(focusX.value) / 100)) / scale;
+            const top = ((preview.naturalHeight * scale - size) * (Number(focusY.value) / 100)) / scale;
+            const canvas = document.createElement('canvas');
+            canvas.width = 512;
+            canvas.height = 512;
+            const context = canvas.getContext('2d');
+            if (!context) throw new Error('Image editing is unavailable in this browser.');
+            context.fillStyle = '#fff';
+            context.fillRect(0, 0, 512, 512);
+            context.drawImage(preview, left, top, cropSize, cropSize, 0, 0, 512, 512);
+            const crop = await new Promise((resolve, reject) => canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Could not prepare the image crop.')), 'image/jpeg', 0.9));
+            const payload = new FormData(form);
+            payload.set('profile_photo_file', crop, 'profile-photo.jpg');
+            status.textContent = 'Uploading your profile picture…';
+            const response = await fetch(form.action, {method: 'POST', body: payload, credentials: 'same-origin'});
+            window.location.assign(response.url || form.action);
+        } catch (error) {
+            status.textContent = `${error.message || 'Could not save the edited image.'} You can upload the original instead.`;
+            originalButton.classList.remove('hidden');
+            saveButton.disabled = false;
+            saveButton.textContent = 'Save picture';
+        }
+    });
+})();
+</script>
 
 {% endblock %}
