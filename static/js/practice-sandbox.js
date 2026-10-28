@@ -1,6 +1,7 @@
 (() => {
     const pyodideVersion = '0.27.7';
     const runtimeIndexes = [
+        new URL(`/static/pyodide/${pyodideVersion}/`, document.location.href).href,
         `https://cdn.jsdelivr.net/pyodide/v${pyodideVersion}/full/`,
         `https://unpkg.com/pyodide@${pyodideVersion}/`,
     ];
@@ -24,11 +25,11 @@
                     importScripts(new URL('pyodide.js', indexURL).href);
                     return await loadPyodide({indexURL});
                 } catch (error) {
-                    failures.push(`${indexURL}: ${error?.message || error}`);
+                    failures.push(String(indexURL) + ': ' + (error && error.message ? error.message : String(error)));
                 }
             }
             throw new Error(
-                'Python could not load from either runtime CDN. Check that this browser can access jsDelivr and unpkg. '
+                'Python could not load from the app or either runtime CDN. '
                 + failures.join(' | '),
             );
         };

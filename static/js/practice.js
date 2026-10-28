@@ -173,7 +173,7 @@ if (root) {
                 queuedRun = false;
                 runButton.disabled = false;
                 iframe.src = 'about:blank';
-                setRunOutput('Python could not start. Check that your browser allows workers and can access jsDelivr or unpkg, then reload the lesson.', true);
+                setRunOutput('The Python runtime did not respond. Check that your browser allows background workers, then reload the lesson.', true);
                 void recordUsage('error');
             }, 45000);
         }
