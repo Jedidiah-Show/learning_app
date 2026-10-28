@@ -13,13 +13,16 @@ class User(UserMixin, db.Model):
     __table_args__ = (
         db.Index('idx_user_email', 'email'),
         db.Index('idx_user_username', 'username'),
+        db.Index('idx_user_public_id', 'public_id'),
     )
     id = db.Column(db.Integer, primary_key=True)
+    public_id = db.Column(db.String(32), unique=True, nullable=True)
     username = db.Column(db.String(80), unique=True, nullable=True)
     email = db.Column(db.String(120), unique=True, nullable=True)
     phone = db.Column(db.String(50), unique=True, nullable=True)
     password_hash = db.Column(db.String(255), nullable=True)
     full_name = db.Column(db.String(120), nullable=True)
+    profile_photo = db.Column(db.String(500), nullable=True)
     google_id = db.Column(db.String(255), nullable=True)
     google_access_token = db.Column(EncryptedText, nullable=True)
     google_refresh_token = db.Column(EncryptedText, nullable=True)

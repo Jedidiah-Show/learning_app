@@ -308,18 +308,27 @@ def register():
                 next_page=request.form.get('next', ''),
             ), 200
         
+        import uuid
         user = User(
             username=username,
             email=email,
             phone=phone,
             full_name=full_name,
             password_hash=generate_password_hash(password),
+            public_id='RU-' + uuid.uuid4().hex[:8].upper(),
             created_at=datetime.now(timezone.utc),
             last_active=datetime.now(timezone.utc)
         )
         db.session.add(user)
         try:
             db.session.commit()
+        except Exception:
+            db.session.rollback()
+            user = User.query.filter_by(username=username).first()
+            if not user.public_id:
+                import uuid
+                user.public_id = 'RU-' + uuid.uuid4().hex[:8].upper()
+                db.session.commit()
         except Exception as error:
             from sqlalchemy.exc import IntegrityError
             if not isinstance(error, IntegrityError):
@@ -376,15 +385,28 @@ def update_account():
         return jsonify({'error': 'Request body must be an object'}), 400
     raw_email = data.get('email')
     raw_phone = data.get('phone')
+    raw_full_name = data.get('full_name')
+    raw_profile_photo = data.get('profile_photo')
     current_password = data.get('current_password')
     new_password = data.get('new_password')
     if any(
         value is not None and not isinstance(value, str)
-        for value in (raw_email, raw_phone, current_password, new_password)
+        for value in (raw_email, raw_phone, current_password, new_password, raw_full_name, raw_profile_photo)
     ):
         return jsonify({'error': 'Account fields must be strings'}), 400
     email = (raw_email or '').strip().lower() if raw_email is not None else None
     phone = (raw_phone or '').strip() if raw_phone is not None else None
+    full_name = (raw_full_name or '').strip() if raw_full_name is not None else None
+    profile_photo = (raw_profile_photo or '').strip() if raw_profile_photo is not None else None
+    if profile_photo and len(profile_photo) > 500:
+        if request.is_json:
+            return {'error': 'Profile photo URL must be 500 characters or fewer'}, 400
+        flash('Profile photo URL must be 500 characters or fewer', 'error')
+        return redirect(url_for('auth.profile'))
+    elif profile_photo == '':
+        profile_photo = None
+    if full_name == '':
+        full_name = None
     if email is not None and (
         len(email) > 120 or (email and '@' not in email)
     ):
@@ -407,6 +429,12 @@ def update_account():
     )
     phone_changed = (
         phone is not None and (phone or None) != (current_user.phone or None)
+    )
+    full_name_changed = (
+        full_name is not None and (full_name or None) != (current_user.full_name or None)
+    )
+    profile_photo_changed = (
+        profile_photo is not None and (profile_photo or None) != (current_user.profile_photo or None)
     )
     password_changed = bool(new_password)
 
@@ -443,6 +471,10 @@ def update_account():
         current_user.email = email or None
     if phone_changed:
         current_user.phone = phone
+    if full_name_changed and full_name is not None:
+        current_user.full_name = full_name
+    if profile_photo_changed and profile_photo is not None:
+        current_user.profile_photo = profile_photo
     if password_changed:
         current_user.password_hash = generate_password_hash(new_password)
         PasswordResetToken.query.filter_by(user_id=current_user.id).update(

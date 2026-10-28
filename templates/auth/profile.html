@@ -8,13 +8,27 @@
         <p class="brand-kicker">Spirit · Connection · Growth</p>
         <h2 class="mt-2 text-xl font-bold text-slate-800 mb-6">Your RUACH profile</h2>
         
+        <div class="flex items-center gap-4 mb-6">
+            <div class="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center text-white text-2xl font-bold overflow-hidden border-2 border-emerald-200">
+                {% if user.profile_photo %}
+                <img src="{{ user.profile_photo }}" alt="{{ user.full_name or user.username }}" class="w-full h-full object-cover">
+                {% else %}
+                {{ (user.full_name or user.username or 'U')[0]|upper }}
+                {% endif %}
+            </div>
+            <div>
+                <p class="text-lg font-semibold text-slate-800">{{ user.full_name or user.username or 'User' }}</p>
+                <p class="text-sm text-slate-500">RUACH ID: <span class="font-mono font-semibold text-emerald-700">{{ user.public_id or 'RU-' + '%08X' % (user.id or 0) }}</span></p>
+            </div>
+        </div>
+        
         <div class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-slate-600 mb-1">Full Name</label>
                 <p class="text-slate-800">{{ user.full_name or 'Not set' }}</p>
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-600 mb-1">Username</label>
+                <label class="block text-sm font-medium text-slate-600 mb-1">Username <span class="text-xs text-slate-400">(cannot be changed)</span></label>
                 <p class="text-slate-800">{{ user.username or 'Not set' }}</p>
             </div>
             <div>
@@ -53,6 +67,16 @@
         <h3 class="text-lg font-bold text-slate-800 mb-4">Update Account</h3>
         <form method="POST" action="{{ url_for('auth.update_account') }}" class="space-y-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">Full Name</label>
+                    <input type="text" name="full_name" value="{{ user.full_name or '' }}" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="Enter full name">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">Profile Photo URL</label>
+                    <input type="url" name="profile_photo" value="{{ user.profile_photo or '' }}" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="https://example.com/photo.jpg">
+                </div>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-600 mb-1">Email</label>
