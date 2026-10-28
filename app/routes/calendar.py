@@ -213,7 +213,7 @@ def _desired_state(event, block, calendar_config, subjects, start_date):
              f"Lesson {event.day_number}")
     description = (
         f"Module {lesson['_module']['number']}: {lesson['_module']['title']} · {lesson['title']}"
-        if lesson else 'RUACH Engineering Course study session'
+        if lesson else 'RUACH AI Engineering study session'
     )
     desired = _DesiredEvent(
         title,

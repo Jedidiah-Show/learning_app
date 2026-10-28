@@ -1,8 +1,14 @@
 """Course pages and learner preferences."""
 
 import os
+from datetime import datetime
+from functools import lru_cache
 
+<<<<<<< HEAD
 from flask import Blueprint, abort, current_app, jsonify, render_template, url_for, send_from_directory
+=======
+from flask import Blueprint, abort, current_app, jsonify, render_template, request, url_for
+>>>>>>> 38fa593 (Add UX improvements: search, bookmarks, notes, PWA, rebrand to RUACH AI Engineering)
 from flask_login import current_user, login_required
 import os
 
@@ -11,19 +17,38 @@ from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
 from app.learning import course_progress, lesson_is_available
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
 from app.integrations import database_status
+<<<<<<< HEAD
 from app.models import CalendarEvent, LessonCompletion, QuizResult, ReviewItem, StudySession
+=======
+from app.models import CalendarEvent, LessonBookmark, LessonNote, LessonCompletion, CourseProject
+>>>>>>> 38fa593 (Add UX improvements: search, bookmarks, notes, PWA, rebrand to RUACH AI Engineering)
 from app.user_preferences import get_effective_config_for_user, get_user_preferences, set_user_preferences
 from app.request_data import get_json_object
 
 main_bp = Blueprint('main', __name__)
 
 
+<<<<<<< HEAD
 @main_bp.route('/uploads/<path:filename>')
 def uploaded_file(filename):
     upload_folder = current_app.config.get('UPLOAD_FOLDER') or os.path.join(
         current_app.instance_path, 'uploads'
     )
     return send_from_directory(upload_folder, filename)
+=======
+@lru_cache(maxsize=1)
+def _lesson_search_index():
+    indexed = []
+    for lesson in all_lessons():
+        body = ' '.join(str(page) for page in lesson.get('pages') or [])
+        text = ' '.join([
+            lesson.get('title', ''), lesson.get('goal', ''),
+            ' '.join(lesson.get('outcomes') or []),
+            ' '.join(lesson.get('tasks') or []), body,
+        ])
+        indexed.append((lesson, text, text.lower()))
+    return indexed
+>>>>>>> 38fa593 (Add UX improvements: search, bookmarks, notes, PWA, rebrand to RUACH AI Engineering)
 
 
 @main_bp.route('/healthz')
@@ -44,6 +69,36 @@ def healthz():
     response.headers['Cache-Control'] = 'no-store'
     response.headers['X-Health-Status'] = 'ok' if database['ok'] else 'degraded'
     return response, 200 if database['ok'] else 503
+
+
+@main_bp.route('/search')
+@login_required
+def search():
+    query = request.args.get('q', '').strip().lower()[:100]
+    module_filter = request.args.get('module', '').strip()
+    if not query:
+        return render_template('search.html', query='', results=[],
+                               modules=all_modules(), module_filter=module_filter)
+    results = []
+    for lesson, text, searchable in _lesson_search_index():
+        if module_filter and lesson.get('module_id') != module_filter:
+            continue
+        if query in searchable:
+            match_at = searchable.find(query)
+            snippet_text = ' '.join(text[max(0, match_at - 65):match_at + len(query) + 100].split())
+            results.append({
+                'id': lesson['id'],
+                'title': lesson['title'],
+                'module': lesson.get('_module', {}).get('title'),
+                'module_number': lesson.get('_module', {}).get('number'),
+                'ordinal': lesson.get('_ordinal'),
+                'module_id': lesson.get('module_id'),
+                'snippet': ('…' if match_at > 65 else '') + snippet_text + ('…' if match_at + len(query) + 100 < len(text) else ''),
+            })
+        if len(results) >= 50:
+            break
+    return render_template('search.html', query=query, results=results,
+                           modules=all_modules(), module_filter=module_filter)
 
 
 @main_bp.route('/')
@@ -80,8 +135,14 @@ def quizzes():
 @login_required
 def schedule():
     progress = course_progress(current_user)
+    upcoming_events = CalendarEvent.query.filter(
+        CalendarEvent.user_id == current_user.id,
+        CalendarEvent.start_time >= datetime.utcnow(),
+        CalendarEvent.delete_pending.is_(False),
+    ).order_by(CalendarEvent.start_time).limit(20).all()
     return render_template('schedule.html', config=get_effective_config_for_user(current_user),
                            user=current_user, modules=all_modules(), progress=progress,
+                           upcoming_events=upcoming_events,
                            next_action=progress['next_action'],
                            next_lesson=get_lesson(progress['next_lesson_id'])
                            if progress['next_lesson_id'] else None)
@@ -90,6 +151,7 @@ def schedule():
 @main_bp.route('/progress')
 @login_required
 def progress():
+<<<<<<< HEAD
     from datetime import date, datetime, timedelta, timezone
     config = get_effective_config_for_user(current_user)
     completions = LessonCompletion.query.filter_by(
@@ -131,6 +193,17 @@ def progress():
 @login_required
 def review():
     return render_template('review.html', user=current_user)
+=======
+    recent_completions = LessonCompletion.query.filter_by(
+        user_id=current_user.id, completed=True
+    ).order_by(LessonCompletion.completed_at.desc()).limit(8).all()
+    projects = CourseProject.query.filter_by(user_id=current_user.id).all()
+    return render_template('progress.html', config=get_effective_config_for_user(current_user),
+                           user=current_user, progress=course_progress(current_user),
+                           recent_completions=recent_completions,
+                           recent_lessons={item.lesson_id: get_lesson(item.lesson_id) for item in recent_completions},
+                           completed_project_ids={item.module_id for item in projects if item.completed})
+>>>>>>> 38fa593 (Add UX improvements: search, bookmarks, notes, PWA, rebrand to RUACH AI Engineering)
 
 
 @main_bp.route('/settings')
@@ -151,7 +224,7 @@ def lesson_detail(lesson_id):
         abort(403)
     from app.learning import completed_lesson_ids
     from app.practice import practice_exercises_for_lesson
-    from app.models import VideoProgress
+    from app.models import VideoProgress, LessonBookmark, LessonNote
     video_progress = None
     if lesson.get('video'):
         video_progress = VideoProgress.query.filter_by(
@@ -165,6 +238,8 @@ def lesson_detail(lesson_id):
     next_lesson = lessons[ordinal + 1] if ordinal + 1 < len(lessons) else None
     completed = lesson_id in completed_lesson_ids(current_user)
     progress = course_progress(current_user)
+    bookmarked = LessonBookmark.query.filter_by(user_id=current_user.id, lesson_id=lesson_id).first() is not None
+    note = LessonNote.query.filter_by(user_id=current_user.id, lesson_id=lesson_id).first()
     return render_template('lessons/detail.html', lesson=lesson, module=lesson['_module'],
                            completed=completed,
                            practice_exercises=practice_exercises_for_lesson(lesson_id),
@@ -178,6 +253,8 @@ def lesson_detail(lesson_id):
                                next_lesson is not None
                                and lesson_is_available(current_user, next_lesson['id'])
                            ),
+                           bookmarked=bookmarked,
+                           lesson_note=note.content if note else '',
                            config=get_effective_config_for_user(current_user), user=current_user)
 
 

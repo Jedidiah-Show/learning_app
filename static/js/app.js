@@ -383,3 +383,13 @@
 function formatDate(dateString) {
     return new Date(dateString).toLocaleDateString();
 }
+
+// Reading progress indicator
+document.addEventListener('scroll', () => {
+  const progressBar = document.querySelector('[data-reading-progress]');
+  if (!progressBar) return;
+  const winScroll = document.body.scrollTop || document.documentElement.scrollTop;
+  const height = document.documentElement.scrollHeight - document.documentElement.clientHeight;
+  const scrolled = height > 0 ? (winScroll / height) * 100 : 0;
+  progressBar.style.width = scrolled + '%';
+});

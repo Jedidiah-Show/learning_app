@@ -1,4 +1,4 @@
-# RUACH Engineering Course
+# RUACH AI Engineering
 
 > **Spirit · Connection · Growth**
 >
@@ -121,6 +121,10 @@ Curated videos live beside each lesson in `app/data/dynamoai_resources.json`. A 
 Only `title` and `url` are required. `start` and `end` are optional second offsets for a clip; `duration_seconds` is the optional duration of the full source video. `app/videos.py` validates the YouTube id and builds the embed, thumbnail and resume metadata at startup. A malformed or non-YouTube URL is treated as no video, so the lesson still renders normally.
 
 The lesson page uses a click-to-load, privacy-enhanced player (`youtube-nocookie.com`) and reports watch position to `POST /api/lessons/video-progress`. Watching is advisory: it records progress and shows a `Watched ✓` state, but it never unlocks lessons or replaces the lesson quiz. Videos play through YouTube's official IFrame API; the app does not download, proxy or re-host them. If a video cannot be embedded, the learner gets a direct YouTube link instead.
+
+The service worker caches static same-origin assets only. Authenticated HTML and API responses are always network-only, so one learner's lesson page cannot be replayed from a shared browser cache after account switching. Course pages require an active connection; the app does not claim offline lesson support.
+
+For a release content-data check, run `python3 scripts/audit_curriculum.py`. It checks the course manifest, module and lesson references, and required instructions/starter/check fields for every bundled practice exercise. Practice TODO markers are intentional learner starter code; they are validated by the per-exercise checks rather than treated as missing implementation.
 
 The catalog currently covers 37 of 201 lessons. Audit it at any time:
 

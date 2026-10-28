@@ -9,7 +9,8 @@ from app import merge_config
 from app.models import UserConfig, UserSchedule
 
 _LEGACY_BRAND_STRINGS = (
-    ('RuachAI Engineering Course', 'RUACH Engineering Course'),
+    ('RuachAI Engineering Course', 'RUACH AI Engineering'),
+    ('RUACH Engineering Course', 'RUACH AI Engineering'),
     ('RuachAI course', 'RUACH course'),
     ('The RuachAI engineering course', 'The RUACH engineering course'),
 )

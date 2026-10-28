@@ -587,6 +587,7 @@ html[data-theme="dark"] .lesson-code { background:#0d1017;color:#d7f4e5; }
 .video-badge { display:inline-flex;align-items:center;gap:4px;margin-left:7px;padding:2px 7px;border-radius:99px;background:#EEF8F1;color:#2E8F55;font-size:10px;font-weight:800;letter-spacing:.02em;vertical-align:middle; }
 @media (max-width:640px) { .lesson-video-head { flex-direction:column;gap:9px;padding:16px 18px 14px; }.lesson-video-status,.lesson-video-why { padding-left:18px;padding-right:18px; }.video-play-button { width:58px;height:58px;font-size:21px; }.video-facade-caption { left:15px;right:15px;bottom:14px;font-size:12px; } }
 
+<<<<<<< HEAD
 /* Refined RUACH visual system */
 :root {
     --ink:#17251D;
@@ -637,4 +638,27 @@ html[data-theme="dark"] .eyebrow,html[data-theme="dark"] .lesson-eyebrow,html[da
 .auth-input:focus,.field-input:focus,.lesson-ask-form textarea:focus { border-color:#39865A; }
 @media (prefers-reduced-motion:reduce) {
     *,*::before,*::after { scroll-behavior:auto !important;transition-duration:.01ms !important;animation-duration:.01ms !important;animation-iteration-count:1 !important; }
+=======
+/* Reading progress bar */
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 3px;
+  background: transparent;
+  z-index: 100;
+}
+.reading-progress span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #d97757, #22c55e);
+  width: 0%;
+  transition: width 0.1s ease;
+}
+
+/* Smooth transitions */
+.nav-link, .btn-primary, .btn-secondary, article, .lesson-card {
+  transition: all 0.2s ease-in-out;
+>>>>>>> 38fa593 (Add UX improvements: search, bookmarks, notes, PWA, rebrand to RUACH AI Engineering)
 }

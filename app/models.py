@@ -74,6 +74,12 @@ class User(UserMixin, db.Model):
         'PracticeWorkspace', backref='user', lazy=True,
         cascade='all, delete-orphan',
     )
+    lesson_bookmarks = db.relationship(
+        'LessonBookmark', backref='user', lazy=True, cascade='all, delete-orphan',
+    )
+    lesson_notes = db.relationship(
+        'LessonNote', backref='user', lazy=True, cascade='all, delete-orphan',
+    )
 
 
 class UserProfilePhoto(db.Model):
@@ -565,3 +571,41 @@ class AdminAuditLog(db.Model):
     )
 
     admin = db.relationship('User', foreign_keys=[admin_user_id])
+
+
+class LessonBookmark(db.Model):
+    """User bookmarks for lessons."""
+    __tablename__ = 'lesson_bookmark'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    lesson_id = db.Column(db.String(100), nullable=False)
+    created_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, nullable=False
+    )
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'lesson_id', name='unique_user_lesson_bookmark'),
+        db.Index('idx_lessonbookmark_user', 'user_id'),
+    )
+
+
+class LessonNote(db.Model):
+    """User notes attached to lessons."""
+    __tablename__ = 'lesson_note'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    lesson_id = db.Column(db.String(100), nullable=False)
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, nullable=False
+    )
+    updated_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'lesson_id', name='unique_user_lesson_note'),
+        db.Index('idx_lessonnote_user', 'user_id'),
+    )

@@ -5,6 +5,7 @@
 <div class="grid gap-4 md:grid-cols-3"><article class="rounded-2xl border bg-white p-6"><p class="text-sm font-bold text-indigo-700">Sunday · Plan</p><h3 class="mt-2 text-xl font-bold">Choose the week’s focus</h3><p class="mt-2 text-slate-600">Review the upcoming module, set a small build target, and reserve focused study time.</p></article><article class="rounded-2xl border bg-white p-6"><p class="text-sm font-bold text-indigo-700">Monday–Saturday · Execute</p><h3 class="mt-2 text-xl font-bold">Study and build</h3><p class="mt-2 text-slate-600">Work through lessons in order, take lesson quizzes, and capture evidence in your project.</p></article><article class="rounded-2xl border bg-white p-6"><p class="text-sm font-bold text-indigo-700">Sunday · Review</p><h3 class="mt-2 text-xl font-bold">Reflect and reset</h3><p class="mt-2 text-slate-600">Review what you completed, note blockers, and plan the next module milestone.</p></article></div>
 {% if next_lesson %}<section class="mt-7 rounded-2xl border bg-white p-6"><h3 class="font-bold">Schedule your next lesson</h3><p class="mt-2 text-slate-600">Lesson {{ next_lesson._ordinal }} · {{ next_lesson.title }}</p><button id="schedule-next" class="mt-4 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white">Add study session to schedule</button><p id="calendar-result" class="mt-3 text-sm text-slate-600"></p></section>{% endif %}
 {% if next_action and next_action.type == 'project' %}<section class="mt-7 rounded-2xl border border-amber-200 bg-amber-50 p-6"><h3 class="font-bold">Project milestone before the next module</h3><p class="mt-2 text-slate-700">Module {{ next_action.module_number }} · {{ next_action.module_title }}</p><a class="mt-4 inline-flex rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white" href="{{ url_for('projects.project_page') }}#module-{{ next_action.module_id }}">Open project →</a></section>{% endif %}
+<section class="mt-7 rounded-2xl border bg-white p-6"><div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-bold">Upcoming study blocks</h3><p class="mt-1 text-sm text-slate-600">Your saved sessions, including their Calendar sync state.</p></div><button id="refresh-events" type="button" class="rounded-lg border px-3 py-2 text-sm font-semibold">Refresh</button></div>{% if upcoming_events %}<ol class="mt-4 divide-y">{% for event in upcoming_events %}<li class="flex flex-wrap items-center justify-between gap-3 py-3"><div><p class="font-semibold">{{ event.title }}</p><p class="text-sm text-slate-500">{{ event.start_time.strftime('%a, %b %-d · %H:%M') }}–{{ event.end_time.strftime('%H:%M') }}{% if event.time_zone %} ({{ event.time_zone }}){% endif %}</p></div><span class="rounded-full px-3 py-1 text-xs font-semibold {{ 'bg-emerald-50 text-emerald-700' if event.synced_to_google and not event.sync_pending else 'bg-amber-50 text-amber-800' }}">{{ 'Synced to Google' if event.synced_to_google and not event.sync_pending else ('Removal pending' if event.delete_pending else 'Saved · sync pending') }}</span></li>{% endfor %}</ol>{% else %}<p id="empty-events" class="mt-4 text-sm text-slate-600">No upcoming study blocks yet. Schedule your next lesson above to create one.</p>{% endif %}<p id="events-status" class="mt-2 text-sm text-slate-500" role="status"></p></section>
 <section class="mt-7 rounded-2xl border bg-white p-6"><h3 class="font-bold">Calendar connection</h3><p class="mt-2 text-sm text-slate-600">Manage Google Calendar access and your study block times in <a class="font-semibold text-indigo-700" href="{{ url_for('main.settings') }}">Settings</a>.</p></section>
 {% endblock %}
 {% block extra_scripts %}{% if next_lesson %}<script>
@@ -28,10 +29,56 @@ document.getElementById('schedule-next').addEventListener('click', async (event)
         result.textContent = data.error
             || data.message
             || (response.ok ? 'Study session scheduled.' : `Could not schedule the session (HTTP ${response.status}).`);
+        if (response.ok) document.getElementById('refresh-events')?.click();
     } catch (error) {
         result.textContent = 'Could not schedule the session. Check your connection and retry.';
     } finally {
         button.disabled = false;
     }
 });
-</script>{% endif %}{% endblock %}
+</script>{% endif %}<script>
+const refreshEvents = document.getElementById('refresh-events');
+if (refreshEvents) refreshEvents.addEventListener('click', async () => {
+  const status = document.getElementById('events-status');
+  refreshEvents.disabled = true;
+  status.textContent = 'Checking saved sessions…';
+  try {
+    const response = await fetch('/api/calendar/events', {headers: {'Accept': 'application/json'}});
+    if (!response.ok) throw new Error('Could not refresh sessions.');
+    const events = (await response.json()).filter(item => new Date(item.start_time) >= new Date());
+    const list = document.querySelector('#events-status').previousElementSibling;
+    if (events.length) {
+      const items = document.createElement('ol');
+      items.className = 'mt-4 divide-y';
+      for (const item of events) {
+        const row = document.createElement('li');
+        row.className = 'flex flex-wrap items-center justify-between gap-3 py-3';
+        const details = document.createElement('div');
+        const title = document.createElement('p');
+        title.className = 'font-semibold';
+        title.textContent = item.title;
+        const time = document.createElement('p');
+        time.className = 'text-sm text-slate-500';
+        const start = new Date(item.start_time);
+        const end = new Date(item.end_time);
+        time.textContent = `${start.toLocaleString(undefined, {weekday: 'short', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'})}–${end.toLocaleTimeString(undefined, {hour: '2-digit', minute: '2-digit'})}${item.time_zone ? ` (${item.time_zone})` : ''}`;
+        details.append(title, time);
+        const badge = document.createElement('span');
+        const synced = item.synced_to_google && !item.sync_pending;
+        badge.className = `rounded-full px-3 py-1 text-xs font-semibold ${synced ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-800'}`;
+        badge.textContent = synced ? 'Synced to Google' : item.delete_pending ? 'Removal pending' : 'Saved · sync pending';
+        row.append(details, badge);
+        items.append(row);
+      }
+      list.replaceWith(items);
+    } else {
+      const empty = document.createElement('p');
+      empty.className = 'mt-4 text-sm text-slate-600';
+      empty.textContent = 'No upcoming study blocks yet. Schedule your next lesson above to create one.';
+      list.replaceWith(empty);
+    }
+    status.textContent = `${events.length} upcoming session${events.length === 1 ? '' : 's'} loaded.`;
+  } catch (error) { status.textContent = error.message || 'Could not refresh sessions. Try again.'; }
+  finally { refreshEvents.disabled = false; }
+});
+</script>{% endblock %}

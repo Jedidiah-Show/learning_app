@@ -238,7 +238,7 @@ def create_app(config_override=None):
         or 'openrouter/auto'
     )
     app.config['OPENROUTER_APP_NAME'] = os.environ.get(
-        'OPENROUTER_APP_NAME', 'RUACH'
+        'OPENROUTER_APP_NAME', 'RUACH AI Engineering'
     )
     app.config['OPENROUTER_SITE_URL'] = os.environ.get('OPENROUTER_SITE_URL')
 

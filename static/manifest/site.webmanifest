@@ -1,0 +1,16 @@
+{
+  "name": "RUACH AI Engineering",
+  "short_name": "RUACH",
+  "description": "Spirit · Connection · Growth — Rooted in faith. Built for tomorrow.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#083D2E",
+  "theme_color": "#083D2E",
+  "icons": [
+    {
+      "src": "/static/img/ruach-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}

@@ -321,6 +321,14 @@
         {% else %}
         <button id="complete-button" type="button" class="btn-primary">Mark lesson complete</button>
         {% endif %}
+        <button type="button" id="bookmark-btn" class="btn-secondary mt-2" data-lesson-id="{{ lesson.id }}" data-bookmarked="{{ 'true' if bookmarked else 'false' }}">
+          {% if bookmarked %}🔖 Bookmarked{% else %}📑 Bookmark lesson{% endif %}
+        </button>
+        <details class="mt-3 w-full">
+          <summary class="cursor-pointer text-sm font-semibold text-slate-700">My notes</summary>
+          <textarea id="lesson-notes" class="mt-2 w-full rounded-lg border border-slate-300 p-2 text-sm" rows="4" placeholder="Take notes for this lesson...">{{ lesson_note }}</textarea>
+          <button type="button" id="save-notes" class="mt-2 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold hover:bg-slate-50">Save notes</button>
+        </details>
         <p id="lesson-status" class="lesson-status" role="status"></p>
       </div>
     </div>
@@ -472,6 +480,39 @@ document.getElementById('quiz-button').addEventListener('click', async () => {
     area.textContent = 'Quiz is temporarily unavailable. Please retry.';
   }
 });
+const bookmarkBtn = document.getElementById('bookmark-btn');
+if (bookmarkBtn) {
+  bookmarkBtn.addEventListener('click', async () => {
+    const lessonId = bookmarkBtn.dataset.lessonId;
+    try {
+      const response = await fetch(`/api/lessons/${lessonId}/bookmark`, {method:'POST', headers:{'X-CSRF-Token':csrf}});
+      const data = await readJson(response);
+      if (data.bookmarked) {
+        bookmarkBtn.dataset.bookmarked = 'true';
+        bookmarkBtn.textContent = '🔖 Bookmarked';
+      } else {
+        bookmarkBtn.dataset.bookmarked = 'false';
+        bookmarkBtn.textContent = '📑 Bookmark lesson';
+      }
+    } catch (e) {}
+  });
+}
+const saveNotes = document.getElementById('save-notes');
+const notesArea = document.getElementById('lesson-notes');
+if (saveNotes && notesArea) {
+  saveNotes.addEventListener('click', async () => {
+    const lessonId = {{ lesson.id|tojson }};
+    try {
+      const response = await fetch(`/api/lessons/${lessonId}/note`, {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body:JSON.stringify({content: notesArea.value})});
+      const data = await readJson(response);
+      saveNotes.textContent = data.status === 'saved' ? 'Saved ✓' : 'Save notes';
+      setTimeout(() => { saveNotes.textContent = 'Save notes'; }, 1500);
+    } catch (e) {
+      saveNotes.textContent = 'Error';
+      setTimeout(() => { saveNotes.textContent = 'Save notes'; }, 1500);
+    }
+  });
+}
 const completeButton=document.getElementById('complete-button');
 let activeSeconds = 0;
 let visibleSince = document.visibilityState === 'visible' ? Date.now() : null;

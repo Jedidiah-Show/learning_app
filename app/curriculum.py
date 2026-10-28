@@ -219,9 +219,9 @@ def _attach_extras(lesson, extras):
 def curriculum():
     with CURRICULUM_PATH.open(encoding='utf-8') as source:
         data = json.load(source)
-    data['course']['title'] = 'RUACH Engineering Course'
+    data['course']['title'] = 'RUACH AI Engineering'
     data['course']['description'] = (
-        'The RUACH engineering course: 13 modules and 201 lessons, '
+        'The RUACH AI Engineering course: 13 modules and 201 lessons, '
         'from Python and backend engineering through production AI systems.'
     )
     resources_path = Path(__file__).parent / 'data' / 'dynamoai_resources.json'

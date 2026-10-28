@@ -188,6 +188,57 @@ def practice_workspace(lesson_id, exercise_id):
     return jsonify({'status': 'saved', 'updated_at': workspace.updated_at.isoformat()})
 
 
+@lessons_bp.route('/<lesson_id>/bookmark', methods=['POST'])
+@login_required
+def toggle_bookmark(lesson_id):
+    lesson = get_lesson(lesson_id)
+    if not lesson:
+        return jsonify({'error': 'Lesson not found'}), 404
+    if not lesson_is_available(current_user, lesson_id):
+        return jsonify({'error': 'Lesson is locked'}), 403
+    from app.models import LessonBookmark
+    bookmark = LessonBookmark.query.filter_by(user_id=current_user.id, lesson_id=lesson_id).first()
+    if bookmark:
+        db.session.delete(bookmark)
+        db.session.commit()
+        return jsonify({'bookmarked': False})
+    bookmark = LessonBookmark(user_id=current_user.id, lesson_id=lesson_id)
+    db.session.add(bookmark)
+    db.session.commit()
+    return jsonify({'bookmarked': True})
+
+
+@lessons_bp.route('/<lesson_id>/note', methods=['GET', 'POST'])
+@login_required
+def lesson_note(lesson_id):
+    lesson = get_lesson(lesson_id)
+    if not lesson:
+        return jsonify({'error': 'Lesson not found'}), 404
+    if not lesson_is_available(current_user, lesson_id):
+        return jsonify({'error': 'Lesson is locked'}), 403
+    from app.models import LessonNote
+    note = LessonNote.query.filter_by(user_id=current_user.id, lesson_id=lesson_id).first()
+    if request.method == 'GET':
+        return jsonify({'note': note.content if note else ''})
+    data = get_json_object()
+    content = data.get('content', '') if data else ''
+    if not isinstance(content, str):
+        return jsonify({'error': 'Invalid note'}), 400
+    if len(content) > 10000:
+        return jsonify({'error': 'Note is too long'}), 400
+    if note is None:
+        if content.strip():
+            note = LessonNote(user_id=current_user.id, lesson_id=lesson_id, content=content)
+            db.session.add(note)
+    else:
+        if content.strip():
+            note.content = content
+        else:
+            db.session.delete(note)
+    db.session.commit()
+    return jsonify({'status': 'saved'})
+
+
 @lessons_bp.route('/complete', methods=['POST'])
 @login_required
 def complete_lesson():
