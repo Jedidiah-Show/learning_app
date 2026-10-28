@@ -1,9 +1,11 @@
 (() => {
     const pyodideVersion = '0.27.7';
-    const pyodideUrl = `https://cdn.jsdelivr.net/pyodide/v${pyodideVersion}/full/pyodide.js`;
+    const runtimeIndexes = [
+        `https://cdn.jsdelivr.net/pyodide/v${pyodideVersion}/full/`,
+        `https://unpkg.com/pyodide@${pyodideVersion}/`,
+    ];
     const workerSource = `
-        importScripts(${JSON.stringify(pyodideUrl)});
-        const indexURL = ${JSON.stringify(`https://cdn.jsdelivr.net/pyodide/v${pyodideVersion}/full/`)};
+        const runtimeIndexes = ${JSON.stringify(runtimeIndexes)};
         let pyodide;
         let output = '';
         const outputLimit = 12000;
@@ -15,7 +17,22 @@
             output += chunk;
             self.postMessage({type: 'output', runId: currentRunId, text: chunk});
         };
-        loadPyodide({indexURL}).then((runtime) => {
+        const loadRuntime = async () => {
+            const failures = [];
+            for (const indexURL of runtimeIndexes) {
+                try {
+                    importScripts(new URL('pyodide.js', indexURL).href);
+                    return await loadPyodide({indexURL});
+                } catch (error) {
+                    failures.push(`${indexURL}: ${error?.message || error}`);
+                }
+            }
+            throw new Error(
+                'Python could not load from either runtime CDN. Check that this browser can access jsDelivr and unpkg. '
+                + failures.join(' | '),
+            );
+        };
+        loadRuntime().then((runtime) => {
             pyodide = runtime;
             pyodide.setStdout({batched: sendOutput});
             pyodide.setStderr({batched: sendOutput});
@@ -52,7 +69,7 @@
             };
         }).catch((error) => self.postMessage({type: 'error', text: String(error)}));
     `;
-    const workerUrl = URL.createObjectURL(new Blob([workerSource], {type: 'text/javascript'}));
+    let workerUrl;
     let worker;
     let runTimer;
     let activeRunId = null;
@@ -65,7 +82,17 @@
     })();
     const sendToParent = (message) => parent.postMessage(message, appOrigin || '*');
     const startWorker = () => {
-        worker = new Worker(workerUrl);
+        try {
+            workerUrl ||= URL.createObjectURL(new Blob([workerSource], {type: 'text/javascript'}));
+            worker = new Worker(workerUrl);
+        } catch (error) {
+            sendToParent({
+                type: 'error',
+                runId: null,
+                text: `This browser blocked the isolated Python worker. Try another browser or allow blob workers. ${error?.message || error}`,
+            });
+            return;
+        }
         worker.onmessage = ({data}) => {
             if (data.type === 'ready') sendToParent({type: 'ready'});
             else {
@@ -76,7 +103,12 @@
         worker.onerror = (event) => sendToParent({
             type: 'error',
             runId: activeRunId,
-            text: event.message || 'Python runtime failed to load.',
+            text: `The Python worker stopped${event.filename ? ` in ${event.filename}` : ''}${event.lineno ? ` at line ${event.lineno}` : ''}: ${event.message || 'unknown worker error'}`,
+        });
+        worker.onmessageerror = () => sendToParent({
+            type: 'error',
+            runId: activeRunId,
+            text: 'The browser could not read a message from the Python worker. Reload the lesson and try again.',
         });
     };
     startWorker();

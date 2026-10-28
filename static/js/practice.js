@@ -173,7 +173,7 @@ if (root) {
                 queuedRun = false;
                 runButton.disabled = false;
                 iframe.src = 'about:blank';
-                setRunOutput('Python runtime did not load. Check your connection and try again.', true);
+                setRunOutput('Python could not start. Check that your browser allows workers and can access jsDelivr or unpkg, then reload the lesson.', true);
                 void recordUsage('error');
             }, 45000);
         }
