@@ -65,7 +65,7 @@
 
     <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <h3 class="text-lg font-bold text-slate-800 mb-4">Update Account</h3>
-        <form method="POST" action="{{ url_for('auth.update_account') }}" class="space-y-4">
+        <form method="POST" action="{{ url_for('auth.update_account') }}" enctype="multipart/form-data" class="space-y-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
@@ -73,8 +73,10 @@
                     <input type="text" name="full_name" value="{{ user.full_name or '' }}" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="Enter full name">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-600 mb-1">Profile Photo URL</label>
-                    <input type="url" name="profile_photo" value="{{ user.profile_photo or '' }}" class="w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="https://example.com/photo.jpg">
+                    <label class="block text-sm font-medium text-slate-600 mb-1">Profile Photo</label>
+                    <input type="file" name="profile_photo_file" accept="image/png,image/jpeg,image/jpg,image/gif,image/webp" class="w-full text-sm text-slate-600 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-emerald-50 file:text-emerald-700 hover:file:bg-emerald-100">
+                    <p class="mt-1 text-xs text-slate-500">Upload PNG, JPG, GIF, or WebP (max 5MB)</p>
+                    <input type="url" name="profile_photo" value="{{ user.profile_photo or '' }}" class="mt-2 w-full border border-slate-300 rounded-lg px-3 py-2" placeholder="Or paste image URL">
                 </div>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -4,6 +4,7 @@ from flask import (
 )
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 from app import db
 from app.models import PasswordResetToken, User
 from app.phone import PhoneError, normalize_phone
@@ -12,9 +13,15 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 import os
 import secrets
+import uuid
 from urllib.parse import urljoin, urlsplit
 
 auth_bp = Blueprint('auth', __name__)
+ALLOWED_PHOTO_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+
+def _allowed_photo_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_PHOTO_EXTENSIONS
 
 
 def _set_auth_session(user):
@@ -407,6 +414,21 @@ def update_account():
         profile_photo = None
     if full_name == '':
         full_name = None
+
+    photo_file = request.files.get('profile_photo_file')
+    if photo_file and photo_file.filename:
+        if not _allowed_photo_file(photo_file.filename):
+            flash('Profile photo must be a PNG, JPG, JPEG, GIF, or WebP image.', 'error')
+            return redirect(url_for('auth.profile'))
+        upload_folder = current_app.config.get('UPLOAD_FOLDER') or os.path.join(current_app.instance_path, 'uploads')
+        os.makedirs(upload_folder, exist_ok=True)
+        ext = photo_file.filename.rsplit('.', 1)[1].lower()
+        filename = f"user_{current_user.id}_{uuid.uuid4().hex}.{ext}"
+        filename = secure_filename(filename)
+        photo_path = os.path.join(upload_folder, filename)
+        photo_file.save(photo_path)
+        profile_photo = url_for('main.uploaded_file', filename=filename)
+
     if email is not None and (
         len(email) > 120 or (email and '@' not in email)
     ):

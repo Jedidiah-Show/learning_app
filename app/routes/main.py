@@ -2,8 +2,9 @@
 
 import os
 
-from flask import Blueprint, abort, current_app, jsonify, render_template, url_for
+from flask import Blueprint, abort, current_app, jsonify, render_template, url_for, send_from_directory
 from flask_login import current_user, login_required
+import os
 
 from app import db
 from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
@@ -15,6 +16,14 @@ from app.user_preferences import get_effective_config_for_user, get_user_prefere
 from app.request_data import get_json_object
 
 main_bp = Blueprint('main', __name__)
+
+
+@main_bp.route('/uploads/<path:filename>')
+def uploaded_file(filename):
+    upload_folder = current_app.config.get('UPLOAD_FOLDER') or os.path.join(
+        current_app.instance_path, 'uploads'
+    )
+    return send_from_directory(upload_folder, filename)
 
 
 @main_bp.route('/healthz')
