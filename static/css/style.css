@@ -136,6 +136,17 @@ html[data-theme="dark"] .auth-brand-logo { border-color:rgba(212,175,55,.62); }
 .auth-card form { display:grid;gap:20px; }
 .auth-card form label { display:block;margin-bottom:8px;color:#3B3933;font-size:12px;font-weight:750; }
 .auth-input { width:100%;min-height:49px;padding:0 14px;border:1px solid #E2DED3;border-radius:12px;background:#FFFDF9;color:#24231F;font-size:14px;transition:border-color .18s ease,box-shadow .18s ease,background .18s ease; }
+
+.auth-input-with-toggle { padding-right:44px; }
+
+.auth-input-group { position:relative;display:flex;align-items:center; }
+
+.auth-password-toggle { position:absolute;right:6px;top:50%;transform:translateY(-50%);display:flex;align-items:center;justify-content:center;width:34px;height:34px;border:0;border-radius:999px;background:transparent;color:#6B6552;cursor:pointer;transition:color .18s ease,background .18s ease; }
+
+.auth-password-toggle:hover { color:#1F8A4C;background:rgba(63,174,107,.1); }
+
+.auth-password-toggle:focus-visible { outline:3px solid rgba(63,174,107,.28);outline-offset:2px; }
+
 .auth-input::placeholder { color:#A8A293; }
 .auth-input:focus { outline:none;border-color:#3FAE6B;background:white;box-shadow:0 0 0 4px rgba(63,174,107,.12); }
 .auth-options { display:flex;align-items:center;justify-content:flex-end;margin-top:-8px; }
