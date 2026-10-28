@@ -19,6 +19,12 @@
 
 <div class="lesson-layout">
   <article class="lesson-body">
+    {% if lesson.extras and lesson.extras.intro %}
+    <section id="plain-words" class="lesson-card lesson-plain-card">
+      <p class="lesson-eyebrow">In plain words</p>
+      <p class="lesson-plain-intro">{{ lesson.extras.intro }}</p>
+    </section>
+    {% endif %}
     <section id="overview" class="lesson-card lesson-overview">
       <div class="lesson-overview-grid">
         <div>
@@ -93,8 +99,10 @@
         <p class="lesson-section-note">Take each card slowly. You do not need to memorise them — understanding the key idea is enough.</p>
       </div>
       {% set concepts = lesson.concepts if lesson.concepts else lesson.core_concepts %}
+      {% set extra_concepts = lesson.extras.concepts if lesson.extras else [] %}
       {% for concept in concepts %}
         {% set paragraphs = concept.paragraphs if concept.paragraphs else (concept.content.split('\n\n') if concept.content else []) %}
+        {% set extra = extra_concepts[loop.index0] if extra_concepts|length > loop.index0 else None %}
         <section class="lesson-card lesson-concept" id="concept-{{ loop.index }}">
           <div class="lesson-concept-head">
             <span class="lesson-concept-number" aria-hidden="true">{{ loop.index }}</span>
@@ -103,6 +111,13 @@
               <h3 class="lesson-concept-title">{{ concept.title or 'Concept' }}</h3>
             </div>
           </div>
+          {% if extra %}
+          <div class="lesson-plain">
+            <p class="lesson-plain-label">In plain words</p>
+            <p class="lesson-plain-text">{{ extra.plain }}</p>
+            {% if extra.example %}<p class="lesson-plain-example"><strong>Example:</strong> {{ extra.example }}</p>{% endif %}
+          </div>
+          {% endif %}
           {% if concept.key_idea %}
             {% if paragraphs %}
             <p class="lesson-text lesson-lead-paragraph"><strong>{{ concept.key_idea }}</strong> {{ paragraphs[0] }}</p>
@@ -187,12 +202,21 @@
     <section id="self-check" class="lesson-card">
       <p class="lesson-eyebrow">Check yourself</p>
       <h2 class="lesson-card-title">Can you answer these?</h2>
-      <p class="lesson-text lesson-muted">Say the answer out loud before opening it. If you get stuck, reread the matching concept above.</p>
+      <p class="lesson-text lesson-muted">Say the answer out loud before opening it. Each answer below is drawn from this lesson, so you can compare your wording with it.</p>
       <div class="lesson-questions">
+        {% set answers = lesson.question_answers or [] %}
         {% for question in lesson.questions %}
+        {% set answer = answers[loop.index0] if answers|length > loop.index0 else '' %}
         <details class="lesson-question">
           <summary>{{ question if question is string else question.question }}</summary>
-          <p class="lesson-question-answer">Answer in your own words, then compare it with the concepts above. If you are unsure, ask the tutor at the bottom of this page.</p>
+          {% if answer %}
+          <div class="lesson-question-answer">
+            <p class="lesson-answer-label">Answer</p>
+            <p class="lesson-answer-text">{{ answer }}</p>
+          </div>
+          {% else %}
+          <p class="lesson-question-answer lesson-muted">Reread the matching concept above, then ask the tutor below if you want a second explanation.</p>
+          {% endif %}
         </details>
         {% endfor %}
       </div>
@@ -249,6 +273,7 @@
     <div class="lesson-sidebar-inner">
       <nav class="lesson-toc" aria-label="On this page">
         <p class="lesson-toc-title">On this page</p>
+        {% if lesson.extras and lesson.extras.intro %}<a href="#plain-words">In plain words</a>{% endif %}
         <a href="#overview">Lesson at a glance</a>
         {% if lesson.video %}<a href="#video">Video</a>{% endif %}
         {% if lesson.key_terms %}<a href="#key-terms">Key terms</a>{% endif %}

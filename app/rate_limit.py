@@ -87,9 +87,12 @@ def check_rate_limit(name, limit, window_seconds, identity=None):
         return None
     except Exception:
         db.session.rollback()
-        current_app.logger.warning(
-            'Rate limiting failed open for %s', name, exc_info=True
-        )
+        try:
+            current_app.logger.warning(
+                'Rate limiting failed open for %s', name, exc_info=True
+            )
+        except Exception:
+            pass
         return None
 
 
@@ -109,4 +112,5 @@ def rate_limit_response(error):
             mimetype='text/plain',
         )
     response.headers['Retry-After'] = str(error.retry_after)
+    response.headers['X-RateLimit-Remaining'] = '0'
     return response

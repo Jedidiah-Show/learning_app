@@ -591,7 +591,9 @@ def reset_account():
             if response is not None:
                 return response
         google_revoked = gcal.revoke_authorization(user)
-        user = User.query.filter_by(id=user_id).with_for_update().populate_existing().one()
+        user = db.session.execute(
+            db.select(User).filter_by(id=user_id).with_for_update().execution_options(populate_existing=True)
+        ).scalar_one()
         # Delete all user data but keep the account.  The AI usage bucket is
         # intentionally preserved so resetting cannot be used to bypass the
         # shared per-learner quota.

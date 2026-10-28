@@ -101,6 +101,15 @@ def concept_text(lesson):
     )
 
 
+def full_source(lesson, limit=9000):
+    """Return the lesson's full page text, minus housekeeping footers."""
+    text = "\n".join(lesson.get("pages") or [])
+    text = re.sub(r"DYNAMOAI\s*·\s*COMPASS AI[^\n]*", "", text)
+    text = re.sub(r"Three pages per lesson\s+Page \d+ of \d+", "", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return compact(text, limit)
+
+
 def build_prompt(lesson):
     key_terms = lesson.get("key_terms") or []
     terms = "\n".join(
@@ -126,9 +135,12 @@ def build_prompt(lesson):
         body = compact(" ".join(concept.get("paragraphs") or []), 1400)
         concept_blocks.append(
             f"{index}. TITLE: {concept.get('title') or 'Concept'}\n"
-            f"   SOURCE: {body}"
+            f"   EXPLANATION: {body}"
         )
     material = "\n\n".join(concept_blocks)
+    answer_slots = ", ".join(
+        f'"answer to question {index}"' for index in range(1, len(questions) + 1)
+    )
     return f"""LESSON
 Title: {lesson.get('title')}
 Summary: {lesson.get('subtitle')}
@@ -136,8 +148,11 @@ Why it matters: {compact(' '.join(lesson.get('why_it_matters') or []), 700)}
 Key terms:
 {compact(terms, 700)}
 
-CORE CONCEPTS AND THEIR SOURCE TEXT
+CORE CONCEPTS (explain these three, in this order)
 {material}
+
+FULL LESSON TEXT (the source of truth for every answer)
+{full_source(lesson)}
 
 SELF-CHECK QUESTIONS
 {numbered}
@@ -146,20 +161,19 @@ TASK
 Write for someone who has never programmed before. Return one JSON object:
 
 {{
+  "answers": [{answer_slots}],
   "intro": "2-3 short sentences: what this lesson is about and why a beginner should care. No jargon.",
   "concepts": [
-    {{"title": "exact title copied from the source material", "plain": "2-3 short sentences that explain THIS concept's source text in everyday words", "example": "one concrete, tiny example (a sentence, not a program)"}}
-  ],
-  "answers": ["direct answer to question 1", "direct answer to question 2", "... one answer per question, in order"]
+    {{"title": "exact title copied from the source material", "plain": "2-3 short sentences (max 40 words) that explain THIS concept in everyday words", "example": "one concrete, tiny example (a sentence, max 20 words)"}}
+  ]
 }}
 
 Rules:
+- Fill every one of the {len(questions)} answer slots. There are exactly {len(questions)} questions, so return exactly {len(questions)} answers, in order. Do not stop early.
+- Each answer is 1-2 sentences (max 35 words) and uses facts from the FULL LESSON TEXT. It must not contradict the lesson.
+- If the lesson gives a specific procedure or fact (for example, which frame holds the cause, or what evidence to check), state it precisely.
 - There are exactly {len(concepts)} concepts. Return one entry per concept, in the same order, with the title copied exactly.
-- Each "plain" explanation must restate the idea in that concept's SOURCE, not a nearby or general idea.
-- Each "example" must be concrete and under 25 words.
-- Answer each question with 1-3 sentences. The answer must be consistent with the source text above and must not contradict it. Do not start with "The lesson says".
-- When a question asks which part of a traceback holds the cause, which data structure to use, or what a call does, state the precise answer from the source.
-- Exactly {len(questions)} answers, in the same order as the questions.
+- Write the "plain" explanations in your own words for a friend who has never coded. Do not copy sentences from the lesson.
 """
 
 
@@ -168,16 +182,14 @@ def build_critique_prompt(lesson, draft):
     numbered = "\n".join(
         f"{index + 1}. {question}" for index, question in enumerate(questions)
     )
-    concepts = lesson.get("concepts") or []
-    material = "\n\n".join(
-        f"- {concept.get('title')}: {' '.join(concept.get('paragraphs') or [])}"
-        for concept in concepts
+    answer_slots = ", ".join(
+        f'"corrected answer {index}"' for index in range(1, len(questions) + 1)
     )
-    return f"""You are checking a beginner study guide for factual errors.
+    return f"""You are checking a beginner study guide for factual errors and unclear writing.
 
 LESSON: {lesson.get('title')}
-SOURCE MATERIAL:
-{compact(material, 5000)}
+FULL LESSON TEXT (the source of truth):
+{full_source(lesson)}
 
 QUESTIONS:
 {numbered}
@@ -186,7 +198,12 @@ DRAFT GUIDE:
 {json.dumps(draft, ensure_ascii=False)}
 
 TASK
-Check every entry against the source material. Rewrite any answer or explanation that is wrong, contradicts the source, or explains a different idea. Keep correct entries unchanged. Improve clarity with shorter sentences. Return the complete corrected JSON object with the same keys: intro, concepts, answers. No commentary.
+Check every entry against the lesson text. Rewrite any answer or explanation that is wrong, contradicts the lesson, explains a different idea, or uses unexplained jargon. Keep correct entries that are already clear.
+
+Return the complete corrected JSON object in this exact shape, with all {len(questions)} answers filled in order:
+{{"answers": [{answer_slots}], "intro": "...", "concepts": [{{"title": "...", "plain": "...", "example": "..."}}]}}
+
+Use the facts in the lesson text; never answer "the lesson does not cover this" when the lesson text contains the information. No commentary.
 """
 
 
@@ -199,7 +216,8 @@ def call_endpoint(prompt):
                 {"role": "user", "content": prompt},
             ],
             "temperature": 0.25,
-            "max_tokens": 6000,
+            "max_tokens": 1500,
+            "reasoning_effort": "low",
         }
     ).encode("utf-8")
     request = Request(
@@ -286,22 +304,25 @@ def is_complete(entry, lesson):
 
 def generate(lesson, delay, verify=False):
     prompt = build_prompt(lesson)
-    entry = _generate_json(prompt, delay)
-    result = normalise(lesson, entry)
+    result = _generate_validated(prompt, lesson, delay)
     if verify:
         time.sleep(delay)
-        critique = build_critique_prompt(lesson, result)
-        corrected = _generate_json(critique, delay)
-        result = normalise(lesson, corrected)
+        try:
+            corrected = _generate_validated(
+                build_critique_prompt(lesson, result), lesson, delay
+            )
+            result = corrected
+        except RuntimeError as error:
+            print(f"    verification failed, keeping first pass ({error})")
     return result
 
 
-def _generate_json(prompt, delay):
+def _generate_validated(prompt, lesson, delay):
     last_error = None
     for attempt in range(1, MAX_ATTEMPTS + 1):
         try:
             raw = call_endpoint(prompt)
-            return parse_json(raw)
+            return normalise(lesson, parse_json(raw))
         except HTTPError as error:
             body = ""
             try:
@@ -309,16 +330,13 @@ def _generate_json(prompt, delay):
             except Exception:
                 pass
             last_error = f"HTTP {error.code}: {body[:160]}"
-            if error.code in (402, 429, 500, 502, 503, 504):
-                wait = delay
-            else:
-                wait = 5
+            wait = delay if error.code in (402, 429, 500, 502, 503, 504) else 5
         except (URLError, TimeoutError, OSError) as error:
             last_error = f"network: {error}"
             wait = 10
         except (ValueError, KeyError, TypeError) as error:
             last_error = f"invalid response: {error}"
-            wait = 3
+            wait = delay
         if attempt < MAX_ATTEMPTS:
             print(f"    retry {attempt}/{MAX_ATTEMPTS} in {wait}s ({last_error})")
             time.sleep(wait)
@@ -350,8 +368,6 @@ def main():
         lessons = [lesson for lesson in lessons if lesson.get("id") == args.lesson]
         if not lessons:
             raise SystemExit(f"unknown lesson id: {args.lesson}")
-    if args.verify and not args.lesson:
-        raise SystemExit("--verify requires --lesson (the free endpoint is slow)")
 
     pending = [
         lesson for lesson in lessons
@@ -367,7 +383,7 @@ def main():
         print(f"[{index}/{total}] {lesson_id} {lesson.get('title')}", flush=True)
         try:
             entry = generate(lesson, args.delay, verify=args.verify)
-        except RuntimeError as error:
+        except Exception as error:
             print(f"  FAILED: {error}", flush=True)
             continue
         extra[lesson_id] = entry

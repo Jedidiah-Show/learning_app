@@ -247,9 +247,15 @@ def create_app(config_override=None):
     def load_user(user_id):
         from app.models import User
         try:
-            user = db.session.get(User, int(user_id))
+            try:
+                user = db.session.get(User, int(user_id))
+            except (ValueError, TypeError):
+                user = db.session.execute(
+                    db.select(User).filter_by(id=int(user_id))
+                ).scalar_one_or_none()
         except Exception:
-            user = User.query.get(int(user_id))
+            current_app.logger.exception('Failed to load user %s', user_id)
+            return None
         if user is None:
             return None
         if not getattr(user, 'is_active', True):
@@ -346,6 +352,7 @@ def create_app(config_override=None):
         response = jsonify({'error': str(error)})
         response.status_code = 429
         response.headers['Retry-After'] = str(error.retry_after)
+        response.headers['X-RateLimit-Remaining'] = '0'
         return response
 
     @app.errorhandler(RateLimitExceeded)
@@ -367,6 +374,7 @@ def create_app(config_override=None):
         response.headers.setdefault(
             'Cross-Origin-Resource-Policy', 'same-origin'
         )
+        response.headers.setdefault('X-Powered-By', 'RUACH')
         # Keep the policy report-only until the remaining inline scripts and
         # styles are migrated to nonces/hashed files.  Report-only still makes
         # violations visible without breaking existing lessons or YouTube.
@@ -408,6 +416,7 @@ def create_app(config_override=None):
                 app.config.get('GOOGLE_CLIENT_ID')
                 and app.config.get('GOOGLE_CLIENT_SECRET')
             ),
+            'app_version': '1.0.0',
         }
     
     return app

@@ -188,6 +188,7 @@ def ai_error_response(error, message='AI generation is temporarily unavailable. 
         })
         response.status_code = 429
         response.headers['Retry-After'] = str(retry_after)
+        response.headers['X-RateLimit-Remaining'] = '0'
         return response
     response = jsonify({'error': message})
     response.status_code = 503

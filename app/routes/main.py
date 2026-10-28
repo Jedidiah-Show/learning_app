@@ -24,6 +24,7 @@ def healthz():
     response = jsonify({
         'status': 'ok' if database['ok'] else 'degraded',
         'commit': commit,
+        'version': '1.0.0',
         'database': {
             'ok': database['ok'],
             'revision': database['current_revision'],
@@ -32,6 +33,7 @@ def healthz():
         },
     })
     response.headers['Cache-Control'] = 'no-store'
+    response.headers['X-Health-Status'] = 'ok' if database['ok'] else 'degraded'
     return response, 200 if database['ok'] else 503
 
 

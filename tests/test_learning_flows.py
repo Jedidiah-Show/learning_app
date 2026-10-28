@@ -183,6 +183,22 @@ class RuachAICourseTests(unittest.TestCase):
             f'href="/lesson/{next_module_lesson["id"]}"', html
         )
 
+    def test_lesson_page_shows_plain_language_notes_and_self_check_answers(self):
+        self.register()
+        self.unlock_lesson('1.01')
+        lesson = next(item for item in all_lessons() if item['id'] == '1.01')
+        self.assertEqual(
+            len(lesson['question_answers']), len(lesson['questions'])
+        )
+        self.assertTrue(all(lesson['question_answers']))
+        self.assertTrue(lesson['extras']['intro'])
+
+        page = self.client.get('/lesson/1.01')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b'lesson-plain-text', page.data)
+        self.assertIn(b'lesson-answer-text', page.data)
+        self.assertNotIn(b'Answer in your own words', page.data)
+
     def test_lesson_material_includes_curriculum_resources(self):
         self.register()
         lesson = all_lessons()[0]

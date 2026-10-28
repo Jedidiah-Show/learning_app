@@ -9,6 +9,7 @@ from app.videos import build_lesson_video
 
 
 CURRICULUM_PATH = Path(__file__).parent / 'data' / 'dynamoai_curriculum.json'
+EXTRAS_PATH = Path(__file__).parent / 'data' / 'lesson_extras.json'
 
 # The bundled source pages mark major sections with short uppercase lines and
 # each core concept with a title-case sub-heading. Rebuilding those blocks lets
@@ -179,6 +180,41 @@ def _reading_minutes(lesson):
     return reading + activities
 
 
+def _lesson_extras():
+    """Load the plain-language layer and self-check answer key, if present."""
+    if not EXTRAS_PATH.exists():
+        return {}
+    try:
+        with EXTRAS_PATH.open(encoding='utf-8') as source:
+            data = json.load(source)
+    except (OSError, ValueError):
+        return {}
+    return data if isinstance(data, dict) else {}
+
+
+def _attach_extras(lesson, extras):
+    entry = extras.get(lesson.get('id'))
+    if not isinstance(entry, dict):
+        lesson['extras'] = None
+        lesson['question_answers'] = []
+        return
+    answers = entry.get('answers')
+    answers = answers if isinstance(answers, list) else []
+    questions = lesson.get('questions') or []
+    # Keep answers aligned with the rendered questions even if the generated
+    # list is short or long.
+    lesson['question_answers'] = [
+        str(answers[index]) if index < len(answers) and answers[index] else ''
+        for index in range(len(questions))
+    ]
+    lesson['extras'] = {
+        'intro': entry.get('intro') or '',
+        'concepts': entry.get('concepts') if isinstance(
+            entry.get('concepts'), list
+        ) else [],
+    }
+
+
 @lru_cache(maxsize=1)
 def curriculum():
     with CURRICULUM_PATH.open(encoding='utf-8') as source:
@@ -200,6 +236,7 @@ def curriculum():
         raise ValueError('RUACH curriculum contains a lesson with an unknown module')
     data['_module_map'] = {module['id']: module for module in modules}
     data['_lesson_map'] = {lesson['id']: lesson for lesson in lessons}
+    extras = _lesson_extras()
     for module in modules:
         module['resources'] = resources.get(f"module:{module['id']}", {})
     for index, lesson in enumerate(lessons):
@@ -209,6 +246,7 @@ def curriculum():
         lesson['video'] = build_lesson_video(lesson['resources'].get('video'))
         lesson['concepts'] = _lesson_concepts(lesson)
         lesson['reading_minutes'] = _reading_minutes(lesson)
+        _attach_extras(lesson, extras)
     return data
 
 
@@ -249,5 +287,6 @@ def lesson_context(lesson):
     """Return structured lesson material without duplicated PDF page text."""
     excluded = {
         'pages', '_ordinal', '_module', 'video', 'concepts', 'reading_minutes',
+        'extras', 'question_answers',
     }
     return {key: value for key, value in lesson.items() if key not in excluded}

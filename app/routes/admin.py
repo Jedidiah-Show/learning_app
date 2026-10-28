@@ -104,6 +104,32 @@ def update_schedule():
     return jsonify({'status': 'success', 'daily_blocks': blocks})
 
 
+@admin_bp.route('/ai/json', methods=['POST'])
+def generate_ai_json():
+    """Temporary maintenance hook for generating the bundled lesson guide."""
+    admin_token = (
+        os.environ.get('LESSON_EXTRAS_TOKEN')
+        or os.environ.get('ADMIN_API_TOKEN')
+        or ''
+    )
+    supplied_token = request.headers.get('X-Admin-Token', '')
+    if not admin_token or not hmac.compare_digest(supplied_token, admin_token):
+        return jsonify({'error': 'Administrator access required'}), 403
+    data = get_json_object()
+    prompt = data.get('prompt') if isinstance(data, dict) else None
+    if not isinstance(prompt, str) or not 0 < len(prompt) <= 24000:
+        return jsonify({'error': 'A prompt of at most 24000 characters is required'}), 400
+    from app.gemini import GeminiError, generate_json
+    try:
+        result = generate_json(
+            prompt,
+            model='pro' if data.get('tier') == 'pro' else 'flash',
+        )
+    except GeminiError as error:
+        return jsonify({'error': str(error)}), 503
+    return jsonify({'result': result})
+
+
 @admin_bp.route('/config', methods=['POST'])
 @login_required
 def update_config():

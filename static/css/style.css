@@ -428,6 +428,18 @@ html[data-theme="dark"] .lesson-concept-number { background:#1E3B2B;color:#B8E0C
 .lesson-lead-paragraph strong { color:#083D2E;font-weight:750; }
 html[data-theme="dark"] .lesson-lead-paragraph { background:#1E2F25; }
 html[data-theme="dark"] .lesson-lead-paragraph strong { color:#D7EFE0; }
+.lesson-plain-card { border-color:#CFE9D8;background:linear-gradient(135deg,#F4FBF6,#FFFFFF); }
+html[data-theme="dark"] .lesson-plain-card { border-color:#2A4A38;background:linear-gradient(135deg,#14261C,#17251D); }
+.lesson-plain-intro { margin-top:10px;color:var(--app-text);font-size:16px;line-height:1.8; }
+.lesson-plain { margin-top:16px;padding:15px 17px;border:1px solid #D8ECDF;border-radius:14px;background:#F6FBF7; }
+html[data-theme="dark"] .lesson-plain { border-color:#2A4A38;background:#182A20; }
+.lesson-plain-label { color:#1E7A4E;font-size:10px;font-weight:850;letter-spacing:.14em;text-transform:uppercase; }
+html[data-theme="dark"] .lesson-plain-label { color:#7ED3A3; }
+.lesson-plain-text { margin-top:6px;color:var(--app-text);font-size:14.5px;line-height:1.75; }
+.lesson-plain-example { margin-top:10px;padding-top:9px;border-top:1px dashed #CFE4D7;color:var(--app-muted);font-size:13.5px;line-height:1.7; }
+.lesson-plain-example strong { color:#1E7A4E;font-weight:800; }
+html[data-theme="dark"] .lesson-plain-example { border-top-color:#2A4A38; }
+html[data-theme="dark"] .lesson-plain-example strong { color:#7ED3A3; }
 .lesson-callout { border-color:#C4E5D3;background:#F3FAF5; }
 html[data-theme="dark"] .lesson-callout { border-color:#2E4A38;background:#1B2B22; }
 .lesson-callout-text { margin-top:10px;color:#083D2E;font-size:15px;line-height:1.8;white-space:pre-line; }
@@ -448,6 +460,9 @@ html[data-theme="dark"] .lesson-steps li > p { color:#C9D8CC; }
 .lesson-question { border:1px solid var(--app-border);border-radius:13px;background:var(--app-surface-muted);padding:13px 16px; }
 .lesson-question summary { color:var(--app-text);font-size:14px;font-weight:700;cursor:pointer; }
 .lesson-question-answer { margin-top:9px;color:var(--app-muted);font-size:13px;line-height:1.7; }
+.lesson-answer-label { color:#1E7A4E;font-size:10px;font-weight:850;letter-spacing:.14em;text-transform:uppercase; }
+html[data-theme="dark"] .lesson-answer-label { color:#7ED3A3; }
+.lesson-answer-text { margin-top:5px;color:var(--app-text);font-size:14px;line-height:1.75; }
 .lesson-tasks { margin-top:16px;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px; }
 .lesson-tasks li label { display:flex;align-items:flex-start;gap:11px;padding:13px 15px;border:1px solid var(--app-border);border-radius:13px;background:var(--app-surface-muted);color:#4A463E;font-size:14px;line-height:1.65;cursor:pointer;transition:border-color .16s ease,background .16s ease; }
 .lesson-tasks li label:hover { border-color:#B8E0C8; }
