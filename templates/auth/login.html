@@ -36,9 +36,12 @@
 
                 <div>
                     <label for="password" class="block text-sm font-medium text-slate-700 mb-2">Password</label>
-                    <input type="password" id="password" name="password" autocomplete="current-password" required
-                           class="auth-input"
-                           placeholder="Enter your password">
+                    <div class="flex">
+                        <input type="password" id="password" name="password" autocomplete="current-password" required
+                               class="auth-input rounded-r-none flex-1"
+                               placeholder="Enter your password">
+                        <button type="button" data-toggle-password="password" aria-pressed="false" class="px-3 text-sm font-semibold text-emerald-700 border border-l-0 border-slate-300 rounded-r-lg hover:bg-slate-50">Show</button>
+                    </div>
                 </div>
 
                 <div class="auth-options"><span></span><a href="{{ url_for('auth.forgot_password') }}" class="auth-link">Forgot password?</a></div>
