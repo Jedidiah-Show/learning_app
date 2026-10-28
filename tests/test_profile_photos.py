@@ -48,6 +48,7 @@ class ProfilePhotoTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertIn('profile-photo/', response.get_data(as_text=True))
+        self.assertIn('Save picture', response.get_data(as_text=True))
 
         with self.app.app_context():
             user = User.query.filter_by(username='photo-learner').one()
@@ -60,6 +61,14 @@ class ProfilePhotoTests(unittest.TestCase):
         self.assertEqual(photo_response.status_code, 200)
         self.assertEqual(photo_response.mimetype, 'image/png')
         self.assertEqual(photo_response.data, image)
+
+    def test_profile_page_keeps_username_in_navigation_and_shows_upload_control(self):
+        response = self.client.get('/profile')
+        page = response.get_data(as_text=True)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('nav-label">photo-learner</span>', page)
+        self.assertIn('name="profile_photo_file"', page)
+        self.assertNotIn('photo-editor-modal', page)
 
     def test_photo_can_be_removed_and_invalid_image_content_is_rejected(self):
         invalid = self.client.post(

@@ -147,7 +147,8 @@ def create_app(config_override=None):
     # Set SECRET_KEY in the environment to keep sessions valid across restarts.
     app.config['SECRET_KEY'] = secret_key or os.urandom(32)
     app.config['TOKEN_ENCRYPTION_KEY'] = os.environ.get('TOKEN_ENCRYPTION_KEY')
-    app.config['MAX_CONTENT_LENGTH'] = 2 * 1024 * 1024
+    # Allow multipart framing around the separately enforced 2 MiB photo cap.
+    app.config['MAX_CONTENT_LENGTH'] = 3 * 1024 * 1024
     app.config['UPLOAD_FOLDER'] = os.path.join(app.instance_path, 'uploads')
     app.config.update(
         SESSION_COOKIE_HTTPONLY=True,

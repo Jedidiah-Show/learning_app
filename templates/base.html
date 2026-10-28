@@ -102,7 +102,7 @@
                                 <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">{{ (current_user.full_name or current_user.username or 'U')[0]|upper }}</span>
                                 {% endif %}
                             </span>
-                            <span class="nav-label">Profile</span>
+                            <span class="nav-label">{{ current_user.username }}</span>
                         </a>
                         <form method="POST" action="{{ url_for('auth.logout') }}" class="nav-logout-form">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
