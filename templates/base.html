@@ -97,12 +97,12 @@
                         <a href="{{ url_for('auth.profile') }}" aria-label="Profile" title="Profile" class="nav-link nav-profile-link px-3 py-2 text-xs font-semibold rounded-md text-slate-600 hover:text-indigo-600 hover:bg-slate-50 flex items-center gap-2">
                             <span class="nav-icon nav-profile-icon" aria-hidden="true">
                                 {% if current_user.profile_photo %}
-                                <img src="{{ current_user.profile_photo }}" alt="{{ current_user.full_name or current_user.username }}" class="w-6 h-6 rounded-full object-cover">
+                                <img src="{{ current_user.profile_photo }}" alt="Profile picture" class="w-6 h-6 rounded-full object-cover">
                                 {% else %}
                                 <span class="w-6 h-6 rounded-full bg-emerald-600 text-white flex items-center justify-center text-xs font-bold">{{ (current_user.full_name or current_user.username or 'U')[0]|upper }}</span>
                                 {% endif %}
                             </span>
-                            <span class="nav-label">{{ current_user.full_name or current_user.username or 'Profile' }}</span>
+                            <span class="nav-label">Profile</span>
                         </a>
                         <form method="POST" action="{{ url_for('auth.logout') }}" class="nav-logout-form">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
