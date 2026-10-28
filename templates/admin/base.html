@@ -6,11 +6,11 @@
     <meta name="csrf-token" content="{{ csrf_token }}">
     <meta name="theme-color" content="#083D2E">
     <title>{% block title %}Admin Portal · RUACH{% endblock %}</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
-    <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='img/ruachai.png') }}">
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='img/ruachai.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Manrope:wght@500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     {% block extra_head %}{% endblock %}
@@ -31,7 +31,7 @@
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div class="flex min-h-16 items-center justify-between gap-3">
             <a href="{{ url_for('admin_portal.dashboard') }}" class="flex items-center gap-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-300">
-                <img src="{{ url_for('static', filename='img/ruach-icon-96.png') }}" alt="" width="36" height="36" class="h-9 w-9 rounded-xl border border-gold-400/50 object-cover">
+                <img src="{{ url_for('static', filename='img/ruachai.png') }}" alt="" width="36" height="36" class="h-9 w-9 rounded-xl border border-gold-400/50 object-cover">
                 <span class="leading-tight">
                     <span class="block font-display text-sm font-bold tracking-[0.12em]">RUACH Admin</span>
                     <span class="block text-[11px] text-brand-200">Control centre</span>
