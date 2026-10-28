@@ -189,7 +189,7 @@ def _provider_error_message(response):
     return message if isinstance(message, str) else None
 
 
-def _request_payload(prompt, model_name, json_mode):
+def _request_payload(prompt, model_name, json_mode, max_tokens=None):
     payload = {
         'model': model_name,
         'messages': [
@@ -203,8 +203,9 @@ def _request_payload(prompt, model_name, json_mode):
             {'role': 'user', 'content': prompt},
         ],
         'temperature': 0.2,
-        'max_tokens': _positive_int_env(
-            'OPENROUTER_MAX_TOKENS', DEFAULT_MAX_TOKENS
+        'max_tokens': (
+            max(1, int(max_tokens)) if max_tokens is not None
+            else _positive_int_env('OPENROUTER_MAX_TOKENS', DEFAULT_MAX_TOKENS)
         ),
     }
     if json_mode:
@@ -253,7 +254,7 @@ def _response_text(payload, model_name):
 
 def generate_json(
     prompt, *, model='flash', max_attempts=None, read_timeout=None,
-    deadline=None
+    max_tokens=None, deadline=None
 ):
     """Generate a JSON object through OpenRouter."""
     api_key = _api_key()
@@ -277,7 +278,9 @@ def generate_json(
         read_timeout = max(1, int(read_timeout))
 
     json_mode = _env_flag('OPENROUTER_JSON_MODE', True)
-    request_payload = _request_payload(prompt, model_name, json_mode)
+    request_payload = _request_payload(
+        prompt, model_name, json_mode, max_tokens=max_tokens
+    )
     headers = {
         'Authorization': f'Bearer {api_key}',
         'Content-Type': 'application/json',

@@ -286,7 +286,8 @@ def _openrouter_configured():
 
 
 def _generate_with_gemini(
-    prompt, *, model, max_attempts=None, read_timeout=None, deadline=None
+    prompt, *, model, max_attempts=None, read_timeout=None,
+    max_output_tokens=None, deadline=None
 ):
     api_key = _gemini_api_key()
     if not api_key:
@@ -300,6 +301,7 @@ def _generate_with_gemini(
             tier=model,
             max_attempts=max_attempts,
             read_timeout=read_timeout,
+            max_output_tokens=max_output_tokens,
             deadline=deadline,
         )
     except GeminiRateLimited:
@@ -327,6 +329,7 @@ def _generate_with_gemini(
             tier='flash',
             max_attempts=max_attempts,
             read_timeout=read_timeout,
+            max_output_tokens=max_output_tokens,
             deadline=deadline,
         )
 
@@ -337,6 +340,7 @@ def _generate_with_openrouter(
     model,
     max_attempts=None,
     read_timeout=None,
+    max_output_tokens=None,
     gemini_error,
     deadline=None,
 ):
@@ -351,6 +355,7 @@ def _generate_with_openrouter(
             model=model,
             max_attempts=max_attempts,
             read_timeout=read_timeout,
+            max_tokens=max_output_tokens,
             deadline=deadline,
         )
     except OpenRouterError as error:
@@ -368,6 +373,7 @@ def generate_json(
     model='flash',
     max_attempts=None,
     read_timeout=None,
+    max_output_tokens=None,
     allow_fallback=True,
 ):
     """Generate JSON with Gemini, falling back to OpenRouter when configured."""
@@ -406,6 +412,7 @@ def generate_json(
                     model=model,
                     max_attempts=max_attempts,
                     read_timeout=read_timeout,
+                    max_output_tokens=max_output_tokens,
                     deadline=gemini_deadline,
                 )
                 _clear_circuit('gemini')
@@ -441,6 +448,7 @@ def generate_json(
         model=model,
         max_attempts=max_attempts,
         read_timeout=read_timeout,
+        max_output_tokens=max_output_tokens,
         gemini_error=gemini_error,
         deadline=overall_deadline,
     )
@@ -505,12 +513,16 @@ def _generate_json_for_model(
     tier='flash',
     max_attempts=None,
     read_timeout=None,
+    max_output_tokens=None,
     deadline=None,
 ):
     generation_config = {
         'responseMimeType': 'application/json',
         'temperature': 0.2,
-        'maxOutputTokens': 16384,
+        'maxOutputTokens': (
+            max(1, int(max_output_tokens))
+            if max_output_tokens is not None else 16384
+        ),
     }
     if re.match(r'^gemini-(?:3|4)(?:[.-])', model_name):
         generation_config['thinkingConfig'] = {'thinkingLevel': 'LOW'}

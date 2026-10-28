@@ -258,14 +258,27 @@
 
     <section id="ask" class="lesson-card">
       <p class="lesson-eyebrow">Ask a tutor</p>
-      <h2 class="lesson-card-title">Still confused? Ask in plain words</h2>
-      <p class="lesson-text lesson-muted">No question is too basic. Ask about any sentence above and get a simpler explanation.</p>
-      <form id="ask-form" class="lesson-ask-form">
+      <div class="tutor-chat-heading">
+        <div>
+          <h2 class="lesson-card-title">Talk it through</h2>
+          <p class="lesson-text lesson-muted">Ask a follow-up whenever you need. The tutor keeps the recent conversation in mind.</p>
+        </div>
+        <button type="button" id="ask-reset" class="btn-secondary tutor-new-chat">New chat</button>
+      </div>
+      <div id="answer" class="tutor-chat" role="log" aria-live="polite" aria-relevant="additions text">
+        <article class="tutor-message tutor-message-assistant">
+          <span class="tutor-message-author">Tutor</span>
+          <p>Hi! What would you like to understand better in this lesson?</p>
+        </article>
+      </div>
+      <form id="ask-form" class="lesson-ask-form tutor-composer">
         <label for="question" class="sr-only">Your question</label>
-        <textarea id="question" rows="3" maxlength="2000" placeholder="e.g. What does “mutating an object” mean in this lesson?"></textarea>
-        <button type="submit" class="btn-primary">Ask the tutor</button>
+        <textarea id="question" rows="2" maxlength="2000" placeholder="Ask a question or follow up…"></textarea>
+        <div class="tutor-composer-footer">
+          <span>Enter to send · Shift+Enter for a new line</span>
+          <button id="ask-send" type="submit" class="btn-primary">Send <span aria-hidden="true">↗</span></button>
+        </div>
       </form>
-      <div id="answer" class="lesson-answer" role="status"></div>
     </section>
   </article>
 
@@ -330,21 +343,69 @@ const csrf = document.querySelector('meta[name="csrf-token"]').content;
 const readJson = async (response) => { try { return await response.json(); } catch (error) { return {}; } };
 const needsSignIn = (response) => response.redirected || response.status === 401;
 
+const tutorChat = document.getElementById('answer');
+const tutorQuestion = document.getElementById('question');
+const tutorSend = document.getElementById('ask-send');
+const tutorHistory = [];
+const addTutorMessage = (role, text, state = '') => {
+  const message = document.createElement('article');
+  message.className = `tutor-message tutor-message-${role}${state ? ` ${state}` : ''}`;
+  const author = document.createElement('span');
+  author.className = 'tutor-message-author';
+  author.textContent = role === 'user' ? 'You' : 'Tutor';
+  const body = document.createElement('p');
+  body.textContent = text;
+  message.append(author, body);
+  tutorChat.append(message);
+  tutorChat.scrollTop = tutorChat.scrollHeight;
+  return message;
+};
 document.getElementById('ask-form').addEventListener('submit', async (event) => {
-  event.preventDefault(); const answer = document.getElementById('answer');
-  const question = document.getElementById('question').value.trim();
-  if (!question) { answer.textContent = 'Enter a question first.'; return; }
-  answer.textContent = 'Thinking…';
+  event.preventDefault();
+  const question = tutorQuestion.value.trim();
+  if (!question || tutorSend.disabled) return;
+  addTutorMessage('user', question);
+  const pending = addTutorMessage('assistant', 'Thinking…', 'is-pending');
+  tutorQuestion.value = '';
+  tutorSend.disabled = true;
   try {
-    const response = await fetch('/api/lessons/ask', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body:JSON.stringify({lesson_id:lessonId, question})});
+    const response = await fetch('/api/lessons/ask', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+      body: JSON.stringify({lesson_id: lessonId, question, history: tutorHistory.slice(-8)}),
+    });
     const data = await readJson(response);
-    if (needsSignIn(response)) { answer.textContent = 'Your session expired. Sign in and try again.'; return; }
-    answer.textContent = response.ok
-      ? (data.answer || 'Unable to answer right now.')
-      : (data.error || 'Clarification is temporarily unavailable. Please retry.');
+    pending.remove();
+    if (needsSignIn(response)) {
+      addTutorMessage('assistant', 'Your session expired. Sign in and try again.', 'is-error');
+      return;
+    }
+    if (!response.ok) {
+      addTutorMessage('assistant', data.error || 'The tutor is temporarily unavailable. Please try again.', 'is-error');
+      return;
+    }
+    const answer = data.answer || 'I could not answer that just now. Please try again.';
+    addTutorMessage('assistant', answer);
+    tutorHistory.push({role: 'user', content: question}, {role: 'assistant', content: answer});
   } catch (error) {
-    answer.textContent = 'Could not reach the AI service. Check your connection and retry.';
+    pending.remove();
+    addTutorMessage('assistant', 'Could not reach the tutor. Check your connection and try again.', 'is-error');
+  } finally {
+    tutorSend.disabled = false;
+    tutorQuestion.focus();
   }
+});
+tutorQuestion.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter' && !event.shiftKey) {
+    event.preventDefault();
+    document.getElementById('ask-form').requestSubmit();
+  }
+});
+document.getElementById('ask-reset').addEventListener('click', () => {
+  tutorHistory.length = 0;
+  tutorChat.replaceChildren();
+  addTutorMessage('assistant', 'Hi! What would you like to understand better in this lesson?');
+  tutorQuestion.focus();
 });
 
 document.getElementById('quiz-button').addEventListener('click', async () => {
