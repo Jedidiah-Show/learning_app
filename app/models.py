@@ -509,7 +509,9 @@ class AIBackgroundJob(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     job_key = db.Column(db.String(160), unique=True, nullable=False)
     job_type = db.Column(db.String(40), nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
     payload = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(20), nullable=False, default='queued')
     attempts = db.Column(db.Integer, nullable=False, default=0)

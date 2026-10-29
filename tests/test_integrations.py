@@ -65,19 +65,30 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
 
-    def test_healthz_reports_database_readiness_without_login(self):
+    def test_readyz_reports_database_readiness_without_login(self):
         with patch.dict(
             os.environ,
-            {'VERCEL_GIT_COMMIT_SHA': 'd9fcbe9abcdef'},
+            {'RENDER_GIT_COMMIT': 'd9fcbe9abcdef'},
             clear=False,
         ):
-            response = self.client.get('/healthz')
+            response = self.client.get('/readyz')
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
         self.assertEqual(payload['status'], 'ok')
         self.assertEqual(payload['commit'], 'd9fcbe9')
         self.assertTrue(payload['database']['ok'])
         self.assertEqual(payload['database']['missing_tables'], [])
+
+    def test_healthz_is_lightweight_and_does_not_touch_the_database(self):
+        with patch(
+            'app.routes.main.database_status',
+            side_effect=AssertionError('healthz must not query the database'),
+        ):
+            response = self.client.get('/healthz')
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertEqual(payload['status'], 'ok')
+        self.assertNotIn('database', payload)
 
     def test_status_reports_configuration_without_exposing_secrets(self):
         self.app.config.update(

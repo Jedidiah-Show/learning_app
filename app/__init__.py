@@ -8,6 +8,7 @@ import os
 import re
 import secrets
 from copy import deepcopy
+from urllib.parse import urlsplit
 import yaml
 from werkzeug.middleware.proxy_fix import ProxyFix
 
@@ -101,16 +102,53 @@ def load_config():
         config = yaml.safe_load(f)
     return validate_app_config(config)
 
+
+def _running_on_vercel():
+    return bool(
+        os.environ.get('VERCEL')
+        or os.environ.get('VERCEL_ENV')
+        or os.path.isdir('/var/task')
+    )
+
+
+def _is_production():
+    """Return True for Vercel, Render, or an explicit production environment."""
+    return bool(
+        os.environ.get('APP_ENV', '').lower() == 'production'
+        or os.environ.get('FLASK_ENV', '').lower() == 'production'
+        or os.environ.get('RENDER')
+        or _running_on_vercel()
+    )
+
+
+def _normalize_database_url(database_url, production):
+    """Use Psycopg 3 and require TLS for external Postgres in production."""
+    if not database_url:
+        return database_url
+    parsed = urlsplit(database_url)
+    host = (parsed.hostname or '').lower()
+    if database_url.startswith('postgres://'):
+        database_url = 'postgresql+psycopg://' + database_url[len('postgres://'):]
+    elif database_url.startswith('postgresql://'):
+        database_url = 'postgresql+psycopg://' + database_url[len('postgresql://'):]
+    local_host = host in {'localhost', '127.0.0.1', '::1'}
+    if (
+        production
+        and database_url.startswith('postgresql+psycopg://')
+        and not local_host
+        and 'sslmode=' not in database_url
+    ):
+        database_url += ('&' if '?' in database_url else '?') + 'sslmode=require'
+    return database_url
+
+
 def create_app(config_override=None):
     flask_options = {
         'template_folder': '../templates',
         'static_folder': '../static',
     }
-    if (
-        os.environ.get('VERCEL')
-        or os.environ.get('VERCEL_ENV')
-        or os.path.isdir('/var/task')
-    ):
+    running_on_vercel = _running_on_vercel()
+    if running_on_vercel:
         # Vercel's deployment bundle is read-only; Flask-SQLAlchemy creates
         # the instance directory during initialization, so keep it in /tmp.
         flask_options['instance_path'] = os.environ.get(
@@ -119,16 +157,7 @@ def create_app(config_override=None):
     app = Flask(__name__, **flask_options)
     
     # Config
-    running_on_vercel = bool(
-        os.environ.get('VERCEL')
-        or os.environ.get('VERCEL_ENV')
-        or os.path.isdir('/var/task')
-    )
-    production = (
-        running_on_vercel
-        or os.environ.get('APP_ENV', '').lower() == 'production'
-        or os.environ.get('FLASK_ENV', '').lower() == 'production'
-    )
+    production = _is_production()
     if production:
         # Vercel terminates TLS and forwards the original scheme in
         # X-Forwarded-Proto.  Without ProxyFix, url_for(_external=True) can
@@ -177,20 +206,13 @@ def create_app(config_override=None):
         )
         if os.environ.get(key)
     ), None)
-    if running_on_vercel and not database_url:
+    if production and not database_url:
         raise RuntimeError(
-            'A persistent PostgreSQL URL is required on Vercel. Configure '
-            'DATABASE_URL or POSTGRES_URL in the project environment.'
+            'A persistent PostgreSQL URL is required in production. Configure '
+            'DATABASE_URL (or POSTGRES_URL) in the Render environment. The '
+            'SQLite fallback is for local development only.'
         )
-    if database_url:
-        if database_url.startswith('postgres://'):
-            database_url = database_url.replace(
-                'postgres://', 'postgresql+psycopg://', 1
-            )
-        elif database_url.startswith('postgresql://'):
-            database_url = database_url.replace(
-                'postgresql://', 'postgresql+psycopg://', 1
-            )
+    database_url = _normalize_database_url(database_url, production)
     app.config['SQLALCHEMY_DATABASE_URI'] = (
         database_url or 'sqlite:///../data/learning_app.db'
     )
@@ -199,8 +221,10 @@ def create_app(config_override=None):
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
             'pool_pre_ping': True,
             'pool_recycle': int(os.environ.get('DB_POOL_RECYCLE', '300')),
-            'pool_size': int(os.environ.get('DB_POOL_SIZE', '5')),
-            'max_overflow': int(os.environ.get('DB_MAX_OVERFLOW', '5')),
+            # Render's free plan runs two gunicorn workers. Keep the pool
+            # small so Neon autosuspend and connection limits stay healthy.
+            'pool_size': int(os.environ.get('DB_POOL_SIZE', '2')),
+            'max_overflow': int(os.environ.get('DB_MAX_OVERFLOW', '2')),
             'pool_timeout': int(os.environ.get('DB_POOL_TIMEOUT', '30')),
             'connect_args': {
                 'connect_timeout': int(os.environ.get('DB_CONNECT_TIMEOUT', '10')),
@@ -241,6 +265,23 @@ def create_app(config_override=None):
         'OPENROUTER_APP_NAME', 'RUACH AI Engineering'
     )
     app.config['OPENROUTER_SITE_URL'] = os.environ.get('OPENROUTER_SITE_URL')
+    app.config['STORAGE_BACKEND'] = (
+        os.environ.get('STORAGE_BACKEND', 'local').strip().lower() or 'local'
+    )
+    app.config['S3_ENDPOINT_URL'] = os.environ.get('S3_ENDPOINT_URL')
+    app.config['S3_BUCKET'] = os.environ.get('S3_BUCKET')
+    app.config['S3_REGION'] = os.environ.get('S3_REGION', 'auto')
+    app.config['S3_ACCESS_KEY_ID'] = os.environ.get('S3_ACCESS_KEY_ID')
+    app.config['S3_SECRET_ACCESS_KEY'] = os.environ.get('S3_SECRET_ACCESS_KEY')
+    app.config['S3_PUBLIC_BASE_URL'] = (
+        os.environ.get('S3_PUBLIC_BASE_URL') or ''
+    ).rstrip('/')
+    if production and app.config['STORAGE_BACKEND'] != 's3':
+        app.logger.warning(
+            'STORAGE_BACKEND is %r; production uploads should use the S3 '
+            'backend because Render disk is ephemeral.',
+            app.config['STORAGE_BACKEND'],
+        )
 
     db.init_app(app)
     migrate.init_app(app, db)

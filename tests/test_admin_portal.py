@@ -449,11 +449,11 @@ class AdminPortalTests(unittest.TestCase):
         self.assertIn('create', html)
 
     # --------------------------------------------------------------- deployment
-    def test_healthz_reports_missing_required_columns(self):
+    def test_readyz_reports_missing_required_columns(self):
         with self.app.app_context():
             db.session.execute(db.text('ALTER TABLE user DROP COLUMN is_admin'))
             db.session.commit()
-        response = self.client.get('/healthz')
+        response = self.client.get('/readyz')
         payload = response.get_json()
         self.assertEqual(response.status_code, 503)
         self.assertFalse(payload['database']['ok'])

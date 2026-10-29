@@ -4,7 +4,8 @@ import os
 from datetime import datetime
 from functools import lru_cache
 
-from flask import Blueprint, abort, current_app, flash, jsonify, render_template, request, url_for
+from flask import (Blueprint, Response, abort, current_app, flash, jsonify,
+                   render_template, request, url_for)
 from flask_login import current_user, login_required
 from sqlalchemy.exc import SQLAlchemyError
 from app import db
@@ -37,20 +38,49 @@ def _lesson_search_index():
 @main_bp.route('/uploads/<path:filename>')
 @login_required
 def uploaded_file(filename):
-    from flask import send_from_directory
-    upload_folder = current_app.config.get('UPLOAD_FOLDER') or os.path.join(
-        current_app.instance_path, 'uploads'
-    )
-    return send_from_directory(upload_folder, filename)
+    from app.storage import StorageError, get_storage
+    try:
+        data, content_type = get_storage().read(filename)
+    except FileNotFoundError:
+        abort(404)
+    except StorageError:
+        current_app.logger.exception('Could not read stored upload')
+        abort(404)
+    response = Response(data, mimetype=content_type)
+    response.headers['Cache-Control'] = 'private, no-cache, max-age=0'
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
+
+
+def _deployment_commit():
+    return (
+        os.environ.get('RENDER_GIT_COMMIT')
+        or os.environ.get('GIT_COMMIT_SHA')
+        or os.environ.get('VERCEL_GIT_COMMIT_SHA')
+        or ''
+    )[:7] or None
 
 
 @main_bp.route('/healthz')
 def healthz():
+    """Liveness check: no database or external calls."""
+    response = jsonify({
+        'status': 'ok',
+        'commit': _deployment_commit(),
+        'version': '1.0.0',
+    })
+    response.headers['Cache-Control'] = 'no-store'
+    response.headers['X-Health-Status'] = 'ok'
+    return response, 200
+
+
+@main_bp.route('/readyz')
+def readyz():
+    """Readiness check: verifies the database schema is usable."""
     database = database_status()
-    commit = (os.environ.get('VERCEL_GIT_COMMIT_SHA') or '')[:7] or None
     response = jsonify({
         'status': 'ok' if database['ok'] else 'degraded',
-        'commit': commit,
+        'commit': _deployment_commit(),
         'version': '1.0.0',
         'database': {
             'ok': database['ok'],

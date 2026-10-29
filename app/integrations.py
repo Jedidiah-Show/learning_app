@@ -37,7 +37,11 @@ REQUIRED_TABLES = (
 # here is a deployment fault (migrations were not applied) that would otherwise
 # surface as a 500 on the first page load rather than as a failed health check.
 REQUIRED_COLUMNS = {
-    'user': ('auth_version', 'is_admin', 'is_active'),
+    'user': (
+        'auth_version', 'is_admin', 'is_active',
+        'streak', 'longest_streak', 'last_study_date',
+    ),
+    'course_project': ('repository_url', 'demo_url'),
 }
 
 
