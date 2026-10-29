@@ -198,5 +198,93 @@
     "instructions": "Implement acceptance_checklist(requirements) to trim whitespace, remove empty entries, remove case-insensitive duplicates, and preserve the first occurrence order. This is a local planning exercise.",
     "starter_code": "def acceptance_checklist(requirements):\n    # TODO: normalize and deduplicate requirements.\n    raise NotImplementedError\n\n\nprint(acceptance_checklist([' log requests ', 'Test retrieval']))",
     "checks_code": "assert acceptance_checklist([' log requests ', '', 'Test retrieval', 'LOG REQUESTS', ' test retrieval ']) == ['log requests', 'Test retrieval']\nassert acceptance_checklist([]) == []\nprint('All checks passed.')"
+  },
+  {
+    "id": "multimodal-media-validation",
+    "lesson_id": "3.06",
+    "title": "Validate media metadata",
+    "instructions": "Implement validate_media(item). Return an error string for unsupported modality, negative or oversized bytes, or missing/invalid duration for audio/video; otherwise return None.",
+    "starter_code": "ALLOWED = {\"text\", \"image\", \"audio\", \"video\"}\n\ndef validate_media(item, max_bytes=1000, max_seconds=60):\n    # TODO: validate modality, size, and audio/video duration.\n    raise NotImplementedError",
+    "checks_code": "assert validate_media({\"modality\":\"image\",\"bytes\":500}) is None\nassert validate_media({\"modality\":\"image\",\"bytes\":2000}) == \"invalid_size\"\nassert validate_media({\"modality\":\"audio\",\"bytes\":20}) == \"invalid_duration\"\nassert validate_media({\"modality\":\"audio\",\"bytes\":20,\"duration_seconds\":61}) == \"invalid_duration\"\nassert validate_media({\"modality\":\"video\",\"bytes\":20,\"duration_seconds\":10}) is None\nassert validate_media({\"modality\":\"text\",\"bytes\":0}) is None\nassert validate_media({\"modality\":\"archive\",\"bytes\":1}) == \"unsupported_modality\"\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "model-deployment-decision",
+    "lesson_id": "3.15",
+    "title": "Choose a deployment from constraints",
+    "instructions": "Implement choose_deployment(requirements). Choose hosted when it meets latency and privacy constraints; choose self_hosted only when data must remain local and the team has operations capacity; otherwise return needs_review.",
+    "starter_code": "def choose_deployment(requirements):\n    # TODO: apply privacy, latency, and operations constraints.\n    raise NotImplementedError",
+    "checks_code": "assert choose_deployment({\"local_only\":False,\"hosted_meets_latency\":True,\"ops_capacity\":False}) == \"hosted\"\nassert choose_deployment({\"local_only\":True,\"hosted_meets_latency\":False,\"ops_capacity\":True}) == \"self_hosted\"\nassert choose_deployment({\"local_only\":True,\"hosted_meets_latency\":True,\"ops_capacity\":False}) == \"needs_review\"\nassert choose_deployment({\"local_only\":False,\"hosted_meets_latency\":False,\"ops_capacity\":False}) == \"needs_review\"\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "document-evidence-check",
+    "lesson_id": "4.03",
+    "title": "Validate extracted evidence spans",
+    "instructions": "Implement valid_extraction(record, text). Require a non-empty string value and a source span whose start/end are valid indices and whose text matches the extracted value after whitespace normalization.",
+    "starter_code": "def valid_extraction(record, text):\n    # TODO: validate value and evidence offsets.\n    raise NotImplementedError",
+    "checks_code": "text = \"Invoice total: 42.00 USD\"\nrecord = {\"value\":\"42.00 USD\",\"start\":15,\"end\":24}\nassert valid_extraction(record, text) is True\nassert valid_extraction({\"value\":\"99.00\",\"start\":15,\"end\":20}, text) is False\nassert valid_extraction({\"value\":\"42.00 USD\",\"start\":30,\"end\":39}, text) is False\nassert valid_extraction({\"value\":\"\",\"start\":0,\"end\":0}, text) is False\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "mcp-protocol-era-selection",
+    "lesson_id": "8.03",
+    "title": "Select MCP compatibility behavior",
+    "instructions": "Implement protocol_mode(version). Return stateless for 2026-07-28 and later revisions, handshake for supported earlier dated revisions, and unsupported for malformed or unknown input.",
+    "starter_code": "def protocol_mode(version):\n    # TODO: parse YYYY-MM-DD and classify supported protocol eras.\n    raise NotImplementedError",
+    "checks_code": "assert protocol_mode(\"2026-07-28\") == \"stateless\"\nassert protocol_mode(\"2025-11-25\") == \"handshake\"\nassert protocol_mode(\"2025-03-26\") == \"handshake\"\nassert protocol_mode(\"not-a-version\") == \"unsupported\"\nassert protocol_mode(\"2027-01-01\") == \"unsupported\"\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "ai-deletion-plan",
+    "lesson_id": "9.10",
+    "title": "Plan deletion across derived stores",
+    "instructions": "Implement deletion_targets(record). Return all stores that may contain a document, including source, chunks, embeddings, answer_cache, logs, and eval_data only when the record says evaluation_copy is true. Preserve stable output order.",
+    "starter_code": "def deletion_targets(record):\n    # TODO: return every store that may retain this document.\n    raise NotImplementedError",
+    "checks_code": "assert deletion_targets({\"evaluation_copy\":False}) == [\"source\", \"chunks\", \"embeddings\", \"answer_cache\", \"logs\"]\nassert deletion_targets({\"evaluation_copy\":True}) == [\"source\", \"chunks\", \"embeddings\", \"answer_cache\", \"logs\", \"eval_data\"]\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "ai-risk-control-map",
+    "lesson_id": "9.13",
+    "title": "Map AI risks to controls",
+    "instructions": "Implement controls_for(risks), returning unique deterministic controls for prompt_injection, cross_tenant_retrieval, unsafe_output, and unbounded_cost. Do not invent a control for unknown risks.",
+    "starter_code": "RISK_CONTROLS = {\n    \"prompt_injection\": \"tool_allowlist\",\n    \"cross_tenant_retrieval\": \"tenant_filter\",\n    \"unsafe_output\": \"output_validation\",\n    \"unbounded_cost\": \"request_budget\",\n}\n\ndef controls_for(risks):\n    # TODO: map known risks, keep first occurrence order, ignore unknowns.\n    raise NotImplementedError",
+    "checks_code": "assert controls_for([\"prompt_injection\", \"unsafe_output\"]) == [\"tool_allowlist\", \"output_validation\"]\nassert controls_for([\"cross_tenant_retrieval\", \"cross_tenant_retrieval\", \"unknown\"]) == [\"tenant_filter\"]\nassert controls_for([]) == []\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "orchestration-evidence-choice",
+    "lesson_id": "12.09",
+    "title": "Choose the simplest adequate orchestration",
+    "instructions": "Implement choose_architecture(evidence). Prefer workflow when the path is fixed. Otherwise keep one_agent unless measured specialist_gain exceeds added_latency_cost and safety checks pass.",
+    "starter_code": "def choose_architecture(evidence):\n    # TODO: require evidence before recommending multiple agents.\n    raise NotImplementedError",
+    "checks_code": "assert choose_architecture({\"fixed_path\":True}) == \"workflow\"\nassert choose_architecture({\"fixed_path\":False,\"specialist_gain\":0.2,\"added_latency_cost\":0.1,\"safety_passed\":True}) == \"multi_agent\"\nassert choose_architecture({\"fixed_path\":False,\"specialist_gain\":0.1,\"added_latency_cost\":0.2,\"safety_passed\":True}) == \"one_agent\"\nassert choose_architecture({\"fixed_path\":False,\"specialist_gain\":0.5,\"added_latency_cost\":0.1,\"safety_passed\":False}) == \"one_agent\"\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "backend-idempotent-job",
+    "lesson_id": "2.19",
+    "title": "Create or reuse an idempotent job",
+    "instructions": "Implement create_or_reuse(key, jobs). Reject a blank key; return the existing job for a repeated key; otherwise add and return one new job id.",
+    "starter_code": "def create_or_reuse(key, jobs):\n    # TODO: make repeated submissions safe.\n    raise NotImplementedError",
+    "checks_code": "jobs = {}\nassert create_or_reuse(\"k1\", jobs) == (\"created\", \"job-k1\")\nassert create_or_reuse(\"k1\", jobs) == (\"existing\", \"job-k1\")\nassert len(jobs) == 1\nassert create_or_reuse(\"\", jobs) == (\"error\", None)\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "rag-reciprocal-rank",
+    "lesson_id": "5.17",
+    "title": "Score retrieval rank",
+    "instructions": "Implement reciprocal_rank(relevant_ids, results, k). Return 1/rank for the first relevant result in the top k, or 0 if none appears. Rank is one-based.",
+    "starter_code": "def reciprocal_rank(relevant_ids, results, k):\n    # TODO: find the first relevant result within k.\n    raise NotImplementedError",
+    "checks_code": "assert reciprocal_rank({\"d2\"}, [\"d1\", \"d2\", \"d3\"], 3) == 0.5\nassert reciprocal_rank({\"d3\"}, [\"d1\", \"d2\", \"d3\"], 2) == 0\nassert reciprocal_rank(set(), [\"d1\"], 1) == 0\nassert reciprocal_rank({\"d1\"}, [\"d1\"], 0) == 0\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "agent-tool-authorization",
+    "lesson_id": "6.16",
+    "title": "Authorize a tool call outside the model",
+    "instructions": "Implement authorize_tool(name, allowed_tools, write_tools, approved). A tool must be allowlisted, and write tools require explicit approval.",
+    "starter_code": "def authorize_tool(name, allowed_tools, write_tools, approved):\n    # TODO: enforce host policy deterministically.\n    raise NotImplementedError",
+    "checks_code": "allowed = {\"search\", \"send_email\"}\nwrites = {\"send_email\"}\nassert authorize_tool(\"search\", allowed, writes, False) is True\nassert authorize_tool(\"send_email\", allowed, writes, False) is False\nassert authorize_tool(\"send_email\", allowed, writes, True) is True\nassert authorize_tool(\"delete_all\", allowed, writes, True) is False\nprint(\"All checks passed.\")"
+  },
+  {
+    "id": "container-release-readiness",
+    "lesson_id": "10.07",
+    "title": "Check production image readiness",
+    "instructions": "Implement release_ready(image). A production image is ready only when it runs as a non-root user, has no baked-in secrets, and declares a health check.",
+    "starter_code": "def release_ready(image):\n    # TODO: check all three release requirements.\n    raise NotImplementedError",
+    "checks_code": "assert release_ready({\"non_root\":True,\"baked_secrets\":False,\"healthcheck\":True}) is True\nassert release_ready({\"non_root\":False,\"baked_secrets\":False,\"healthcheck\":True}) is False\nassert release_ready({\"non_root\":True,\"baked_secrets\":True,\"healthcheck\":True}) is False\nassert release_ready({\"non_root\":True,\"baked_secrets\":False,\"healthcheck\":False}) is False\nprint(\"All checks passed.\")"
   }
 ]

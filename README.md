@@ -4,7 +4,7 @@
 >
 > *Rooted in faith. Built for tomorrow.*
 
-A Flask learning app for the RUACH engineering course: 13 modules and 201 bundled lessons mapped to a five-month AI engineering blueprint, with weekly focus areas and monthly build milestones. Learners choose one of four required capstones and track a separate personal portfolio project alongside sequential module projects, quizzes, progress, study schedules, and optional Google Calendar sync. Historical subject-based progress and weekly projects remain stored as legacy records and are not mixed into the new course.
+A Flask learning app for the RUACH engineering course: 13 modules and 201 bundled lessons mapped to a suggested five-month AI engineering plan. The curriculum covers multimodal model inputs, RAG, agent workflows, versioned MCP, security, evaluation, data governance, and deployment. Learners choose one of four project briefs and can justify omitting optional architecture components; the five-month schedule is a guide, not a completion guarantee. The app also tracks a separate portfolio project, module work, quizzes, progress, study schedules, and optional Google Calendar sync. Historical subject-based progress and weekly projects remain stored as legacy records and are not mixed into the new course.
 
 ## Run locally
 

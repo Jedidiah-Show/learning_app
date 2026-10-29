@@ -11,8 +11,9 @@ from app import db
 from app.curriculum import all_modules, get_module
 from app.learning import (
     module_project_is_available, completed_project_modules, course_progress,
+    monthly_milestone_progress,
 )
-from app.course_blueprint import MONTHS, PROJECT_BY_ID, REQUIRED_PROJECTS
+from app.course_blueprint import PROJECT_BY_ID, REQUIRED_PROJECTS
 from app.models import CoursePlan, CourseProject
 from app.request_data import get_json_object
 
@@ -62,24 +63,8 @@ def _required_project_brief(project):
 @login_required
 def project_page():
     progress = course_progress(current_user)
-    module_progress = {module['id']: module for module in progress['modules']}
     completed = completed_project_modules(current_user)
-    milestones = []
-    for month in MONTHS:
-        month_progress = [module_progress[module_id] for module_id in month['modules']]
-        month_complete = all(
-            item['completed_lessons'] == item['total_lessons']
-            and item['id'] in completed for item in month_progress
-        )
-        previous_complete = all(item['complete'] for item in milestones)
-        milestones.append({
-            **month,
-            'complete': month_complete,
-            'module_titles': [item['title'] for item in month_progress],
-            'status': 'Complete' if month_complete else (
-                'In progress' if previous_complete else 'Up next'
-            ),
-        })
+    milestones = monthly_milestone_progress(progress, completed)
     plan = _plan()
     return render_template(
         'projects.html', modules=all_modules(), completed_modules=completed,

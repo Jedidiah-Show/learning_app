@@ -387,6 +387,8 @@ def create_app(config_override=None):
     from app.routes.admin_portal import admin_portal_bp
     from app.routes.auth import auth_bp
     from app.routes.projects import projects_bp
+    from app.routes.community import community_bp
+    from app.routes.leaderboard import leaderboard_bp
     from app.routes.integrations import integrations_bp
 
     app.register_blueprint(main_bp)
@@ -398,6 +400,8 @@ def create_app(config_override=None):
     app.register_blueprint(calendar_bp, url_prefix='/api/calendar')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
     app.register_blueprint(projects_bp)
+    app.register_blueprint(community_bp)
+    app.register_blueprint(leaderboard_bp)
     app.register_blueprint(integrations_bp, url_prefix='/api/integrations')
     @app.before_request
     def enforce_csrf_protection():

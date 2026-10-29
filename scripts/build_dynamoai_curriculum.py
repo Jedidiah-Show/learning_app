@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Build the static DynamoAI course data from the Complete Lesson Guides PDF.
+"""Legacy importer from the original Complete Lesson Guides PDF.
 
-The PDF is the source of truth for the learner curriculum. This script only
-performs a one-time conversion; the web application reads the generated JSON.
+The web application reads the maintained JSON curriculum. That file now
+contains editorial updates that are not present in the original PDF, so this
+importer will overwrite those updates if run before the PDF is refreshed.
+Use it only when rebuilding the app data from an updated PDF source.
 
 Usage:
     python scripts/build_dynamoai_curriculum.py

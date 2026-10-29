@@ -10,7 +10,9 @@ from flask_login import current_user, login_required
 from sqlalchemy.exc import SQLAlchemyError
 from app import db
 from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
-from app.learning import course_progress, lesson_is_available
+from app.learning import (
+    course_progress, lesson_is_available, monthly_milestone_progress,
+)
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
 from app.integrations import database_status
 from app.models import (CalendarEvent, LessonBookmark, LessonNote, LessonCompletion,
@@ -227,13 +229,22 @@ def progress():
     projects = CourseProject.query.filter_by(
         user_id=current_user.id, completed=True
     ).all()
+    progress_data = course_progress(current_user)
+    completed_project_ids = {item.module_id for item in projects}
+    from app.leaderboard import leaderboard_data
+    leaderboard_info = leaderboard_data(current_user)
     return render_template('progress.html', config=config,
-                           user=current_user, progress=course_progress(current_user),
+                           user=current_user, progress=progress_data,
                            analytics=analytics,
+                           milestones=monthly_milestone_progress(
+                               progress_data, completed_project_ids
+                           ),
+                           leaderboard=leaderboard_info,
+                           leaderboard_opted_in=leaderboard_info['opted_in'],
                            recent_completions=recent_completions,
                            recent_lessons={item.lesson_id: get_lesson(item.lesson_id)
                                            for item in recent_completions},
-                           completed_project_ids={item.module_id for item in projects})
+                           completed_project_ids=completed_project_ids)
 
 
 @main_bp.route('/review')

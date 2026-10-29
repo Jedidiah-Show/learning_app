@@ -222,7 +222,8 @@ def curriculum():
     data['course']['title'] = 'RUACH AI Engineering'
     data['course']['description'] = (
         'The RUACH AI Engineering course: 13 modules and 201 lessons, '
-        'from Python and backend engineering through production AI systems.'
+        'from Python and backend engineering through multimodal, retrieval, '
+        'agent, security, evaluation, governance, and production AI systems.'
     )
     resources_path = Path(__file__).parent / 'data' / 'dynamoai_resources.json'
     with resources_path.open(encoding='utf-8') as source:

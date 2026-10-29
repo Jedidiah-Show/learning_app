@@ -83,6 +83,12 @@ class User(UserMixin, db.Model):
     lesson_notes = db.relationship(
         'LessonNote', backref='user', lazy=True, cascade='all, delete-orphan',
     )
+    community_posts = db.relationship(
+        'CommunityPost', backref='author', lazy=True, cascade='all, delete-orphan',
+    )
+    community_replies = db.relationship(
+        'CommunityReply', backref='author', lazy=True, cascade='all, delete-orphan',
+    )
 
 
 class UserProfilePhoto(db.Model):
@@ -473,9 +479,51 @@ class CoursePlan(db.Model):
     portfolio_summary = db.Column(db.Text)
     portfolio_repository_url = db.Column(db.String(500))
     portfolio_demo_url = db.Column(db.String(500))
+    leaderboard_opt_in = db.Column(
+        db.Boolean, nullable=False, default=False, server_default=db.false()
+    )
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = db.Column(
         db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+
+
+class CommunityPost(db.Model):
+    __tablename__ = 'community_post'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    topic = db.Column(db.String(40), nullable=False)
+    title = db.Column(db.String(140), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+    replies = db.relationship(
+        'CommunityReply', backref='post', lazy=True, cascade='all, delete-orphan',
+        order_by='CommunityReply.created_at',
+    )
+    __table_args__ = (
+        db.Index('idx_community_post_updated', 'updated_at'),
+        db.Index('idx_community_post_topic_updated', 'topic', 'updated_at'),
+    )
+
+
+class CommunityReply(db.Model):
+    __tablename__ = 'community_reply'
+    id = db.Column(db.Integer, primary_key=True)
+    post_id = db.Column(
+        db.Integer, db.ForeignKey('community_post.id', ondelete='CASCADE'), nullable=False
+    )
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    body = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    __table_args__ = (
+        db.Index('idx_community_reply_post_created', 'post_id', 'created_at'),
     )
 
 

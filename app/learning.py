@@ -96,6 +96,38 @@ def course_progress(user):
     }
 
 
+def monthly_milestone_progress(progress, completed_projects):
+    """Group the sequential course modules into the five learner milestones."""
+    from app.course_blueprint import MONTHS
+
+    modules = {module['id']: module for module in progress['modules']}
+    result = []
+    for milestone in MONTHS:
+        grouped = [modules[module_id] for module_id in milestone['modules']]
+        done_lessons = sum(item['completed_lessons'] for item in grouped)
+        total_lessons = sum(item['total_lessons'] for item in grouped)
+        done_modules = sum(
+            item['completed_lessons'] == item['total_lessons']
+            and item['id'] in completed_projects for item in grouped
+        )
+        complete = done_modules == len(grouped)
+        previous_complete = all(item['complete'] for item in result)
+        result.append({
+            **milestone,
+            'complete': complete,
+            'status': 'Complete' if complete else (
+                'In progress' if previous_complete else 'Up next'
+            ),
+            'module_titles': [item['title'] for item in grouped],
+            'completed_lessons': done_lessons,
+            'total_lessons': total_lessons,
+            'completed_modules': done_modules,
+            'total_modules': len(grouped),
+            'percent': round(done_lessons / total_lessons * 100) if total_lessons else 0,
+        })
+    return result
+
+
 def curriculum_days(config=None):
     """Compatibility name for the number of fixed course lessons."""
     return len(all_lessons())

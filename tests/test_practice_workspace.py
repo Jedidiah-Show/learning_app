@@ -105,7 +105,9 @@ class PracticeWorkspaceTests(unittest.TestCase):
             f'1.{lesson_number:02d}' for lesson_number in range(1, 18)
         }
         expected_guided_lessons = {
-            '2.02', '5.02', '6.01', '8.01', '9.01', '10.01', '11.01', '12.01'
+            '2.02', '2.19', '3.06', '3.15', '4.03', '5.02', '5.17',
+            '6.01', '6.16', '8.01', '8.03', '9.01', '9.10', '9.13',
+            '10.01', '10.07', '11.01', '12.01', '12.09',
         }
         self.assertEqual(
             {
