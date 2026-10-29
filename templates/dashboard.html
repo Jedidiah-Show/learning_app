@@ -22,6 +22,14 @@
   </div>
   <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/15"><div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-gold-400" style="width:{{ (progress.completed_lessons / progress.total_lessons * 100)|round(1) }}%"></div></div>
 </section>
+{% if not progress_error and progress.completed_lessons == 0 and not progress.course_complete %}
+<section class="mt-8 rounded-2xl border border-indigo-100 bg-indigo-50 p-6 shadow-sm">
+    <p class="text-xs font-bold uppercase tracking-wider text-indigo-700">Getting started</p>
+    <h3 class="mt-2 text-xl font-bold">Your first lesson awaits</h3>
+    <p class="mt-2 text-sm text-slate-600">You have not completed any lessons yet. Module 0 of the RUACH AI Engineering is ready when you are — lessons unlock in order, and completing each module project unlocks the next module.</p>
+    <a class="mt-4 inline-flex rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white" href="{{ url_for('main.lessons') }}">Start your first lesson →</a>
+</section>
+{% endif %}
 {% if next_lesson %}<section class="mt-8 rounded-2xl border border-brand-100 bg-white p-6 shadow-sm transition hover:shadow-md">
   <p class="text-xs font-bold uppercase tracking-wider text-gold-700">Continue your course · Lesson {{ next_lesson._ordinal }}</p>
   <h3 class="mt-2 text-xl font-bold text-slate-900">{{ next_lesson.title }}</h3>

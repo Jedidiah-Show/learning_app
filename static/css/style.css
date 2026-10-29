@@ -720,3 +720,8 @@ html[data-theme="dark"] .lesson-video-frame iframe { background:#0C120E; }
 /* Keyboard accessibility: skip-to-content link. */
 .skip-link { position:fixed; top:10px; left:10px; z-index:300; padding:10px 16px; border-radius:10px; background:#083D2E; color:#FFFFFF; font-size:13px; font-weight:800; text-decoration:none; transform:translateY(-220%); transition:transform .18s ease; }
 .skip-link:focus { transform:translateY(0); color:#FFFFFF; outline:3px solid rgba(63,174,107,.55); outline-offset:2px; }
+
+/* Loading states */
+.loading-spinner { display:inline-block; width:16px; height:16px; vertical-align:middle; border:2px solid rgba(63,174,107,.25); border-top-color:#2E8F55; border-radius:9999px; animation:loading-spin .7s linear infinite; }
+html[data-theme="dark"] .loading-spinner { border-color:rgba(142,224,189,.25); border-top-color:#8EE0BD; }
+@keyframes loading-spin { to { transform:rotate(360deg); } }

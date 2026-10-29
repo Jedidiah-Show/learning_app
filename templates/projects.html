@@ -24,7 +24,7 @@
     <div class="md:col-span-2"><button class="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white">Save portfolio project</button><span id="portfolio-project-status" class="ml-3 text-sm" role="status" aria-live="polite"></span></div>
   </form>
 </section>
-<section class="mb-8" aria-labelledby="monthly-milestones-title"><div class="mb-4"><p class="text-xs font-bold uppercase tracking-wider text-indigo-600">The realistic five-month blueprint</p><h3 id="monthly-milestones-title" class="mt-1 text-2xl font-bold">Monthly milestones</h3></div>
+<section class="mb-8" aria-labelledby="monthly-milestones-title"><div class="mb-4"><p class="text-xs font-bold uppercase tracking-wider text-indigo-600">Suggested five-month roadmap</p><h3 id="monthly-milestones-title" class="mt-1 text-2xl font-bold">Monthly milestones</h3><p class="mt-1 text-sm text-slate-600">Adjust the pace to your available study time; use the milestones to track evidence of learning.</p></div>
 <div class="grid gap-4 xl:grid-cols-2">{% for month in milestones %}<article class="rounded-2xl border bg-white p-5"><div class="flex items-start justify-between gap-3"><div><p class="text-xs font-bold uppercase text-indigo-600">Month {{ month.number }}</p><h4 class="mt-1 text-lg font-bold">{{ month.title }}</h4></div><span class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold {{ 'bg-emerald-50 text-emerald-700' if month.complete else 'bg-slate-100 text-slate-700' }}">{{ 'Complete ✓' if month.complete else month.status }}</span></div><p class="mt-2 text-sm text-slate-600">{{ month.summary }}</p><p class="mt-3 text-sm"><strong>Key concepts:</strong> {{ month.concepts|join(' · ') }}</p><ol class="mt-3 list-inside list-decimal space-y-1 text-sm text-slate-600">{% for week in month.weeks %}<li>{{ week }}</li>{% endfor %}</ol><p class="mt-3 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-950"><strong>Month {{ month.number }} milestone:</strong> {{ month.milestone }}</p><p class="mt-2 text-xs text-slate-500">Course modules: {{ month.module_titles|join(' · ') }}</p></article>{% endfor %}</div></section>
 <div class="mb-4"><h3 class="text-2xl font-bold">Required module projects</h3><p class="mt-1 text-sm text-slate-600">Complete these in sequence to unlock later lessons. The final module uses the capstone you selected above.</p></div>
 <div class="space-y-4">{% for module in modules %}<section id="module-{{ module.id }}" class="rounded-2xl border bg-white p-5"><div class="flex flex-wrap items-center justify-between gap-3"><div><p class="text-xs font-semibold uppercase text-indigo-600">Module {{ module.number }}</p><h3 class="text-lg font-bold">{{ module.title }}</h3><p class="mt-1 text-sm text-slate-600">{{ module.project }}</p></div>{% if module.id in completed_modules %}<span class="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">Complete ✓</span>{% endif %}</div><button class="mt-4 rounded-lg border border-indigo-200 px-4 py-2 font-semibold text-indigo-700" data-open="{{ module.id }}">Open project</button><div id="project-{{ module.id }}" class="mt-4" aria-live="polite"></div></section>{% endfor %}</div>
@@ -236,7 +236,10 @@ document.querySelectorAll('[data-open]').forEach((button) => {
     button.addEventListener('click', async () => {
         const id = button.dataset.open;
         const area = document.getElementById(`project-${id}`);
-        area.textContent = 'Loading project…';
+        const loadingState = document.createElement('div');
+        loadingState.className = 'flex items-center gap-2 text-sm text-slate-600';
+        loadingState.innerHTML = '<span class="loading-spinner" aria-hidden="true"></span> Loading project…';
+        area.replaceChildren(loadingState);
         button.disabled = true;
         try {
             const response = await fetch(`/api/projects/module/${encodeURIComponent(id)}`);
