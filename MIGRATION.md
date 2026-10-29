@@ -273,6 +273,11 @@ repository/demo URLs. They inspect the existing schema first, so they are safe
 against a production database that already has any of those objects. They do
 not drop or rename anything.
 
+Keep `d1a6f9c2b840` in the migration graph: the production database is stamped
+at that already-applied project-link revision. `4b7c9d1e2f30` now descends from
+it, allowing Alembic to upgrade production without stamping or rewriting the
+version table manually.
+
 Do not run `flask db downgrade` against production. Do not add destructive
 migrations (`DROP`, rename, narrowing type changes) until Vercel is retired.
 

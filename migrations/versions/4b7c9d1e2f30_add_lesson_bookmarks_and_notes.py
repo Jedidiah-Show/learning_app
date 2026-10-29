@@ -1,7 +1,7 @@
 """add lesson bookmarks and notes
 
 Revision ID: 4b7c9d1e2f30
-Revises: 7a2d9e4b6c10
+Revises: d1a6f9c2b840
 Create Date: 2026-10-29 03:30:00.000000
 
 The models for these tables existed without a migration in the current chain.
@@ -15,7 +15,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '4b7c9d1e2f30'
-down_revision = '7a2d9e4b6c10'
+down_revision = 'd1a6f9c2b840'
 branch_labels = None
 depends_on = None
 
