@@ -617,6 +617,12 @@ html[data-theme="dark"] {
     --app-sidebar:#101812;
     --app-sidebar-hover:#1D2B21;
     --app-sidebar-active:#233C2A;
+    /* Legacy semantic tokens consumed by the shared component styles above. */
+    --ink:#F0F5F0;
+    --muted:#AAB9AC;
+    --line:#34483A;
+    --purple:#3FAE6B;
+    --mint:#1E3B2A;
 }
 body { color:var(--app-text);font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif;background:var(--ruach-cream) !important;font-size:15px;line-height:1.55; }
 h1,h2,.section-title,.lesson-hero-title,.lesson-video-title,.auth-story h2,.auth-heading h1 { font-family:Manrope,'DM Sans',system-ui,sans-serif;letter-spacing:-.035em;font-weight:750; }
@@ -660,3 +666,43 @@ html[data-theme="dark"] .eyebrow,html[data-theme="dark"] .lesson-eyebrow,html[da
 .nav-link, .btn-primary, .btn-secondary, article, .lesson-card {
   transition: all 0.2s ease-in-out;
 }
+
+/* ============================================================
+   Dark theme coverage (interim UI pass)
+   Surfaces that hardcode light-only colors get dark equivalents;
+   shared tokens (--app-*, legacy --ink/--muted/--line) cover the rest.
+   ============================================================ */
+html[data-theme="dark"] .page-intro { background:linear-gradient(120deg,#141C17 0%,#1B2820 100%); }
+html[data-theme="dark"] .subject-progress-card { background:linear-gradient(145deg,#141C17,#101812); }
+html[data-theme="dark"] .action-violet { background:#1E3B2A; border-color:#2A4A38; }
+html[data-theme="dark"] .action-mint { background:#163B29; border-color:#2A4A38; }
+html[data-theme="dark"] .action-symbol { background:#1B2820; color:#8EE0BD; box-shadow:0 4px 12px rgba(0,0,0,.35); }
+html[data-theme="dark"] .action-card p { color:var(--app-muted); }
+html[data-theme="dark"] .event-row { background:#141C17; }
+html[data-theme="dark"] .empty-state { background:var(--app-surface-muted); border-color:var(--app-border); color:var(--app-muted); }
+html[data-theme="dark"] .progress-track { background:#243528; }
+html[data-theme="dark"] .subject-icon { background:color-mix(in srgb,var(--subject-color) 18%,#141C17); }
+html[data-theme="dark"] .lesson-video { background:#141C17; box-shadow:0 6px 24px rgba(0,0,0,.35); }
+html[data-theme="dark"] .lesson-video-title { color:var(--app-text); }
+html[data-theme="dark"] .lesson-video-meta { color:var(--app-muted); }
+html[data-theme="dark"] .lesson-video-link { color:#8EE0BD; }
+html[data-theme="dark"] .lesson-video-status { background:#1B2820; color:var(--app-muted); }
+html[data-theme="dark"] .lesson-video-why { color:var(--app-muted); }
+html[data-theme="dark"] .practice-output-wrap { background:var(--app-surface); }
+html[data-theme="dark"] .practice-output-wrap h3 { color:var(--app-muted); border-bottom-color:var(--app-border); }
+html[data-theme="dark"] .practice-output-wrap pre { background:#0D120E; color:#D7F4E5; border-color:#243528; }
+html[data-theme="dark"] .practice-task { background:var(--app-surface); border-left-color:var(--app-border); }
+html[data-theme="dark"] .auth-switch { border-top-color:var(--app-border); color:var(--app-muted); }
+html[data-theme="dark"] .lesson-tasks li label { color:var(--app-text); }
+html[data-theme="dark"] .lesson-toc a:hover { color:#8EE0BD; }
+html[data-theme="dark"] .auth-shell { background:radial-gradient(ellipse at 78% 14%,#0F241B 0,transparent 33%),#0C120E !important; }
+html[data-theme="dark"] .auth-link { color:#8EE0BD; }
+html[data-theme="dark"] .auth-link:hover { color:#AEE8CC; }
+html[data-theme="dark"] .auth-heading > p:last-child { color:var(--app-muted); }
+html[data-theme="dark"] .flash-message.info { background:#163B29; border-color:#2A4A38; color:#8EE0BD; }
+html[data-theme="dark"] .flash-message.error { background:#2C2023; border-color:#4A2F36; color:#F0B8B8; }
+html[data-theme="dark"] .flash-message.success { background:#163B29; border-color:#2A4A38; color:#8EE0BD; }
+
+/* Keyboard accessibility: skip-to-content link. */
+.skip-link { position:fixed; top:10px; left:10px; z-index:300; padding:10px 16px; border-radius:10px; background:#083D2E; color:#FFFFFF; font-size:13px; font-weight:800; text-decoration:none; transform:translateY(-220%); transition:transform .18s ease; }
+.skip-link:focus { transform:translateY(0); color:#FFFFFF; outline:3px solid rgba(63,174,107,.55); outline-offset:2px; }
