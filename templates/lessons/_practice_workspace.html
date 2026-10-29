@@ -5,7 +5,7 @@
     <section id="practice-panel" class="practice-panel" aria-label="Practice workspace" hidden>
         <header class="practice-header">
             <div class="practice-heading">
-                <strong>Python practice</strong>
+                <strong>Runnable practice</strong>
                 <span id="practice-save-status" data-state="saved" role="status"><span class="loading-spinner" aria-hidden="true"></span> Loading exercise…</span>
             </div>
             <div class="practice-controls">
@@ -21,6 +21,7 @@
                     <select id="practice-exercise-select" aria-label="Choose practice exercise"></select>
                     <button id="practice-reset" type="button">Reset starter</button>
                     <button id="practice-run" type="button" disabled>Run checks</button>
+                    <button id="practice-solution" type="button" disabled hidden>Show worked solution</button>
                 </div>
                 <div id="practice-editor" class="practice-editor" aria-label="Python code editor"></div>
                 <div class="practice-output-wrap">
@@ -32,7 +33,7 @@
                 <p class="practice-kicker">Your task</p>
                 <h2 id="practice-task-title"></h2>
                 <p id="practice-instructions"></p>
-                <p class="practice-note">Python runs in an isolated browser frame, not on the app server. Network access is disabled. This practice runner is for learning, not secure grading.</p>
+            <p class="practice-note">Python runs in an isolated browser frame, not on the app server. Network access is disabled. These checks give immediate learning feedback, not secure grading. Try the task first; after you run it once, you can reveal a worked solution when one is available.</p>
             </aside>
         </div>
     </section>

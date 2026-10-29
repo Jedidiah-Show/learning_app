@@ -5,7 +5,9 @@
     "title": "Find the cheapest model per provider",
     "instructions": "Implement cheapest_by_provider(rows). Return a dictionary mapping each provider to the name of its lowest-priced model. Convert price strings to numbers, return an empty dictionary for empty input, and break equal-price ties by choosing the alphabetically first model name.",
     "starter_code": "models = [\n    {\"name\": \"Atlas-S\", \"provider\": \"Northwind\", \"price\": \"0.50\"},\n    {\"name\": \"Atlas-L\", \"provider\": \"Northwind\", \"price\": \"3.00\"},\n    {\"name\": \"Kestrel-8\", \"provider\": \"Cobalt\", \"price\": \"1.20\"},\n]\n\n\ndef cheapest_by_provider(rows):\n    # TODO: return {provider: cheapest_model_name}\n    raise NotImplementedError\n\n\nprint(cheapest_by_provider(models))",
-    "checks_code": "fixtures = [\n    {\"name\": \"Atlas-S\", \"provider\": \"Northwind\", \"price\": \"0.50\"},\n    {\"name\": \"Atlas-L\", \"provider\": \"Northwind\", \"price\": \"3.00\"},\n    {\"name\": \"Kestrel-8\", \"provider\": \"Cobalt\", \"price\": \"1.20\"},\n]\nassert cheapest_by_provider(fixtures) == {\"Cobalt\": \"Kestrel-8\", \"Northwind\": \"Atlas-S\"}\nassert cheapest_by_provider([]) == {}\ntied = [\n    {\"name\": \"Zeta\", \"provider\": \"Cobalt\", \"price\": \"1.0\"},\n    {\"name\": \"Alpha\", \"provider\": \"Cobalt\", \"price\": \"1.00\"},\n]\nassert cheapest_by_provider(tied) == {\"Cobalt\": \"Alpha\"}\nprint(\"All checks passed.\")"
+    "checks_code": "fixtures = [\n    {\"name\": \"Atlas-S\", \"provider\": \"Northwind\", \"price\": \"0.50\"},\n    {\"name\": \"Atlas-L\", \"provider\": \"Northwind\", \"price\": \"3.00\"},\n    {\"name\": \"Kestrel-8\", \"provider\": \"Cobalt\", \"price\": \"1.20\"},\n]\nassert cheapest_by_provider(fixtures) == {\"Cobalt\": \"Kestrel-8\", \"Northwind\": \"Atlas-S\"}\nassert cheapest_by_provider([]) == {}\ntied = [\n    {\"name\": \"Zeta\", \"provider\": \"Cobalt\", \"price\": \"1.0\"},\n    {\"name\": \"Alpha\", \"provider\": \"Cobalt\", \"price\": \"1.00\"},\n]\nassert cheapest_by_provider(tied) == {\"Cobalt\": \"Alpha\"}\nprint(\"All checks passed.\")",
+    "solution_code": "from math import inf\ndef cheapest_by_provider(rows):\n    cheapest = {}\n    for row in rows:\n        provider, name = row.get(\"provider\"), row.get(\"name\")\n        if not provider or not name: raise ValueError(\"provider and name required\")\n        try: price = float(row[\"price\"])\n        except (KeyError, TypeError, ValueError) as exc: raise ValueError(\"invalid price\") from exc\n        if price < 0 or price != price or price in (inf, -inf): raise ValueError(\"invalid price\")\n        if provider not in cheapest or (price, name) < (cheapest[provider][0], cheapest[provider][1]): cheapest[provider] = (price, name)\n    return {provider: item[1] for provider, item in cheapest.items()}",
+    "estimated_minutes": 25
   },
   {
     "id": "python-score-case",
@@ -13,7 +15,9 @@
     "title": "Score one case safely",
     "instructions": "Implement score_case(case, fetch). Call fetch with case[\"prompt\"], convert its result to a float, and return a dictionary with id, score, and error. On a missing prompt or non-numeric result, return score=None and the exception class name in error; use \"?\" when the case has no id.",
     "starter_code": "def score_case(case, fetch):\n    # TODO: validate the case and convert the fetched score.\n    raise NotImplementedError\n\n\nprint(score_case({\"id\": \"c1\", \"prompt\": \"safe?\"}, lambda prompt: \"0.8\"))",
-    "checks_code": "valid = score_case({\"id\": \"c1\", \"prompt\": \"safe?\"}, lambda prompt: \"0.8\")\nassert valid == {\"id\": \"c1\", \"score\": 0.8, \"error\": None}\nmissing_id = score_case({\"prompt\": \"safe?\"}, lambda prompt: \"0.5\")\nassert missing_id == {\"id\": \"?\", \"score\": 0.5, \"error\": None}\ninvalid = score_case({\"id\": \"c2\", \"prompt\": \"bad\"}, lambda prompt: \"not-a-number\")\nassert invalid == {\"id\": \"c2\", \"score\": None, \"error\": \"ValueError\"}\nmissing = score_case({}, lambda prompt: \"0.5\")\nassert missing == {\"id\": \"?\", \"score\": None, \"error\": \"KeyError\"}\nprint(\"All checks passed.\")"
+    "checks_code": "valid = score_case({\"id\": \"c1\", \"prompt\": \"safe?\"}, lambda prompt: \"0.8\")\nassert valid == {\"id\": \"c1\", \"score\": 0.8, \"error\": None}\nmissing_id = score_case({\"prompt\": \"safe?\"}, lambda prompt: \"0.5\")\nassert missing_id == {\"id\": \"?\", \"score\": 0.5, \"error\": None}\ninvalid = score_case({\"id\": \"c2\", \"prompt\": \"bad\"}, lambda prompt: \"not-a-number\")\nassert invalid == {\"id\": \"c2\", \"score\": None, \"error\": \"ValueError\"}\nmissing = score_case({}, lambda prompt: \"0.5\")\nassert missing == {\"id\": \"?\", \"score\": None, \"error\": \"KeyError\"}\nprint(\"All checks passed.\")",
+    "solution_code": "def score_case(case, fetch):\n    case_id = case.get(\"id\", \"?\")\n    try:\n        prompt = case[\"prompt\"]\n        value = float(fetch(prompt))\n        if not 0 <= value <= 1: raise ValueError(\"score outside range\")\n        return {\"id\": case_id, \"score\": value, \"error\": None}\n    except Exception as exc:\n        return {\"id\": case_id, \"score\": None, \"error\": type(exc).__name__}",
+    "estimated_minutes": 25
   },
   {
     "id": "python-model-client",
@@ -21,7 +25,9 @@
     "title": "Build a small injectable model client",
     "instructions": "Implement ModelClient. Normalize the base URL by removing trailing slashes, keep the supplied transport callable, and implement get(path) by calling transport with the normalized base URL plus a path that starts with exactly one slash, even if the input path has leading slashes. Do not perform real network requests.",
     "starter_code": "class ModelClient:\n    def __init__(self, base_url, transport):\n        # TODO: normalize and store these dependencies.\n        raise NotImplementedError\n\n    def get(self, path):\n        # TODO: pass the joined URL to the injected transport.\n        raise NotImplementedError\n\n\ncalls = []\nclient = ModelClient(\"https://api.example.test/\", lambda url: calls.append(url) or {\"ok\": True})\nprint(client.get(\"/models\"))\nprint(calls)",
-    "checks_code": "calls = []\nclient = ModelClient(\"https://api.example.test///\", lambda url: calls.append(url) or {\"ok\": True})\nassert client.base_url == \"https://api.example.test\"\nassert client.get(\"models\") == {\"ok\": True}\nassert client.get(\"/models\") == {\"ok\": True}\nassert client.get(\"///models\") == {\"ok\": True}\nassert calls == [\"https://api.example.test/models\"] * 3\nassert client.transport is not None\nprint(\"All checks passed.\")"
+    "checks_code": "calls = []\nclient = ModelClient(\"https://api.example.test///\", lambda url: calls.append(url) or {\"ok\": True})\nassert client.base_url == \"https://api.example.test\"\nassert client.get(\"models\") == {\"ok\": True}\nassert client.get(\"/models\") == {\"ok\": True}\nassert client.get(\"///models\") == {\"ok\": True}\nassert calls == [\"https://api.example.test/models\"] * 3\nassert client.transport is not None\nprint(\"All checks passed.\")",
+    "solution_code": "class ModelClient:\n    def __init__(self, base_url, transport):\n        self.base_url = base_url.rstrip(\"/\")\n        self.transport = transport\n    def get(self, path):\n        return self.transport(self.base_url + \"/\" + str(path).lstrip(\"/\"))",
+    "estimated_minutes": 25
   },
   {
     "id": "python-validate-offer",
@@ -29,7 +35,9 @@
     "title": "Validate a bounded model offer",
     "instructions": "Implement validate_offer(offer). Require a non-empty string name and a finite numeric price from 0 through 1000 inclusive. Return a new dictionary with the name and price converted to float. Raise ValueError for invalid input; do not mutate the input.",
     "starter_code": "from math import isfinite\n\n\ndef validate_offer(offer):\n    # TODO: validate fields and return a normalized copy.\n    raise NotImplementedError\n\n\nprint(validate_offer({\"name\": \"Atlas-S\", \"price\": \"0.5\"}))",
-    "checks_code": "offer = {\"name\": \"Atlas-S\", \"price\": \"0.5\", \"notes\": \"keep this input unchanged\"}\noriginal = offer.copy()\nassert validate_offer(offer) == {\"name\": \"Atlas-S\", \"price\": 0.5}\nassert offer == original\nfor invalid in [\n    {\"name\": \"\", \"price\": \"1\"},\n    {\"name\": \"Atlas-S\", \"price\": \"not-a-number\"},\n    {\"name\": \"Atlas-S\", \"price\": \"-0.01\"},\n    {\"name\": \"Atlas-S\", \"price\": \"1000.01\"},\n    {\"name\": \"Atlas-S\", \"price\": float(\"nan\")},\n    {\"name\": \"Atlas-S\", \"price\": True},\n    {\"price\": \"1\"},\n]:\n    try:\n        validate_offer(invalid)\n    except (ValueError, KeyError):\n        pass\n    else:\n        raise AssertionError(\"Invalid offers must be rejected\")\nprint(\"All checks passed.\")"
+    "checks_code": "offer = {\"name\": \"Atlas-S\", \"price\": \"0.5\", \"notes\": \"keep this input unchanged\"}\noriginal = offer.copy()\nassert validate_offer(offer) == {\"name\": \"Atlas-S\", \"price\": 0.5}\nassert offer == original\nfor invalid in [\n    {\"name\": \"\", \"price\": \"1\"},\n    {\"name\": \"Atlas-S\", \"price\": \"not-a-number\"},\n    {\"name\": \"Atlas-S\", \"price\": \"-0.01\"},\n    {\"name\": \"Atlas-S\", \"price\": \"1000.01\"},\n    {\"name\": \"Atlas-S\", \"price\": float(\"nan\")},\n    {\"name\": \"Atlas-S\", \"price\": True},\n    {\"price\": \"1\"},\n]:\n    try:\n        validate_offer(invalid)\n    except (ValueError, KeyError):\n        pass\n    else:\n        raise AssertionError(\"Invalid offers must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "from math import isfinite\ndef validate_offer(offer):\n    name = offer.get(\"name\")\n    if not isinstance(name, str) or not name.strip(): raise ValueError(\"name required\")\n    raw = offer.get(\"price\")\n    if isinstance(raw, bool): raise ValueError(\"invalid price\")\n    try: price = float(raw)\n    except (TypeError, ValueError) as exc: raise ValueError(\"invalid price\") from exc\n    if not isfinite(price) or not 0 <= price <= 1000: raise ValueError(\"invalid price\")\n    return {\"name\": name.strip(), \"price\": price}",
+    "estimated_minutes": 25
   },
   {
     "id": "python-bounded-retry",
@@ -37,7 +45,9 @@
     "title": "Retry only transient failures",
     "instructions": "Implement request_with_retry(fetch, attempts=3). Require attempts to be a positive integer (booleans are not valid). Call fetch repeatedly only when it returns a response whose status is one of 429, 500, 502, 503, or 504. Return immediately for any other status, and stop after attempts calls. Do not retry exceptions.",
     "starter_code": "TRANSIENT_STATUSES = {429, 500, 502, 503, 504}\n\n\ndef request_with_retry(fetch, attempts=3):\n    # TODO: retry only the transient response statuses, with a fixed attempt limit.\n    raise NotImplementedError\n\n\nresponses = iter([{\"status\": 503}, {\"status\": 200}])\nprint(request_with_retry(lambda: next(responses)))",
-    "checks_code": "calls = []\nresponses = iter([{\"status\": 503}, {\"status\": 200}])\nresult = request_with_retry(lambda: calls.append(True) or next(responses))\nassert result == {\"status\": 200}\nassert len(calls) == 2\ncalls.clear()\npermanent = request_with_retry(lambda: calls.append(True) or {\"status\": 400})\nassert permanent == {\"status\": 400}\nassert len(calls) == 1\ncalls.clear()\ntransient = request_with_retry(lambda: calls.append(True) or {\"status\": 429}, attempts=2)\nassert transient == {\"status\": 429}\nassert len(calls) == 2\ncalls.clear()\nfor invalid_attempts in [0, -1, True, 1.5]:\n    try:\n        request_with_retry(lambda: calls.append(True), attempts=invalid_attempts)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"Invalid attempt limits must be rejected\")\nassert not calls\ncalls.clear()\ntry:\n    request_with_retry(lambda: calls.append(True) or (_ for _ in ()).throw(RuntimeError(\"offline\")))\nexcept RuntimeError:\n    pass\nelse:\n    raise AssertionError(\"Transport exceptions must propagate\")\nassert len(calls) == 1\nprint(\"All checks passed.\")"
+    "checks_code": "calls = []\nresponses = iter([{\"status\": 503}, {\"status\": 200}])\nresult = request_with_retry(lambda: calls.append(True) or next(responses))\nassert result == {\"status\": 200}\nassert len(calls) == 2\ncalls.clear()\npermanent = request_with_retry(lambda: calls.append(True) or {\"status\": 400})\nassert permanent == {\"status\": 400}\nassert len(calls) == 1\ncalls.clear()\ntransient = request_with_retry(lambda: calls.append(True) or {\"status\": 429}, attempts=2)\nassert transient == {\"status\": 429}\nassert len(calls) == 2\ncalls.clear()\nfor invalid_attempts in [0, -1, True, 1.5]:\n    try:\n        request_with_retry(lambda: calls.append(True), attempts=invalid_attempts)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"Invalid attempt limits must be rejected\")\nassert not calls\ncalls.clear()\ntry:\n    request_with_retry(lambda: calls.append(True) or (_ for _ in ()).throw(RuntimeError(\"offline\")))\nexcept RuntimeError:\n    pass\nelse:\n    raise AssertionError(\"Transport exceptions must propagate\")\nassert len(calls) == 1\nprint(\"All checks passed.\")",
+    "solution_code": "TRANSIENT_STATUSES = {429, 500, 502, 503, 504}\ndef request_with_retry(fetch, attempts=3):\n    if not isinstance(attempts, int) or isinstance(attempts, bool) or attempts <= 0: raise ValueError(\"attempts must be positive\")\n    response = None\n    for _ in range(attempts):\n        response = fetch()\n        if response.get(\"status\") not in TRANSIENT_STATUSES: return response\n    return response",
+    "estimated_minutes": 25
   },
   {
     "id": "python-package-layout",
@@ -45,7 +55,9 @@
     "title": "Check a src-layout package",
     "instructions": "Implement missing_package_files(paths). Return a sorted list of required package files that are absent. The expected src layout has model_catalog/__init__.py, model_catalog/__main__.py, catalog.py, and loader.py. Accept paths with or without a leading ./ and ignore unrelated files.",
     "starter_code": "REQUIRED_FILES = {\n    \"src/model_catalog/__init__.py\",\n    \"src/model_catalog/__main__.py\",\n    \"src/model_catalog/catalog.py\",\n    \"src/model_catalog/loader.py\",\n}\n\n\ndef missing_package_files(paths):\n    # TODO: normalize paths and return missing required files in sorted order.\n    raise NotImplementedError\n\n\nprint(missing_package_files([\"src/model_catalog/__init__.py\"]))",
-    "checks_code": "complete = [\"./src/model_catalog/__init__.py\", \"src/model_catalog/__main__.py\", \"src/model_catalog/catalog.py\", \"src/model_catalog/loader.py\", \"README.md\"]\nassert missing_package_files(complete) == []\nassert missing_package_files([\"src/model_catalog/__init__.py\"]) == sorted(REQUIRED_FILES - {\"src/model_catalog/__init__.py\"})\nassert missing_package_files([]) == sorted(REQUIRED_FILES)\nprint(\"All checks passed.\")"
+    "checks_code": "complete = [\"./src/model_catalog/__init__.py\", \"src/model_catalog/__main__.py\", \"src/model_catalog/catalog.py\", \"src/model_catalog/loader.py\", \"README.md\"]\nassert missing_package_files(complete) == []\nassert missing_package_files([\"src/model_catalog/__init__.py\"]) == sorted(REQUIRED_FILES - {\"src/model_catalog/__init__.py\"})\nassert missing_package_files([]) == sorted(REQUIRED_FILES)\nprint(\"All checks passed.\")",
+    "solution_code": "REQUIRED_FILES = {\"src/model_catalog/__init__.py\", \"src/model_catalog/__main__.py\", \"src/model_catalog/catalog.py\", \"src/model_catalog/loader.py\"}\ndef missing_package_files(paths):\n    present = {str(path).removeprefix(\"./\") for path in paths}\n    return sorted(REQUIRED_FILES - present)",
+    "estimated_minutes": 25
   },
   {
     "id": "python-http-client-contract",
@@ -53,7 +65,9 @@
     "title": "Test HTTP retries with a fake transport",
     "instructions": "Implement fetch_with_retry(transport, url, timeout_s=5, attempts=3). Pass url and timeout_s to the injected transport. Retry only HTTP 429, 500, 502, 503, and 504 responses; return any other response immediately. Require a positive timeout and attempt count. No real network calls are made.",
     "starter_code": "RETRYABLE_STATUSES = {429, 500, 502, 503, 504}\n\n\ndef fetch_with_retry(transport, url, timeout_s=5, attempts=3):\n    # TODO: validate limits and retry only transient HTTP statuses.\n    raise NotImplementedError\n\n\nresponses = iter([{\"status\": 503}, {\"status\": 200}])\nprint(fetch_with_retry(lambda url, timeout_s: next(responses), \"https://example.test\", timeout_s=2))",
-    "checks_code": "calls = []\nresponses = iter([{\"status\": 429}, {\"status\": 200, \"json\": {\"ok\": True}}])\ndef transport(url, timeout_s):\n    calls.append((url, timeout_s))\n    return next(responses)\nassert fetch_with_retry(transport, \"https://example.test\", timeout_s=2) == {\"status\": 200, \"json\": {\"ok\": True}}\nassert calls == [(\"https://example.test\", 2), (\"https://example.test\", 2)]\ncalls.clear()\nassert fetch_with_retry(lambda url, timeout_s: calls.append(url) or {\"status\": 400}, \"https://example.test\")[\"status\"] == 400\nassert len(calls) == 1\nfor options in [{\"timeout_s\": 0}, {\"attempts\": 0}, {\"attempts\": True}]:\n    try:\n        fetch_with_retry(lambda *args, **kwargs: {}, \"https://example.test\", **options)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"Invalid request limits must be rejected\")\nprint(\"All checks passed.\")"
+    "checks_code": "calls = []\nresponses = iter([{\"status\": 429}, {\"status\": 200, \"json\": {\"ok\": True}}])\ndef transport(url, timeout_s):\n    calls.append((url, timeout_s))\n    return next(responses)\nassert fetch_with_retry(transport, \"https://example.test\", timeout_s=2) == {\"status\": 200, \"json\": {\"ok\": True}}\nassert calls == [(\"https://example.test\", 2), (\"https://example.test\", 2)]\ncalls.clear()\nassert fetch_with_retry(lambda url, timeout_s: calls.append(url) or {\"status\": 400}, \"https://example.test\")[\"status\"] == 400\nassert len(calls) == 1\nfor options in [{\"timeout_s\": 0}, {\"attempts\": 0}, {\"attempts\": True}]:\n    try:\n        fetch_with_retry(lambda *args, **kwargs: {}, \"https://example.test\", **options)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"Invalid request limits must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "RETRYABLE_STATUSES = {429, 500, 502, 503, 504}\ndef fetch_with_retry(transport, url, timeout_s=5, attempts=3):\n    if isinstance(timeout_s, bool) or not isinstance(timeout_s,(int,float)) or timeout_s <= 0: raise ValueError(\"timeout must be positive\")\n    if isinstance(attempts,bool) or not isinstance(attempts,int) or attempts <= 0: raise ValueError(\"attempts must be positive\")\n    response = None\n    for _ in range(attempts):\n        response = transport(url, timeout_s)\n        if response.get(\"status\") not in RETRYABLE_STATUSES: return response\n    return response",
+    "estimated_minutes": 25
   },
   {
     "id": "python-typed-settings",
@@ -61,7 +75,9 @@
     "title": "Validate environment-backed settings",
     "instructions": "Implement load_settings(env). Require MODEL_BASE_URL, MODEL_API_KEY, and APP_ENV. APP_ENV must be dev, staging, or prod. REQUEST_TIMEOUT_S defaults to 10 and must be a positive number no greater than 120. Return normalized settings; never include the API key in safe_summary(settings).",
     "starter_code": "def load_settings(env):\n    # TODO: validate required values and the bounded timeout.\n    raise NotImplementedError\n\n\ndef safe_summary(settings):\n    # TODO: return useful settings without exposing the API key.\n    raise NotImplementedError\n\n\nexample = {\"MODEL_BASE_URL\": \"https://api.example.test\", \"MODEL_API_KEY\": \"secret\", \"APP_ENV\": \"dev\"}\nprint(safe_summary(load_settings(example)))",
-    "checks_code": "env = {\"MODEL_BASE_URL\": \" https://api.example.test/ \", \"MODEL_API_KEY\": \"private-value\", \"APP_ENV\": \"prod\"}\nsettings = load_settings(env)\nassert settings[\"model_base_url\"] == \"https://api.example.test\"\nassert settings[\"request_timeout_s\"] == 10.0\nassert \"private-value\" not in repr(safe_summary(settings))\nassert safe_summary(settings)[\"app_env\"] == \"prod\"\nassert load_settings({**env, \"REQUEST_TIMEOUT_S\": \"2.5\"})[\"request_timeout_s\"] == 2.5\nfor invalid in [\n    {\"MODEL_API_KEY\": \"x\", \"APP_ENV\": \"dev\"},\n    {**env, \"APP_ENV\": \"production\"},\n    {**env, \"REQUEST_TIMEOUT_S\": \"0\"},\n    {**env, \"REQUEST_TIMEOUT_S\": \"121\"},\n    {**env, \"REQUEST_TIMEOUT_S\": \"nope\"},\n]:\n    try:\n        load_settings(invalid)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"Invalid settings must be rejected\")\nprint(\"All checks passed.\")"
+    "checks_code": "env = {\"MODEL_BASE_URL\": \" https://api.example.test/ \", \"MODEL_API_KEY\": \"private-value\", \"APP_ENV\": \"prod\"}\nsettings = load_settings(env)\nassert settings[\"model_base_url\"] == \"https://api.example.test\"\nassert settings[\"request_timeout_s\"] == 10.0\nassert \"private-value\" not in repr(safe_summary(settings))\nassert safe_summary(settings)[\"app_env\"] == \"prod\"\nassert load_settings({**env, \"REQUEST_TIMEOUT_S\": \"2.5\"})[\"request_timeout_s\"] == 2.5\nfor invalid in [\n    {\"MODEL_API_KEY\": \"x\", \"APP_ENV\": \"dev\"},\n    {**env, \"APP_ENV\": \"production\"},\n    {**env, \"REQUEST_TIMEOUT_S\": \"0\"},\n    {**env, \"REQUEST_TIMEOUT_S\": \"121\"},\n    {**env, \"REQUEST_TIMEOUT_S\": \"nope\"},\n]:\n    try:\n        load_settings(invalid)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"Invalid settings must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "def load_settings(env):\n    required = (\"MODEL_BASE_URL\", \"MODEL_API_KEY\", \"APP_ENV\")\n    if any(not isinstance(env.get(key),str) or not env[key].strip() for key in required): raise ValueError(\"missing setting\")\n    if env[\"APP_ENV\"] not in {\"dev\",\"staging\",\"prod\"}: raise ValueError(\"invalid APP_ENV\")\n    try: timeout = float(env.get(\"REQUEST_TIMEOUT_S\",10))\n    except (TypeError,ValueError) as exc: raise ValueError(\"invalid timeout\") from exc\n    if not 0 < timeout <= 120: raise ValueError(\"invalid timeout\")\n    return {\"model_base_url\":env[\"MODEL_BASE_URL\"].strip().rstrip(\"/\"),\"model_api_key\":env[\"MODEL_API_KEY\"],\"app_env\":env[\"APP_ENV\"],\"request_timeout_s\":timeout}\ndef safe_summary(settings):\n    return {key:value for key,value in settings.items() if key != \"model_api_key\"}",
+    "estimated_minutes": 25
   },
   {
     "id": "python-venv-audit",
@@ -69,7 +85,9 @@
     "title": "Audit a locked Python environment",
     "instructions": "Implement audit_environment(executable, base_prefix, packages, required). Report \"no active venv\" when executable and base_prefix identify the same interpreter. For each required package/version, report a stable \"name: missing\" or \"name: expected X, found Y\" message. Do not inspect the real browser environment; use only the supplied values.",
     "starter_code": "def audit_environment(executable, base_prefix, packages, required):\n    # TODO: report interpreter and pinned-package mismatches.\n    raise NotImplementedError\n\n\nrequired = {\"pytest\": \"8.3.3\", \"httpx\": \"0.27.2\"}\nprint(audit_environment(\"/project/.venv/bin/python\", \"/usr\", {\"pytest\": \"8.3.3\"}, required))",
-    "checks_code": "required = {\"pytest\": \"8.3.3\", \"httpx\": \"0.27.2\"}\nassert audit_environment(\"/project/.venv/bin/python\", \"/usr\", {\"pytest\": \"8.3.3\", \"httpx\": \"0.27.2\"}, required) == []\nproblems = audit_environment(\"/usr/bin/python\", \"/usr\", {\"pytest\": \"8.4.0\"}, required)\nassert problems == [\"no active venv\", \"httpx: missing\", \"pytest: expected 8.3.3, found 8.4.0\"]\nprint(\"All checks passed.\")"
+    "checks_code": "required = {\"pytest\": \"8.3.3\", \"httpx\": \"0.27.2\"}\nassert audit_environment(\"/project/.venv/bin/python\", \"/usr\", {\"pytest\": \"8.3.3\", \"httpx\": \"0.27.2\"}, required) == []\nproblems = audit_environment(\"/usr/bin/python\", \"/usr\", {\"pytest\": \"8.4.0\"}, required)\nassert problems == [\"no active venv\", \"httpx: missing\", \"pytest: expected 8.3.3, found 8.4.0\"]\nprint(\"All checks passed.\")",
+    "solution_code": "def audit_environment(executable, base_prefix, packages, required):\n    problems=[]\n    if executable == base_prefix or executable.startswith(base_prefix.rstrip(\"/\")+\"/\"): problems.append(\"no active venv\")\n    for name, version in sorted(required.items()):\n        if name not in packages: problems.append(f\"{name}: missing\")\n        elif packages[name] != version: problems.append(f\"{name}: expected {version}, found {packages[name]}\")\n    return problems",
+    "estimated_minutes": 25
   },
   {
     "id": "python-dependency-audit",
@@ -77,7 +95,9 @@
     "title": "Audit direct dependencies against a lock",
     "instructions": "Implement audit_dependencies(direct, locked, imported). Compare package names case-insensitively and treat hyphens and underscores as equivalent. Return a dictionary with sorted missing_from_lock (declared direct dependencies absent from the lock) and unused_direct (direct dependencies absent from the import inventory).",
     "starter_code": "def audit_dependencies(direct, locked, imported):\n    # TODO: normalize names and compare declared, locked, and imported packages.\n    raise NotImplementedError\n\n\nprint(audit_dependencies([\"httpx\", \"typing_extensions\"], [\"httpx\"], [\"httpx\"]))",
-    "checks_code": "result = audit_dependencies([\"HTTPX\", \"typing_extensions\", \"my-utils\"], [\"httpx\", \"my_utils\"], [\"httpx\", \"my_utils\"])\nassert result == {\"missing_from_lock\": [\"typing_extensions\"], \"unused_direct\": [\"typing_extensions\"]}\nassert audit_dependencies([], [], []) == {\"missing_from_lock\": [], \"unused_direct\": []}\nassert audit_dependencies([\"my-utils\"], [\"MY_UTILS\"], [\"my_utils\"]) == {\"missing_from_lock\": [], \"unused_direct\": []}\nprint(\"All checks passed.\")"
+    "checks_code": "result = audit_dependencies([\"HTTPX\", \"typing_extensions\", \"my-utils\"], [\"httpx\", \"my_utils\"], [\"httpx\", \"my_utils\"])\nassert result == {\"missing_from_lock\": [\"typing_extensions\"], \"unused_direct\": [\"typing_extensions\"]}\nassert audit_dependencies([], [], []) == {\"missing_from_lock\": [], \"unused_direct\": []}\nassert audit_dependencies([\"my-utils\"], [\"MY_UTILS\"], [\"my_utils\"]) == {\"missing_from_lock\": [], \"unused_direct\": []}\nprint(\"All checks passed.\")",
+    "solution_code": "def audit_dependencies(direct, locked, imported):\n    norm=lambda name: name.lower().replace(\"-\",\"_\")\n    d={norm(x) for x in direct}; l={norm(x) for x in locked}; i={norm(x) for x in imported}\n    return {\"missing_from_lock\":sorted(d-l), \"unused_direct\":sorted(d-i)}",
+    "estimated_minutes": 25
   },
   {
     "id": "python-bounded-async-map",
@@ -85,7 +105,9 @@
     "title": "Bound concurrent async work",
     "instructions": "Implement async_map_bounded(items, worker, limit). Run worker(item) for each item with at most limit calls active at once, preserve the input order in the returned list, and reject non-positive or non-integer limits. Use asyncio; the exercise uses an in-memory worker and performs no network requests.",
     "starter_code": "import asyncio\n\n\nasync def async_map_bounded(items, worker, limit):\n    # TODO: bound concurrent calls and preserve result order.\n    raise NotImplementedError\n\n\nasync def main():\n    print(await async_map_bounded([1, 2, 3], lambda value: value * 2, limit=2))\n\n\nawait main()",
-    "checks_code": "async def _check_async_map():\n    active = 0\n    peak = 0\n    async def worker(value):\n        nonlocal active, peak\n        active += 1\n        peak = max(peak, active)\n        await asyncio.sleep(0)\n        active -= 1\n        return value * 2\n    assert await async_map_bounded([3, 1, 2, 4], worker, limit=2) == [6, 2, 4, 8]\n    assert peak == 2\n    for limit in [0, -1, True, 1.5]:\n        try:\n            await async_map_bounded([], worker, limit)\n        except ValueError:\n            pass\n        else:\n            raise AssertionError(\"Invalid concurrency limits must be rejected\")\n    print(\"All checks passed.\")\nawait _check_async_map()"
+    "checks_code": "async def _check_async_map():\n    active = 0\n    peak = 0\n    async def worker(value):\n        nonlocal active, peak\n        active += 1\n        peak = max(peak, active)\n        await asyncio.sleep(0)\n        active -= 1\n        return value * 2\n    assert await async_map_bounded([3, 1, 2, 4], worker, limit=2) == [6, 2, 4, 8]\n    assert peak == 2\n    for limit in [0, -1, True, 1.5]:\n        try:\n            await async_map_bounded([], worker, limit)\n        except ValueError:\n            pass\n        else:\n            raise AssertionError(\"Invalid concurrency limits must be rejected\")\n    print(\"All checks passed.\")\nawait _check_async_map()",
+    "solution_code": "import asyncio\nasync def async_map_bounded(items, worker, limit):\n    if not isinstance(limit,int) or isinstance(limit,bool) or limit <= 0: raise ValueError(\"limit must be positive\")\n    semaphore=asyncio.Semaphore(limit)\n    async def run(item):\n        async with semaphore: return await worker(item)\n    return await asyncio.gather(*(run(item) for item in items))",
+    "estimated_minutes": 25
   },
   {
     "id": "python-taskgroup-deadline",
@@ -93,7 +115,9 @@
     "title": "Run independent async work together",
     "instructions": "Implement async usage_summary(user_id, fetch_usage, fetch_plan). Start both independent async calls in an asyncio.TaskGroup and return {\"tokens\": ..., \"plan\": ...}. Put a shared timeout of 1 second around the task group so either slow call cancels the work and raises TimeoutError.",
     "starter_code": "import asyncio\n\n\nasync def usage_summary(user_id, fetch_usage, fetch_plan):\n    # TODO: use TaskGroup and one shared timeout.\n    raise NotImplementedError\n\n\nasync def _demo():\n    async def usage(user_id):\n        return 42\n    async def plan(user_id):\n        return \"starter\"\n    print(await usage_summary(\"learner-1\", usage, plan))\n\n\nawait _demo()",
-    "checks_code": "async def _check_summary():\n    started = []\n    async def usage(user_id):\n        started.append(\"usage\")\n        await asyncio.sleep(0)\n        return 42\n    async def plan(user_id):\n        started.append(\"plan\")\n        await asyncio.sleep(0)\n        return \"starter\"\n    assert await usage_summary(\"learner-1\", usage, plan) == {\"tokens\": 42, \"plan\": \"starter\"}\n    assert set(started) == {\"usage\", \"plan\"}\n    cancelled = []\n    async def slow_usage(user_id):\n        try:\n            await asyncio.sleep(2)\n        except asyncio.CancelledError:\n            cancelled.append(\"usage\")\n            raise\n    async def slow_plan(user_id):\n        try:\n            await asyncio.sleep(2)\n        except asyncio.CancelledError:\n            cancelled.append(\"plan\")\n            raise\n    try:\n        await usage_summary(\"learner-1\", slow_usage, slow_plan)\n    except TimeoutError:\n        pass\n    else:\n        raise AssertionError(\"The shared deadline must time out\")\n    assert set(cancelled) == {\"usage\", \"plan\"}\n    print(\"All checks passed.\")\nawait _check_summary()"
+    "checks_code": "async def _check_summary():\n    started = []\n    async def usage(user_id):\n        started.append(\"usage\")\n        await asyncio.sleep(0)\n        return 42\n    async def plan(user_id):\n        started.append(\"plan\")\n        await asyncio.sleep(0)\n        return \"starter\"\n    assert await usage_summary(\"learner-1\", usage, plan) == {\"tokens\": 42, \"plan\": \"starter\"}\n    assert set(started) == {\"usage\", \"plan\"}\n    cancelled = []\n    async def slow_usage(user_id):\n        try:\n            await asyncio.sleep(2)\n        except asyncio.CancelledError:\n            cancelled.append(\"usage\")\n            raise\n    async def slow_plan(user_id):\n        try:\n            await asyncio.sleep(2)\n        except asyncio.CancelledError:\n            cancelled.append(\"plan\")\n            raise\n    try:\n        await usage_summary(\"learner-1\", slow_usage, slow_plan)\n    except TimeoutError:\n        pass\n    else:\n        raise AssertionError(\"The shared deadline must time out\")\n    assert set(cancelled) == {\"usage\", \"plan\"}\n    print(\"All checks passed.\")\nawait _check_summary()",
+    "solution_code": "import asyncio\nasync def usage_summary(user_id, fetch_usage, fetch_plan):\n    async with asyncio.timeout(1):\n        async with asyncio.TaskGroup() as group:\n            usage=group.create_task(fetch_usage(user_id))\n            plan=group.create_task(fetch_plan(user_id))\n    return {\"tokens\":usage.result(),\"plan\":plan.result()}",
+    "estimated_minutes": 25
   },
   {
     "id": "python-mocked-http-contract",
@@ -101,7 +125,9 @@
     "title": "Test a JSON HTTP contract without sockets",
     "instructions": "Implement fetch_json(transport, url). The injected transport returns a response object with status_code, headers, and json(). Accept only status 200 and a Content-Type containing application/json. Raise ValueError for another status or content type and return the decoded JSON body on success. Do not open network connections.",
     "starter_code": "def fetch_json(transport, url):\n    # TODO: validate status and content type before returning JSON.\n    raise NotImplementedError\n\n\nclass FakeResponse:\n    status_code = 200\n    headers = {\"Content-Type\": \"application/json\"}\n    def json(self):\n        return {\"text\": \"hello\"}\n\n\nprint(fetch_json(lambda url: FakeResponse(), \"https://example.test\"))",
-    "checks_code": "class Response:\n    def __init__(self, status, content_type, body):\n        self.status_code = status\n        self.headers = {\"Content-Type\": content_type}\n        self.body = body\n    def json(self):\n        return self.body\ncalls = []\nassert fetch_json(lambda url: calls.append(url) or Response(200, \"application/json; charset=utf-8\", {\"ok\": True}), \"https://example.test\") == {\"ok\": True}\nassert calls == [\"https://example.test\"]\nfor response in [Response(500, \"application/json\", {}), Response(200, \"text/plain\", {})]:\n    try:\n        fetch_json(lambda url: response, \"https://example.test\")\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"Invalid HTTP responses must be rejected\")\nprint(\"All checks passed.\")"
+    "checks_code": "class Response:\n    def __init__(self, status, content_type, body):\n        self.status_code = status\n        self.headers = {\"Content-Type\": content_type}\n        self.body = body\n    def json(self):\n        return self.body\ncalls = []\nassert fetch_json(lambda url: calls.append(url) or Response(200, \"application/json; charset=utf-8\", {\"ok\": True}), \"https://example.test\") == {\"ok\": True}\nassert calls == [\"https://example.test\"]\nfor response in [Response(500, \"application/json\", {}), Response(200, \"text/plain\", {})]:\n    try:\n        fetch_json(lambda url: response, \"https://example.test\")\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"Invalid HTTP responses must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "def fetch_json(transport, url):\n    response=transport(url)\n    if not 200 <= response.status_code < 300: raise ValueError(\"unexpected HTTP status\")\n    if \"application/json\" not in response.headers.get(\"Content-Type\",\"\").lower(): raise ValueError(\"expected JSON\")\n    return response.json()",
+    "estimated_minutes": 25
   },
   {
     "id": "python-staged-secret-scan",
@@ -109,7 +135,9 @@
     "title": "Scan staged text for accidental keys",
     "instructions": "Implement find_secret_lines(files). Inspect a mapping from file names to text contents, and return sorted (filename, line_number) pairs where a line contains an assignment to api_key or secret_key with a quoted value of at least 8 non-space characters. Ignore comments and do not include the secret value in the result.",
     "starter_code": "import re\n\n\nSECRET_ASSIGNMENT = re.compile(r\"\\b(?:api_key|secret_key)\\s*=\\s*(['\\\"])(\\S{8,}?)\\1\", re.IGNORECASE)\n\n\ndef find_secret_lines(files):\n    # TODO: scan non-comment lines and return file/line pairs only.\n    raise NotImplementedError\n\n\nsample = {\"settings.py\": \"api_key = 'replace-me-with-a-long-key'\\n\"}\nprint(find_secret_lines(sample))",
-    "checks_code": "files = {\"z.py\": \"# api_key = 'do-not-flag-this'\\nsecret_key = \\\"very-long-secret-value\\\"\\n\", \"a.env\": \"API_KEY='12345678'\\napi_key='short'\\n\"}\nassert find_secret_lines(files) == [(\"a.env\", 1), (\"z.py\", 2)]\nassert find_secret_lines({\"clean.py\": \"api_key = ''\\nsecret_key = None\\n\"}) == []\nassert \"very-long-secret-value\" not in repr(find_secret_lines(files))\nprint(\"All checks passed.\")"
+    "checks_code": "files = {\"z.py\": \"# api_key = 'do-not-flag-this'\\nsecret_key = \\\"very-long-secret-value\\\"\\n\", \"a.env\": \"API_KEY='12345678'\\napi_key='short'\\n\"}\nassert find_secret_lines(files) == [(\"a.env\", 1), (\"z.py\", 2)]\nassert find_secret_lines({\"clean.py\": \"api_key = ''\\nsecret_key = None\\n\"}) == []\nassert \"very-long-secret-value\" not in repr(find_secret_lines(files))\nprint(\"All checks passed.\")",
+    "solution_code": "import re\nSECRET_ASSIGNMENT = re.compile(r\"\\b(?:api_key|secret_key)\\s*=\\s*(['\\\"])(\\S{8,}?)\\1\", re.IGNORECASE)\ndef find_secret_lines(files):\n    found=[]\n    for filename, content in files.items():\n        for number, line in enumerate(content.splitlines(),1):\n            if line.lstrip().startswith(\"#\"): continue\n            if SECRET_ASSIGNMENT.search(line): found.append((filename,number))\n    return found",
+    "estimated_minutes": 25
   },
   {
     "id": "python-safe-model-summary",
@@ -117,7 +145,9 @@
     "title": "Build a typed, safe model summary",
     "instructions": "Implement summarize_model(model). Return a dictionary containing the model name, provider, and context window. The input always has name and provider; context_window may be absent or None, in which case return None. Do not mutate the input.",
     "starter_code": "from typing import NotRequired, TypedDict\n\n\nclass Model(TypedDict):\n    name: str\n    provider: str\n    context_window: NotRequired[int | None]\n\n\ndef summarize_model(model: Model) -> dict[str, str | int | None]:\n    # TODO: return a safe summary without changing model.\n    raise NotImplementedError\n\n\nprint(summarize_model({\"name\": \"Atlas-S\", \"provider\": \"Northwind\"}))",
-    "checks_code": "model = {\"name\": \"Atlas-S\", \"provider\": \"Northwind\", \"context_window\": 64000}\noriginal = model.copy()\nassert summarize_model(model) == {\"name\": \"Atlas-S\", \"provider\": \"Northwind\", \"context_window\": 64000}\nassert model == original\nassert summarize_model({\"name\": \"Kestrel-8\", \"provider\": \"Cobalt\"}) == {\"name\": \"Kestrel-8\", \"provider\": \"Cobalt\", \"context_window\": None}\nassert summarize_model({\"name\": \"Nova\", \"provider\": \"Cobalt\", \"context_window\": None})[\"context_window\"] is None\nprint(\"All checks passed.\")"
+    "checks_code": "model = {\"name\": \"Atlas-S\", \"provider\": \"Northwind\", \"context_window\": 64000}\noriginal = model.copy()\nassert summarize_model(model) == {\"name\": \"Atlas-S\", \"provider\": \"Northwind\", \"context_window\": 64000}\nassert model == original\nassert summarize_model({\"name\": \"Kestrel-8\", \"provider\": \"Cobalt\"}) == {\"name\": \"Kestrel-8\", \"provider\": \"Cobalt\", \"context_window\": None}\nassert summarize_model({\"name\": \"Nova\", \"provider\": \"Cobalt\", \"context_window\": None})[\"context_window\"] is None\nprint(\"All checks passed.\")",
+    "solution_code": "from typing import NotRequired, TypedDict\nclass Model(TypedDict):\n    name: str\n    provider: str\n    context_window: NotRequired[int | None]\ndef summarize_model(model: Model) -> dict[str, str | int | None]:\n    return {\"name\":model[\"name\"],\"provider\":model[\"provider\"],\"context_window\":model.get(\"context_window\")}",
+    "estimated_minutes": 25
   },
   {
     "id": "python-independent-dataclass-state",
@@ -125,7 +155,9 @@
     "title": "Keep dataclass summaries independent",
     "instructions": "Implement a Summary dataclass with a provider string and a fresh model_names list for every instance. Add add_model(name) to append a model name. One summary's models must not appear in another summary.",
     "starter_code": "from dataclasses import dataclass, field\n\n\n@dataclass\nclass Summary:\n    provider: str\n    # TODO: add per-instance model_names and add_model(name).\n    pass\n\n\nnorthwind = Summary(\"Northwind\")\nnorthwind.add_model(\"Atlas-S\")\nprint(northwind.model_names)",
-    "checks_code": "first = Summary(\"Northwind\")\nsecond = Summary(\"Cobalt\")\nfirst.add_model(\"Atlas-S\")\nassert first.model_names == [\"Atlas-S\"]\nassert second.model_names == []\nsecond.add_model(\"Kestrel-8\")\nassert first.model_names == [\"Atlas-S\"]\nassert second.model_names == [\"Kestrel-8\"]\nprint(\"All checks passed.\")"
+    "checks_code": "first = Summary(\"Northwind\")\nsecond = Summary(\"Cobalt\")\nfirst.add_model(\"Atlas-S\")\nassert first.model_names == [\"Atlas-S\"]\nassert second.model_names == []\nsecond.add_model(\"Kestrel-8\")\nassert first.model_names == [\"Atlas-S\"]\nassert second.model_names == [\"Kestrel-8\"]\nprint(\"All checks passed.\")",
+    "solution_code": "from dataclasses import dataclass, field\n@dataclass\nclass Summary:\n    provider: str\n    model_names: list[str] = field(default_factory=list)\n    def add_model(self, name): self.model_names.append(name)",
+    "estimated_minutes": 25
   },
   {
     "id": "python-json-safe-roundtrip",
@@ -133,7 +165,9 @@
     "title": "Round-trip a strict JSON report",
     "instructions": "Implement encode_report(report). Serialize a JSON object with sorted keys and compact separators. Reject non-finite numbers such as NaN instead of emitting non-standard JSON. Return the JSON text.",
     "starter_code": "import json\n\n\ndef encode_report(report):\n    # TODO: return deterministic JSON and reject NaN/Infinity.\n    raise NotImplementedError\n\n\nprint(encode_report({\"provider\": \"Cobalt\", \"models\": 2}))",
-    "checks_code": "encoded = encode_report({\"provider\": \"Cobalt\", \"models\": 2})\nassert encoded == '{\"models\":2,\"provider\":\"Cobalt\"}'\nassert json.loads(encoded) == {\"models\": 2, \"provider\": \"Cobalt\"}\ntry:\n    encode_report({\"score\": float(\"nan\")})\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"Non-finite numbers must be rejected\")\nprint(\"All checks passed.\")"
+    "checks_code": "encoded = encode_report({\"provider\": \"Cobalt\", \"models\": 2})\nassert encoded == '{\"models\":2,\"provider\":\"Cobalt\"}'\nassert json.loads(encoded) == {\"models\": 2, \"provider\": \"Cobalt\"}\ntry:\n    encode_report({\"score\": float(\"nan\")})\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"Non-finite numbers must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "import json\ndef encode_report(report):\n    return json.dumps(report, sort_keys=True, separators=(\",\",\":\"), allow_nan=False)",
+    "estimated_minutes": 25
   },
   {
     "id": "backend-normalize-http-headers",
@@ -141,7 +175,9 @@
     "title": "Normalize an HTTP header map",
     "instructions": "This is a Python simulation of backend request handling; it opens no network connection. Implement normalize_headers(headers) to lowercase header names, strip surrounding whitespace from names and values, and let the last duplicate name win.",
     "starter_code": "def normalize_headers(headers):\n    # TODO: normalize a list of (name, value) pairs.\n    raise NotImplementedError\n\n\nprint(normalize_headers([('Content-Type', ' application/json ')]))",
-    "checks_code": "assert normalize_headers([('Content-Type', ' application/json '), ('X-Trace', ' a '), ('content-type', 'text/plain')]) == {'content-type': 'text/plain', 'x-trace': 'a'}\nassert normalize_headers([]) == {}\nprint('All checks passed.')"
+    "checks_code": "assert normalize_headers([('Content-Type', ' application/json '), ('X-Trace', ' a '), ('content-type', 'text/plain')]) == {'content-type': 'text/plain', 'x-trace': 'a'}\nassert normalize_headers([]) == {}\nprint('All checks passed.')",
+    "solution_code": "def normalize_headers(headers):\n    normalized = {}\n    for name, value in headers:\n        if not isinstance(name, str) or not name.strip(): raise ValueError(\"header name required\")\n        normalized[name.strip().lower()] = str(value).strip()\n    return normalized",
+    "estimated_minutes": 25
   },
   {
     "id": "rag-rank-chunks",
@@ -149,7 +185,9 @@
     "title": "Rank retrieved chunks by token overlap",
     "instructions": "This is a local retrieval simulation using token overlap, not a vector database. Implement rank_chunks(query, chunks, limit) to rank chunk dictionaries by the number of distinct query words they contain, highest first, preserving original order for ties, and return at most limit chunks.",
     "starter_code": "def rank_chunks(query, chunks, limit):\n    # TODO: score and rank chunks locally.\n    raise NotImplementedError\n\n\nchunks = [{'id': 'a', 'text': 'retrieval uses embeddings'}, {'id': 'b', 'text': 'retrieval augmented generation'}]\nprint(rank_chunks('retrieval generation', chunks, 2))",
-    "checks_code": "chunks = [{'id': 'a', 'text': 'retrieval uses embeddings'}, {'id': 'b', 'text': 'retrieval augmented generation'}, {'id': 'c', 'text': 'generation retrieval'}]\nassert [c['id'] for c in rank_chunks('retrieval generation', chunks, 2)] == ['b', 'c']\nassert rank_chunks('no match', chunks, 0) == []\nprint('All checks passed.')"
+    "checks_code": "chunks = [{'id': 'a', 'text': 'retrieval uses embeddings'}, {'id': 'b', 'text': 'retrieval augmented generation'}, {'id': 'c', 'text': 'generation retrieval'}]\nassert [c['id'] for c in rank_chunks('retrieval generation', chunks, 2)] == ['b', 'c']\nassert rank_chunks('no match', chunks, 0) == []\nprint('All checks passed.')",
+    "solution_code": "def rank_chunks(query, chunks, limit):\n    if not isinstance(limit, int) or isinstance(limit, bool) or limit <= 0: return []\n    terms = set(query.lower().split())\n    scored = []\n    for chunk in chunks:\n        score = len(terms & set(chunk.get(\"text\", \"\").lower().split()))\n        if score: scored.append((score, chunk[\"id\"], chunk))\n    return [item[2] for item in sorted(scored, key=lambda item: (-item[0], item[1]))[:limit]]",
+    "estimated_minutes": 25
   },
   {
     "id": "agent-enforce-tool-budget",
@@ -157,7 +195,9 @@
     "title": "Enforce an agent tool-call budget",
     "instructions": "This is an in-memory agent control-loop simulation; it calls no external tools. Implement run_steps(actions, allowed_tools, max_calls) and return accepted tool names in order. Ignore unapproved tools and stop after max_calls accepted calls.",
     "starter_code": "def run_steps(actions, allowed_tools, max_calls):\n    # TODO: apply tool allowlisting and a call budget.\n    raise NotImplementedError\n\n\nprint(run_steps(['search', 'email', 'search'], {'search'}, 1))",
-    "checks_code": "assert run_steps(['search', 'email', 'search'], {'search'}, 1) == ['search']\nassert run_steps(['email'], {'search'}, 3) == []\nassert run_steps(['search', 'search'], {'search'}, 0) == []\nprint('All checks passed.')"
+    "checks_code": "assert run_steps(['search', 'email', 'search'], {'search'}, 1) == ['search']\nassert run_steps(['email'], {'search'}, 3) == []\nassert run_steps(['search', 'search'], {'search'}, 0) == []\nprint('All checks passed.')",
+    "solution_code": "def run_steps(actions, allowed_tools, max_calls):\n    if not isinstance(max_calls, int) or isinstance(max_calls, bool) or max_calls <= 0: return []\n    accepted=[]\n    for action in actions:\n        if action in allowed_tools:\n            accepted.append(action)\n            if len(accepted) >= max_calls: break\n    return accepted",
+    "estimated_minutes": 25
   },
   {
     "id": "mcp-validate-tool-call",
@@ -165,7 +205,9 @@
     "title": "Validate a tool call against an allowlist",
     "instructions": "This is a local Model Context Protocol (MCP) message simulation and does not connect to an MCP server. Implement validate_tool_call(call, tools) to accept only a dictionary with an allowlisted name and dictionary arguments; return a normalized copy or raise ValueError.",
     "starter_code": "def validate_tool_call(call, tools):\n    # TODO: validate tool name and argument shape.\n    raise NotImplementedError\n\n\nprint(validate_tool_call({'name': 'lookup', 'arguments': {'term': 'RAG'}}, {'lookup'}))",
-    "checks_code": "assert validate_tool_call({'name': 'lookup', 'arguments': {'term': 'RAG'}}, {'lookup'}) == {'name': 'lookup', 'arguments': {'term': 'RAG'}}\nfor call in [{'name': 'delete', 'arguments': {}}, {'name': 'lookup', 'arguments': []}, {}]:\n    try: validate_tool_call(call, {'lookup'})\n    except ValueError: pass\n    else: raise AssertionError('Invalid tool calls must fail')\nprint('All checks passed.')"
+    "checks_code": "assert validate_tool_call({'name': 'lookup', 'arguments': {'term': 'RAG'}}, {'lookup'}) == {'name': 'lookup', 'arguments': {'term': 'RAG'}}\nfor call in [{'name': 'delete', 'arguments': {}}, {'name': 'lookup', 'arguments': []}, {}]:\n    try: validate_tool_call(call, {'lookup'})\n    except ValueError: pass\n    else: raise AssertionError('Invalid tool calls must fail')\nprint('All checks passed.')",
+    "solution_code": "def validate_tool_call(call, tools):\n    name = call.get(\"name\")\n    args = call.get(\"arguments\")\n    if name not in tools or not isinstance(args, dict): raise ValueError(\"invalid tool call\")\n    return {\"name\":name, \"arguments\":args}",
+    "estimated_minutes": 25
   },
   {
     "id": "production-capped-retry-delays",
@@ -173,7 +215,9 @@
     "title": "Plan bounded retry delays",
     "instructions": "Implement retry_delays(attempts, base_seconds, cap_seconds) using exponential backoff, capped at cap_seconds. Reject negative attempts, non-positive base, or a cap below the base. This pure simulation does not make requests or sleep.",
     "starter_code": "def retry_delays(attempts, base_seconds, cap_seconds):\n    # TODO: calculate bounded exponential delays.\n    raise NotImplementedError\n\n\nprint(retry_delays(4, 1, 5))",
-    "checks_code": "assert retry_delays(4, 1, 5) == [1, 2, 4, 5]\nassert retry_delays(0, 1, 5) == []\nfor values in [(-1, 1, 5), (2, 0, 5), (2, 3, 2)]:\n    try: retry_delays(*values)\n    except ValueError: pass\n    else: raise AssertionError('Invalid retry policy must fail')\nprint('All checks passed.')"
+    "checks_code": "assert retry_delays(4, 1, 5) == [1, 2, 4, 5]\nassert retry_delays(0, 1, 5) == []\nfor values in [(-1, 1, 5), (2, 0, 5), (2, 3, 2)]:\n    try: retry_delays(*values)\n    except ValueError: pass\n    else: raise AssertionError('Invalid retry policy must fail')\nprint('All checks passed.')",
+    "solution_code": "def retry_delays(attempts, base_seconds, cap_seconds):\n    if not isinstance(attempts,int) or isinstance(attempts,bool) or attempts < 0 or base_seconds <= 0 or cap_seconds < base_seconds: raise ValueError(\"invalid retry policy\")\n    return [min(base_seconds * (2 ** index), cap_seconds) for index in range(attempts)]",
+    "estimated_minutes": 25
   },
   {
     "id": "deployment-validate-container-config",
@@ -181,7 +225,9 @@
     "title": "Validate a container service configuration",
     "instructions": "This is a configuration simulation; it does not build or run a container. Implement validate_service(config) to require a non-empty image, an integer port from 1 to 65535, and a list of string health-check commands. Return a normalized copy or raise ValueError.",
     "starter_code": "def validate_service(config):\n    # TODO: validate the container service config.\n    raise NotImplementedError\n\n\nprint(validate_service({'image': 'ruach-api:1', 'port': 8000, 'healthcheck': ['python', '-V']}))",
-    "checks_code": "valid = {'image': 'ruach-api:1', 'port': 8000, 'healthcheck': ['python', '-V']}\nassert validate_service(valid) == valid\nassert valid['port'] == 8000\nfor bad in [{'image': '', 'port': 80, 'healthcheck': []}, {'image': 'app', 'port': 70000, 'healthcheck': []}, {'image': 'app', 'port': True, 'healthcheck': []}, {'image': 'app', 'port': 80, 'healthcheck': 'python'}]:\n    try: validate_service(bad)\n    except ValueError: pass\n    else: raise AssertionError('Invalid service config must fail')\nprint('All checks passed.')"
+    "checks_code": "valid = {'image': 'ruach-api:1', 'port': 8000, 'healthcheck': ['python', '-V']}\nassert validate_service(valid) == valid\nassert valid['port'] == 8000\nfor bad in [{'image': '', 'port': 80, 'healthcheck': []}, {'image': 'app', 'port': 70000, 'healthcheck': []}, {'image': 'app', 'port': True, 'healthcheck': []}, {'image': 'app', 'port': 80, 'healthcheck': 'python'}]:\n    try: validate_service(bad)\n    except ValueError: pass\n    else: raise AssertionError('Invalid service config must fail')\nprint('All checks passed.')",
+    "solution_code": "def validate_service(config):\n    if not isinstance(config,dict): raise ValueError(\"config must be a mapping\")\n    if not isinstance(config.get(\"image\"),str) or not config[\"image\"].strip(): raise ValueError(\"image required\")\n    port=config.get(\"port\")\n    if not isinstance(port,int) or isinstance(port,bool) or not 1 <= port <= 65535: raise ValueError(\"invalid port\")\n    if not isinstance(config.get(\"healthcheck\"),list) or not config[\"healthcheck\"] or not all(isinstance(x,str) for x in config[\"healthcheck\"]): raise ValueError(\"healthcheck must be a command list\")\n    return config",
+    "estimated_minutes": 25
   },
   {
     "id": "system-design-route-by-budget",
@@ -189,7 +235,9 @@
     "title": "Route requests within a budget",
     "instructions": "Implement choose_provider(providers, max_cost) to select the eligible provider with the lowest cost. Ignore disabled providers and costs above the budget; break ties by provider name. Return None if none qualify.",
     "starter_code": "def choose_provider(providers, max_cost):\n    # TODO: select the cheapest enabled provider within budget.\n    raise NotImplementedError\n\n\nprint(choose_provider([{'name': 'A', 'cost': 0.01, 'enabled': True}], 0.02))",
-    "checks_code": "providers = [{'name': 'Beta', 'cost': 0.01, 'enabled': True}, {'name': 'Alpha', 'cost': 0.01, 'enabled': True}, {'name': 'Fast', 'cost': 0.02, 'enabled': False}]\nassert choose_provider(providers, 0.01)['name'] == 'Alpha'\nassert choose_provider(providers, 0.005) is None\nprint('All checks passed.')"
+    "checks_code": "providers = [{'name': 'Beta', 'cost': 0.01, 'enabled': True}, {'name': 'Alpha', 'cost': 0.01, 'enabled': True}, {'name': 'Fast', 'cost': 0.02, 'enabled': False}]\nassert choose_provider(providers, 0.01)['name'] == 'Alpha'\nassert choose_provider(providers, 0.005) is None\nprint('All checks passed.')",
+    "solution_code": "def choose_provider(providers, max_cost):\n    eligible=[item for item in providers if item.get(\"enabled\") is True and item.get(\"cost\",float(\"inf\")) <= max_cost]\n    return min(eligible,key=lambda item:(item[\"cost\"],item[\"name\"])) if eligible else None",
+    "estimated_minutes": 25
   },
   {
     "id": "capstone-requirement-checklist",
@@ -197,7 +245,9 @@
     "title": "Turn requirements into acceptance checks",
     "instructions": "Implement acceptance_checklist(requirements) to trim whitespace, remove empty entries, remove case-insensitive duplicates, and preserve the first occurrence order. This is a local planning exercise.",
     "starter_code": "def acceptance_checklist(requirements):\n    # TODO: normalize and deduplicate requirements.\n    raise NotImplementedError\n\n\nprint(acceptance_checklist([' log requests ', 'Test retrieval']))",
-    "checks_code": "assert acceptance_checklist([' log requests ', '', 'Test retrieval', 'LOG REQUESTS', ' test retrieval ']) == ['log requests', 'Test retrieval']\nassert acceptance_checklist([]) == []\nprint('All checks passed.')"
+    "checks_code": "assert acceptance_checklist([' log requests ', '', 'Test retrieval', 'LOG REQUESTS', ' test retrieval ']) == ['log requests', 'Test retrieval']\nassert acceptance_checklist([]) == []\nprint('All checks passed.')",
+    "solution_code": "def acceptance_checklist(requirements):\n    result=[]; seen=set()\n    for value in requirements:\n        normalized=\" \".join(value.split())\n        key=normalized.casefold()\n        if normalized and key not in seen:\n            seen.add(key); result.append(normalized)\n    return result",
+    "estimated_minutes": 25
   },
   {
     "id": "multimodal-media-validation",
@@ -205,7 +255,9 @@
     "title": "Validate media metadata",
     "instructions": "Implement validate_media(item). Return an error string for unsupported modality, negative or oversized bytes, or missing/invalid duration for audio/video; otherwise return None.",
     "starter_code": "ALLOWED = {\"text\", \"image\", \"audio\", \"video\"}\n\ndef validate_media(item, max_bytes=1000, max_seconds=60):\n    # TODO: validate modality, size, and audio/video duration.\n    raise NotImplementedError",
-    "checks_code": "assert validate_media({\"modality\":\"image\",\"bytes\":500}) is None\nassert validate_media({\"modality\":\"image\",\"bytes\":2000}) == \"invalid_size\"\nassert validate_media({\"modality\":\"audio\",\"bytes\":20}) == \"invalid_duration\"\nassert validate_media({\"modality\":\"audio\",\"bytes\":20,\"duration_seconds\":61}) == \"invalid_duration\"\nassert validate_media({\"modality\":\"video\",\"bytes\":20,\"duration_seconds\":10}) is None\nassert validate_media({\"modality\":\"text\",\"bytes\":0}) is None\nassert validate_media({\"modality\":\"archive\",\"bytes\":1}) == \"unsupported_modality\"\nprint(\"All checks passed.\")"
+    "checks_code": "assert validate_media({\"modality\":\"image\",\"bytes\":500}) is None\nassert validate_media({\"modality\":\"image\",\"bytes\":2000}) == \"invalid_size\"\nassert validate_media({\"modality\":\"audio\",\"bytes\":20}) == \"invalid_duration\"\nassert validate_media({\"modality\":\"audio\",\"bytes\":20,\"duration_seconds\":61}) == \"invalid_duration\"\nassert validate_media({\"modality\":\"video\",\"bytes\":20,\"duration_seconds\":10}) is None\nassert validate_media({\"modality\":\"text\",\"bytes\":0}) is None\nassert validate_media({\"modality\":\"archive\",\"bytes\":1}) == \"unsupported_modality\"\nprint(\"All checks passed.\")",
+    "solution_code": "ALLOWED={\"text\",\"image\",\"audio\",\"video\"}\ndef validate_media(item,max_bytes=1000,max_seconds=60):\n    modality=item.get(\"modality\")\n    if modality not in ALLOWED: return \"unsupported_modality\"\n    size=item.get(\"bytes\")\n    if isinstance(size,bool) or not isinstance(size,int) or not 0 <= size <= max_bytes: return \"invalid_size\"\n    if modality in {\"audio\",\"video\"}:\n        duration=item.get(\"duration_seconds\")\n        if isinstance(duration,bool) or not isinstance(duration,(int,float)) or not 0 < duration <= max_seconds: return \"invalid_duration\"\n    return None",
+    "estimated_minutes": 25
   },
   {
     "id": "model-deployment-decision",
@@ -213,7 +265,9 @@
     "title": "Choose a deployment from constraints",
     "instructions": "Implement choose_deployment(requirements). Choose hosted when it meets latency and privacy constraints; choose self_hosted only when data must remain local and the team has operations capacity; otherwise return needs_review.",
     "starter_code": "def choose_deployment(requirements):\n    # TODO: apply privacy, latency, and operations constraints.\n    raise NotImplementedError",
-    "checks_code": "assert choose_deployment({\"local_only\":False,\"hosted_meets_latency\":True,\"ops_capacity\":False}) == \"hosted\"\nassert choose_deployment({\"local_only\":True,\"hosted_meets_latency\":False,\"ops_capacity\":True}) == \"self_hosted\"\nassert choose_deployment({\"local_only\":True,\"hosted_meets_latency\":True,\"ops_capacity\":False}) == \"needs_review\"\nassert choose_deployment({\"local_only\":False,\"hosted_meets_latency\":False,\"ops_capacity\":False}) == \"needs_review\"\nprint(\"All checks passed.\")"
+    "checks_code": "assert choose_deployment({\"local_only\":False,\"hosted_meets_latency\":True,\"ops_capacity\":False}) == \"hosted\"\nassert choose_deployment({\"local_only\":True,\"hosted_meets_latency\":False,\"ops_capacity\":True}) == \"self_hosted\"\nassert choose_deployment({\"local_only\":True,\"hosted_meets_latency\":True,\"ops_capacity\":False}) == \"needs_review\"\nassert choose_deployment({\"local_only\":False,\"hosted_meets_latency\":False,\"ops_capacity\":False}) == \"needs_review\"\nprint(\"All checks passed.\")",
+    "solution_code": "def choose_deployment(requirements):\n    local=requirements.get(\"local_only\") is True\n    hosted_ok=requirements.get(\"hosted_meets_latency\") is True\n    ops=requirements.get(\"ops_capacity\") is True\n    if local: return \"self_hosted\" if ops else \"needs_review\"\n    return \"hosted\" if hosted_ok else \"needs_review\"",
+    "estimated_minutes": 25
   },
   {
     "id": "document-evidence-check",
@@ -221,7 +275,9 @@
     "title": "Validate extracted evidence spans",
     "instructions": "Implement valid_extraction(record, text). Require a non-empty string value and a source span whose start/end are valid indices and whose text matches the extracted value after whitespace normalization.",
     "starter_code": "def valid_extraction(record, text):\n    # TODO: validate value and evidence offsets.\n    raise NotImplementedError",
-    "checks_code": "text = \"Invoice total: 42.00 USD\"\nrecord = {\"value\":\"42.00 USD\",\"start\":15,\"end\":24}\nassert valid_extraction(record, text) is True\nassert valid_extraction({\"value\":\"99.00\",\"start\":15,\"end\":20}, text) is False\nassert valid_extraction({\"value\":\"42.00 USD\",\"start\":30,\"end\":39}, text) is False\nassert valid_extraction({\"value\":\"\",\"start\":0,\"end\":0}, text) is False\nprint(\"All checks passed.\")"
+    "checks_code": "text = \"Invoice total: 42.00 USD\"\nrecord = {\"value\":\"42.00 USD\",\"start\":15,\"end\":24}\nassert valid_extraction(record, text) is True\nassert valid_extraction({\"value\":\"99.00\",\"start\":15,\"end\":20}, text) is False\nassert valid_extraction({\"value\":\"42.00 USD\",\"start\":30,\"end\":39}, text) is False\nassert valid_extraction({\"value\":\"\",\"start\":0,\"end\":0}, text) is False\nprint(\"All checks passed.\")",
+    "solution_code": "def valid_extraction(record,text):\n    value=record.get(\"value\"); start=record.get(\"start\"); end=record.get(\"end\")\n    if not isinstance(value,str) or not value or not isinstance(start,int) or isinstance(start,bool) or not isinstance(end,int) or isinstance(end,bool): return False\n    return 0 <= start < end <= len(text) and text[start:end] == value",
+    "estimated_minutes": 25
   },
   {
     "id": "mcp-protocol-era-selection",
@@ -229,7 +285,9 @@
     "title": "Select MCP compatibility behavior",
     "instructions": "Implement protocol_mode(version). Return stateless for 2026-07-28 and later revisions, handshake for supported earlier dated revisions, and unsupported for malformed or unknown input.",
     "starter_code": "def protocol_mode(version):\n    # TODO: parse YYYY-MM-DD and classify supported protocol eras.\n    raise NotImplementedError",
-    "checks_code": "assert protocol_mode(\"2026-07-28\") == \"stateless\"\nassert protocol_mode(\"2025-11-25\") == \"handshake\"\nassert protocol_mode(\"2025-03-26\") == \"handshake\"\nassert protocol_mode(\"not-a-version\") == \"unsupported\"\nassert protocol_mode(\"2027-01-01\") == \"unsupported\"\nprint(\"All checks passed.\")"
+    "checks_code": "assert protocol_mode(\"2026-07-28\") == \"stateless\"\nassert protocol_mode(\"2025-11-25\") == \"handshake\"\nassert protocol_mode(\"2025-03-26\") == \"handshake\"\nassert protocol_mode(\"not-a-version\") == \"unsupported\"\nassert protocol_mode(\"2027-01-01\") == \"unsupported\"\nprint(\"All checks passed.\")",
+    "solution_code": "def protocol_mode(version):\n    if version == \"2026-07-28\": return \"stateless\"\n    if version in {\"2025-11-25\",\"2025-06-18\",\"2025-03-26\",\"2024-11-05\"}: return \"handshake\"\n    return \"unsupported\"",
+    "estimated_minutes": 25
   },
   {
     "id": "ai-deletion-plan",
@@ -237,7 +295,9 @@
     "title": "Plan deletion across derived stores",
     "instructions": "Implement deletion_targets(record). Return all stores that may contain a document, including source, chunks, embeddings, answer_cache, logs, and eval_data only when the record says evaluation_copy is true. Preserve stable output order.",
     "starter_code": "def deletion_targets(record):\n    # TODO: return every store that may retain this document.\n    raise NotImplementedError",
-    "checks_code": "assert deletion_targets({\"evaluation_copy\":False}) == [\"source\", \"chunks\", \"embeddings\", \"answer_cache\", \"logs\"]\nassert deletion_targets({\"evaluation_copy\":True}) == [\"source\", \"chunks\", \"embeddings\", \"answer_cache\", \"logs\", \"eval_data\"]\nprint(\"All checks passed.\")"
+    "checks_code": "assert deletion_targets({\"evaluation_copy\":False}) == [\"source\", \"chunks\", \"embeddings\", \"answer_cache\", \"logs\"]\nassert deletion_targets({\"evaluation_copy\":True}) == [\"source\", \"chunks\", \"embeddings\", \"answer_cache\", \"logs\", \"eval_data\"]\nprint(\"All checks passed.\")",
+    "solution_code": "def deletion_targets(record):\n    targets=[\"source\",\"chunks\",\"embeddings\",\"answer_cache\",\"logs\"]\n    if record.get(\"evaluation_copy\") is True: targets.append(\"eval_data\")\n    return targets",
+    "estimated_minutes": 25
   },
   {
     "id": "ai-risk-control-map",
@@ -245,7 +305,9 @@
     "title": "Map AI risks to controls",
     "instructions": "Implement controls_for(risks), returning unique deterministic controls for prompt_injection, cross_tenant_retrieval, unsafe_output, and unbounded_cost. Do not invent a control for unknown risks.",
     "starter_code": "RISK_CONTROLS = {\n    \"prompt_injection\": \"tool_allowlist\",\n    \"cross_tenant_retrieval\": \"tenant_filter\",\n    \"unsafe_output\": \"output_validation\",\n    \"unbounded_cost\": \"request_budget\",\n}\n\ndef controls_for(risks):\n    # TODO: map known risks, keep first occurrence order, ignore unknowns.\n    raise NotImplementedError",
-    "checks_code": "assert controls_for([\"prompt_injection\", \"unsafe_output\"]) == [\"tool_allowlist\", \"output_validation\"]\nassert controls_for([\"cross_tenant_retrieval\", \"cross_tenant_retrieval\", \"unknown\"]) == [\"tenant_filter\"]\nassert controls_for([]) == []\nprint(\"All checks passed.\")"
+    "checks_code": "assert controls_for([\"prompt_injection\", \"unsafe_output\"]) == [\"tool_allowlist\", \"output_validation\"]\nassert controls_for([\"cross_tenant_retrieval\", \"cross_tenant_retrieval\", \"unknown\"]) == [\"tenant_filter\"]\nassert controls_for([]) == []\nprint(\"All checks passed.\")",
+    "solution_code": "RISK_CONTROLS={\"prompt_injection\":\"tool_allowlist\",\"cross_tenant_retrieval\":\"tenant_filter\",\"unsafe_output\":\"output_validation\",\"unbounded_cost\":\"request_budget\"}\ndef controls_for(risks):\n    result=[]; seen=set()\n    for risk in risks:\n        control=RISK_CONTROLS.get(risk)\n        if control and control not in seen: seen.add(control); result.append(control)\n    return result",
+    "estimated_minutes": 25
   },
   {
     "id": "orchestration-evidence-choice",
@@ -253,7 +315,9 @@
     "title": "Choose the simplest adequate orchestration",
     "instructions": "Implement choose_architecture(evidence). Prefer workflow when the path is fixed. Otherwise keep one_agent unless measured specialist_gain exceeds added_latency_cost and safety checks pass.",
     "starter_code": "def choose_architecture(evidence):\n    # TODO: require evidence before recommending multiple agents.\n    raise NotImplementedError",
-    "checks_code": "assert choose_architecture({\"fixed_path\":True}) == \"workflow\"\nassert choose_architecture({\"fixed_path\":False,\"specialist_gain\":0.2,\"added_latency_cost\":0.1,\"safety_passed\":True}) == \"multi_agent\"\nassert choose_architecture({\"fixed_path\":False,\"specialist_gain\":0.1,\"added_latency_cost\":0.2,\"safety_passed\":True}) == \"one_agent\"\nassert choose_architecture({\"fixed_path\":False,\"specialist_gain\":0.5,\"added_latency_cost\":0.1,\"safety_passed\":False}) == \"one_agent\"\nprint(\"All checks passed.\")"
+    "checks_code": "assert choose_architecture({\"fixed_path\":True}) == \"workflow\"\nassert choose_architecture({\"fixed_path\":False,\"specialist_gain\":0.2,\"added_latency_cost\":0.1,\"safety_passed\":True}) == \"multi_agent\"\nassert choose_architecture({\"fixed_path\":False,\"specialist_gain\":0.1,\"added_latency_cost\":0.2,\"safety_passed\":True}) == \"one_agent\"\nassert choose_architecture({\"fixed_path\":False,\"specialist_gain\":0.5,\"added_latency_cost\":0.1,\"safety_passed\":False}) == \"one_agent\"\nprint(\"All checks passed.\")",
+    "solution_code": "def choose_architecture(evidence):\n    if evidence.get(\"fixed_path\") is True: return \"workflow\"\n    if evidence.get(\"safety_passed\") is True and evidence.get(\"specialist_gain\",0) > evidence.get(\"added_latency_cost\",float(\"inf\")): return \"multi_agent\"\n    return \"one_agent\"",
+    "estimated_minutes": 25
   },
   {
     "id": "backend-idempotent-job",
@@ -261,7 +325,9 @@
     "title": "Create or reuse an idempotent job",
     "instructions": "Implement create_or_reuse(key, jobs). Reject a blank key; return the existing job for a repeated key; otherwise add and return one new job id.",
     "starter_code": "def create_or_reuse(key, jobs):\n    # TODO: make repeated submissions safe.\n    raise NotImplementedError",
-    "checks_code": "jobs = {}\nassert create_or_reuse(\"k1\", jobs) == (\"created\", \"job-k1\")\nassert create_or_reuse(\"k1\", jobs) == (\"existing\", \"job-k1\")\nassert len(jobs) == 1\nassert create_or_reuse(\"\", jobs) == (\"error\", None)\nprint(\"All checks passed.\")"
+    "checks_code": "jobs = {}\nassert create_or_reuse(\"k1\", jobs) == (\"created\", \"job-k1\")\nassert create_or_reuse(\"k1\", jobs) == (\"existing\", \"job-k1\")\nassert len(jobs) == 1\nassert create_or_reuse(\"\", jobs) == (\"error\", None)\nprint(\"All checks passed.\")",
+    "solution_code": "def create_or_reuse(key,jobs):\n    if not isinstance(key,str) or not key.strip(): return (\"error\",None)\n    if key in jobs: return (\"existing\",jobs[key])\n    job_id=f\"job-{key}\"\n    jobs[key]=job_id\n    return (\"created\",job_id)",
+    "estimated_minutes": 25
   },
   {
     "id": "rag-reciprocal-rank",
@@ -269,7 +335,9 @@
     "title": "Score retrieval rank",
     "instructions": "Implement reciprocal_rank(relevant_ids, results, k). Return 1/rank for the first relevant result in the top k, or 0 if none appears. Rank is one-based.",
     "starter_code": "def reciprocal_rank(relevant_ids, results, k):\n    # TODO: find the first relevant result within k.\n    raise NotImplementedError",
-    "checks_code": "assert reciprocal_rank({\"d2\"}, [\"d1\", \"d2\", \"d3\"], 3) == 0.5\nassert reciprocal_rank({\"d3\"}, [\"d1\", \"d2\", \"d3\"], 2) == 0\nassert reciprocal_rank(set(), [\"d1\"], 1) == 0\nassert reciprocal_rank({\"d1\"}, [\"d1\"], 0) == 0\nprint(\"All checks passed.\")"
+    "checks_code": "assert reciprocal_rank({\"d2\"}, [\"d1\", \"d2\", \"d3\"], 3) == 0.5\nassert reciprocal_rank({\"d3\"}, [\"d1\", \"d2\", \"d3\"], 2) == 0\nassert reciprocal_rank(set(), [\"d1\"], 1) == 0\nassert reciprocal_rank({\"d1\"}, [\"d1\"], 0) == 0\nprint(\"All checks passed.\")",
+    "solution_code": "def reciprocal_rank(relevant_ids,results,k):\n    if not isinstance(k,int) or isinstance(k,bool) or k <= 0: return 0\n    for rank, result in enumerate(results[:k],1):\n        if result in relevant_ids: return 1/rank\n    return 0",
+    "estimated_minutes": 25
   },
   {
     "id": "agent-tool-authorization",
@@ -277,7 +345,9 @@
     "title": "Authorize a tool call outside the model",
     "instructions": "Implement authorize_tool(name, allowed_tools, write_tools, approved). A tool must be allowlisted, and write tools require explicit approval.",
     "starter_code": "def authorize_tool(name, allowed_tools, write_tools, approved):\n    # TODO: enforce host policy deterministically.\n    raise NotImplementedError",
-    "checks_code": "allowed = {\"search\", \"send_email\"}\nwrites = {\"send_email\"}\nassert authorize_tool(\"search\", allowed, writes, False) is True\nassert authorize_tool(\"send_email\", allowed, writes, False) is False\nassert authorize_tool(\"send_email\", allowed, writes, True) is True\nassert authorize_tool(\"delete_all\", allowed, writes, True) is False\nprint(\"All checks passed.\")"
+    "checks_code": "allowed = {\"search\", \"send_email\"}\nwrites = {\"send_email\"}\nassert authorize_tool(\"search\", allowed, writes, False) is True\nassert authorize_tool(\"send_email\", allowed, writes, False) is False\nassert authorize_tool(\"send_email\", allowed, writes, True) is True\nassert authorize_tool(\"delete_all\", allowed, writes, True) is False\nprint(\"All checks passed.\")",
+    "solution_code": "def authorize_tool(name,allowed_tools,write_tools,approved):\n    if name not in allowed_tools: return False\n    if name in write_tools and approved is not True: return False\n    return True",
+    "estimated_minutes": 25
   },
   {
     "id": "container-release-readiness",
@@ -285,6 +355,148 @@
     "title": "Check production image readiness",
     "instructions": "Implement release_ready(image). A production image is ready only when it runs as a non-root user, has no baked-in secrets, and declares a health check.",
     "starter_code": "def release_ready(image):\n    # TODO: check all three release requirements.\n    raise NotImplementedError",
-    "checks_code": "assert release_ready({\"non_root\":True,\"baked_secrets\":False,\"healthcheck\":True}) is True\nassert release_ready({\"non_root\":False,\"baked_secrets\":False,\"healthcheck\":True}) is False\nassert release_ready({\"non_root\":True,\"baked_secrets\":True,\"healthcheck\":True}) is False\nassert release_ready({\"non_root\":True,\"baked_secrets\":False,\"healthcheck\":False}) is False\nprint(\"All checks passed.\")"
+    "checks_code": "assert release_ready({\"non_root\":True,\"baked_secrets\":False,\"healthcheck\":True}) is True\nassert release_ready({\"non_root\":False,\"baked_secrets\":False,\"healthcheck\":True}) is False\nassert release_ready({\"non_root\":True,\"baked_secrets\":True,\"healthcheck\":True}) is False\nassert release_ready({\"non_root\":True,\"baked_secrets\":False,\"healthcheck\":False}) is False\nprint(\"All checks passed.\")",
+    "solution_code": "def release_ready(image):\n    return image.get(\"non_root\") is True and image.get(\"baked_secrets\") is False and image.get(\"healthcheck\") is True",
+    "estimated_minutes": 25
+  },
+  {
+    "id": "foundations-system-map",
+    "lesson_id": "0.03",
+    "title": "Map an AI request to its system boundary",
+    "instructions": "Implement classify_component(name). Return one of: client, application, model, data, tools, operations. Classify the six example components. Raise ValueError for unknown names.",
+    "estimated_minutes": 25,
+    "starter_code": "def classify_component(name):\n    # TODO: map each component to its owning layer.\n    raise NotImplementedError\n\nprint(classify_component(\"web form\"))",
+    "checks_code": "expected = {\"web form\":\"client\", \"request validator\":\"application\", \"language model\":\"model\", \"document index\":\"data\", \"search connector\":\"tools\", \"trace dashboard\":\"operations\"}\nfor name, layer in expected.items():\n    assert classify_component(name) == layer\nfor name in [\"\", \"magic box\"]:\n    try: classify_component(name)\n    except ValueError: pass\n    else: raise AssertionError(\"Unknown components must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "LAYERS = {\"web form\":\"client\", \"request validator\":\"application\", \"language model\":\"model\", \"document index\":\"data\", \"search connector\":\"tools\", \"trace dashboard\":\"operations\"}\ndef classify_component(name):\n    try: return LAYERS[name]\n    except KeyError as exc: raise ValueError(\"unknown component\") from exc\n\nprint(classify_component(\"web form\"))"
+  },
+  {
+    "id": "backend-customer-revenue",
+    "lesson_id": "2.13",
+    "title": "Aggregate verified order totals",
+    "instructions": "Implement revenue_by_customer(rows). Sum only paid orders by customer_id, accept numeric strings or numbers, and reject missing IDs, booleans, non-finite values, and negative amounts. Return a new dict and do not mutate the input.",
+    "estimated_minutes": 25,
+    "starter_code": "from math import isfinite\n\ndef revenue_by_customer(rows):\n    # TODO: validate rows and aggregate paid orders.\n    raise NotImplementedError",
+    "checks_code": "rows = [{\"customer_id\":\"a\", \"status\":\"paid\", \"amount\":\"10.5\"}, {\"customer_id\":\"a\", \"status\":\"refunded\", \"amount\":\"4\"}, {\"customer_id\":\"b\", \"status\":\"paid\", \"amount\":2}]\nassert revenue_by_customer(rows) == {\"a\":10.5, \"b\":2.0}\nassert revenue_by_customer([]) == {}\nfor bad in [[{\"customer_id\":\"a\",\"status\":\"paid\",\"amount\":True}], [{\"status\":\"paid\",\"amount\":1}], [{\"customer_id\":\"a\",\"status\":\"paid\",\"amount\":float(\"nan\") }]]:\n    try: revenue_by_customer(bad)\n    except ValueError: pass\n    else: raise AssertionError(\"Invalid order data must fail\")\nprint(\"All checks passed.\")",
+    "solution_code": "from math import isfinite\ndef revenue_by_customer(rows):\n    totals = {}\n    for row in rows:\n        customer = row.get(\"customer_id\")\n        if not isinstance(customer, str) or not customer.strip(): raise ValueError(\"customer_id required\")\n        if row.get(\"status\") != \"paid\": continue\n        raw = row.get(\"amount\")\n        if isinstance(raw, bool): raise ValueError(\"invalid amount\")\n        try: amount = float(raw)\n        except (TypeError, ValueError) as exc: raise ValueError(\"invalid amount\") from exc\n        if not isfinite(amount) or amount < 0: raise ValueError(\"invalid amount\")\n        totals[customer] = totals.get(customer, 0.0) + amount\n    return totals"
+  },
+  {
+    "id": "llm-model-budget",
+    "lesson_id": "3.14",
+    "title": "Choose a model under quality and cost limits",
+    "instructions": "Implement choose_model(models, min_quality, max_cost). Select the cheapest model that meets both inclusive thresholds. Break equal-cost ties by higher quality, then lexicographic name. Return None if no candidate qualifies.",
+    "estimated_minutes": 25,
+    "starter_code": "def choose_model(models, min_quality, max_cost):\n    # TODO: filter by hard constraints, then apply deterministic tie-breaks.\n    raise NotImplementedError",
+    "checks_code": "models = [{\"name\":\"A\",\"quality\":0.9,\"cost\":0.02},{\"name\":\"B\",\"quality\":0.95,\"cost\":0.02},{\"name\":\"C\",\"quality\":0.99,\"cost\":0.08}]\nassert choose_model(models, 0.9, 0.03)[\"name\"] == \"B\"\nassert choose_model(models, 0.96, 0.03) is None\nassert choose_model([], 0, 1) is None\nprint(\"All checks passed.\")",
+    "solution_code": "def choose_model(models, min_quality, max_cost):\n    valid = [m for m in models if m.get(\"quality\", -1) >= min_quality and m.get(\"cost\", float(\"inf\")) <= max_cost]\n    return min(valid, key=lambda m: (m[\"cost\"], -m[\"quality\"], m[\"name\"])) if valid else None"
+  },
+  {
+    "id": "llm-structured-evidence",
+    "lesson_id": "4.03",
+    "title": "Reject extracted claims without source evidence",
+    "instructions": "Implement validate_claim(claim, source). A valid claim has a non-empty value and an evidence quote that appears in source. Return a normalized {value, evidence} dict; reject absent or fabricated evidence with ValueError.",
+    "estimated_minutes": 25,
+    "starter_code": "def validate_claim(claim, source):\n    # TODO: require a value and a verbatim evidence quote.\n    raise NotImplementedError",
+    "checks_code": "source = \"Renewal begins on 1 March 2027. Notice is due 30 days earlier.\"\nassert validate_claim({\"value\":\"1 March 2027\", \"evidence\":\"Renewal begins on 1 March 2027.\"}, source) == {\"value\":\"1 March 2027\", \"evidence\":\"Renewal begins on 1 March 2027.\"}\nfor claim in [{\"value\":\"1 March 2027\",\"evidence\":\"Renewal begins in April.\"},{\"value\":\"\",\"evidence\":\"Renewal begins on 1 March 2027.\"},{\"value\":\"x\",\"evidence\":\"\"}]:\n    try: validate_claim(claim, source)\n    except ValueError: pass\n    else: raise AssertionError(\"Unsupported claim must fail\")\nprint(\"All checks passed.\")",
+    "solution_code": "def validate_claim(claim, source):\n    value = claim.get(\"value\")\n    evidence = claim.get(\"evidence\")\n    if not isinstance(value, str) or not value.strip(): raise ValueError(\"value required\")\n    if not isinstance(evidence, str) or not evidence.strip() or evidence not in source: raise ValueError(\"verbatim evidence required\")\n    return {\"value\": value.strip(), \"evidence\": evidence.strip()}"
+  },
+  {
+    "id": "llm-failure-policy",
+    "lesson_id": "4.13",
+    "title": "Route model failures by status",
+    "instructions": "Implement failure_action(status). Return retry for 408, 429, and 5xx; fallback for 401/403 only when a separately configured alternate provider is available; otherwise return stop. Do not treat arbitrary 4xx responses as transient.",
+    "estimated_minutes": 25,
+    "starter_code": "def failure_action(status, alternate_ready=False):\n    # TODO: return retry, fallback, or stop using the stated policy.\n    raise NotImplementedError",
+    "checks_code": "assert failure_action(429) == \"retry\"\nassert failure_action(503) == \"retry\"\nassert failure_action(401, True) == \"fallback\"\nassert failure_action(401, False) == \"stop\"\nassert failure_action(400, True) == \"stop\"\nprint(\"All checks passed.\")",
+    "solution_code": "def failure_action(status, alternate_ready=False):\n    if status in {408, 429} or 500 <= status <= 599: return \"retry\"\n    if status in {401, 403} and alternate_ready: return \"fallback\"\n    return \"stop\""
+  },
+  {
+    "id": "rag-ranking-metrics",
+    "lesson_id": "5.17",
+    "title": "Measure retrieval quality at k",
+    "instructions": "Implement precision_at_k(results, relevant_ids, k) and reciprocal_rank(results, relevant_ids). Ignore duplicate result IDs after their first occurrence. Return 0 for empty inputs or non-positive k.",
+    "estimated_minutes": 25,
+    "starter_code": "def precision_at_k(results, relevant_ids, k):\n    # TODO: count unique relevant results in the first k unique IDs.\n    raise NotImplementedError\n\ndef reciprocal_rank(results, relevant_ids):\n    # TODO: return the reciprocal rank of the first relevant unique result.\n    raise NotImplementedError",
+    "checks_code": "assert precision_at_k([\"a\",\"a\",\"b\",\"c\"], {\"a\",\"c\"}, 3) == 2/3\nassert reciprocal_rank([\"x\",\"x\",\"b\"], {\"b\"}) == 1/2\nassert precision_at_k([], {\"a\"}, 5) == 0\nassert reciprocal_rank([\"a\"], set()) == 0\nprint(\"All checks passed.\")",
+    "solution_code": "def _unique(items): return list(dict.fromkeys(items))\ndef precision_at_k(results, relevant_ids, k):\n    if not isinstance(k, int) or isinstance(k, bool) or k <= 0: return 0.0\n    chosen = _unique(results)[:k]\n    return sum(item in relevant_ids for item in chosen) / k\ndef reciprocal_rank(results, relevant_ids):\n    for rank, item in enumerate(_unique(results), 1):\n        if item in relevant_ids: return 1 / rank\n    return 0.0"
+  },
+  {
+    "id": "agent-tool-policy",
+    "lesson_id": "6.07",
+    "title": "Validate an agent tool request before execution",
+    "instructions": "Implement authorize_tool(call, allowed, user_scopes). Require an allowlisted tool, a non-empty string request_id, and every required scope. Return the validated tool name and request_id; raise PermissionError for a denied call.",
+    "estimated_minutes": 25,
+    "starter_code": "def authorize_tool(call, allowed, user_scopes):\n    # TODO: apply tool allowlist and scope checks before execution.\n    raise NotImplementedError",
+    "checks_code": "allowed = {\"search\":{\"scopes\":{\"docs:read\"}}, \"delete\":{\"scopes\":{\"docs:write\",\"admin\"}}}\ncall = {\"name\":\"search\", \"request_id\":\"r-1\"}\nassert authorize_tool(call, allowed, {\"docs:read\"}) == {\"name\":\"search\", \"request_id\":\"r-1\"}\nfor args in [(call, allowed, set()), ({**call,\"name\":\"shell\"}, allowed, {\"docs:read\"}), ({\"name\":\"search\"}, allowed, {\"docs:read\"})]:\n    try: authorize_tool(*args)\n    except PermissionError: pass\n    else: raise AssertionError(\"Denied tool calls must not run\")\nprint(\"All checks passed.\")",
+    "solution_code": "def authorize_tool(call, allowed, user_scopes):\n    name, request_id = call.get(\"name\"), call.get(\"request_id\")\n    if not isinstance(name, str) or name not in allowed: raise PermissionError(\"tool not allowlisted\")\n    if not isinstance(request_id, str) or not request_id.strip(): raise PermissionError(\"request id required\")\n    required = allowed[name].get(\"scopes\", set())\n    if not required.issubset(user_scopes): raise PermissionError(\"missing scope\")\n    return {\"name\": name, \"request_id\": request_id.strip()}"
+  },
+  {
+    "id": "orchestration-state-machine",
+    "lesson_id": "7.09",
+    "title": "Apply safe workflow state transitions",
+    "instructions": "Implement transition(state, event). Support queued→running, running→waiting_approval or complete, waiting_approval→running or cancelled. Reject unknown events and transitions from terminal states. Return a new state value.",
+    "estimated_minutes": 25,
+    "starter_code": "TRANSITIONS = {\n    # TODO: add valid transitions as {state: {event: next_state}}.\n}\ndef transition(state, event):\n    raise NotImplementedError",
+    "checks_code": "assert transition(\"queued\", \"start\") == \"running\"\nassert transition(\"running\", \"needs_approval\") == \"waiting_approval\"\nassert transition(\"waiting_approval\", \"approve\") == \"running\"\nassert transition(\"waiting_approval\", \"reject\") == \"cancelled\"\nfor pair in [(\"complete\",\"start\"),(\"queued\",\"approve\"),(\"cancelled\",\"start\")]:\n    try: transition(*pair)\n    except ValueError: pass\n    else: raise AssertionError(\"Invalid transition must fail\")\nprint(\"All checks passed.\")",
+    "solution_code": "TRANSITIONS = {\"queued\":{\"start\":\"running\"}, \"running\":{\"needs_approval\":\"waiting_approval\", \"finish\":\"complete\"}, \"waiting_approval\":{\"approve\":\"running\", \"reject\":\"cancelled\"}}\ndef transition(state, event):\n    try: return TRANSITIONS[state][event]\n    except KeyError as exc: raise ValueError(\"invalid workflow transition\") from exc"
+  },
+  {
+    "id": "orchestration-idempotency",
+    "lesson_id": "7.17",
+    "title": "Make workflow side effects idempotent",
+    "instructions": "Implement apply_once(event_id, value, store). If event_id was already processed, return the previously recorded result without changing the total. Otherwise add value once and save the result. Reject empty IDs and non-finite values.",
+    "estimated_minutes": 25,
+    "starter_code": "from math import isfinite\ndef apply_once(event_id, value, store):\n    # store contains total and results.\n    raise NotImplementedError",
+    "checks_code": "store = {\"total\":0.0, \"results\":{}}\nassert apply_once(\"e1\", 4, store) == 4\nassert apply_once(\"e1\", 4, store) == 4\nassert store[\"total\"] == 4\nassert apply_once(\"e2\", 3, store) == 7\nfor args in [(\"\",1,store),(\"e3\",float(\"nan\"),store)]:\n    try: apply_once(*args)\n    except ValueError: pass\n    else: raise AssertionError(\"Invalid event must fail\")\nprint(\"All checks passed.\")",
+    "solution_code": "from math import isfinite\ndef apply_once(event_id, value, store):\n    if not isinstance(event_id, str) or not event_id.strip(): raise ValueError(\"event id required\")\n    if isinstance(value, bool) or not isinstance(value, (int,float)) or not isfinite(value): raise ValueError(\"finite numeric value required\")\n    if event_id in store[\"results\"]: return store[\"results\"][event_id]\n    store[\"total\"] += value\n    store[\"results\"][event_id] = store[\"total\"]\n    return store[\"total\"]"
+  },
+  {
+    "id": "mcp-permission-gate",
+    "lesson_id": "8.11",
+    "title": "Enforce MCP tool scopes outside the model",
+    "instructions": "Implement authorize_mcp_call(tool, annotation, granted_scopes). Deny unknown or destructive tools unless the required scope is present. The tool annotation is descriptive only and must not grant permissions.",
+    "estimated_minutes": 25,
+    "starter_code": "def authorize_mcp_call(tool, annotation, granted_scopes):\n    # TODO: decide from a server-owned policy, not model-visible annotation.\n    raise NotImplementedError",
+    "checks_code": "assert authorize_mcp_call(\"read_doc\", {\"readOnlyHint\":True}, {\"docs:read\"}) is True\nassert authorize_mcp_call(\"delete_doc\", {\"readOnlyHint\":True}, {\"docs:write\"}) is False\nassert authorize_mcp_call(\"delete_doc\", {}, {\"docs:write\"}) is True\nassert authorize_mcp_call(\"unknown\", {}, {\"*\"}) is False\nprint(\"All checks passed.\")",
+    "solution_code": "POLICY = {\"read_doc\":\"docs:read\", \"delete_doc\":\"docs:write\"}\ndef authorize_mcp_call(tool, annotation, granted_scopes):\n    required = POLICY.get(tool)\n    return required is not None and required in granted_scopes"
+  },
+  {
+    "id": "production-eval-summary",
+    "lesson_id": "9.17",
+    "title": "Summarize an evaluation set without hiding failures",
+    "instructions": "Implement evaluation_summary(cases). Each case has expected and actual labels. Return total, correct, accuracy, and a sorted list of wrong case IDs. Reject missing or duplicate IDs.",
+    "estimated_minutes": 25,
+    "starter_code": "def evaluation_summary(cases):\n    # TODO: calculate accuracy and preserve every failing case ID.\n    raise NotImplementedError",
+    "checks_code": "cases = [{\"id\":\"a\",\"expected\":\"yes\",\"actual\":\"yes\"},{\"id\":\"b\",\"expected\":\"no\",\"actual\":\"yes\"}]\nassert evaluation_summary(cases) == {\"total\":2,\"correct\":1,\"accuracy\":0.5,\"failures\":[\"b\"]}\nassert evaluation_summary([])[\"accuracy\"] == 0\ntry: evaluation_summary([{\"id\":\"x\",\"expected\":1,\"actual\":1},{\"id\":\"x\",\"expected\":1,\"actual\":0}])\nexcept ValueError: pass\nelse: raise AssertionError(\"Duplicate IDs must fail\")\nprint(\"All checks passed.\")",
+    "solution_code": "def evaluation_summary(cases):\n    ids = [case.get(\"id\") for case in cases]\n    if any(not isinstance(i,str) or not i for i in ids) or len(ids) != len(set(ids)): raise ValueError(\"case IDs must be unique\")\n    failures = sorted(case[\"id\"] for case in cases if case.get(\"expected\") != case.get(\"actual\"))\n    correct = len(cases) - len(failures)\n    return {\"total\":len(cases), \"correct\":correct, \"accuracy\":correct/len(cases) if cases else 0.0, \"failures\":failures}"
+  },
+  {
+    "id": "deployment-config-gate",
+    "lesson_id": "10.03",
+    "title": "Reject unsafe service deployment settings",
+    "instructions": "Implement deployment_issues(config). Require a pinned image digest, non-root execution, an HTTPS health check, and secrets supplied by a secret reference rather than a literal value. Return stable issue names in sorted order.",
+    "estimated_minutes": 25,
+    "starter_code": "def deployment_issues(config):\n    # TODO: report every failed deployment safety condition.\n    raise NotImplementedError",
+    "checks_code": "good = {\"image\":\"api@sha256:\"+\"a\"*64,\"run_as_root\":False,\"health_url\":\"https://service.test/health\",\"api_key_secret_ref\":\"vault://prod/ai-key\"}\nassert deployment_issues(good) == []\nbad = {\"image\":\"api:latest\",\"run_as_root\":True,\"health_url\":\"http://service.test/health\",\"api_key_secret_ref\":\"plain-secret\"}\nassert set(deployment_issues(bad)) == {\"image_not_digest_pinned\",\"root_user_enabled\",\"health_check_not_https\",\"secret_not_referenced\"}\nprint(\"All checks passed.\")",
+    "solution_code": "import re\ndef deployment_issues(config):\n    issues=[]\n    if not re.search(r\"@sha256:[0-9a-f]{64}$\", str(config.get(\"image\",\"\"))): issues.append(\"image_not_digest_pinned\")\n    if config.get(\"run_as_root\") is not False: issues.append(\"root_user_enabled\")\n    if not str(config.get(\"health_url\",\"\" )).startswith(\"https://\"): issues.append(\"health_check_not_https\")\n    if not str(config.get(\"api_key_secret_ref\",\"\" )).startswith((\"vault://\",\"secret://\",\"arn:\")): issues.append(\"secret_not_referenced\")\n    return sorted(issues)"
+  },
+  {
+    "id": "system-design-budget",
+    "lesson_id": "11.01",
+    "title": "Check a design against latency and cost budgets",
+    "instructions": "Implement budget_check(stages, max_latency_ms, max_cost_usd). Return total latency and cost plus a list of exceeded budgets. Validate finite non-negative stage values. Clearly note that summed stage p95s are an estimate, not an end-to-end p95 guarantee.",
+    "estimated_minutes": 25,
+    "starter_code": "def budget_check(stages, max_latency_ms, max_cost_usd):\n    # TODO: validate and aggregate stage estimates.\n    raise NotImplementedError",
+    "checks_code": "stages = [{\"latency_ms\":100,\"cost_usd\":0.002},{\"latency_ms\":300,\"cost_usd\":0.01}]\nassert budget_check(stages, 500, 0.02) == {\"latency_ms\":400,\"cost_usd\":0.012,\"exceeded\":[]}\nassert budget_check(stages, 399, 0.01)[\"exceeded\"] == [\"cost\",\"latency\"]\nprint(\"All checks passed.\")",
+    "solution_code": "from math import isfinite\ndef budget_check(stages, max_latency_ms, max_cost_usd):\n    latency=cost=0\n    for stage in stages:\n        for key in (\"latency_ms\",\"cost_usd\"):\n            value=stage.get(key)\n            if isinstance(value,bool) or not isinstance(value,(int,float)) or not isfinite(value) or value<0: raise ValueError(\"invalid stage estimate\")\n        latency += stage[\"latency_ms\"]; cost += stage[\"cost_usd\"]\n    exceeded=[]\n    if latency>max_latency_ms: exceeded.append(\"latency\")\n    if cost>max_cost_usd: exceeded.append(\"cost\")\n    return {\"latency_ms\":latency,\"cost_usd\":round(cost,12),\"exceeded\":exceeded}"
+  },
+  {
+    "id": "capstone-requirement-trace",
+    "lesson_id": "12.01",
+    "title": "Find requirements without test evidence",
+    "instructions": "Implement untested_requirements(requirements, tests). Return sorted requirement IDs whose IDs do not appear in any test trace. Reject duplicate requirement IDs. Tests are dicts with a requirement_ids list.",
+    "estimated_minutes": 25,
+    "starter_code": "def untested_requirements(requirements, tests):\n    # TODO: return requirements with no linked test.\n    raise NotImplementedError",
+    "checks_code": "reqs = [{\"id\":\"R1\"},{\"id\":\"R2\"},{\"id\":\"R3\"}]\ntests = [{\"requirement_ids\":[\"R1\",\"R3\"]}]\nassert untested_requirements(reqs, tests) == [\"R2\"]\nassert untested_requirements([], []) == []\ntry: untested_requirements([{\"id\":\"R1\"},{\"id\":\"R1\"}], [])\nexcept ValueError: pass\nelse: raise AssertionError(\"Duplicate requirements must fail\")\nprint(\"All checks passed.\")",
+    "solution_code": "def untested_requirements(requirements, tests):\n    ids=[item.get(\"id\") for item in requirements]\n    if any(not isinstance(i,str) or not i for i in ids) or len(ids)!=len(set(ids)): raise ValueError(\"requirement IDs must be unique\")\n    traced={req_id for test in tests for req_id in test.get(\"requirement_ids\", [])}\n    return sorted(set(ids)-traced)"
   }
 ]

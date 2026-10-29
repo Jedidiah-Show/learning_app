@@ -1,0 +1,802 @@
+{
+  "course": {
+    "starting_assumption": "No programming experience is required. Learners should be comfortable using a computer, installing software, and following written instructions. Python begins with fundamentals; later modules assume you can write and debug small Python programs.",
+    "time_estimate_note": "Lesson estimates include reading and assigned task time where stated. Untimed tasks use a 30-minute planning estimate; module projects take additional time. Treat these as planning ranges, not deadlines.",
+    "content_maintenance_policy": "Version-sensitive implementation lessons are tagged. Review each against its linked primary documentation every 90 days; show the verified date and source, and keep unreviewed examples visibly marked.",
+    "learning_routes": {
+      "beginner": {
+        "title": "Starting from scratch",
+        "description": "Follow the numbered sequence from Module 0. Complete every guided practice exercise, use the worked solution only after an honest attempt, and repeat any exercise you cannot explain."
+      },
+      "experienced": {
+        "title": "Check your readiness",
+        "description": "Use the entry check and each module readiness gate to identify gaps. The course keeps the same sequence so your portfolio and project evidence remain complete; skip reading you already know, but complete the practice and project evidence."
+      }
+    }
+  },
+  "modules": {
+    "00": {
+      "assumed_prerequisites": "None. Start here if you are new to AI engineering.",
+      "readiness_check": "Explain the user problem, model boundary, data flow, and one reason a deterministic system may be safer than an LLM.",
+      "project_deliverables": [
+        "One-page AI system glossary",
+        "Architecture sketch showing model, data, tools, application, and operations boundaries"
+      ],
+      "project_rubric": [
+        {
+          "criterion": "Concepts are accurate and distinguish model behavior from application guarantees.",
+          "weight": 34
+        },
+        {
+          "criterion": "Architecture sketch labels request, data, and trust boundaries.",
+          "weight": 33
+        },
+        {
+          "criterion": "A beginner can explain the sketch without relying on unexplained jargon.",
+          "weight": 33
+        }
+      ],
+      "project_hours": 2
+    },
+    "01": {
+      "assumed_prerequisites": "No coding experience required. Basic computer use and file management.",
+      "readiness_check": "Build a small typed Python package with validation, bounded HTTP calls, and automated tests.",
+      "project_deliverables": [
+        "Installable Python API client",
+        "Typed response models and bounded timeout/retry behavior",
+        "Automated tests using a fake transport"
+      ],
+      "project_rubric": [
+        {
+          "criterion": "Client validates inputs and provider responses.",
+          "weight": 34
+        },
+        {
+          "criterion": "Timeout and retry behavior is bounded and does not retry permanent failures.",
+          "weight": 33
+        },
+        {
+          "criterion": "Automated tests cover success, malformed output, and provider failure.",
+          "weight": 33
+        }
+      ],
+      "project_hours": 4
+    },
+    "02": {
+      "assumed_prerequisites": "Python functions, collections, exceptions, HTTP and JSON; able to run a small Python test.",
+      "readiness_check": "Run an API and database locally; demonstrate validation, authorization, migrations, and one failure path.",
+      "project_deliverables": [
+        "FastAPI service with PostgreSQL persistence",
+        "Migration and authorization checks",
+        "Redis or queue use justified by a measured requirement",
+        "API tests for success and failure cases"
+      ],
+      "project_rubric": [
+        {
+          "criterion": "API contracts and authorization are enforced at the server boundary.",
+          "weight": 34
+        },
+        {
+          "criterion": "Persistence and migrations work from a clean database.",
+          "weight": 33
+        },
+        {
+          "criterion": "Automated tests cover validation, isolation, and a failure path.",
+          "weight": 33
+        }
+      ],
+      "project_hours": 8
+    },
+    "03": {
+      "assumed_prerequisites": "Python basics, HTTP requests, JSON, and basic probability (fractions and averages).",
+      "readiness_check": "Explain tokens and sampling, estimate a prompt budget, and compare model outputs on a fixed set of cases.",
+      "project_deliverables": [
+        "Model capability and cost comparison on a frozen task set",
+        "Token budget calculator",
+        "Short report separating model errors from system errors"
+      ],
+      "project_rubric": [
+        {
+          "criterion": "Model comparison uses a fixed representative dataset and records variability.",
+          "weight": 34
+        },
+        {
+          "criterion": "Token, latency, and cost estimates state their assumptions.",
+          "weight": 33
+        },
+        {
+          "criterion": "Recommendations distinguish model limitations from deterministic system responsibilities.",
+          "weight": 33
+        }
+      ],
+      "project_hours": 4
+    },
+    "04": {
+      "assumed_prerequisites": "Module 3 concepts and the ability to call a model API with a typed request and response.",
+      "readiness_check": "Run a model-backed endpoint that validates structured output, handles provider errors, and records token/cost data.",
+      "project_deliverables": [
+        "Model-backed document endpoint",
+        "Validated structured response contract",
+        "Timeout, provider error, trace, and cost behavior demonstrated"
+      ],
+      "project_rubric": [
+        {
+          "criterion": "Structured outputs are validated before business logic uses them.",
+          "weight": 34
+        },
+        {
+          "criterion": "Provider failures respect an overall deadline and produce a defined response.",
+          "weight": 33
+        },
+        {
+          "criterion": "Logs or traces identify request, model, latency, tokens, and outcome without secrets.",
+          "weight": 33
+        }
+      ],
+      "project_hours": 6
+    },
+    "05": {
+      "assumed_prerequisites": "LLM API calls, embeddings as vectors, and basic database concepts.",
+      "readiness_check": "Retrieve relevant evidence from a small corpus, cite source locations, and report retrieval quality on labeled queries.",
+      "project_deliverables": [
+        "Ingestion and retrieval pipeline over a small corpus",
+        "Citations with source locations and permission filtering",
+        "Labeled retrieval evaluation with at least one failure analysis"
+      ],
+      "project_rubric": [
+        {
+          "criterion": "Ingestion is repeatable and preserves source provenance and access rules.",
+          "weight": 34
+        },
+        {
+          "criterion": "Retrieval outputs citations that resolve to real source locations.",
+          "weight": 33
+        },
+        {
+          "criterion": "Evaluation reports retrieval quality and includes a failure analysis.",
+          "weight": 33
+        }
+      ],
+      "project_hours": 8
+    },
+    "06": {
+      "assumed_prerequisites": "Python functions, API calls, tool schemas, and authorization basics.",
+      "readiness_check": "Run an agent with allowlisted tools, bounded steps and spend, validated arguments, and a stop condition.",
+      "project_deliverables": [
+        "Tool-using agent with bounded steps and spend",
+        "Allowlist and authorization checks",
+        "Tests for invalid tool arguments and stop conditions"
+      ],
+      "project_rubric": [
+        {
+          "criterion": "Tools use schemas, allowlists, authorization, and bounded execution.",
+          "weight": 34
+        },
+        {
+          "criterion": "Agent runs stop on success, denial, error, or budget exhaustion.",
+          "weight": 33
+        },
+        {
+          "criterion": "Tests prove invalid arguments and unauthorized actions cannot execute.",
+          "weight": 33
+        }
+      ],
+      "project_hours": 8
+    },
+    "07": {
+      "assumed_prerequisites": "A working single-agent loop, tool calls, and persisted application state.",
+      "readiness_check": "Resume a multi-step workflow from saved state and show a human approval or recovery path.",
+      "project_deliverables": [
+        "Resumable workflow with explicit state and transitions",
+        "Checkpoint and recovery demonstration",
+        "Human approval path and event trace"
+      ],
+      "project_rubric": [
+        {
+          "criterion": "Workflow state and transitions are explicit and validated.",
+          "weight": 34
+        },
+        {
+          "criterion": "A failed or interrupted run can resume without duplicating side effects.",
+          "weight": 33
+        },
+        {
+          "criterion": "Human approval, recovery, and trace evidence are demonstrated.",
+          "weight": 33
+        }
+      ],
+      "project_hours": 8
+    },
+    "08": {
+      "assumed_prerequisites": "JSON-RPC basics, HTTP or stdio, tool schemas, and server-side authorization.",
+      "readiness_check": "Connect a client to a server, discover or negotiate its capabilities, and enforce least-privilege tool access.",
+      "project_deliverables": [
+        "MCP client and server interoperability demo",
+        "Version/capability discovery or negotiation documented",
+        "Tool permissions, authentication, and denied-call case demonstrated"
+      ],
+      "project_rubric": [
+        {
+          "criterion": "Client/server behavior follows a named MCP protocol version and documents compatibility.",
+          "weight": 34
+        },
+        {
+          "criterion": "Authentication and tool authorization are enforced outside model instructions.",
+          "weight": 33
+        },
+        {
+          "criterion": "A denied or malformed tool call is tested and recorded.",
+          "weight": 33
+        }
+      ],
+      "project_hours": 6
+    },
+    "09": {
+      "assumed_prerequisites": "A small API service, model integration, retrieval or tool use, and basic automated tests.",
+      "readiness_check": "Show a repeatable evaluation, trace, security check, load result, and cost/latency budget for an AI feature.",
+      "project_deliverables": [
+        "Production readiness pack for the AI service",
+        "Evaluation and red-team cases",
+        "Trace, load result, cost budget, and rollback procedure"
+      ],
+      "project_rubric": [
+        {
+          "criterion": "Evaluation cases cover quality, safety, and regression risks.",
+          "weight": 34
+        },
+        {
+          "criterion": "Load, observability, and per-request cost evidence are reproducible.",
+          "weight": 33
+        },
+        {
+          "criterion": "Release and rollback criteria are explicit and tied to measured thresholds.",
+          "weight": 33
+        }
+      ],
+      "project_hours": 8
+    },
+    "10": {
+      "assumed_prerequisites": "A tested Python service, Git basics, environment variables, and HTTP/database fundamentals.",
+      "readiness_check": "Build and run a reproducible container, deploy it through a documented pipeline, and explain rollback and secret handling.",
+      "project_deliverables": [
+        "Container build pinned to a reviewed base image",
+        "CI build and deployment instructions",
+        "Health check, secrets configuration, and rollback notes"
+      ],
+      "project_rubric": [
+        {
+          "criterion": "Image uses reviewed, reproducible inputs and runs as a non-root service where feasible.",
+          "weight": 34
+        },
+        {
+          "criterion": "CI verifies image build and health; deployment configuration keeps secrets external.",
+          "weight": 33
+        },
+        {
+          "criterion": "Rollback and persistent-data behavior are documented.",
+          "weight": 33
+        }
+      ],
+      "project_hours": 6
+    },
+    "11": {
+      "assumed_prerequisites": "Working knowledge of backend, LLM, retrieval, agent, security, and deployment trade-offs.",
+      "readiness_check": "Present a system design with measured requirements, data and state flows, trust boundaries, and failure budgets.",
+      "project_deliverables": [
+        "Context, data, request, and state diagrams",
+        "Requirements-to-tests traceability matrix",
+        "Decision records with latency, cost, security, and failure budgets"
+      ],
+      "project_rubric": [
+        {
+          "criterion": "Requirements have observable thresholds and linked tests or evaluations.",
+          "weight": 34
+        },
+        {
+          "criterion": "Diagrams show request, data, state, ownership, and trust boundaries.",
+          "weight": 33
+        },
+        {
+          "criterion": "Trade-offs include quantified latency, cost, security, and degraded behavior.",
+          "weight": 33
+        }
+      ],
+      "project_hours": 5
+    },
+    "12": {
+      "assumed_prerequisites": "Artifacts from prior modules or equivalent evidence: tested service, evaluation set, deployment plan, and architecture decisions.",
+      "readiness_check": "Demonstrate a deployed AI system against acceptance checks, evaluation results, operational budgets, and a documented rollback.",
+      "project_deliverables": [
+        "Running production-style AI platform",
+        "Automated acceptance and quality evaluation suite",
+        "Deployment, operations, security, cost, and rollback evidence"
+      ],
+      "project_rubric": [
+        {
+          "criterion": "Acceptance checks and evaluations pass on the submitted revision.",
+          "weight": 34
+        },
+        {
+          "criterion": "Deployment is reproducible and operational behavior is observable.",
+          "weight": 33
+        },
+        {
+          "criterion": "Security, cost, failure, data handling, and rollback evidence is included.",
+          "weight": 33
+        }
+      ],
+      "project_hours": 20
+    }
+  },
+  "lessons": {
+    "8.01": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://modelcontextprotocol.io/specification/2026-07-28"
+        ]
+      },
+      "subtitle": "Understand MCP as a versioned contract, including current stateless requests and legacy handshake compatibility.",
+      "outcomes": [
+        "Explain how an MCP host, client, and server divide discovery, consent, and execution without custom glue code.",
+        "Identify tools, resources, and prompts, and distinguish current stateless discovery from the legacy initialize handshake.",
+        "Decide when MCP is preferable to a direct API call, library, or fixed workflow."
+      ],
+      "tasks": [
+        "Draw a host-client-server diagram for one assistant you use, naming transports, trust boundaries, and where user consent is enforced.",
+        "Write a one-page decision record choosing MCP or a direct API for two integrations, with explicit interoperability and operations criteria.",
+        "Use an inspector or fixture to capture a modern server/discover or tools/call request, then compare it with an initialize exchange from a handshake-era peer. CAPSTONE CONNECTION The capstone will document supported protocol versions and enforce user consent and per-server credentials at the host."
+      ],
+      "code": {
+        "title": "A current stateless MCP request and the legacy handshake shown for compatibility.",
+        "code": "import json\n\nCURRENT = \"2026-07-28\"\nLEGACY = \"2025-11-25\"\n\ndef modern_request(request_id, method, params, client_name=\"support-console\"):\n    return {\n        \"jsonrpc\": \"2.0\",\n        \"id\": request_id,\n        \"method\": method,\n        \"params\": {\n            **params,\n            \"_meta\": {\n                \"io.modelcontextprotocol/protocolVersion\": CURRENT,\n                \"io.modelcontextprotocol/clientInfo\": {\"name\": client_name, \"version\": \"1.0\"},\n            },\n        },\n    }\n\n# The modern protocol has no initialize/initialized handshake.\ncall = modern_request(1, \"tools/call\", {\"name\": \"search\", \"arguments\": {\"q\": \"policy\"}})\nprint(json.dumps(call, indent=2))\n\n# Older servers still use initialize and a negotiated handshake version.\nlegacy_initialize = {\n    \"jsonrpc\": \"2.0\", \"id\": 2, \"method\": \"initialize\",\n    \"params\": {\"protocolVersion\": LEGACY, \"capabilities\": {},\n               \"clientInfo\": {\"name\": \"support-console\", \"version\": \"1.0\"}},\n}\nprint(json.dumps(legacy_initialize, indent=2))"
+      },
+      "steps": [
+        "List the external systems an assistant needs, marking each as read-only, write, or high-risk.",
+        "For each system, write the three most valuable operations and the data they return.",
+        "Decide which operations fit tools, which fit resources, and which need a prompt template.",
+        "Choose stdio for local, user-scoped servers and Streamable HTTP for shared, authenticated services.",
+        "Inspect a modern server/discover or tools/call request, then compare it with initialize and tools/list on a handshake-era peer."
+      ],
+      "production_notes": [
+        "The 2026-07-28 protocol is stateless and does not use initialize; older peers still negotiate a handshake. Record the versions your client supports.",
+        "A protocol handshake or discovery response is not authorization. Enforce user, tenant, and tool permissions at the host and server.",
+        "Give every server its own credentials, network egress rules, and audit stream so one compromise does not span systems.",
+        "Monitor discovery or handshake failures, tool error rates, and p95 call latency per server."
+      ],
+      "checklist": [
+        "I can name the host, client, server, and transport in an MCP request.",
+        "I can distinguish tools, resources, and prompts by their effect.",
+        "I know why the host, not the server, owns user consent.",
+        "I can explain when a direct API call is simpler than MCP.",
+        "I can identify a current stateless request and a legacy initialize exchange."
+      ]
+    },
+    "8.03": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://modelcontextprotocol.io/specification/2026-07-28"
+        ]
+      },
+      "subtitle": "Understand the handshake-era protocol and the stateless 2026 protocol, then select compatible SDK behavior deliberately.",
+      "outcomes": [
+        "Distinguish handshake-era and 2026 stateless MCP requests.",
+        "Select stdio or Streamable HTTP independently from protocol lifecycle.",
+        "Build a compatibility test matrix for client, server, SDK, and protocol revisions."
+      ],
+      "tasks": [
+        "Build a protocol and SDK compatibility matrix for the peers you support.",
+        "Test one current and one handshake-era peer or fixture."
+      ],
+      "code": {
+        "title": "Route modern stateless requests and legacy handshake-era requests by their protocol version.",
+        "code": "MODERN = \"2026-07-28\"\nLEGACY = {\"2025-11-25\", \"2025-06-18\", \"2025-03-26\"}\n\ndef route_request(request):\n    version = request.get(\"headers\", {}).get(\"MCP-Protocol-Version\")\n    if version == MODERN:\n        # Modern requests are self-contained; no per-session initialize state.\n        return {\"era\": \"stateless\", \"method\": request[\"body\"][\"method\"]}\n    if version in LEGACY:\n        # Legacy clients negotiate once with initialize and keep a session.\n        return {\"era\": \"handshake\", \"method\": request[\"body\"][\"method\"]}\n    raise ValueError(\"Unsupported MCP protocol version\")\n\nmodern = {\"headers\": {\"MCP-Protocol-Version\": MODERN},\n          \"body\": {\"jsonrpc\": \"2.0\", \"id\": 1, \"method\": \"tools/call\"}}\nprint(route_request(modern))"
+      }
+    },
+    "8.12": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://modelcontextprotocol.io/specification/2026-07-28"
+        ]
+      },
+      "subtitle": "Operate versioned MCP servers with capability ownership, safe protocol upgrades, authorization, and observable compatibility.",
+      "outcomes": [
+        "Design a registry entry with protocol and SDK compatibility.",
+        "Plan a staged upgrade across handshake-era and stateless peers.",
+        "Define observability and security controls at host, gateway, and server boundaries."
+      ],
+      "tasks": [
+        "Build a protocol and SDK compatibility matrix for the peers you support.",
+        "Test one current and one handshake-era peer or fixture."
+      ],
+      "code": {
+        "title": "A registry gate that records protocol versions and requires a tested compatibility policy.",
+        "code": "from dataclasses import dataclass\n\n@dataclass(frozen=True)\nclass Entry:\n    name: str\n    protocol: str\n    owner: str\n    tested: bool\n\nSUPPORTED = {\"2026-07-28\", \"2025-11-25\", \"2025-06-18\"}\n\ndef admit(entry):\n    if not entry.owner:\n        return \"reject\", \"unowned server\"\n    if entry.protocol not in SUPPORTED:\n        return \"reject\", \"unsupported protocol version\"\n    if not entry.tested:\n        return \"canary\", \"compatibility evidence required\"\n    return \"admit\", \"tested version and owner recorded\"\n\nprint(admit(Entry(\"documents\", \"2026-07-28\", \"platform-team\", True)))"
+      }
+    },
+    "0.04": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://fastapi.tiangolo.com/"
+        ]
+      }
+    },
+    "1.01": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://developers.openai.com/api/docs"
+        ]
+      }
+    },
+    "1.09": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://developers.openai.com/api/docs"
+        ]
+      }
+    },
+    "1.10": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.pydantic.dev/latest/"
+        ]
+      }
+    },
+    "1.12": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.docker.com/build/building/best-practices/"
+        ]
+      }
+    },
+    "2.12": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://developers.openai.com/api/docs"
+        ]
+      }
+    },
+    "3.05": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://developers.openai.com/api/docs"
+        ]
+      }
+    },
+    "3.11": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://fastapi.tiangolo.com/"
+        ]
+      }
+    },
+    "3.13": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://developers.openai.com/api/docs"
+        ]
+      }
+    },
+    "6.17": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.langchain.com/oss/python/langgraph/overview"
+        ]
+      }
+    },
+    "7.01": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.langchain.com/oss/python/langgraph/overview"
+        ]
+      }
+    },
+    "7.02": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://python.langchain.com/docs/"
+        ]
+      }
+    },
+    "7.03": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.langchain.com/oss/python/langgraph/overview"
+        ]
+      }
+    },
+    "7.06": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://developers.openai.com/api/docs"
+        ]
+      }
+    },
+    "7.07": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.langchain.com/oss/python/langgraph/overview"
+        ]
+      }
+    },
+    "7.08": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.langchain.com/oss/python/langgraph/overview"
+        ]
+      }
+    },
+    "7.09": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.langchain.com/oss/python/langgraph/overview"
+        ]
+      }
+    },
+    "7.10": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.langchain.com/oss/python/langgraph/overview"
+        ]
+      }
+    },
+    "7.11": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.langchain.com/oss/python/langgraph/overview"
+        ]
+      }
+    },
+    "7.12": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.langchain.com/oss/python/langgraph/overview"
+        ]
+      }
+    },
+    "7.13": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.langchain.com/oss/python/langgraph/overview"
+        ]
+      }
+    },
+    "8.02": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://modelcontextprotocol.io/specification/2026-07-28"
+        ]
+      }
+    },
+    "8.04": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://modelcontextprotocol.io/specification/2026-07-28"
+        ]
+      }
+    },
+    "8.05": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://modelcontextprotocol.io/specification/2026-07-28"
+        ]
+      }
+    },
+    "8.06": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://modelcontextprotocol.io/specification/2026-07-28"
+        ]
+      }
+    },
+    "8.07": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://modelcontextprotocol.io/specification/2026-07-28"
+        ]
+      }
+    },
+    "8.08": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://modelcontextprotocol.io/specification/2026-07-28"
+        ]
+      }
+    },
+    "8.09": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://modelcontextprotocol.io/specification/2026-07-28"
+        ]
+      },
+      "tasks": [
+        "Scaffold a server for one owned dataset with environment configuration, stderr logging, and a startup check.",
+        "Expose one tool, one resource template, and one prompt, then write ten tests including a traversal attempt.",
+        "Capture server/discover for a stateless peer or initialize for a legacy peer, document the protocol version, and write a 300-word review request naming limits and owner."
+      ]
+    },
+    "8.10": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://modelcontextprotocol.io/specification/2026-07-28"
+        ]
+      },
+      "tasks": [
+        "Connect an agent to two MCP servers, convert their schemas, and count how many tools the model actually sees.",
+        "Add step and time budgets plus duplicate detection, then replay ten questions and record completion and latency.",
+        "Test modern discovery and a handshake-era fallback; map three failure classes to retry policy, model-visible message, and trace field."
+      ]
+    },
+    "8.11": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://modelcontextprotocol.io/specification/2026-07-28"
+        ]
+      }
+    },
+    "9.05": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.docker.com/build/building/best-practices/"
+        ]
+      }
+    },
+    "10.05": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.docker.com/build/building/best-practices/"
+        ]
+      }
+    },
+    "10.10": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "review-needed",
+        "review_interval_days": 90,
+        "reviewed_on": null,
+        "references": [
+          "https://docs.docker.com/build/building/best-practices/"
+        ]
+      }
+    }
+  }
+}

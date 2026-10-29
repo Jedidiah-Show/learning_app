@@ -10,12 +10,19 @@
   <h1 class="lesson-hero-title">{{ lesson.title }}</h1>
   <p class="lesson-hero-subtitle">{{ lesson.subtitle }}</p>
   <ul class="lesson-hero-meta" aria-label="Lesson overview">
-    <li><span aria-hidden="true">⏱</span> About {{ lesson.reading_minutes or 10 }} minutes</li>
+    <li><span aria-hidden="true">📖</span> Reading about {{ lesson.reading_minutes or 10 }} min</li>
+    <li><span aria-hidden="true">⏱</span> Lesson and tasks about {{ lesson.study_minutes or lesson.reading_minutes or 10 }} min</li>
     <li><span aria-hidden="true">🧩</span> {{ lesson.concepts|length if lesson.concepts else (lesson.core_concepts|length if lesson.core_concepts else 1) }} core concepts</li>
     <li><span aria-hidden="true">🎯</span> {{ lesson.outcomes|length if lesson.outcomes else 0 }} learning goals</li>
     {% if practice_exercises %}<li><span aria-hidden="true">💻</span> Hands-on practice included</li>{% endif %}
   </ul>
 </header>
+
+{% if lesson.maintenance %}<aside class="mb-5 rounded-xl border px-4 py-3 text-sm {% if lesson.maintenance.review_status == 'reviewed' %}border-emerald-200 bg-emerald-50 text-emerald-900{% else %}border-amber-200 bg-amber-50 text-amber-900{% endif %}">
+  <strong>Version-sensitive content.</strong>
+  {% if lesson.maintenance.review_status == 'reviewed' %}Reviewed {{ lesson.maintenance.reviewed_on }} against the linked protocol documentation. Check the source for later revisions.{% else %}Implementation details can change. Confirm current versions and APIs in primary documentation before using these examples in a project.{% endif %}
+  {% for reference in lesson.maintenance.references or [] %}<a class="ml-1 font-semibold underline" href="{{ reference }}" target="_blank" rel="noopener noreferrer">Primary source ↗</a>{% endfor %}
+</aside>{% endif %}
 
 <div class="lesson-layout">
   <article class="lesson-body">

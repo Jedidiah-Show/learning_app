@@ -77,7 +77,9 @@ Local uploads use the `local` storage backend; production should use the S3-comp
 
 ## Configuration and account data
 
-The canonical lesson content is in `app/data/dynamoai_curriculum.json`; `app/course_blueprint.py` maps the 13 modules into five monthly milestones and defines the four required capstones. Learners follow lessons and module projects in order. The selected capstone supplies the final module project, while a separate personal portfolio project is saved on the learner's account. Learner-specific schedule blocks, AI model tier, progress tracking, and Calendar preferences are stored per account. Proficiency diagnostics and subject selection are no longer part of onboarding or progression.
+The canonical lesson content is in `app/data/dynamoai_curriculum.json`; `app/data/curriculum_overrides.json` stores learning metadata and version-sensitive lesson reviews so rebuilding lesson JSON does not erase readiness criteria, rubrics, or maintenance status. `app/course_blueprint.py` maps the 13 modules into five monthly milestones and defines the four required capstones. Learners follow lessons and module projects in order. The selected capstone supplies the final module project, while a separate personal portfolio project is saved on the learner's account. Learner-specific schedule blocks, AI model tier, progress tracking, and Calendar preferences are stored per account.
+
+The Lessons page includes a self-assessment that recommends a beginner or experienced pace without skipping project evidence. Module cards list prerequisites, readiness checks, and workload estimates. The five-month plan is labeled accelerated; its weekly estimate uses lesson reading, stated task times (30 minutes for untimed tasks), and project estimates. Browser practice exercises include reference solutions revealed after a first attempt; their checks provide learning feedback, not secure grading. The release content audit checks exercise coverage and solutions, module readiness/rubric metadata, and dates and sources for reviewed version-sensitive lessons.
 
 Set `GEMINI_API_KEY` to enable Gemini clarification, lesson and module quizzes, and module project evaluation. `GOOGLE_API_KEY` is accepted as a fallback. Lesson content is bundled and is not generated. The default Flash and Pro model names are configured in `config/default_config.yaml`; override them with `GEMINI_FLASH_MODEL` and `GEMINI_PRO_MODEL`. Learners can select Flash or Pro in their account settings. If a Pro request is rate-limited, it retries once with Flash.
 
@@ -153,7 +155,7 @@ The lesson page uses a click-to-load, privacy-enhanced player (`youtube-nocookie
 
 The service worker caches static same-origin assets only. Authenticated HTML and API responses are always network-only, so one learner's lesson page cannot be replayed from a shared browser cache after account switching. Course pages require an active connection; the app does not claim offline lesson support.
 
-For a release content-data check, run `python3 scripts/audit_curriculum.py`. It checks the course manifest, module and lesson references, and required instructions/starter/check fields for every bundled practice exercise. Practice TODO markers are intentional learner starter code; they are validated by the per-exercise checks rather than treated as missing implementation.
+For a release content-data check, run `python3 scripts/audit_curriculum.py`. It checks the course manifest, module and lesson references, at least two runnable exercises per module (one for Foundations), starter/check/solution fields, readiness and rubric metadata, and review dates and primary sources for version-sensitive lessons. Practice TODO markers are intentional learner starter code; they are validated by the per-exercise checks rather than treated as missing implementation.
 
 The catalog currently covers 37 of 201 lessons. Audit it at any time:
 

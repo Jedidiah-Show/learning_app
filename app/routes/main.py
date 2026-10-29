@@ -152,7 +152,7 @@ def index():
 def lessons():
     from app.learning import completed_lesson_ids
     return render_template('lessons.html', config=get_effective_config_for_user(current_user),
-                           user=current_user, modules=all_modules(),
+                           user=current_user, course=curriculum(), modules=all_modules(),
                            completed_ids=completed_lesson_ids(current_user),
                            next_lesson_id=course_progress(current_user)['next_lesson_id'])
 

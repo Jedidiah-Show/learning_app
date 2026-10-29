@@ -10,6 +10,7 @@ from app.videos import build_lesson_video
 
 CURRICULUM_PATH = Path(__file__).parent / 'data' / 'dynamoai_curriculum.json'
 EXTRAS_PATH = Path(__file__).parent / 'data' / 'lesson_extras.json'
+OVERRIDES_PATH = Path(__file__).parent / 'data' / 'curriculum_overrides.json'
 
 # The bundled source pages mark major sections with short uppercase lines and
 # each core concept with a title-case sub-heading. Rebuilding those blocks lets
@@ -171,13 +172,22 @@ def _lesson_concepts(lesson):
 
 
 def _reading_minutes(lesson):
-    """Rough study time: reading prose plus a little time for the exercises."""
+    """Estimate focused reading time, excluding practice and project work."""
     words = 0
     for page in lesson.get('pages') or []:
         words += len(str(page).split())
     reading = max(1, round(words / 180))
-    activities = 3 if lesson.get('tasks') else 2
-    return reading + activities
+    return reading
+
+
+def _study_minutes(lesson):
+    """Estimate a full lesson session using stated task durations."""
+    reading = _reading_minutes(lesson)
+    task_minutes = 0
+    for task in lesson.get('tasks') or []:
+        matches = re.findall(r'\((\d+)\s*minutes?\)', str(task), re.IGNORECASE)
+        task_minutes += int(matches[-1]) if matches else 30
+    return reading + task_minutes
 
 
 def _lesson_extras():
@@ -219,12 +229,31 @@ def _attach_extras(lesson, extras):
 def curriculum():
     with CURRICULUM_PATH.open(encoding='utf-8') as source:
         data = json.load(source)
+    if OVERRIDES_PATH.exists():
+        with OVERRIDES_PATH.open(encoding='utf-8') as source:
+            overrides = json.load(source)
+        data['course'].update(overrides.get('course') or {})
+        module_overrides = overrides.get('modules') or {}
+        for module in data.get('modules', []):
+            module.update(module_overrides.get(module.get('id'), {}))
+        lesson_overrides = overrides.get('lessons') or {}
+        for lesson in data.get('lessons', []):
+            lesson.update(lesson_overrides.get(lesson.get('id'), {}))
     data['course']['title'] = 'RUACH AI Engineering'
     data['course']['description'] = (
         'The RUACH AI Engineering course: 13 modules and 201 lessons, '
         'from Python and backend engineering through multimodal, retrieval, '
         'agent, security, evaluation, governance, and production AI systems.'
     )
+    data['course'].setdefault('starting_assumption',
+        'No programming experience is required. Learners should be comfortable '
+        'using a computer, installing software, and following written instructions. '
+        'Python begins with fundamentals; later modules assume you can write and '
+        'debug small Python programs.')
+    data['course'].setdefault('time_estimate_note',
+        'Lesson estimates include reading plus assigned task time where stated. '
+        'Module projects take additional time. Use these estimates for planning, '
+        'not as deadlines.')
     resources_path = Path(__file__).parent / 'data' / 'dynamoai_resources.json'
     with resources_path.open(encoding='utf-8') as source:
         resources = json.load(source)
@@ -247,7 +276,23 @@ def curriculum():
         lesson['video'] = build_lesson_video(lesson['resources'].get('video'))
         lesson['concepts'] = _lesson_concepts(lesson)
         lesson['reading_minutes'] = _reading_minutes(lesson)
+        lesson['study_minutes'] = _study_minutes(lesson)
         _attach_extras(lesson, extras)
+    for module in modules:
+        module['lessons'] = [
+            {key: value for key, value in lesson.items() if key != '_module'}
+            for lesson in lessons if lesson['module_id'] == module['id']
+        ]
+        module['estimated_hours'] = round(
+            sum(lesson['study_minutes'] for lesson in module['lessons']) / 60
+            + module.get('project_hours', 0), 1
+        )
+    data['course']['estimated_hours'] = round(
+        sum(module['estimated_hours'] for module in modules), 1
+    )
+    data['course']['estimated_weekly_hours_5_months'] = round(
+        data['course']['estimated_hours'] / (5 * 4.345), 1
+    )
     return data
 
 
@@ -288,6 +333,6 @@ def lesson_context(lesson):
     """Return structured lesson material without duplicated PDF page text."""
     excluded = {
         'pages', '_ordinal', '_module', 'video', 'concepts', 'reading_minutes',
-        'extras', 'question_answers',
+        'study_minutes', 'extras', 'question_answers', 'maintenance',
     }
     return {key: value for key, value in lesson.items() if key not in excluded}

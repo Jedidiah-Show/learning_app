@@ -18,6 +18,7 @@ if (root) {
     const status = document.getElementById('practice-save-status');
     const output = document.getElementById('practice-output');
     const runButton = document.getElementById('practice-run');
+    const solutionButton = document.getElementById('practice-solution');
     const resetButton = document.getElementById('practice-reset');
     const iframe = document.getElementById('practice-sandbox');
     const usageUrl = root.dataset.usageUrl;
@@ -35,6 +36,7 @@ if (root) {
     let queuedRun = false;
     let runnerStarted = false;
     let runnerLoadTimeout = null;
+    let hasAttemptedExercise = false;
 
     const workspaceUrl = (exercise) =>
         `/api/lessons/practice/${encodeURIComponent(lessonId)}/${encodeURIComponent(exercise.id)}`;
@@ -112,6 +114,10 @@ if (root) {
         const previousExercise = selectedExercise;
         switching = true;
         selectedExercise = exercise;
+        hasAttemptedExercise = false;
+        solutionButton.hidden = !exercise.solution_code;
+        solutionButton.disabled = true;
+        solutionButton.textContent = 'Show worked solution';
         document.getElementById('practice-task-title').textContent = exercise.title;
         instructions.textContent = exercise.instructions;
         output.textContent = 'Run your code to see output and checks.';
@@ -189,6 +195,8 @@ if (root) {
         }
         const runId = ++nextRunId;
         activeRunId = runId;
+        hasAttemptedExercise = true;
+        solutionButton.disabled = !selectedExercise.solution_code;
         runButton.disabled = true;
         setRunOutput('Running in the browser…');
         // The iframe is sandboxed without allow-same-origin, so its origin is
@@ -266,6 +274,14 @@ if (root) {
         if (currentSource() !== selectedExercise.starter_code && !window.confirm('Discard your edits and restore the starter code?')) return;
         setEditorSource(selectedExercise.starter_code);
         queueSave();
+    });
+    solutionButton.addEventListener('click', async () => {
+        if (!selectedExercise?.solution_code || !hasAttemptedExercise) return;
+        if (currentSource() !== selectedExercise.starter_code &&
+            !window.confirm('Replace your current work with the worked solution?')) return;
+        setEditorSource(selectedExercise.solution_code);
+        await saveWorkspace();
+        setRunOutput('Worked solution loaded. Read it, run the checks, and explain each decision.');
     });
     runButton.addEventListener('click', () => {
         void recordUsage('run');

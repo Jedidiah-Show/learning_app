@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Module Projects · RUACH{% endblock %}
 {% block content %}
-<header class="mb-7"><p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Five-month learning plan</p><h2 class="mt-2 text-3xl font-bold">Learn, build, and show your work</h2><p class="mt-2 max-w-3xl text-slate-600">Follow the monthly milestones alongside the lessons. Choose one required capstone for your final course project, and keep a separate personal project in your portfolio.</p></header>
+<header class="mb-7"><p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Five-month learning plan</p><h2 class="mt-2 text-3xl font-bold">Learn, build, and show your work</h2><p class="mt-2 max-w-3xl text-slate-600">Follow the monthly milestones alongside the lessons. Choose one required capstone for your final course project, and keep a separate personal project in your portfolio. AI feedback is advisory: the evaluator cannot open or execute repository links. Completion requires a passing evaluation or specific evidence against every rubric criterion.</p></header>
 <section class="mb-7 rounded-2xl border border-indigo-100 bg-indigo-50 p-5" aria-labelledby="required-capstone-title">
   <h3 id="required-capstone-title" class="text-xl font-bold">Choose your required capstone</h3>
   <p class="mt-1 text-sm text-slate-700">This choice becomes your final module project. You can change it until you submit that project.</p>
@@ -24,10 +24,10 @@
     <div class="md:col-span-2"><button class="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white">Save portfolio project</button><span id="portfolio-project-status" class="ml-3 text-sm" role="status" aria-live="polite"></span></div>
   </form>
 </section>
-<section class="mb-8" aria-labelledby="monthly-milestones-title"><div class="mb-4"><p class="text-xs font-bold uppercase tracking-wider text-indigo-600">The realistic five-month blueprint</p><h3 id="monthly-milestones-title" class="mt-1 text-2xl font-bold">Monthly milestones</h3><p class="mt-1 text-sm text-slate-600">Adjust the pace to your available study time; use the milestones to track evidence of learning.</p></div>
+<section class="mb-8" aria-labelledby="monthly-milestones-title"><div class="mb-4"><p class="text-xs font-bold uppercase tracking-wider text-indigo-600">Five-month accelerated plan</p><h3 id="monthly-milestones-title" class="mt-1 text-2xl font-bold">Monthly milestones</h3><p class="mt-1 text-sm text-slate-600">The full lesson and task estimate is about {{ course.course.estimated_hours }} hours, or {{ course.course.estimated_weekly_hours_5_months }} hours per week across five months. If that does not fit your schedule, keep the milestones in order and spread them over more months.</p></div>
 <div class="grid gap-4 xl:grid-cols-2">{% for month in milestones %}<article class="rounded-2xl border bg-white p-5"><div class="flex items-start justify-between gap-3"><div><p class="text-xs font-bold uppercase text-indigo-600">Month {{ month.number }}</p><h4 class="mt-1 text-lg font-bold">{{ month.title }}</h4></div><span class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold {{ 'bg-emerald-50 text-emerald-700' if month.complete else 'bg-slate-100 text-slate-700' }}">{{ 'Complete ✓' if month.complete else month.status }}</span></div><p class="mt-2 text-sm text-slate-600">{{ month.summary }}</p><p class="mt-3 text-sm"><strong>Key concepts:</strong> {{ month.concepts|join(' · ') }}</p><ol class="mt-3 list-inside list-decimal space-y-1 text-sm text-slate-600">{% for week in month.weeks %}<li>{{ week }}</li>{% endfor %}</ol><p class="mt-3 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-950"><strong>Month {{ month.number }} milestone:</strong> {{ month.milestone }}</p><p class="mt-2 text-xs text-slate-500">Course modules: {{ month.module_titles|join(' · ') }}</p></article>{% endfor %}</div></section>
 <div class="mb-4"><h3 class="text-2xl font-bold">Required module projects</h3><p class="mt-1 text-sm text-slate-600">Complete these in sequence to unlock later lessons. The final module uses the capstone you selected above.</p></div>
-<div class="space-y-4">{% for module in modules %}<section id="module-{{ module.id }}" class="rounded-2xl border bg-white p-5"><div class="flex flex-wrap items-center justify-between gap-3"><div><p class="text-xs font-semibold uppercase text-indigo-600">Module {{ module.number }}</p><h3 class="text-lg font-bold">{{ module.title }}</h3><p class="mt-1 text-sm text-slate-600">{{ module.project }}</p></div>{% if module.id in completed_modules %}<span class="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">Complete ✓</span>{% endif %}</div><button class="mt-4 rounded-lg border border-indigo-200 px-4 py-2 font-semibold text-indigo-700" data-open="{{ module.id }}">Open project</button><div id="project-{{ module.id }}" class="mt-4" aria-live="polite"></div></section>{% endfor %}</div>
+<div class="space-y-4">{% for module in modules %}<section id="module-{{ module.id }}" class="rounded-2xl border bg-white p-5"><div class="flex flex-wrap items-center justify-between gap-3"><div><p class="text-xs font-semibold uppercase text-indigo-600">Module {{ module.number }}</p><h3 class="text-lg font-bold">{{ module.title }}</h3><p class="mt-1 text-sm text-slate-600">{{ module.project }}</p><p class="mt-2 text-xs text-slate-600"><strong>Estimate:</strong> {{ module.estimated_hours }} hours including the project</p><p class="mt-1 text-xs text-slate-600"><strong>Readiness:</strong> {{ module.readiness_check }}</p></div>{% if module.id in completed_modules %}<span class="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">Complete ✓</span>{% endif %}</div><button class="mt-4 rounded-lg border border-indigo-200 px-4 py-2 font-semibold text-indigo-700" data-open="{{ module.id }}">Open project</button><div id="project-{{ module.id }}" class="mt-4" aria-live="polite"></div></section>{% endfor %}</div>
 {% endblock %}
 {% block extra_scripts %}<script>
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
@@ -86,6 +86,12 @@ function renderProject(area, data) {
     brief.className = 'mt-2 whitespace-pre-line text-slate-700';
     brief.textContent = project.brief || '';
     area.append(title, source, brief);
+    if (data.module?.readiness_check) {
+        const readiness = document.createElement('p');
+        readiness.className = 'mt-3 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-950';
+        readiness.textContent = `Ready when: ${data.module.readiness_check} Project estimate: ${data.module.project_hours || 0} hours.`;
+        area.append(readiness);
+    }
     if (project.deliverables?.length) {
         const list = document.createElement('ul');
         list.className = 'mt-3 list-disc pl-5 text-sm';
@@ -95,6 +101,19 @@ function renderProject(area, data) {
             list.append(row);
         });
         area.append(list);
+    }
+    if (project.rubric?.length) {
+        const heading = document.createElement('h5');
+        heading.className = 'mt-4 font-semibold';
+        heading.textContent = 'Assessment rubric';
+        const list = document.createElement('ol');
+        list.className = 'mt-2 list-decimal space-y-1 pl-5 text-sm';
+        project.rubric.forEach((item) => {
+            const row = document.createElement('li');
+            row.textContent = `${item.criterion} (${item.weight}% of score)`;
+            list.append(row);
+        });
+        area.append(heading, list);
     }
     if (data.evaluation) {
         const result = document.createElement('div');
@@ -109,10 +128,16 @@ function renderProject(area, data) {
             note.textContent = detail;
             area.append(note);
         });
+        (data.evaluation.criterion_feedback || []).forEach((item) => {
+            const note = document.createElement('p');
+            note.className = 'mt-2 text-sm text-slate-700';
+            note.textContent = `${item.criterion}: ${item.score}% · Evidence: ${item.evidence || 'none supplied'} · Gap: ${item.gap || 'none reported'}`;
+            area.append(note);
+        });
     }
 }
 
-function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = '', savedDemo = '') {
+function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = '', savedDemo = '', rubric = []) {
     let hasSubmission = Boolean(savedSubmission);
     const form = document.createElement('form');
     form.className = 'mt-4';
@@ -181,7 +206,7 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
             } else {
                 hasSubmission = true;
                 submit.textContent = 'Revise and resubmit';
-                appendSelfReview(area, id);
+                appendSelfReview(area, id, rubric);
             }
         } catch (error) {
             const message = document.createElement('p');
@@ -196,32 +221,49 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
     area.append(form);
 }
 
-function appendSelfReview(area, id) {
+function appendSelfReview(area, id, rubric = []) {
     if (area.querySelector('[data-self-review]')) return;
-    const label = document.createElement('label');
-    label.className = 'mt-4 flex items-start gap-2 text-sm';
-    const check = document.createElement('input');
-    check.type = 'checkbox';
-    const copy = document.createElement('span');
-    copy.textContent = 'I compared my work with every deliverable and rubric criterion, and I am ready to move on.';
-    label.append(check, copy);
+    const form = document.createElement('div');
+    form.dataset.selfReview = 'true';
+    form.className = 'mt-5 space-y-3 rounded-xl border border-slate-200 p-4';
+    const heading = document.createElement('h5');
+    heading.className = 'font-semibold';
+    heading.textContent = 'Document evidence for every rubric criterion';
+    form.append(heading);
+    const fields = rubric.map((item, index) => {
+        const label = document.createElement('label');
+        label.className = 'block text-sm font-medium';
+        const caption = document.createElement('span');
+        caption.textContent = `${item.criterion}: name a concrete file, test, result, or design decision (at least 50 characters)`;
+        const textarea = document.createElement('textarea');
+        textarea.rows = 3;
+        textarea.minLength = 50;
+        textarea.maxLength = 3000;
+        textarea.required = true;
+        textarea.dataset.criterionIndex = String(index);
+        textarea.className = 'mt-1 w-full rounded-lg border p-2 font-normal';
+        label.append(caption, textarea);
+        form.append(label);
+        return textarea;
+    });
     const button = document.createElement('button');
     button.type = 'button';
     button.dataset.selfReview = 'true';
     button.className = 'mt-2 rounded-lg border px-4 py-2 font-semibold';
-    button.textContent = 'Complete after my rubric review';
-    button.disabled = true;
-    check.addEventListener('change', () => { button.disabled = !check.checked; });
+    button.textContent = 'Complete with this evidence';
+    button.disabled = fields.length === 0 || fields.some((field) => field.value.trim().length < 50);
+    const refresh = () => { button.disabled = fields.length === 0 || fields.some((field) => field.value.trim().length < 50); };
+    fields.forEach((field) => field.addEventListener('input', refresh));
     button.addEventListener('click', async () => {
         button.disabled = true;
         try {
             const response = await fetch(`/api/projects/module/${encodeURIComponent(id)}/self-attest`, {
                 method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
-                body: JSON.stringify({reviewed_rubric: check.checked}),
+                body: JSON.stringify({evidence: fields.map((field) => ({criterion_index: Number(field.dataset.criterionIndex), evidence: field.value}))}),
             });
             const result = await readJson(response);
             if (!response.ok) throw new Error(result.error || 'Could not complete project.');
-            label.remove(); button.replaceWith(Object.assign(document.createElement('p'), {
+            form.replaceChildren(Object.assign(document.createElement('p'), {
                 className: 'mt-3 font-semibold text-emerald-700', textContent: 'Project completed after rubric review ✓',
             }));
         } catch (error) {
@@ -229,7 +271,8 @@ function appendSelfReview(area, id) {
             area.append(Object.assign(document.createElement('p'), {className: 'text-sm text-rose-700', textContent: error.message}));
         }
     });
-    area.append(label, button);
+    form.append(button);
+    area.append(form);
 }
 
 document.querySelectorAll('[data-open]').forEach((button) => {
@@ -254,8 +297,9 @@ document.querySelectorAll('[data-open]').forEach((button) => {
             }
             renderProject(area, data);
             if (!data.completed) {
-                appendSubmissionForm(area, id, data.submission || '', data.repository_url || '', data.demo_url || '');
-                if (data.submission) appendSelfReview(area, id);
+                const rubric = (data.project || {}).rubric || [];
+                appendSubmissionForm(area, id, data.submission || '', data.repository_url || '', data.demo_url || '', rubric);
+                if (data.submission) appendSelfReview(area, id, rubric);
             }
         } catch (error) {
             area.textContent = 'Could not load the project. Check your connection and retry.';

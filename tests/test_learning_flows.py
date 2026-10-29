@@ -566,6 +566,15 @@ class RuachAICourseTests(unittest.TestCase):
             'strengths': ['Working implementation', 'Clear verification'],
             'gaps': ['Add one edge-case test'],
             'next_steps': ['Document the remaining edge case'],
+            'criterion_feedback': [
+                {
+                    'criterion': item['criterion'],
+                    'score': 88,
+                    'evidence': 'The README and test output document this criterion.',
+                    'gap': 'Add one edge-case test.',
+                }
+                for item in module['project_rubric']
+            ],
         }
         with patch('app.gemini.generate_json', return_value=evaluation):
             accepted = self.client.post(
@@ -640,12 +649,22 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertFalse(saved.get_json()['completed'])
         rejected = self.client.post(
             f"/api/projects/module/{module['id']}/self-attest",
-            json={'reviewed_rubric': False},
+            json={'evidence': []},
         )
         self.assertEqual(rejected.status_code, 400)
+        rubric = module['project_rubric']
         accepted = self.client.post(
             f"/api/projects/module/{module['id']}/self-attest",
-            json={'reviewed_rubric': True},
+            json={'evidence': [
+                {
+                    'criterion_index': index,
+                    'evidence': (
+                        f"For {item['criterion']}, the project README links the "
+                        'implementation to its test output and records the result.'
+                    ),
+                }
+                for index, item in enumerate(rubric)
+            ]},
         )
         self.assertEqual(accepted.status_code, 200)
         self.assertTrue(accepted.get_json()['completed'])
