@@ -40,7 +40,7 @@ The app does not create or alter database tables at startup. For a new database,
 .venv/bin/flask --app index.py db upgrade
 ```
 
-Only stamp an existing database after confirming it contains the original application schema. Then apply all outstanding migrations with `flask --app index.py db upgrade`. Back up production data before applying migrations.
+Only stamp an existing database after confirming it contains the original application schema. Then apply all outstanding migrations with `flask --app index.py db upgrade`. Back up production data before applying migrations. In particular, migration `3f48a3310c5c` creates the lesson bookmark and note tables; apply it before deploying lesson pages that expose those features.
 
 ## Vercel deployment
 

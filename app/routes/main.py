@@ -4,8 +4,9 @@ import os
 from datetime import datetime
 from functools import lru_cache
 
-from flask import Blueprint, abort, current_app, jsonify, render_template, request, url_for
+from flask import Blueprint, abort, current_app, flash, jsonify, render_template, request, url_for
 from flask_login import current_user, login_required
+from sqlalchemy.exc import SQLAlchemyError
 from app import db
 from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
 from app.learning import course_progress, lesson_is_available
@@ -228,8 +229,23 @@ def lesson_detail(lesson_id):
     next_lesson = lessons[ordinal + 1] if ordinal + 1 < len(lessons) else None
     completed = lesson_id in completed_lesson_ids(current_user)
     progress = course_progress(current_user)
-    bookmarked = LessonBookmark.query.filter_by(user_id=current_user.id, lesson_id=lesson_id).first() is not None
-    note = LessonNote.query.filter_by(user_id=current_user.id, lesson_id=lesson_id).first()
+    try:
+        bookmarked = LessonBookmark.query.filter_by(
+            user_id=current_user.id, lesson_id=lesson_id
+        ).first() is not None
+        note = LessonNote.query.filter_by(
+            user_id=current_user.id, lesson_id=lesson_id
+        ).first()
+    except SQLAlchemyError:
+        # Older deployments may not have applied the notes/bookmarks migration.
+        # Keep course content readable while logging the schema issue.
+        db.session.rollback()
+        current_app.logger.exception(
+            'Lesson notes/bookmarks unavailable for user %s, lesson %s',
+            current_user.id, lesson_id,
+        )
+        bookmarked, note = False, None
+        flash('Lesson loaded, but saved notes and bookmarks are unavailable until the database update is applied.', 'info')
     return render_template('lessons/detail.html', lesson=lesson, module=lesson['_module'],
                            completed=completed,
                            practice_exercises=practice_exercises_for_lesson(lesson_id),

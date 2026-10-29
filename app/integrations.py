@@ -29,6 +29,8 @@ REQUIRED_TABLES = (
     'practice_workspace',
     'rate_limit_counter',
     'admin_audit_log',
+    'lesson_bookmark',
+    'lesson_note',
 )
 
 # Columns that newer application code reads on every request. A missing column
