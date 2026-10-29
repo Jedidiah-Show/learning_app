@@ -1,0 +1,62 @@
+name: Database migration (manual)
+
+# Deliberately manual. This workflow never runs on push or pull request.
+# Free Render services have no shell and no pre-deploy command, so migrations
+# are applied from a guarded workflow_dispatch run or from a local machine.
+on:
+  workflow_dispatch:
+    inputs:
+      confirm_backup:
+        description: 'Type BACKUP_TAKEN after creating a Neon branch or pg_dump'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: production-database-migration
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    name: Apply Alembic migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: production
+    env:
+      APP_ENV: production
+      DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}
+      # The migration process does not create sessions or encrypt user tokens.
+      # This placeholder satisfies the production startup guard.
+      SECRET_KEY: ci-migration-only-not-used-for-sessions
+    steps:
+      - name: Require backup confirmation
+        env:
+          CONFIRM_BACKUP: ${{ github.event.inputs.confirm_backup }}
+        run: |
+          if [ "$CONFIRM_BACKUP" != "BACKUP_TAKEN" ]; then
+            echo "Create a Neon branch or pg_dump first, then type BACKUP_TAKEN." >&2
+            exit 1
+          fi
+
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13.5'
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Check current revision
+        run: flask --app wsgi db current
+
+      - name: Apply migrations
+        run: flask --app wsgi db upgrade
+
+      - name: Verify revision
+        run: flask --app wsgi db current

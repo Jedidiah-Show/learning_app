@@ -1,0 +1,139 @@
+# Render Blueprint for the RUACH learning app.
+#
+# Free-tier note: the free web service sleeps after roughly 15 minutes of
+# inactivity. The next request wakes it and can take about a minute while the
+# service boots and reconnects to Neon.
+#
+# DATABASE_URL must be Neon's *pooled* connection string (the hostname usually
+# contains "-pooler"). Use the direct, non-pooled string only for migrations;
+# see MIGRATION.md. Do not add a Render Postgres database: the free Render
+# Postgres expires and must not hold real learner data.
+services:
+  - type: web
+    name: ruach-learning-app
+    runtime: python
+    plan: free
+    branch: main
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.5"
+      - key: APP_ENV
+        value: production
+      - key: FLASK_DEBUG
+        value: "0"
+      - key: PREFERRED_URL_SCHEME
+        value: https
+      - key: SECRET_KEY
+        sync: false
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
+      # Neon pooled connection string. Set this in the Render dashboard.
+      - key: DATABASE_URL
+        sync: false
+      - key: PUBLIC_APP_URL
+        sync: false
+
+      # Postgres/Neon tuning. Two gunicorn workers keep four connections max.
+      - key: DB_POOL_SIZE
+        value: "2"
+      - key: DB_MAX_OVERFLOW
+        value: "2"
+      - key: DB_POOL_RECYCLE
+        value: "300"
+      - key: DB_POOL_TIMEOUT
+        value: "30"
+      - key: DB_CONNECT_TIMEOUT
+        value: "10"
+      - key: DB_APPLICATION_NAME
+        value: ruach-learning-app
+
+      # AI providers.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GOOGLE_API_KEY
+        sync: false
+      - key: GEMINI_FLASH_MODEL
+        value: gemini-3.8-flash
+      - key: GEMINI_PRO_MODEL
+        value: gemini-3.1-pro-preview
+      - key: GEMINI_REQUESTS_PER_MINUTE
+        value: "30"
+      - key: GEMINI_REQUESTS_PER_DAY
+        value: "300"
+      - key: GEMINI_MAX_ATTEMPTS
+        value: "3"
+      - key: GEMINI_CONNECT_TIMEOUT
+        value: "5"
+      - key: GEMINI_READ_TIMEOUT
+        value: "120"
+      - key: AI_REQUEST_DEADLINE_SECONDS
+        value: "50"
+      - key: AI_PROVIDER_COOLDOWN_SECONDS
+        value: "30"
+      - key: AI_RATE_LIMIT_COOLDOWN_SECONDS
+        value: "60"
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: OPENROUTER_BASE_URL
+        value: https://openrouter.ai/api/v1
+      - key: OPENROUTER_FLASH_MODEL
+        value: openrouter/auto
+      - key: OPENROUTER_PRO_MODEL
+        value: openrouter/auto
+      - key: OPENROUTER_APP_NAME
+        value: RUACH AI Engineering
+      - key: OPENROUTER_SITE_URL
+        sync: false
+      - key: OPENROUTER_JSON_MODE
+        value: "1"
+      - key: OPENROUTER_MAX_TOKENS
+        value: "4096"
+      - key: OPENROUTER_MAX_ATTEMPTS
+        value: "3"
+      - key: OPENROUTER_CONNECT_TIMEOUT
+        value: "5"
+      - key: OPENROUTER_READ_TIMEOUT
+        value: "120"
+
+      # Google OAuth, Gmail password reset, and optional Twilio SMS.
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      - key: GOOGLE_REDIRECT_URI
+        sync: false
+      - key: GMAIL_SENDER_EMAIL
+        sync: false
+      - key: GMAIL_REFRESH_TOKEN
+        sync: false
+      - key: TWILIO_ACCOUNT_SID
+        sync: false
+      - key: TWILIO_AUTH_TOKEN
+        sync: false
+      - key: TWILIO_FROM_NUMBER
+        sync: false
+      - key: ADMIN_API_TOKEN
+        sync: false
+      - key: LESSON_EXTRAS_TOKEN
+        sync: false
+
+      # Cloudflare R2 (S3-compatible) uploads. Profile photos remain in
+      # Postgres and are unaffected by these settings.
+      - key: STORAGE_BACKEND
+        value: s3
+      - key: S3_ENDPOINT_URL
+        sync: false
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_REGION
+        value: auto
+      - key: S3_ACCESS_KEY_ID
+        sync: false
+      - key: S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: S3_PUBLIC_BASE_URL
+        sync: false

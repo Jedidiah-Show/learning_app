@@ -44,7 +44,34 @@ Only stamp an existing database after confirming it contains the original applic
 
 ## Vercel deployment
 
-Configure `DATABASE_URL` in the Vercel project with a persistent PostgreSQL connection URL. The app accepts `postgresql://` and `postgres://` URLs and uses Psycopg 3. Vercel's function filesystem is read-only except for temporary `/tmp` storage, so the SQLite fallback is only for local development and must not be used for production account data. After setting the database URL, run `flask --app index.py db upgrade` against that database before using registration or login. Apply all outstanding migrations, including `a4c8e2d1f730` for saved practice workspaces, `b1e49a2d7f63` for anonymous daily pilot counters, `9f3c2a7b5d10` for unique recovery phone numbers, `c3d4e5f6a7b8` for session versioning and shared rate-limit counters, and `b7c1e2f3a4d5` for the administrator portal and account status, before deploying. Set `TOKEN_ENCRYPTION_KEY` to a stable random value (for example `python -c "import secrets; print(secrets.token_urlsafe(32))"`) and keep it alongside `SECRET_KEY` in Vercel project settings; rotating either value requires learners to reconnect Google Calendar.
+Configure `DATABASE_URL` in the Vercel project with a persistent PostgreSQL connection URL. The app accepts `postgresql://` and `postgres://` URLs and uses Psycopg 3. Vercel's function filesystem is read-only except for temporary `/tmp` storage, so the SQLite fallback is only for local development and must not be used for production account data. After setting the database URL, run `flask --app index.py db upgrade` against that database before using registration or login. Apply all outstanding migrations, including `a4c8e2d1f730` for saved practice workspaces, `b1e49a2d7f63` for anonymous daily pilot counters, `9f3c2a7b5d10` for unique recovery phone numbers, `c3d4e5f6a7b8` for session versioning and shared rate-limit counters, `b7c1e2f3a4d5` for the administrator portal and account status, `4b7c9d1e2f30` for lesson bookmarks/notes, and `5c9e1f3a7b20` for streak fields and project links, before deploying. Set `TOKEN_ENCRYPTION_KEY` to a stable random value (for example `python -c "import secrets; print(secrets.token_urlsafe(32))"`) and keep it alongside `SECRET_KEY` in Vercel project settings; rotating either value requires learners to reconnect Google Calendar.
+
+## Render deployment
+
+Render runs the app as a long-running Python web service with gunicorn:
+
+```bash
+gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+```
+
+The repository includes `render.yaml`, `.python-version` (`3.13.5`), and `wsgi.py`. Production settings must come from the Render environment:
+
+- `APP_ENV=production`
+- `SECRET_KEY` and `TOKEN_ENCRYPTION_KEY`
+- `DATABASE_URL`: Neon's pooled PostgreSQL URL, with `sslmode=require`
+- `PUBLIC_APP_URL`: the Render/custom-domain URL
+- `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, and `GOOGLE_REDIRECT_URI`
+- `STORAGE_BACKEND=s3` plus the `S3_*` Cloudflare R2 settings for uploads
+
+Do not use Render's free Postgres for learner data; it expires. Use the existing external Neon database. Apply migrations manually with the direct, non-pooled Neon URL before deploying code that needs new columns:
+
+```bash
+DATABASE_URL='<NEON_DIRECT_URL>' .venv/bin/flask --app wsgi db upgrade
+```
+
+The free Render plan does not support pre-deploy commands or shell access, so migrations are a manual step (or a guarded GitHub Actions `workflow_dispatch` job). See `MIGRATION.md` for the full cutover, backup, verification, DNS, and rollback procedure. The free web service sleeps after about 15 minutes of inactivity, so the first request after idling can take around a minute.
+
+Local uploads use the `local` storage backend; production should use the S3-compatible backend because Render's filesystem is ephemeral. Profile photos remain stored in Postgres and are not affected by the storage backend.
 
 ## Configuration and account data
 
@@ -58,7 +85,7 @@ A 403 from Gemini usually means the key is invalid, the Generative Language API 
 
 Authenticated learners are limited to 30 AI provider requests per minute and 300 per UTC day; every provider attempt, including retries and fallback attempts, counts against the limit. Override the limits with `GEMINI_REQUESTS_PER_MINUTE` and `GEMINI_REQUESTS_PER_DAY`. Set `GEMINI_MAX_ATTEMPTS` and `OPENROUTER_MAX_ATTEMPTS` to change how many times a provider is attempted before it is reported as failed. Use `GEMINI_READ_TIMEOUT`/`OPENROUTER_READ_TIMEOUT` and `GEMINI_CONNECT_TIMEOUT`/`OPENROUTER_CONNECT_TIMEOUT` to change response and connection timeouts. Apply database migrations before deploying versions that add or change persistent data models.
 
-Each AI request has a bounded execution budget. `AI_REQUEST_DEADLINE_SECONDS` defaults to 50 seconds; Gemini receives roughly the first 65% and OpenRouter falls back with the remaining time, so a slow provider cannot consume the whole serverless invocation (`vercel.json` sets a 60-second function limit). After a transient Gemini failure, the app skips Gemini for `AI_PROVIDER_COOLDOWN_SECONDS` (default 30) and sends requests to OpenRouter; a Gemini 429 uses `AI_RATE_LIMIT_COOLDOWN_SECONDS` (default 60). HTTP 400, 401, and 403 configuration or credential failures never open that circuit and never trigger the fallback. Provider `Retry-After` headers are preserved, and exhausted rate limits return HTTP 429 with `Retry-After` instead of a generic 503.
+Each AI request has a bounded execution budget. `AI_REQUEST_DEADLINE_SECONDS` defaults to 50 seconds; Gemini receives roughly the first 65% and OpenRouter falls back with the remaining time, so a slow provider cannot consume the whole request budget (`vercel.json` sets a 60-second function limit, and Render's gunicorn command uses `--timeout 60`). After a transient Gemini failure, the app skips Gemini for `AI_PROVIDER_COOLDOWN_SECONDS` (default 30) and sends requests to OpenRouter; a Gemini 429 uses `AI_RATE_LIMIT_COOLDOWN_SECONDS` (default 60). HTTP 400, 401, and 403 configuration or credential failures never open that circuit and never trigger the fallback. Provider `Retry-After` headers are preserved, and exhausted rate limits return HTTP 429 with `Retry-After` instead of a generic 503.
 
 Generated quizzes and module projects are stored per learner. Bundled lessons are shared and versioned with the application. Prompt contracts live in `app/routes/lessons.py`, `app/routes/quizzes.py`, and `app/routes/projects.py`; bump a content type's version when its prompt or output contract changes, and include that version in generated-content cache keys when cache invalidation is needed.
 
@@ -76,7 +103,7 @@ Settings includes an **Integration health** panel. It reports whether the deploy
 
 On a Vercel preview deployment the panel can note that OAuth is configured for a different host. That is expected: preview URLs are temporary. Open the stable production alias whose callback is registered in Google Cloud to connect Calendar, or update `GOOGLE_REDIRECT_URI` and register the new URL. If the database section reports missing tables, apply migrations against the production database with `flask db upgrade`; do not use `db.create_all()` in production.
 
-A public `GET /healthz` endpoint returns `200` when the database schema is ready and `503` when required tables are missing. The response includes the seven-character deployment commit and the current Alembic revision, without exposing credentials.
+A public `GET /healthz` endpoint is a lightweight liveness check: it returns `200` JSON without querying the database or any external service. Render uses it as the service health check. `GET /readyz` performs the database/schema readiness check, returning `200` when the schema is ready and `503` when required tables or columns are missing. Both include the seven-character deployment commit without exposing credentials. On Render, set `PUBLIC_APP_URL` and `GOOGLE_REDIRECT_URI` to the new hostname before testing password recovery or Calendar sync.
 
 Scheduling a lesson now attempts a Google Calendar sync immediately when the integration is enabled and the learner is connected. Pending rows can be retried with **Sync scheduled events** in Settings. A Google 403 is classified precisely: missing scope or invalid credentials require reconnecting, while a disabled Calendar API, quota exhaustion, a bad calendar ID, or a permission problem is reported with the matching fix instead of a misleading reconnect prompt.
 
