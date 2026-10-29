@@ -325,7 +325,7 @@ def probe_gemini(user):
             'status': 'not_configured',
             'message': (
                 'GEMINI_API_KEY is not set in this deployment. Add it in '
-                'Vercel project settings and redeploy.'
+                'your deployment environment settings and redeploy.'
             ),
         }
 
@@ -352,7 +352,7 @@ def probe_gemini(user):
             'status': 'not_configured',
             'message': (
                 'GEMINI_API_KEY is not set in this deployment. Add it in '
-                'Vercel project settings and redeploy.'
+                'your deployment environment settings and redeploy.'
             ),
         }
     except GeminiRateLimitExceeded as error:
@@ -430,7 +430,7 @@ def probe_openrouter(user):
         return {
             'status': 'not_configured',
             'message': (
-                'OPENROUTER_API_KEY is not set. Add it in Vercel project '
+                'OPENROUTER_API_KEY is not set. Add it in your deployment '
                 'settings to enable the fallback provider.'
             ),
         }
@@ -456,7 +456,7 @@ def probe_openrouter(user):
         return {
             'status': 'not_configured',
             'message': (
-                'OPENROUTER_API_KEY is not set. Add it in Vercel project '
+                'OPENROUTER_API_KEY is not set. Add it in your deployment '
                 'settings to enable the fallback provider.'
             ),
         }
@@ -534,7 +534,7 @@ def probe_calendar(user):
             'status': 'not_configured',
             'message': (
                 'Google OAuth is not configured. Set GOOGLE_CLIENT_ID and '
-                'GOOGLE_CLIENT_SECRET in Vercel project settings.'
+                'GOOGLE_CLIENT_SECRET in your deployment settings.'
             ),
         }
     if not (user.google_access_token or user.google_refresh_token):

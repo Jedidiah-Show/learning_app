@@ -462,6 +462,23 @@ class CourseProject(db.Model):
         return json.loads(self.evaluation) if self.evaluation else None
 
 
+class CoursePlan(db.Model):
+    """Learner-selected required capstone and independent portfolio project."""
+    __tablename__ = 'course_plan'
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), primary_key=True
+    )
+    required_project_id = db.Column(db.String(50))
+    portfolio_title = db.Column(db.String(160))
+    portfolio_summary = db.Column(db.Text)
+    portfolio_repository_url = db.Column(db.String(500))
+    portfolio_demo_url = db.Column(db.String(500))
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+
+
 class PasswordResetToken(db.Model):
     __tablename__ = 'password_reset_token'
     id = db.Column(db.Integer, primary_key=True)

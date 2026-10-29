@@ -343,19 +343,10 @@ def register():
             last_active=datetime.now(timezone.utc)
         )
         db.session.add(user)
+        from sqlalchemy.exc import IntegrityError
         try:
             db.session.commit()
-        except Exception:
-            db.session.rollback()
-            user = User.query.filter_by(username=username).first()
-            if not user.public_id:
-                import uuid
-                user.public_id = 'RU-' + uuid.uuid4().hex[:8].upper()
-                db.session.commit()
-        except Exception as error:
-            from sqlalchemy.exc import IntegrityError
-            if not isinstance(error, IntegrityError):
-                raise
+        except IntegrityError:
             db.session.rollback()
             if User.query.filter_by(username=username).first():
                 errors['username'] = 'That username is already in use.'
@@ -367,6 +358,14 @@ def register():
                 errors['form'] = (
                     'Registration could not be completed. Please try again.'
                 )
+            return render_template(
+                'auth/register.html', values=values, errors=errors,
+                next_page=request.form.get('next', ''),
+            ), 200
+        except Exception:
+            db.session.rollback()
+            current_app.logger.exception('Registration could not be completed')
+            errors['form'] = 'Registration could not be completed. Please try again.'
             return render_template(
                 'auth/register.html', values=values, errors=errors,
                 next_page=request.form.get('next', ''),

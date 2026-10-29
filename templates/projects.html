@@ -1,8 +1,33 @@
 {% extends "base.html" %}
 {% block title %}Module Projects · RUACH{% endblock %}
 {% block content %}
-<header class="mb-7"><p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Build and apply</p><h2 class="mt-2 text-3xl font-bold">Module projects</h2><p class="mt-2 text-slate-600">Each module’s project uses the brief in the curriculum. Complete all module lessons first; Gemini evaluates your submitted work against the brief.</p></header>
-<div class="space-y-4">{% for module in modules %}<section id="module-{{ module.id }}" class="rounded-2xl border bg-white p-5"><div class="flex flex-wrap items-center justify-between gap-3"><div><p class="text-xs font-semibold uppercase text-indigo-600">Module {{ module.number }}</p><h3 class="text-lg font-bold">{{ module.title }}</h3><p class="mt-1 text-sm text-slate-600">{{ module.project }}</p></div>{% if module.id in completed_modules %}<span class="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">Complete ✓</span>{% endif %}</div><button class="mt-4 rounded-lg border border-indigo-200 px-4 py-2 font-semibold text-indigo-700" data-open="{{ module.id }}">Open project</button><div id="project-{{ module.id }}" class="mt-4"></div></section>{% endfor %}</div>
+<header class="mb-7"><p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Five-month learning plan</p><h2 class="mt-2 text-3xl font-bold">Learn, build, and show your work</h2><p class="mt-2 max-w-3xl text-slate-600">Follow the monthly milestones alongside the lessons. Choose one required capstone for your final course project, and keep a separate personal project in your portfolio.</p></header>
+<section class="mb-7 rounded-2xl border border-indigo-100 bg-indigo-50 p-5" aria-labelledby="required-capstone-title">
+  <h3 id="required-capstone-title" class="text-xl font-bold">Choose your required capstone</h3>
+  <p class="mt-1 text-sm text-slate-700">This choice becomes your final module project. You can change it until you submit that project.</p>
+  <fieldset class="mt-4 grid gap-3 lg:grid-cols-2"><legend class="sr-only">Required capstone project</legend>
+    {% for project in required_projects %}<label class="flex cursor-pointer gap-3 rounded-xl border bg-white p-4 has-[:checked]:border-indigo-500 has-[:checked]:ring-2 has-[:checked]:ring-indigo-200">
+      <input class="mt-1 shrink-0" type="radio" name="required_project_id" value="{{ project.id }}" {% if course_plan.required_project_id == project.id %}checked{% endif %}>
+      <span><strong class="block">{{ loop.index }}. {{ project.title }}</strong><span class="mt-1 block text-sm text-slate-600">{{ project.summary }}</span><span class="mt-2 block text-xs font-medium text-indigo-700">{{ project.stack }}</span><span class="mt-2 block text-xs text-slate-600"><strong>Evidence:</strong> {{ project.evidence|join(' · ') }}</span></span>
+    </label>{% endfor %}
+  </fieldset>
+  <p id="required-project-status" class="mt-3 text-sm" role="status" aria-live="polite"></p>
+</section>
+<section class="mb-7 rounded-2xl border bg-white p-5" aria-labelledby="portfolio-project-title">
+  <h3 id="portfolio-project-title" class="text-xl font-bold">Your personal portfolio project</h3>
+  <p class="mt-1 text-sm text-slate-600">Track a project you care about. It stays separate from the LMS-required capstone.</p>
+  <form id="portfolio-project-form" class="mt-4 grid gap-3 md:grid-cols-2">
+    <label class="text-sm font-semibold">Project title<input name="portfolio_title" maxlength="160" value="{{ course_plan.portfolio_title }}" class="mt-1 w-full rounded-lg border p-3" placeholder="e.g. Community health knowledge assistant"></label>
+    <label class="text-sm font-semibold md:row-span-2">Short description<textarea name="portfolio_summary" maxlength="5000" rows="4" class="mt-1 w-full rounded-lg border p-3" placeholder="What problem does it solve, and what will you build?">{{ course_plan.portfolio_summary }}</textarea></label>
+    <label class="text-sm font-semibold">Repository URL<input name="portfolio_repository_url" type="url" value="{{ course_plan.portfolio_repository_url }}" class="mt-1 w-full rounded-lg border p-3" placeholder="https://github.com/…"></label>
+    <label class="text-sm font-semibold">Live demo URL<input name="portfolio_demo_url" type="url" value="{{ course_plan.portfolio_demo_url }}" class="mt-1 w-full rounded-lg border p-3" placeholder="https://…"></label>
+    <div class="md:col-span-2"><button class="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white">Save portfolio project</button><span id="portfolio-project-status" class="ml-3 text-sm" role="status" aria-live="polite"></span></div>
+  </form>
+</section>
+<section class="mb-8" aria-labelledby="monthly-milestones-title"><div class="mb-4"><p class="text-xs font-bold uppercase tracking-wider text-indigo-600">The realistic five-month blueprint</p><h3 id="monthly-milestones-title" class="mt-1 text-2xl font-bold">Monthly milestones</h3></div>
+<div class="grid gap-4 xl:grid-cols-2">{% for month in milestones %}<article class="rounded-2xl border bg-white p-5"><div class="flex items-start justify-between gap-3"><div><p class="text-xs font-bold uppercase text-indigo-600">Month {{ month.number }}</p><h4 class="mt-1 text-lg font-bold">{{ month.title }}</h4></div><span class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold {{ 'bg-emerald-50 text-emerald-700' if month.complete else 'bg-slate-100 text-slate-700' }}">{{ 'Complete ✓' if month.complete else month.status }}</span></div><p class="mt-2 text-sm text-slate-600">{{ month.summary }}</p><p class="mt-3 text-sm"><strong>Key concepts:</strong> {{ month.concepts|join(' · ') }}</p><ol class="mt-3 list-inside list-decimal space-y-1 text-sm text-slate-600">{% for week in month.weeks %}<li>{{ week }}</li>{% endfor %}</ol><p class="mt-3 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-950"><strong>Month {{ month.number }} milestone:</strong> {{ month.milestone }}</p><p class="mt-2 text-xs text-slate-500">Course modules: {{ month.module_titles|join(' · ') }}</p></article>{% endfor %}</div></section>
+<div class="mb-4"><h3 class="text-2xl font-bold">Required module projects</h3><p class="mt-1 text-sm text-slate-600">Complete these in sequence to unlock later lessons. The final module uses the capstone you selected above.</p></div>
+<div class="space-y-4">{% for module in modules %}<section id="module-{{ module.id }}" class="rounded-2xl border bg-white p-5"><div class="flex flex-wrap items-center justify-between gap-3"><div><p class="text-xs font-semibold uppercase text-indigo-600">Module {{ module.number }}</p><h3 class="text-lg font-bold">{{ module.title }}</h3><p class="mt-1 text-sm text-slate-600">{{ module.project }}</p></div>{% if module.id in completed_modules %}<span class="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">Complete ✓</span>{% endif %}</div><button class="mt-4 rounded-lg border border-indigo-200 px-4 py-2 font-semibold text-indigo-700" data-open="{{ module.id }}">Open project</button><div id="project-{{ module.id }}" class="mt-4" aria-live="polite"></div></section>{% endfor %}</div>
 {% endblock %}
 {% block extra_scripts %}<script>
 const csrf = document.querySelector('meta[name="csrf-token"]').content;
@@ -10,6 +35,41 @@ const readJson = async (response) => {
     try { return await response.json(); } catch (error) { return {}; }
 };
 const needsSignIn = (response) => response.redirected || response.status === 401;
+
+document.querySelectorAll('[name="required_project_id"]').forEach((input) => {
+    input.addEventListener('change', async () => {
+        const status = document.getElementById('required-project-status');
+        status.textContent = 'Saving capstone choice…';
+        try {
+            const response = await fetch('/api/course-plan/required-project', {
+                method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+                body: JSON.stringify({required_project_id: input.value}),
+            });
+            const result = await readJson(response);
+            if (!response.ok) throw new Error(result.error || 'Could not save your choice.');
+            status.textContent = 'Required capstone saved.';
+        } catch (error) { status.textContent = error.message || 'Could not save your choice. Retry.'; }
+    });
+});
+
+document.getElementById('portfolio-project-form').addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const form = event.currentTarget;
+    const button = form.querySelector('button');
+    const status = document.getElementById('portfolio-project-status');
+    button.disabled = true; status.textContent = 'Saving…';
+    const values = Object.fromEntries(new FormData(form).entries());
+    try {
+        const response = await fetch('/api/course-plan/portfolio', {
+            method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+            body: JSON.stringify(values),
+        });
+        const result = await readJson(response);
+        if (!response.ok) throw new Error(result.error || 'Could not save your portfolio project.');
+        status.textContent = result.plan.portfolio_title ? 'Portfolio project saved.' : 'Portfolio project cleared.';
+    } catch (error) { status.textContent = error.message || 'Could not save. Check your connection and retry.'; }
+    finally { button.disabled = false; }
+});
 
 function renderProject(area, data) {
     area.replaceChildren();
@@ -19,8 +79,9 @@ function renderProject(area, data) {
     title.textContent = project.title || 'Project';
     const source = document.createElement('p');
     source.className = 'mt-1 text-xs text-slate-500';
-    source.textContent = data.is_ai_generated
-        ? 'Gemini-guided project brief' : 'Curriculum project brief';
+    source.textContent = data.is_required_capstone
+        ? 'Your selected required capstone' : (data.is_ai_generated
+            ? 'AI-guided project brief' : 'Curriculum project brief');
     const brief = document.createElement('p');
     brief.className = 'mt-2 whitespace-pre-line text-slate-700';
     brief.textContent = project.brief || '';
@@ -42,7 +103,7 @@ function renderProject(area, data) {
             ? data.evaluation.summary
             : `Evaluation · ${data.evaluation.score}% · ${data.evaluation.summary}`;
         area.append(result);
-        [...(data.evaluation.gaps || []), ...(data.evaluation.next_steps || [])].forEach((detail) => {
+        [...(data.evaluation.strengths || []).map((item) => `Strength: ${item}`), ...(data.evaluation.gaps || []).map((item) => `To improve: ${item}`), ...(data.evaluation.next_steps || []).map((item) => `Next step: ${item}`)].forEach((detail) => {
             const note = document.createElement('p');
             note.className = 'mt-2 text-sm text-slate-700';
             note.textContent = detail;
@@ -52,9 +113,11 @@ function renderProject(area, data) {
 }
 
 function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = '', savedDemo = '') {
+    let hasSubmission = Boolean(savedSubmission);
     const form = document.createElement('form');
     form.className = 'mt-4';
     const text = document.createElement('textarea');
+    text.setAttribute('aria-label', 'Describe your project and how you verified it');
     text.required = true;
     text.minLength = 30;
     text.maxLength = 20000;
@@ -63,16 +126,16 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
     text.placeholder = 'Describe your artefact, decisions, and verification…';
     text.className = 'w-full rounded-xl border p-3';
     const repository = document.createElement('input');
-    repository.type = 'url'; repository.placeholder = 'Repository URL (optional, HTTPS)';
+    repository.type = 'url'; repository.setAttribute('aria-label', 'Repository URL (optional)'); repository.placeholder = 'Repository URL (optional, HTTPS)';
     repository.value = savedRepository || ''; repository.maxLength = 500;
     repository.className = 'mt-3 w-full rounded-xl border p-3';
     const demo = document.createElement('input');
-    demo.type = 'url'; demo.placeholder = 'Live demo URL (optional, HTTPS)';
+    demo.type = 'url'; demo.setAttribute('aria-label', 'Live demo URL (optional)'); demo.placeholder = 'Live demo URL (optional, HTTPS)';
     demo.value = savedDemo || ''; demo.maxLength = 500;
     demo.className = 'mt-3 w-full rounded-xl border p-3';
     const submit = document.createElement('button');
     submit.className = 'mt-2 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white';
-    submit.textContent = 'Submit for Gemini evaluation';
+    submit.textContent = hasSubmission ? 'Revise and resubmit' : 'Get AI feedback';
     form.append(text, repository, demo, submit);
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
@@ -116,7 +179,7 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
                 badge.textContent = 'Project passed ✓';
                 form.replaceWith(badge);
             } else {
-                text.value = text.value;
+                hasSubmission = true;
                 submit.textContent = 'Revise and resubmit';
                 appendSelfReview(area, id);
             }
@@ -127,7 +190,7 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
             form.append(message);
         } finally {
             submit.disabled = false;
-            submit.textContent = 'Submit for Gemini evaluation';
+            submit.textContent = hasSubmission ? 'Revise and resubmit' : 'Get AI feedback';
         }
     });
     area.append(form);

@@ -315,7 +315,7 @@
         <p class="lesson-toc-title">Lesson actions</p>
         {% if practice_exercises %}<a href="#practice-anchor" class="btn-secondary" data-open-practice>💻 Practice this lesson</a>{% endif %}
         <button id="quiz-button" type="button" class="btn-secondary">Take lesson quiz</button>
-        <div id="quiz-area" class="lesson-quiz-area"></div>
+        <div id="quiz-area" class="lesson-quiz-area" aria-live="polite"></div>
         {% if completed %}
         <p class="lesson-complete-note">Lesson completed ✓</p>
         {% else %}
@@ -324,10 +324,12 @@
         <button type="button" id="bookmark-btn" class="btn-secondary mt-2" data-lesson-id="{{ lesson.id }}" data-bookmarked="{{ 'true' if bookmarked else 'false' }}">
           {% if bookmarked %}🔖 Bookmarked{% else %}📑 Bookmark lesson{% endif %}
         </button>
+        <p id="bookmark-status" class="text-sm text-slate-600" role="status"></p>
         <details class="mt-3 w-full">
           <summary class="cursor-pointer text-sm font-semibold text-slate-700">My notes</summary>
-          <textarea id="lesson-notes" class="mt-2 w-full rounded-lg border border-slate-300 p-2 text-sm" rows="4" placeholder="Take notes for this lesson...">{{ lesson_note }}</textarea>
+          <label for="lesson-notes" class="sr-only">Notes for {{ lesson.title }}</label><textarea id="lesson-notes" class="mt-2 w-full rounded-lg border border-slate-300 p-2 text-sm" rows="4" placeholder="Take notes for this lesson...">{{ lesson_note }}</textarea>
           <button type="button" id="save-notes" class="mt-2 rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold hover:bg-slate-50">Save notes</button>
+          <p id="notes-status" class="text-sm text-slate-600" role="status"></p>
         </details>
         <p id="lesson-status" class="lesson-status" role="status"></p>
       </div>
@@ -465,8 +467,31 @@ document.getElementById('quiz-button').addEventListener('click', async () => {
           form.append(p);
           return;
         }
+        const review = document.createElement('section');
+        review.setAttribute('aria-live', 'polite');
         p.textContent = `Score: ${result.score}%`;
-        form.replaceWith(p);
+        review.append(p);
+        (result.review || []).forEach((item, index) => {
+          const row = document.createElement('article');
+          row.className = 'mt-3 rounded-lg border p-3';
+          const question = document.createElement('h4');
+          question.className = 'font-semibold';
+          question.textContent = item.question;
+          const answer = document.createElement('p');
+          const wasCorrect = item.your_answer === item.correct_index;
+          answer.className = wasCorrect ? 'text-emerald-700' : 'text-rose-700';
+          const correctOption = data.questions[index]?.options?.[item.correct_index];
+          answer.textContent = wasCorrect ? 'Correct' : `Your answer was incorrect · correct answer: ${correctOption || `option ${item.correct_index + 1}`}`;
+          row.append(question, answer);
+          if (item.explanation) {
+            const explanation = document.createElement('p');
+            explanation.className = 'mt-1 text-sm text-slate-600';
+            explanation.textContent = item.explanation;
+            row.append(explanation);
+          }
+          review.append(row);
+        });
+        form.replaceWith(review);
       } catch (error) {
         p.className = 'text-sm text-rose-700';
         p.textContent = 'Could not submit the quiz. Check your connection and retry.';
@@ -484,9 +509,13 @@ const bookmarkBtn = document.getElementById('bookmark-btn');
 if (bookmarkBtn) {
   bookmarkBtn.addEventListener('click', async () => {
     const lessonId = bookmarkBtn.dataset.lessonId;
+    const status = document.getElementById('bookmark-status');
+    bookmarkBtn.disabled = true;
+    status.textContent = 'Saving bookmark…';
     try {
       const response = await fetch(`/api/lessons/${lessonId}/bookmark`, {method:'POST', headers:{'X-CSRF-Token':csrf}});
       const data = await readJson(response);
+      if (!response.ok || typeof data.bookmarked !== 'boolean') throw new Error(data.error || 'Could not save the bookmark.');
       if (data.bookmarked) {
         bookmarkBtn.dataset.bookmarked = 'true';
         bookmarkBtn.textContent = '🔖 Bookmarked';
@@ -494,7 +523,9 @@ if (bookmarkBtn) {
         bookmarkBtn.dataset.bookmarked = 'false';
         bookmarkBtn.textContent = '📑 Bookmark lesson';
       }
-    } catch (e) {}
+      status.textContent = data.bookmarked ? 'Lesson bookmarked.' : 'Bookmark removed.';
+    } catch (error) { status.textContent = error.message || 'Could not save the bookmark. Check your connection and retry.'; }
+    finally { bookmarkBtn.disabled = false; }
   });
 }
 const saveNotes = document.getElementById('save-notes');
@@ -502,15 +533,16 @@ const notesArea = document.getElementById('lesson-notes');
 if (saveNotes && notesArea) {
   saveNotes.addEventListener('click', async () => {
     const lessonId = {{ lesson.id|tojson }};
+    const status = document.getElementById('notes-status');
+    saveNotes.disabled = true;
+    status.textContent = 'Saving notes…';
     try {
       const response = await fetch(`/api/lessons/${lessonId}/note`, {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body:JSON.stringify({content: notesArea.value})});
       const data = await readJson(response);
-      saveNotes.textContent = data.status === 'saved' ? 'Saved ✓' : 'Save notes';
-      setTimeout(() => { saveNotes.textContent = 'Save notes'; }, 1500);
-    } catch (e) {
-      saveNotes.textContent = 'Error';
-      setTimeout(() => { saveNotes.textContent = 'Save notes'; }, 1500);
-    }
+      if (!response.ok || data.status !== 'saved') throw new Error(data.error || 'Could not save notes.');
+      status.textContent = 'Notes saved.';
+    } catch (error) { status.textContent = error.message || 'Could not save notes. Check your connection and retry.'; }
+    finally { saveNotes.disabled = false; }
   });
 }
 const completeButton=document.getElementById('complete-button');

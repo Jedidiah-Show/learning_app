@@ -63,7 +63,7 @@
                 ? `configured · ${gemini.model_tier} tier · ${gemini.flash_model} / ${gemini.pro_model}`
                 : openrouter.configured
                     ? 'not configured — OpenRouter fallback is active'
-                    : 'not configured — set GEMINI_API_KEY or OPENROUTER_API_KEY in Vercel and redeploy',
+                    : 'not configured — set GEMINI_API_KEY or OPENROUTER_API_KEY in deployment settings and redeploy',
             gemini.configured
                 ? 'text-emerald-700'
                 : openrouter.configured ? 'text-slate-600' : 'text-red-700'
@@ -72,7 +72,7 @@
             'OpenRouter fallback',
             openrouter.configured
                 ? `configured · ${openrouter.flash_model} / ${openrouter.pro_model} · ${openrouter.max_tokens} max output tokens`
-                : 'not configured — optional fallback; set OPENROUTER_API_KEY in Vercel',
+                : 'not configured — optional fallback; set OPENROUTER_API_KEY in deployment settings',
             openrouter.configured ? 'text-emerald-700' : 'text-slate-600'
         ));
         statusBox.append(line(

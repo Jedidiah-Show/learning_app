@@ -2,14 +2,17 @@ import json
 import os
 import tempfile
 import unittest
+from datetime import datetime
 from unittest.mock import patch
 
 from app import create_app, db
 from app.curriculum import all_lessons, all_modules, curriculum
 from app.gemini import GeminiError, GeminiRateLimited
 from app.models import (
-    CourseProject, LessonCompletion, Quiz, QuizResult, ReviewItem, User, VideoProgress,
+    CalendarEvent, CoursePlan, CourseProject, LessonCompletion, Quiz, QuizResult, ReviewItem,
+    StudySession, User, VideoProgress,
 )
+from sqlalchemy.exc import IntegrityError
 
 
 class RuachAICourseTests(unittest.TestCase):
@@ -102,6 +105,56 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertEqual(first.get_json()['lesson']['id'], all_lessons()[0]['id'])
         self.assertEqual(self.client.get('/proficiency-test').status_code, 404)
         self.assertEqual(self.client.get('/subject-config').status_code, 404)
+
+    def test_registration_commit_conflict_never_authenticates_the_requester(self):
+        with patch('app.routes.auth.db.session.commit',
+                   side_effect=IntegrityError('duplicate', {}, Exception('duplicate'))):
+            response = self.client.post('/register', data={
+                'username': 'conflicted', 'email': 'conflicted@example.test',
+                'password': 'secure-pass-123', 'confirm_password': 'secure-pass-123',
+            })
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'Registration could not be completed', response.data)
+        self.assertEqual(self.client.get('/').status_code, 302)
+        with self.app.app_context():
+            self.assertEqual(User.query.count(), 0)
+
+    def test_dashboard_shows_retry_state_when_progress_cannot_load(self):
+        self.register()
+        with patch('app.routes.main.course_progress', side_effect=RuntimeError('database unavailable')):
+            response = self.client.get('/')
+        self.assertEqual(response.status_code, 503)
+        self.assertIn(b'Your progress is temporarily unavailable', response.data)
+        self.assertNotIn(b'0 of 201 lessons complete', response.data)
+
+    def test_schedule_renders_events_in_their_selected_timezone(self):
+        self.register()
+        with self.app.app_context():
+            user = User.query.one()
+            db.session.add(CalendarEvent(
+                user_id=user.id, title='Local study', start_time=datetime(2030, 1, 2, 12),
+                end_time=datetime(2030, 1, 2, 13), time_zone='Africa/Lagos',
+                delete_pending=False,
+            ))
+            db.session.commit()
+        response = self.client.get('/schedule')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'13:00', response.data)
+        self.assertIn(b'(Africa/Lagos)', response.data)
+
+    def test_progress_hides_tracked_time_when_tracking_is_disabled(self):
+        self.register()
+        with self.app.app_context():
+            user = User.query.one()
+            from app.user_preferences import set_user_preferences
+            set_user_preferences(user, {'progress': {'track_time_spent': False}})
+            db.session.add(StudySession(
+                user_id=user.id, session_type='morning', duration_minutes=125,
+            ))
+            db.session.commit()
+        response = self.client.get('/progress')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn(b'0 min', response.data)
 
     def test_lessons_unlock_sequentially_and_duplicate_completion_is_idempotent(self):
         self.register()
@@ -429,6 +482,59 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertFalse(payload['is_ai_generated'])
         with self.app.app_context():
             self.assertEqual(CourseProject.query.count(), 1)
+
+    def test_monthly_blueprint_capstone_choice_and_personal_project_are_saved(self):
+        self.register()
+        page = self.client.get('/projects')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b'Monthly milestones', page.data)
+        self.assertIn(b'High-precision production RAG engine', page.data)
+        choice = self.client.post('/api/course-plan/required-project', json={
+            'required_project_id': 'production-rag',
+        })
+        self.assertEqual(choice.status_code, 200, choice.get_json())
+        saved = self.client.post('/api/course-plan/portfolio', json={
+            'portfolio_title': 'Community knowledge assistant',
+            'portfolio_summary': 'A personal RAG project for trusted local resources.',
+            'portfolio_repository_url': 'https://github.com/learner/community-assistant',
+            'portfolio_demo_url': '',
+        })
+        self.assertEqual(saved.status_code, 200, saved.get_json())
+        portfolio = self.client.get('/portfolio')
+        self.assertIn(b'Community knowledge assistant', portfolio.data)
+        with self.app.app_context():
+            plan = CoursePlan.query.one()
+            self.assertEqual(plan.required_project_id, 'production-rag')
+            self.assertEqual(plan.portfolio_title, 'Community knowledge assistant')
+
+    def test_selected_capstone_is_used_for_the_final_required_project(self):
+        self.register()
+        self.client.post('/api/course-plan/required-project', json={
+            'required_project_id': 'evaluation-harness',
+        })
+        module = all_modules()[-1]
+        with self.app.app_context():
+            user = User.query.one()
+            for index, lesson in enumerate(module['lessons'], start=1):
+                db.session.add(LessonCompletion(
+                    user_id=user.id, lesson_id=lesson['id'], subject_id=module['id'],
+                    day_number=index, completed=True,
+                ))
+            db.session.commit()
+        response = self.client.get(f"/api/projects/module/{module['id']}")
+        self.assertEqual(response.status_code, 200, response.get_json())
+        payload = response.get_json()
+        self.assertEqual(payload['project']['required_project_id'], 'evaluation-harness')
+        self.assertEqual(payload['project']['title'], 'Continuous evaluation and regression harness')
+        self.assertFalse(payload['is_ai_generated'])
+
+    def test_portfolio_project_rejects_non_https_evidence_links(self):
+        self.register()
+        response = self.client.post('/api/course-plan/portfolio', json={
+            'portfolio_title': 'My project', 'portfolio_summary': 'A useful project.',
+            'portfolio_repository_url': 'http://example.test/repo',
+        })
+        self.assertEqual(response.status_code, 400)
 
     def test_project_submission_validates_ai_evaluation_and_records_result(self):
         self.register()

@@ -1,7 +1,7 @@
 """Course pages and learner preferences."""
 
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from functools import lru_cache
 
 from flask import (Blueprint, Response, abort, current_app, flash, jsonify,
@@ -139,12 +139,10 @@ def index():
                                progress=progress, next_lesson=next_lesson,
                                next_project=next_project, streak=streak,
                                longest_streak=longest_streak)
-    except Exception as e:
+    except Exception:
         current_app.logger.exception('Dashboard error')
-        return render_template('dashboard.html', config=get_effective_config_for_user(current_user),
-                               user=current_user, course=curriculum(),
-                               progress={'total_lessons': 201, 'completed_lessons': 0, 'modules': []},
-                               next_lesson=None, next_project=None, streak=0, longest_streak=0), 200
+        return render_template('dashboard.html', course=curriculum(),
+                               progress_error=True), 503
 
 
 @main_bp.route('/lessons')
@@ -170,12 +168,18 @@ def schedule():
     progress = course_progress(current_user)
     upcoming_events = CalendarEvent.query.filter(
         CalendarEvent.user_id == current_user.id,
-        CalendarEvent.start_time >= datetime.utcnow(),
+        CalendarEvent.start_time >= datetime.now(timezone.utc).replace(tzinfo=None),
         CalendarEvent.delete_pending.is_(False),
     ).order_by(CalendarEvent.start_time).limit(20).all()
+    from app.google_calendar import resolve_timezone, stored_utc
+    scheduled_events = [{
+        'event': event,
+        'start_local': stored_utc(event.start_time).astimezone(resolve_timezone(event.time_zone)),
+        'end_local': stored_utc(event.end_time).astimezone(resolve_timezone(event.time_zone)),
+    } for event in upcoming_events]
     return render_template('schedule.html', config=get_effective_config_for_user(current_user),
                            user=current_user, modules=all_modules(), progress=progress,
-                           upcoming_events=upcoming_events,
+                           upcoming_events=upcoming_events, scheduled_events=scheduled_events,
                            next_action=progress['next_action'],
                            next_lesson=get_lesson(progress['next_lesson_id'])
                            if progress['next_lesson_id'] else None)
@@ -204,9 +208,12 @@ def progress():
     ).limit(10).all()
     now = datetime.now(timezone.utc)
     cutoff = now - timedelta(days=30)
-    minutes = db.session.query(db.func.coalesce(db.func.sum(StudySession.duration_minutes), 0)).filter(
-        StudySession.user_id == current_user.id, StudySession.date >= cutoff.date()
-    ).scalar() or 0
+    track_time = config.get('progress', {}).get('track_time_spent', True)
+    minutes = 0
+    if track_time:
+        minutes = db.session.query(db.func.coalesce(db.func.sum(StudySession.duration_minutes), 0)).filter(
+            StudySession.user_id == current_user.id, StudySession.date >= cutoff.date()
+        ).scalar() or 0
     due_reviews = ReviewItem.query.filter_by(user_id=current_user.id, active=True).filter(
         ReviewItem.due_at <= now
     ).count()
@@ -214,8 +221,6 @@ def progress():
         'streak': streak, 'minutes_30d': minutes, 'due_reviews': due_reviews,
         'quiz_results': quizzes,
     }
-    if not config.get('progress', {}).get('track_time_spent', True):
-        minutes = 0
     recent_completions = LessonCompletion.query.filter_by(
         user_id=current_user.id, completed=True
     ).order_by(LessonCompletion.completed_at.desc()).limit(8).all()

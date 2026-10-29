@@ -33,7 +33,7 @@
         {% elif lesson.id == next_lesson_id %}
           <a class="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white" href="{{ url_for('main.lesson_detail', lesson_id=lesson.id) }}">Start →</a>
         {% else %}
-          <span class="shrink-0 text-sm text-slate-400">Locked</span>
+          <span class="shrink-0 text-sm text-slate-400" title="Complete earlier lessons and any required module project to unlock this lesson" aria-label="Locked. Complete earlier lessons and any required module project to unlock this lesson">Locked</span>
         {% endif %}
       </li>
     {% endfor %}
