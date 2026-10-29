@@ -1,8 +1,17 @@
 # Render Blueprint for the RUACH learning app.
 #
-# Free-tier note: the free web service sleeps after roughly 15 minutes of
-# inactivity. The next request wakes it and can take about a minute while the
-# service boots and reconnects to Neon.
+# Interim keep-alive (Option B): the free web service sleeps after roughly 15
+# minutes of inactivity. The next request wakes it and can take about a minute
+# while the service boots and reconnects to Neon.
+#
+# While on the free plan, an external uptime monitor (cron-job.org, UptimeRobot,
+# Better Stack, or Healthchecks.io) pings GET /healthz every ~5 minutes to keep
+# the service awake. /healthz is a lightweight liveness check with no database or
+# auth dependency, so it is safe to poll frequently and resets Render's
+# inactivity timer.
+#
+# Long-term fix: upgrade the service to a paid plan (e.g. starter) to remove the
+# sleep behaviour entirely, and optionally add a preDeployCommand for migrations.
 #
 # DATABASE_URL must be Neon's *pooled* connection string (the hostname usually
 # contains "-pooler"). Use the direct, non-pooled string only for migrations;

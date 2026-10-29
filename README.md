@@ -4,7 +4,7 @@
 >
 > *Rooted in faith. Built for tomorrow.*
 
-A Flask and SQLite learning app for the RUACH engineering course: 13 modules, 201 bundled lessons, curated lesson videos, lesson-based Gemini quizzes and clarification, module projects, course progress, personal study schedules, and optional Google Calendar sync. Historical subject-based progress and weekly projects remain stored as legacy records and are not mixed into the new course.
+A Flask learning app for the RUACH engineering course: 13 modules and 201 bundled lessons mapped to a five-month AI engineering blueprint, with weekly focus areas and monthly build milestones. Learners choose one of four required capstones and track a separate personal portfolio project alongside sequential module projects, quizzes, progress, study schedules, and optional Google Calendar sync. Historical subject-based progress and weekly projects remain stored as legacy records and are not mixed into the new course.
 
 ## Run locally
 
@@ -71,11 +71,13 @@ DATABASE_URL='<NEON_DIRECT_URL>' .venv/bin/flask --app wsgi db upgrade
 
 The free Render plan does not support pre-deploy commands or shell access, so migrations are a manual step (or a guarded GitHub Actions `workflow_dispatch` job). See `MIGRATION.md` for the full cutover, backup, verification, DNS, and rollback procedure. The free web service sleeps after about 15 minutes of inactivity, so the first request after idling can take around a minute.
 
+As an **interim fix** for the sleep, an external uptime monitor pings `GET /healthz` every ~5 minutes to keep the free service awake; see the Render free-tier notes in `MIGRATION.md` for the monitor setup. The first request after idling can still take around a minute when the service has slept regardless of the monitor.
+
 Local uploads use the `local` storage backend; production should use the S3-compatible backend because Render's filesystem is ephemeral. Profile photos remain stored in Postgres and are not affected by the storage backend.
 
 ## Configuration and account data
 
-The canonical course content is in `app/data/dynamoai_curriculum.json`; `app/data/dynamoai_resources.json` maps the tracker’s linked videos and articles to the Python and Backend lessons. Learners follow the lessons in order. Completing every lesson in a module unlocks its project; submitting that project for AI evaluation unlocks the next module. Learner-specific schedule blocks, AI model tier, progress tracking, and Calendar preferences are stored per account. Proficiency diagnostics and subject selection are no longer part of onboarding or progression.
+The canonical lesson content is in `app/data/dynamoai_curriculum.json`; `app/course_blueprint.py` maps the 13 modules into five monthly milestones and defines the four required capstones. Learners follow lessons and module projects in order. The selected capstone supplies the final module project, while a separate personal portfolio project is saved on the learner's account. Learner-specific schedule blocks, AI model tier, progress tracking, and Calendar preferences are stored per account. Proficiency diagnostics and subject selection are no longer part of onboarding or progression.
 
 Set `GEMINI_API_KEY` to enable Gemini clarification, lesson and module quizzes, and module project evaluation. `GOOGLE_API_KEY` is accepted as a fallback. Lesson content is bundled and is not generated. The default Flash and Pro model names are configured in `config/default_config.yaml`; override them with `GEMINI_FLASH_MODEL` and `GEMINI_PRO_MODEL`. Learners can select Flash or Pro in their account settings. If a Pro request is rate-limited, it retries once with Flash.
 

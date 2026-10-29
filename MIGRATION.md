@@ -266,12 +266,11 @@ unset DATABASE_URL SECRET_KEY
 Expected result: `db current` and `db heads` match. If they do not, stop and
 investigate before deploying Render code.
 
-This branch adds two additive migrations (`4b7c9d1e2f30` and
-`5c9e1f3a7b20`) for model fields that were missing from the current migration
-chain: the bookmark/note tables, the user streak columns, and the course-project
-repository/demo URLs. They inspect the existing schema first, so they are safe
-against a production database that already has any of those objects. They do
-not drop or rename anything.
+This branch adds additive migrations (`4b7c9d1e2f30`, `5c9e1f3a7b20`, and
+`6a4d9f2b1c80`). They add the bookmark/note tables, user streak columns,
+course-project repository/demo URLs, and the learner course-plan table for a
+selected capstone and personal portfolio project. They do not drop or rename
+existing objects.
 
 Keep `d1a6f9c2b840` in the migration graph: the production database is stamped
 at that already-applied project-link revision. `4b7c9d1e2f30` now descends from
@@ -407,6 +406,32 @@ Do not move profile photo bytes out of Postgres as part of this cutover.
   photos use Postgres.
 - The free plan does not provide a pre-deploy command or a shell. Do not add
   `preDeployCommand`; use the manual migration procedure above.
+
+### Interim keep-alive fix (while the service stays on the free plan)
+
+The free web service sleeps after roughly 15 minutes without traffic, so the
+first request after idling can take around a minute while the service boots and
+reconnects to Neon.
+
+**Interim fix (Option B):** an external uptime monitor (cron-job.org, UptimeRobot,
+Better Stack, or Healthchecks.io) pings `GET /healthz` every ~5 minutes to keep the
+service awake. `/healthz` is a lightweight liveness check with no database or auth
+dependency, so it is safe to poll frequently and resets Render's inactivity timer.
+
+Monitor setup:
+
+1. Create an HTTP monitor for `https://<your-render-host>/healthz`.
+2. Set the interval to **5 minutes** (or shorter) and expect HTTP `200`.
+3. Enable the monitor and save.
+
+With the monitor running, the service should stay awake and avoid the ~15-minute
+sleep window; the first request after a long idle period can still take around a
+minute of cold-start latency if the sleep window is hit anyway.
+
+### Long-term fix
+
+- Upgrade the service to a paid plan (e.g. `starter`) to remove the sleep behaviour
+  entirely; paid plans also support pre-deploy commands and shell access.
 
 ---
 
