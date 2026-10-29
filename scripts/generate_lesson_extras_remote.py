@@ -2,7 +2,7 @@
 """Generate lesson extras through the temporary production AI hook.
 
 The public text endpoint allows one request every 30 seconds, which is too slow
-for 201 lessons. The deployed app already has a working AI provider, so this
+for the current bundled lesson count. The deployed app already has a working AI provider, so this
 maintenance client sends the same prompts to the token-protected admin hook and
 saves the validated results locally. The hook is removed after generation.
 

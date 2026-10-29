@@ -6,7 +6,7 @@
 <a class="text-sm font-semibold text-indigo-700" href="{{ url_for('main.lessons') }}">← All lessons</a>
 
 <header class="lesson-hero">
-  <p class="lesson-hero-kicker">Module {{ module.number }} · {{ module.title }} · Lesson {{ lesson._ordinal }} of 201</p>
+  <p class="lesson-hero-kicker">Module {{ module.number }} · {{ module.title }} · Lesson {{ lesson._ordinal }} of {{ total_lessons }}</p>
   <h1 class="lesson-hero-title">{{ lesson.title }}</h1>
   <p class="lesson-hero-subtitle">{{ lesson.subtitle }}</p>
   <ul class="lesson-hero-meta" aria-label="Lesson overview">

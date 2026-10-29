@@ -24,8 +24,13 @@ def validate_app_config(config):
     if not isinstance(app_config, dict):
         raise ValueError('Configuration must contain an app object')
     days = app_config.get('curriculum_days')
-    if not isinstance(days, int) or isinstance(days, bool) or days != 201:
-        raise ValueError('app.curriculum_days must match the 201-lesson RUACH engineering course')
+    from app.curriculum import all_lessons
+    expected_days = len(all_lessons())
+    if not isinstance(days, int) or isinstance(days, bool) or days != expected_days:
+        raise ValueError(
+            'app.curriculum_days must match the bundled '
+            f'{expected_days}-lesson RUACH engineering course'
+        )
     schedule = config.get('schedule')
     if not isinstance(schedule, dict) or not isinstance(schedule.get('daily_blocks'), list):
         raise ValueError('schedule must contain daily_blocks')
@@ -390,6 +395,7 @@ def create_app(config_override=None):
     from app.routes.community import community_bp
     from app.routes.leaderboard import leaderboard_bp
     from app.routes.integrations import integrations_bp
+    from app.routes.credentials import credentials_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -403,6 +409,7 @@ def create_app(config_override=None):
     app.register_blueprint(community_bp)
     app.register_blueprint(leaderboard_bp)
     app.register_blueprint(integrations_bp, url_prefix='/api/integrations')
+    app.register_blueprint(credentials_bp)
     @app.before_request
     def enforce_csrf_protection():
         if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'} and not app.testing:

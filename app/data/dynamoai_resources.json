@@ -1,7 +1,7 @@
 {
   "1.01": {
     "video": {
-      "title": "Python Full Course for Beginners \u2014 Mosh",
+      "title": "Python Full Course for Beginners — Mosh",
       "url": "https://www.youtube.com/watch?v=K5KVEU3aaeQ"
     },
     "article": {
@@ -11,91 +11,91 @@
   },
   "1.02": {
     "video": {
-      "title": "src layout explained \u2014 anthony explains",
+      "title": "src layout explained — anthony explains",
       "url": "https://www.youtube.com/watch?v=sW1qUZ_nSXk"
     },
     "article": {
-      "title": "Structuring Your Project \u2014 Hitchhiker\u2019s Guide",
+      "title": "Structuring Your Project — Hitchhiker’s Guide",
       "url": "https://docs.python-guide.org/writing/structure/"
     }
   },
   "1.03": {
     "video": {
-      "title": "Python Tutorial for Beginners 8: Functions \u2014 Corey Schafer",
+      "title": "Python Tutorial for Beginners 8: Functions — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=9Os0o3wzS_I"
     },
     "article": {
-      "title": "Defining Your Own Python Function \u2014 Real Python",
+      "title": "Defining Your Own Python Function — Real Python",
       "url": "https://realpython.com/defining-your-own-python-function/"
     }
   },
   "1.04": {
     "video": {
-      "title": "Type Hints: Basic to Generics \u2014 Corey Schafer",
+      "title": "Type Hints: Basic to Generics — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=RwH2UzC2rIo"
     },
     "article": {
-      "title": "Python Type Checking \u2014 Real Python",
+      "title": "Python Type Checking — Real Python",
       "url": "https://realpython.com/python-type-checking/"
     }
   },
   "1.05": {
     "video": {
-      "title": "OOP Tutorial 1: Classes and Instances \u2014 Corey Schafer",
+      "title": "OOP Tutorial 1: Classes and Instances — Corey Schafer",
       "url": "https://youtu.be/ZDa-Z5JzLYM"
     },
     "article": {
-      "title": "Object-Oriented Programming in Python \u2014 Real Python",
+      "title": "Object-Oriented Programming in Python — Real Python",
       "url": "https://realpython.com/python3-object-oriented-programming/"
     }
   },
   "1.06": {
     "video": {
-      "title": "Neat Tricks for Customizing Dataclasses \u2014 ArjanCodes",
+      "title": "Neat Tricks for Customizing Dataclasses — ArjanCodes",
       "url": "https://www.youtube.com/watch?v=evo5Zk_blyI"
     },
     "article": {
-      "title": "Data Classes in Python \u2014 Real Python",
+      "title": "Data Classes in Python — Real Python",
       "url": "https://realpython.com/python-data-classes/"
     }
   },
   "1.07": {
     "video": {
-      "title": "Parsing Data with Pydantic \u2014 Michael Kennedy",
+      "title": "Parsing Data with Pydantic — Michael Kennedy",
       "url": "https://www.youtube.com/watch?v=aHv7-6WIxNM"
     },
     "article": {
-      "title": "Pydantic guide \u2014 Real Python",
+      "title": "Pydantic guide — Real Python",
       "url": "https://realpython.com/python-pydantic/"
     }
   },
   "1.08": {
     "video": {
-      "title": "Try/Except Blocks for Error Handling \u2014 Corey Schafer",
+      "title": "Try/Except Blocks for Error Handling — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=NIWwJbo-9_8"
     },
     "article": {
-      "title": "Python Exceptions \u2014 Real Python",
+      "title": "Python Exceptions — Real Python",
       "url": "https://realpython.com/python-exceptions/"
     }
   },
   "1.09": {
     "video": {
-      "title": "Working with JSON Data \u2014 Corey Schafer",
+      "title": "Working with JSON Data — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=9N6a-VLBa2I"
     },
     "article": {
-      "title": "Working With JSON Data \u2014 Real Python",
+      "title": "Working With JSON Data — Real Python",
       "url": "https://realpython.com/python-json/"
     }
   },
   "1.10": {
     "video": {
-      "title": "Python Requests Tutorial \u2014 Corey Schafer",
+      "title": "Python Requests Tutorial — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=tb8gHvYlCFs"
     },
     "article": {
-      "title": "Python\u2019s Requests Library \u2014 Real Python",
+      "title": "Python’s Requests Library — Real Python",
       "url": "https://realpython.com/python-requests/"
     }
   },
@@ -111,81 +111,81 @@
   },
   "1.12": {
     "video": {
-      "title": "venv (Mac & Linux) \u2014 Corey Schafer",
+      "title": "venv (Mac & Linux) — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=Kg1Yvry_Ydk"
     },
     "article": {
-      "title": "Virtual Environments Primer \u2014 Real Python",
+      "title": "Virtual Environments Primer — Real Python",
       "url": "https://realpython.com/python-virtual-environments-a-primer/"
     }
   },
   "1.13": {
     "video": {
-      "title": "UV: All-in-One Package Manager \u2014 Corey Schafer",
+      "title": "UV: All-in-One Package Manager — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=AMdG7IjgSPM"
     },
     "article": {
-      "title": "Managing Projects With uv \u2014 Real Python",
+      "title": "Managing Projects With uv — Real Python",
       "url": "https://realpython.com/python-uv/"
     }
   },
   "1.14": {
     "video": {
-      "title": "AsyncIO Complete Guide with Animations \u2014 Corey Schafer",
+      "title": "AsyncIO Complete Guide with Animations — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=oAkLSJNr5zY"
     },
     "article": {
-      "title": "Conceptual Overview of asyncio \u2014 Python docs",
+      "title": "Conceptual Overview of asyncio — Python docs",
       "url": "https://docs.python.org/3/howto/a-conceptual-overview-of-asyncio.html"
     }
   },
   "1.15": {
     "video": {
-      "title": "AsyncIO & Async/Await \u2014 Tech With Tim",
+      "title": "AsyncIO & Async/Await — Tech With Tim",
       "url": "https://www.youtube.com/watch?v=t5Bo1Je9EmE"
     },
     "article": {
-      "title": "Async IO in Python \u2014 Real Python",
+      "title": "Async IO in Python — Real Python",
       "url": "https://realpython.com/async-io-python/"
     }
   },
   "1.16": {
     "video": {
-      "title": "Beginner\u2019s Guide to Pytest \u2014 Teclado",
+      "title": "Beginner’s Guide to Pytest — Teclado",
       "url": "https://www.youtube.com/watch?v=Kt6QqGoAlvI"
     },
     "article": {
-      "title": "Effective Testing with pytest \u2014 Real Python",
+      "title": "Effective Testing with pytest — Real Python",
       "url": "https://realpython.com/pytest-python-testing/"
     }
   },
   "2.01": {
     "video": {
-      "title": "How does the INTERNET work? \u2014 Lesics",
+      "title": "How does the INTERNET work? — Lesics",
       "url": "https://www.youtube.com/watch?v=x3c1ih2NJEg"
     },
     "article": {
-      "title": "How does the Internet work? \u2014 MDN",
+      "title": "How does the Internet work? — MDN",
       "url": "https://developer.mozilla.org/en-US/docs/Learn_web_development/Howto/Web_mechanics/How_does_the_Internet_work"
     }
   },
   "2.02": {
     "video": {
-      "title": "HTTP Crash Course & Exploration \u2014 Traversy Media",
+      "title": "HTTP Crash Course & Exploration — Traversy Media",
       "url": "https://www.youtube.com/watch?v=iYM2zFP3Zn0"
     },
     "article": {
-      "title": "An overview of HTTP \u2014 MDN",
+      "title": "An overview of HTTP — MDN",
       "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview"
     }
   },
   "2.03": {
     "video": {
-      "title": "What is a REST API? \u2014 IBM Technology",
+      "title": "What is a REST API? — IBM Technology",
       "url": "https://www.youtube.com/watch?v=lsMQRaeKNDk"
     },
     "article": {
-      "title": "What Is a REST API? \u2014 IBM",
+      "title": "What Is a REST API? — IBM",
       "url": "https://www.ibm.com/think/topics/rest-apis"
     }
   },
@@ -195,13 +195,13 @@
       "url": "https://www.youtube.com/watch?v=JGp_iBI71N0"
     },
     "article": {
-      "title": "Web API Design Best Practices \u2014 Microsoft",
+      "title": "Web API Design Best Practices — Microsoft",
       "url": "https://learn.microsoft.com/en-us/azure/architecture/best-practices/api-design"
     }
   },
   "2.05": {
     "video": {
-      "title": "FastAPI Part 1: Getting Started \u2014 Corey Schafer",
+      "title": "FastAPI Part 1: Getting Started — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=7AMjmCTumuo"
     },
     "article": {
@@ -211,67 +211,67 @@
   },
   "2.06": {
     "video": {
-      "title": "FastAPI Part 3: Path Parameters \u2014 Corey Schafer",
+      "title": "FastAPI Part 3: Path Parameters — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=WRjXIA5pMtk"
     },
     "article": {
-      "title": "Path Parameters \u2014 FastAPI docs",
+      "title": "Path Parameters — FastAPI docs",
       "url": "https://fastapi.tiangolo.com/tutorial/path-params/"
     }
   },
   "2.07": {
     "video": {
-      "title": "FastAPI Part 4: Pydantic Schemas \u2014 Corey Schafer",
+      "title": "FastAPI Part 4: Pydantic Schemas — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=9GHxnttXxrA"
     },
     "article": {
-      "title": "Request Body \u2014 FastAPI docs",
+      "title": "Request Body — FastAPI docs",
       "url": "https://fastapi.tiangolo.com/tutorial/body/"
     }
   },
   "2.08": {
     "video": {
-      "title": "FastAPI Part 4: Pydantic Schemas \u2014 Corey Schafer",
+      "title": "FastAPI Part 4: Pydantic Schemas — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=9GHxnttXxrA"
     },
     "article": {
-      "title": "Response Model \u2014 FastAPI docs",
+      "title": "Response Model — FastAPI docs",
       "url": "https://fastapi.tiangolo.com/tutorial/response-model/"
     }
   },
   "2.09": {
     "video": {
-      "title": "Dependency Injection Explained Like You\u2019re 5 (FastAPI)",
+      "title": "Dependency Injection Explained Like You’re 5 (FastAPI)",
       "url": "https://www.youtube.com/watch?v=f270BoTicMA"
     },
     "article": {
-      "title": "Dependencies \u2014 FastAPI docs",
+      "title": "Dependencies — FastAPI docs",
       "url": "https://fastapi.tiangolo.com/tutorial/dependencies/"
     }
   },
   "2.10": {
     "video": {
-      "title": "FastAPI Part 10: Registration & Login with JWT \u2014 Corey Schafer",
+      "title": "FastAPI Part 10: Registration & Login with JWT — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=Go4wYJJhR3k"
     },
     "article": {
-      "title": "Security \u2014 FastAPI docs",
+      "title": "Security — FastAPI docs",
       "url": "https://fastapi.tiangolo.com/tutorial/security/"
     }
   },
   "2.11": {
     "video": {
-      "title": "FastAPI Part 11: Protecting Routes \u2014 Corey Schafer",
+      "title": "FastAPI Part 11: Protecting Routes — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=MY0TFMMm9B0"
     },
     "article": {
-      "title": "Authorization Cheat Sheet \u2014 OWASP",
+      "title": "Authorization Cheat Sheet — OWASP",
       "url": "https://cheatsheetseries.owasp.org/cheatsheets/Authorization_Cheat_Sheet.html"
     }
   },
   "2.12": {
     "video": {
-      "title": "Learn PostgreSQL \u2014 freeCodeCamp",
+      "title": "Learn PostgreSQL — freeCodeCamp",
       "url": "https://www.youtube.com/watch?v=qw--VYLpxG4"
     },
     "article": {
@@ -281,7 +281,7 @@
   },
   "2.13": {
     "video": {
-      "title": "SQL Full Course for Beginners \u2014 freeCodeCamp",
+      "title": "SQL Full Course for Beginners — freeCodeCamp",
       "url": "https://www.youtube.com/watch?v=HXV3zeQKqGY"
     },
     "article": {
@@ -291,17 +291,17 @@
   },
   "2.14": {
     "video": {
-      "title": "Database Design Course \u2014 freeCodeCamp",
+      "title": "Database Design Course — freeCodeCamp",
       "url": "https://www.youtube.com/watch?v=ztHopE5Wnpc"
     },
     "article": {
-      "title": "Learn Relational Database Design \u2014 freeCodeCamp",
+      "title": "Learn Relational Database Design — freeCodeCamp",
       "url": "https://www.freecodecamp.org/news/learn-relational-database-design/"
     }
   },
   "2.15": {
     "video": {
-      "title": "FastAPI Part 5: SQLAlchemy Models \u2014 Corey Schafer",
+      "title": "FastAPI Part 5: SQLAlchemy Models — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=NvOV3ig2tGY"
     },
     "article": {
@@ -311,7 +311,7 @@
   },
   "2.16": {
     "video": {
-      "title": "FastAPI Part 15: PostgreSQL & Alembic \u2014 Corey Schafer",
+      "title": "FastAPI Part 15: PostgreSQL & Alembic — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=e8NnDz8uT7o"
     },
     "article": {
@@ -321,21 +321,21 @@
   },
   "2.17": {
     "video": {
-      "title": "Redis in 100 Seconds \u2014 Fireship",
+      "title": "Redis in 100 Seconds — Fireship",
       "url": "https://www.youtube.com/watch?v=G1rOthIU-uo"
     },
     "article": {
-      "title": "How to Use Redis With Python \u2014 Real Python",
+      "title": "How to Use Redis With Python — Real Python",
       "url": "https://realpython.com/python-redis/"
     }
   },
   "2.18": {
     "video": {
-      "title": "Cache Systems Every Developer Should Know \u2014 ByteByteGo",
+      "title": "Cache Systems Every Developer Should Know — ByteByteGo",
       "url": "https://www.youtube.com/watch?v=dGAgxozNWFE"
     },
     "article": {
-      "title": "Caching Overview \u2014 AWS",
+      "title": "Caching Overview — AWS",
       "url": "https://aws.amazon.com/caching/"
     }
   },
@@ -345,7 +345,7 @@
       "url": "https://www.youtube.com/watch?v=eAHAKowv6hk"
     },
     "article": {
-      "title": "Background Tasks \u2014 FastAPI docs",
+      "title": "Background Tasks — FastAPI docs",
       "url": "https://fastapi.tiangolo.com/tutorial/background-tasks/"
     }
   },
@@ -355,17 +355,17 @@
       "url": "https://www.youtube.com/watch?v=yL_ryK6kQvo"
     },
     "article": {
-      "title": "Async Tasks with FastAPI and Celery \u2014 TestDriven.io",
+      "title": "Async Tasks with FastAPI and Celery — TestDriven.io",
       "url": "https://testdriven.io/blog/fastapi-and-celery/"
     }
   },
   "2.21": {
     "video": {
-      "title": "FastAPI Part 7: Sync vs Async \u2014 Corey Schafer",
+      "title": "FastAPI Part 7: Sync vs Async — Corey Schafer",
       "url": "https://www.youtube.com/watch?v=2JPDt-Jp6fM"
     },
     "article": {
-      "title": "Concurrency and async/await \u2014 FastAPI docs",
+      "title": "Concurrency and async/await — FastAPI docs",
       "url": "https://fastapi.tiangolo.com/async/"
     }
   },
@@ -377,27 +377,27 @@
   },
   "module:03": {
     "article": {
-      "title": "OpenAI API \u2014 Images and vision",
+      "title": "OpenAI API — Images and vision",
       "url": "https://platform.openai.com/docs/guides/images-vision"
     },
     "audio": {
-      "title": "OpenAI API \u2014 Audio",
+      "title": "OpenAI API — Audio",
       "url": "https://platform.openai.com/docs/guides/audio"
     }
   },
   "module:04": {
     "article": {
-      "title": "OpenAI API \u2014 Structured outputs",
+      "title": "OpenAI API — Structured outputs",
       "url": "https://platform.openai.com/docs/guides/structured-outputs"
     },
     "evals": {
-      "title": "OpenAI API \u2014 Evaluation best practices",
+      "title": "OpenAI API — Evaluation best practices",
       "url": "https://platform.openai.com/docs/guides/evals"
     }
   },
   "module:05": {
     "article": {
-      "title": "PostgreSQL \u2014 Full-text search",
+      "title": "PostgreSQL — Full-text search",
       "url": "https://www.postgresql.org/docs/current/textsearch.html"
     }
   },
@@ -409,7 +409,7 @@
   },
   "module:07": {
     "article": {
-      "title": "LangGraph \u2014 Concepts",
+      "title": "LangGraph — Concepts",
       "url": "https://docs.langchain.com/oss/python/langgraph/overview"
     }
   },
@@ -435,13 +435,13 @@
   },
   "module:10": {
     "article": {
-      "title": "Docker \u2014 Build best practices",
+      "title": "Docker — Build best practices",
       "url": "https://docs.docker.com/build/building/best-practices/"
     }
   },
   "module:11": {
     "article": {
-      "title": "OpenTelemetry \u2014 Concepts",
+      "title": "OpenTelemetry — Concepts",
       "url": "https://opentelemetry.io/docs/concepts/"
     }
   },
@@ -449,6 +449,84 @@
     "article": {
       "title": "NIST AI RMF Playbook",
       "url": "https://airc.nist.gov/AI_RMF_Knowledge_Base/Playbook"
+    }
+  },
+  "0.06": {
+    "article": {
+      "title": "Python Tutorial: An Informal Introduction",
+      "url": "https://docs.python.org/3/tutorial/introduction.html"
+    }
+  },
+  "0.07": {
+    "article": {
+      "title": "Python Tutorial: Data Structures",
+      "url": "https://docs.python.org/3/tutorial/datastructures.html"
+    }
+  },
+  "0.08": {
+    "article": {
+      "title": "Python Tutorial: Defining Functions",
+      "url": "https://docs.python.org/3/tutorial/controlflow.html#defining-functions"
+    }
+  },
+  "0.09": {
+    "article": {
+      "title": "Python json documentation",
+      "url": "https://docs.python.org/3/library/json.html"
+    }
+  },
+  "0.10": {
+    "article": {
+      "title": "Pro Git, second edition",
+      "url": "https://git-scm.com/book/en/v2"
+    }
+  },
+  "0.11": {
+    "article": {
+      "title": "MDN: Overview of HTTP",
+      "url": "https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview"
+    }
+  },
+  "3.16": {
+    "article": {
+      "title": "Hugging Face Transformers documentation",
+      "url": "https://huggingface.co/docs/transformers/index"
+    }
+  },
+  "3.17": {
+    "article": {
+      "title": "OpenAI reasoning guide",
+      "url": "https://platform.openai.com/docs/guides/reasoning"
+    }
+  },
+  "3.18": {
+    "article": {
+      "title": "Hugging Face PEFT documentation",
+      "url": "https://huggingface.co/docs/peft/index"
+    }
+  },
+  "6.18": {
+    "article": {
+      "title": "Anthropic computer use documentation",
+      "url": "https://docs.anthropic.com/en/docs/build-with-claude/computer-use"
+    }
+  },
+  "7.18": {
+    "article": {
+      "title": "Agent2Agent (A2A) protocol",
+      "url": "https://a2a-protocol.org/"
+    }
+  },
+  "module:00": {
+    "article": {
+      "title": "Python for Beginners",
+      "url": "https://www.python.org/about/gettingstarted/"
+    }
+  },
+  "module:02": {
+    "article": {
+      "title": "FastAPI documentation",
+      "url": "https://fastapi.tiangolo.com/"
     }
   }
 }

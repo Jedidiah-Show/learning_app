@@ -17,6 +17,7 @@ import json
 import re
 import subprocess
 import sys
+import textwrap
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -35,7 +36,7 @@ PAGE_FOOTER_RE = re.compile(
     r"\n\s*Three pages per lesson\s+Page \d+ of \d+\s*$"
 )
 PAGE_HEADER_RE = re.compile(
-    r"^DYNAMOAI\s*·\s*COMPASS AI\s+Complete lesson guides\s*·\s*201 lessons\s*$",
+    r"^DYNAMOAI\s*·\s*COMPASS AI\s+Complete lesson guides\s*·\s*\d+\s+lessons\s*$",
     re.MULTILINE,
 )
 
@@ -60,6 +61,9 @@ HEADING_RE = re.compile(
     r"^(?:" + "|".join(re.escape(item) for item in SECTION_HEADINGS) + r")\s*$",
     re.MULTILINE,
 )
+INLINE_HEADING_RE = re.compile(
+    r"[ \t]+(" + "|".join(re.escape(item) for item in SECTION_HEADINGS) + r")[ \t]+"
+)
 LESSON_TITLE_RE = re.compile(
     r"^(?:\s*[A-Z][A-Z0-9 .&/,:()'\-]+)$", re.MULTILINE
 )
@@ -79,6 +83,10 @@ def clean_page(text: str) -> str:
     text = PAGE_HEADER_RE.sub("", text)
     text = PAGE_FOOTER_RE.sub("", text)
     text = text.replace("\f", "\n")
+    # PDF extraction sometimes puts a section heading immediately after the
+    # previous sentence instead of on its own line. Split those headings before
+    # the rest of the importer looks for whole-line markers.
+    text = INLINE_HEADING_RE.sub(lambda match: f"\n{match.group(1)}\n", text)
     lines = [line.rstrip() for line in text.splitlines()]
     # Remove the repeated running header (lesson x.y · page n of 3 · module).
     lines = [
@@ -133,33 +141,44 @@ def paragraphs(text: str) -> list[str]:
 
 
 def parse_core_concepts(text: str) -> list[dict[str, str]]:
-    items = [item for item in paragraphs(text) if item]
     concepts: list[dict[str, str]] = []
-    index = 0
-    while index < len(items):
-        heading = items[index]
-        # Concept headings are short standalone labels; the paragraph that
-        # follows is the explanation.
+    blocks = [item for item in re.split(r"\n\s*\n", text) if item.strip()]
+    for block in blocks:
+        lines = [collapse(line) for line in block.splitlines() if line.strip()]
+        if not lines:
+            continue
+        # A concept is usually a short title line followed by its explanation.
         if (
-            len(heading) <= 80
-            and not heading.startswith("•")
-            and index + 1 < len(items)
+            len(lines) > 1
+            and len(lines[0]) <= 80
+            and not lines[0].startswith("•")
+            and not lines[0].endswith((".", "?", "!", ":", ";"))
         ):
-            concepts.append({"title": heading, "content": items[index + 1]})
-            index += 2
+            concepts.append({
+                "title": lines[0],
+                "content": collapse(" ".join(lines[1:])),
+            })
         else:
-            concepts.append({"title": "Concept", "content": heading})
-            index += 1
+            content = collapse(" ".join(lines))
+            concepts.append({"title": "Concept", "content": content})
     return concepts
 
 
 def parse_key_terms(text: str) -> list[dict[str, str]]:
     terms: list[dict[str, str]] = []
     current: list[str] = []
+    # A missing blank line can leave the next section heading in this block.
+    text = re.split(
+        r"\n\s*(?:MENTAL MODEL|CAPSTONE CONNECTION|YOUR WORKING NOTES)\b",
+        text,
+        maxsplit=1,
+    )[0]
     for raw_line in text.splitlines():
         line = raw_line.strip()
         if not line:
             continue
+        if line in SECTION_HEADINGS:
+            break
         # Terms are indented labels followed by a wide column of definition.
         match = re.match(r"^([A-Z][A-Za-z0-9 /&()'.,+-]{1,60}?)\s{2,}(.+)$", line)
         if match:
@@ -197,11 +216,24 @@ def parse_code(text: str) -> dict[str, str] | None:
             description = collapse(f"{description} {stripped}")
             continue
         seen_code = True
-        code_lines.append(line[2:] if line.startswith("  ") else line)
-    code = "\n".join(code_lines).rstrip()
+        code_lines.append(line)
+    code = textwrap.dedent("\n".join(code_lines)).rstrip()
     if not code and description:
         return None
     return {"title": description or "Worked code", "code": code}
+
+
+def detect_language(code: str) -> str:
+    """Best-effort language label for a parsed snippet."""
+    if re.search(r"^\s*(?:import |from |def |class |async def )", code, re.MULTILINE):
+        return "python"
+    if re.search(r"\b(?:SELECT|INSERT|UPDATE|DELETE|CREATE TABLE)\b", code, re.IGNORECASE):
+        return "sql"
+    if re.search(r"^\s*(?:curl|git|pip|uv|python|docker|kubectl)\b", code, re.MULTILINE):
+        return "shell"
+    if re.search(r"\b(?:interface|type|const|let|function)\b", code):
+        return "typescript"
+    return "text"
 
 
 def parse_lesson(lesson_id: str, module_id: str, pages: list[str]) -> dict:
@@ -225,20 +257,32 @@ def parse_lesson(lesson_id: str, module_id: str, pages: list[str]) -> dict:
         ]
         if lines:
             title = lines[0]
-        if len(lines) > 1:
-            subtitle = lines[1]
-        if len(lines) > 2:
-            meta = lines[2]
+        meta_index = next(
+            (index for index, line in enumerate(lines[1:], start=1) if "· Lesson" in line),
+            None,
+        )
+        subtitle_lines = lines[1:meta_index] if meta_index is not None else lines[1:]
+        subtitle = " ".join(subtitle_lines).strip()
+        if meta_index is not None:
+            meta = lines[meta_index]
 
     code = parse_code(second.get("CODE", ""))
     if code:
-        code["language"] = "text"
+        code["language"] = detect_language(code["code"])
         notice = second.get("WHAT TO NOTICE", "")
         code["what_to_notice"] = bullet_lines(notice)
 
     core_concepts = parse_core_concepts(first.get("CORE CONCEPTS", ""))
     terms = parse_key_terms(first.get("KEY TERMS", ""))
     mental_model = collapse(first.get("MENTAL MODEL", ""))
+    capstone = collapse(third.get("CAPSTONE CONNECTION", ""))
+    if not capstone:
+        match = re.search(
+            r"CAPSTONE CONNECTION\s+(.+?)(?=\n\s*(?:YOUR WORKING NOTES|$))",
+            pages[2],
+            re.DOTALL,
+        )
+        capstone = collapse(match.group(1)) if match else ""
 
     lesson = {
         "id": lesson_id,
@@ -259,7 +303,7 @@ def parse_lesson(lesson_id: str, module_id: str, pages: list[str]) -> dict:
         "checklist": bullet_lines(third.get("CHECKPOINT CHECKLIST", "")),
         "questions": bullet_lines(third.get("SHORT QUESTIONS", "")),
         "tasks": bullet_lines(third.get("TASKS", "")),
-        "capstone": collapse(third.get("CAPSTONE CONNECTION", "")),
+        "capstone": capstone,
         "pages": [pages[0], pages[1], pages[2]],
     }
     return lesson
@@ -310,10 +354,10 @@ def build(pdf: Path) -> dict:
     lesson_matches = list(LESSON_RE.finditer(text))
     module_matches = list(MODULE_RE.finditer(text))
     lesson_ids = {match.group(2) for match in lesson_matches}
-    if len(lesson_ids) != 201:
-        raise SystemExit(f"Expected 201 lessons, found {len(lesson_ids)}")
-    if len(module_matches) != 13:
-        raise SystemExit(f"Expected 13 modules, found {len(module_matches)}")
+    if not lesson_ids:
+        raise SystemExit("No lessons were found in the PDF")
+    if not module_matches:
+        raise SystemExit("No modules were found in the PDF")
 
     # Group lesson page matches by lesson id.
     lesson_pages: dict[str, list[str]] = {}
@@ -359,7 +403,7 @@ def build(pdf: Path) -> dict:
         module["lessons"] = by_module.get(number, [])
         modules.append(module)
 
-    if sum(len(module["lessons"]) for module in modules) != 201:
+    if sum(len(module["lessons"]) for module in modules) != len(lessons):
         raise SystemExit("Lessons were not assigned to every module")
 
     return {
@@ -368,9 +412,9 @@ def build(pdf: Path) -> dict:
             "title": "DynamoAI: AI Engineering",
             "subtitle": "From AI Ideas to Production Systems",
             "description": (
-                "A 13-module, 201-lesson course that builds a production AI "
-                "platform from Python and backend engineering through RAG, "
-                "agents, MCP, and deployment."
+                f"A {len(modules)}-module, {len(lessons)}-lesson course that builds "
+                "a production AI platform from Python and backend engineering "
+                "through RAG, agents, MCP, and deployment."
             ),
             "total_lessons": len(lessons),
         },

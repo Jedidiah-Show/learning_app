@@ -25,7 +25,7 @@ from app.integrations import database_status
 from app.learning import course_progress
 from app.models import (
     AdminAuditLog, CourseProject, LessonCompletion, PasswordResetToken, QuizResult,
-    StudySession, User,
+    StudySession, SupportRequest, User,
 )
 from app.phone import PhoneError, normalize_phone
 from app.rate_limit import client_ip, enforce_rate_limit, identity_hash
@@ -890,3 +890,39 @@ def audit_log():
         search=search,
         action=action,
     )
+
+
+@admin_portal_bp.route('/support')
+@admin_required
+def support_requests():
+    status = (request.args.get('status') or '').strip()
+    allowed_statuses = {'new', 'in_review', 'planned', 'resolved', 'declined'}
+    query = SupportRequest.query.order_by(SupportRequest.created_at.desc())
+    if status in allowed_statuses:
+        query = query.filter_by(status=status)
+    page = max(1, request.args.get('page', 1, type=int) or 1)
+    pagination = query.paginate(page=page, per_page=PAGE_SIZE, error_out=False)
+    return render_template(
+        'admin/support.html', requests=pagination.items,
+        pagination=pagination, status=status,
+    )
+
+
+@admin_portal_bp.route('/support/<int:request_id>', methods=['GET', 'POST'])
+@admin_required
+def support_request_detail(request_id):
+    report = db.get_or_404(SupportRequest, request_id)
+    if request.method == 'POST':
+        status = (request.form.get('status') or '').strip()
+        allowed_statuses = {'new', 'in_review', 'planned', 'resolved', 'declined'}
+        if status not in allowed_statuses:
+            flash('Choose a valid status.', 'error')
+        else:
+            report.status = status
+            report.updated_at = _naive_utcnow()
+            db.session.commit()
+            flash('Support request updated.', 'success')
+            return redirect(url_for(
+                'admin_portal.support_request_detail', request_id=report.id
+            ))
+    return render_template('admin/support_detail.html', report=report)

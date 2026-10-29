@@ -9,8 +9,8 @@ from app import create_app, db
 from app.curriculum import all_lessons, all_modules, curriculum
 from app.gemini import GeminiError, GeminiRateLimited
 from app.models import (
-    CalendarEvent, CoursePlan, CourseProject, LessonCompletion, Quiz, QuizResult, ReviewItem,
-    StudySession, User, VideoProgress,
+    CalendarEvent, CoursePlan, CourseProject, Credential, LessonCompletion, Quiz,
+    QuizResult, ReviewItem, StudySession, User, VideoProgress,
 )
 from sqlalchemy.exc import IntegrityError
 
@@ -91,8 +91,10 @@ class RuachAICourseTests(unittest.TestCase):
 
     def test_bundled_course_has_its_declared_modules_and_lessons(self):
         self.assertEqual(len(all_modules()), 13)
-        self.assertEqual(len(all_lessons()), 201)
-        self.assertEqual(sum(len(module['lessons']) for module in all_modules()), 201)
+        self.assertEqual(len(all_lessons()), 212)
+        self.assertEqual(
+            sum(len(module['lessons']) for module in all_modules()), 212
+        )
         self.assertEqual(
             curriculum()['course']['title'],
             'RUACH AI Engineering',
@@ -105,6 +107,54 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertEqual(first.get_json()['lesson']['id'], all_lessons()[0]['id'])
         self.assertEqual(self.client.get('/proficiency-test').status_code, 404)
         self.assertEqual(self.client.get('/subject-config').status_code, 404)
+
+    def test_placement_skips_only_foundation_lessons_and_never_projects(self):
+        self.register()
+        placement = curriculum()['course']['placement']
+        public = self.client.get('/api/lessons/placement')
+        self.assertEqual(public.status_code, 200)
+        public_payload = public.get_json()
+        self.assertEqual(len(public_payload['questions']), 10)
+        self.assertNotIn('answer', public_payload['questions'][0])
+
+        passed = self.client.post('/api/lessons/placement', json={
+            'answers': {
+                question['id']: question['answer']
+                for question in placement['questions']
+            },
+        })
+        self.assertEqual(passed.status_code, 200, passed.get_json())
+        payload = passed.get_json()
+        self.assertTrue(payload['passed'])
+        self.assertEqual(payload['score'], 10)
+        self.assertEqual(
+            set(payload['placed_lessons']),
+            set(placement['skippable_lessons']),
+        )
+        self.assertEqual(payload['next_action']['type'], 'project')
+        self.assertEqual(payload['next_action']['module_id'], '00')
+        with self.app.app_context():
+            completions = LessonCompletion.query.filter(
+                LessonCompletion.completion_source == 'placement'
+            ).all()
+            self.assertEqual(
+                {item.lesson_id for item in completions},
+                set(placement['skippable_lessons']),
+            )
+            self.assertEqual(CourseProject.query.filter_by(completed=True).count(), 0)
+
+    def test_failed_placement_does_not_mark_lessons_complete(self):
+        self.register()
+        placement = curriculum()['course']['placement']
+        answers = {
+            question['id']: (question['answer'] + 1) % len(question['options'])
+            for question in placement['questions']
+        }
+        response = self.client.post('/api/lessons/placement', json={'answers': answers})
+        self.assertEqual(response.status_code, 200, response.get_json())
+        self.assertFalse(response.get_json()['passed'])
+        with self.app.app_context():
+            self.assertEqual(LessonCompletion.query.count(), 0)
 
     def test_registration_commit_conflict_never_authenticates_the_requester(self):
         with patch('app.routes.auth.db.session.commit',
@@ -125,7 +175,7 @@ class RuachAICourseTests(unittest.TestCase):
             response = self.client.get('/')
         self.assertEqual(response.status_code, 503)
         self.assertIn(b'Your progress is temporarily unavailable', response.data)
-        self.assertNotIn(b'0 of 201 lessons complete', response.data)
+        self.assertNotIn(b'lessons complete', response.data)
 
     def test_schedule_renders_events_in_their_selected_timezone(self):
         self.register()
@@ -506,6 +556,32 @@ class RuachAICourseTests(unittest.TestCase):
             plan = CoursePlan.query.one()
             self.assertEqual(plan.required_project_id, 'production-rag')
             self.assertEqual(plan.portfolio_title, 'Community knowledge assistant')
+            self.assertEqual(plan.track, 'standard')
+
+    def test_learners_can_switch_between_standard_and_accelerated_tracks(self):
+        self.register()
+        standard = self.client.get('/progress')
+        self.assertEqual(standard.status_code, 200)
+        self.assertIn(b'10-month standard', standard.data)
+        self.assertIn(b'Month 10', standard.data)
+
+        switched = self.client.post('/api/course-plan/track', json={
+            'track': 'accelerated',
+        })
+        self.assertEqual(switched.status_code, 200, switched.get_json())
+        self.assertEqual(switched.get_json()['label'], '5-month accelerated (5 months)')
+        accelerated = self.client.get('/progress')
+        self.assertEqual(accelerated.status_code, 200)
+        self.assertIn(b'5-month accelerated', accelerated.data)
+        self.assertIn(b'Month 5', accelerated.data)
+        self.assertNotIn(b'Month 10', accelerated.data)
+        with self.app.app_context():
+            self.assertEqual(CoursePlan.query.one().track, 'accelerated')
+
+        rejected = self.client.post('/api/course-plan/track', json={
+            'track': 'impossible',
+        })
+        self.assertEqual(rejected.status_code, 400)
 
     def test_selected_capstone_is_used_for_the_final_required_project(self):
         self.register()
@@ -548,13 +624,26 @@ class RuachAICourseTests(unittest.TestCase):
             'I built the requested artefact, tested each deliverable, and '
             'recorded the verification output for review.'
         )
+        verification = {
+            'verified': True,
+            'checks_url': 'https://github.com/learner/project/actions/runs/1',
+            'checks_host': 'github.com',
+            'checks_status': 200,
+            'verified_at': '2026-10-29T12:00:00+00:00',
+        }
         with patch(
+            'app.routes.projects.verify_checks', return_value=verification
+        ), patch(
             'app.gemini.generate_json',
             return_value={'score': 101, 'summary': 'Invalid score.'},
         ):
             rejected = self.client.post(
                 f"/api/projects/module/{module['id']}/submit",
-                json={'submission': submission},
+                json={
+                    'submission': submission,
+                    'repository_url': 'https://github.com/learner/project',
+                    'checks_url': verification['checks_url'],
+                },
             )
         self.assertEqual(rejected.status_code, 503)
         with self.app.app_context():
@@ -576,11 +665,14 @@ class RuachAICourseTests(unittest.TestCase):
                 for item in module['project_rubric']
             ],
         }
-        with patch('app.gemini.generate_json', return_value=evaluation):
+        with patch(
+            'app.routes.projects.verify_checks', return_value=verification
+        ), patch('app.gemini.generate_json', return_value=evaluation):
             accepted = self.client.post(
                 f"/api/projects/module/{module['id']}/submit",
                 json={'submission': submission,
                       'repository_url': 'https://github.com/learner/project',
+                      'checks_url': verification['checks_url'],
                       'demo_url': 'https://demo.example.test'},
             )
         self.assertEqual(accepted.status_code, 200, accepted.get_json())
@@ -588,10 +680,13 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertTrue(payload['completed'])
         self.assertEqual(payload['evaluation']['score'], 88)
         self.assertEqual(payload['evaluation']['evaluation_source'], 'ai')
+        self.assertTrue(payload['checks']['verified'])
         with self.app.app_context():
             record = CourseProject.query.one()
             self.assertTrue(record.completed)
+            self.assertTrue(record.checks_verified)
             self.assertEqual(record.repository_url, 'https://github.com/learner/project')
+            self.assertEqual(record.checks_url, verification['checks_url'])
             self.assertEqual(record.demo_url, 'https://demo.example.test')
             # Evaluation provenance must not overwrite how the brief was made.
             self.assertFalse(record.is_ai_generated)
@@ -633,41 +728,98 @@ class RuachAICourseTests(unittest.TestCase):
             self.assertEqual(item.interval_days, 1)
         self.assertEqual(self.client.get('/api/quizzes/review').get_json()['due_count'], 0)
 
-    def test_project_can_be_completed_after_explicit_rubric_self_review(self):
+    def test_project_requires_verified_checks_and_cannot_be_self_attested(self):
         self.register()
         module = all_modules()[0]
         for lesson in module['lessons']:
             self.complete_lesson(lesson['id'])
         self.client.get(f"/api/projects/module/{module['id']}")
-        submission = 'I built an artefact, checked every requirement and documented my test results.'
-        with patch('app.gemini.generate_json', side_effect=GeminiError('provider unavailable')):
+        submission = (
+            'I built an artefact, checked every requirement and documented my '
+            'test results in the repository README.'
+        )
+        verification = {
+            'verified': True,
+            'checks_url': 'https://github.com/learner/project/actions/runs/2',
+            'checks_host': 'github.com',
+            'checks_status': 200,
+            'verified_at': '2026-10-29T12:00:00+00:00',
+        }
+        payload = {
+            'submission': submission,
+            'repository_url': 'https://github.com/learner/project',
+            'checks_url': verification['checks_url'],
+        }
+        missing_checks = self.client.post(
+            f"/api/projects/module/{module['id']}/submit",
+            json={
+                'submission': submission,
+                'repository_url': 'https://github.com/learner/project',
+            },
+        )
+        self.assertEqual(missing_checks.status_code, 400)
+        with patch(
+            'app.routes.projects.verify_checks', return_value=verification
+        ), patch('app.gemini.generate_json', side_effect=GeminiError('provider unavailable')):
             saved = self.client.post(
-                f"/api/projects/module/{module['id']}/submit",
-                json={'submission': submission},
+                f"/api/projects/module/{module['id']}/submit", json=payload,
             )
         self.assertEqual(saved.status_code, 200)
         self.assertFalse(saved.get_json()['completed'])
+        self.assertTrue(saved.get_json()['checks']['verified'])
+        # Self-attestation is not an assessment path.
         rejected = self.client.post(
             f"/api/projects/module/{module['id']}/self-attest",
             json={'evidence': []},
         )
-        self.assertEqual(rejected.status_code, 400)
-        rubric = module['project_rubric']
-        accepted = self.client.post(
-            f"/api/projects/module/{module['id']}/self-attest",
-            json={'evidence': [
-                {
-                    'criterion_index': index,
-                    'evidence': (
-                        f"For {item['criterion']}, the project README links the "
-                        'implementation to its test output and records the result.'
-                    ),
-                }
-                for index, item in enumerate(rubric)
-            ]},
-        )
-        self.assertEqual(accepted.status_code, 200)
-        self.assertTrue(accepted.get_json()['completed'])
+        self.assertEqual(rejected.status_code, 404)
+        # A failing or unreachable checks page never records a submission.
+        from app.project_verification import VerificationError
+        with patch(
+            'app.routes.projects.verify_checks',
+            side_effect=VerificationError('The checks page reports a failed build'),
+        ):
+            failed_checks = self.client.post(
+                f"/api/projects/module/{module['id']}/submit", json=payload,
+            )
+        self.assertEqual(failed_checks.status_code, 422)
+        with self.app.app_context():
+            self.assertFalse(CourseProject.query.one().completed)
+
+    def test_credential_requires_full_completion_and_is_publicly_verifiable(self):
+        self.register()
+        page = self.client.get('/credential')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b'Eligibility', page.data)
+        premature = self.client.post('/api/credentials/issue')
+        self.assertEqual(premature.status_code, 409)
+
+        with self.app.app_context():
+            user = User.query.one()
+            for lesson in all_lessons():
+                db.session.add(LessonCompletion(
+                    user_id=user.id, lesson_id=lesson['id'],
+                    subject_id=lesson['module_id'], day_number=lesson['_ordinal'],
+                    completed=True,
+                ))
+            for module in all_modules():
+                db.session.add(CourseProject(
+                    user_id=user.id, module_id=module['id'],
+                    project='{}', completed=True,
+                ))
+            db.session.commit()
+        issued = self.client.post('/api/credentials/issue')
+        self.assertEqual(issued.status_code, 201, issued.get_json())
+        credential = issued.get_json()['credential']
+        self.assertEqual(credential['status'], 'active')
+        self.assertTrue(credential['public_id'])
+        self.client.post('/logout')
+        public = self.client.get(f"/credentials/{credential['public_id']}")
+        self.assertEqual(public.status_code, 200)
+        self.assertIn(b'Verified', public.data)
+        self.assertIn(b'Learner', public.data)
+        missing = self.client.get('/credentials/not-a-real-credential')
+        self.assertEqual(missing.status_code, 404)
 
     def test_users_have_independent_course_progress(self):
         self.register('firstlearner')

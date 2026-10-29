@@ -33,6 +33,8 @@
      request.endpoint in ['admin_portal.users', 'admin_portal.user_detail', 'admin_portal.create_user']),
     ('admin_portal.analytics', 'Analytics', '📈',
      request.endpoint == 'admin_portal.analytics'),
+    ('admin_portal.support_requests', 'Support inbox', '🛠️',
+     request.endpoint in ['admin_portal.support_requests', 'admin_portal.support_request_detail']),
     ('admin_portal.audit_log', 'Audit log', '🧾',
      request.endpoint == 'admin_portal.audit_log'),
 ] %}

@@ -240,8 +240,9 @@ def curriculum():
         for lesson in data.get('lessons', []):
             lesson.update(lesson_overrides.get(lesson.get('id'), {}))
     data['course']['title'] = 'RUACH AI Engineering'
+    lesson_count = len(data.get('lessons') or [])
     data['course']['description'] = (
-        'The RUACH AI Engineering course: 13 modules and 201 lessons, '
+        f'The RUACH AI Engineering course: 13 modules and {lesson_count} lessons, '
         'from Python and backend engineering through multimodal, retrieval, '
         'agent, security, evaluation, governance, and production AI systems.'
     )
@@ -272,7 +273,11 @@ def curriculum():
     for index, lesson in enumerate(lessons):
         lesson['_ordinal'] = index + 1
         lesson['_module'] = data['_module_map'][lesson['module_id']]
-        lesson['resources'] = resources.get(lesson['id'], {})
+        module_resources = data['_module_map'][lesson['module_id']].get('resources') or {}
+        lesson['resources'] = {
+            **module_resources,
+            **(resources.get(lesson['id']) or {}),
+        }
         lesson['video'] = build_lesson_video(lesson['resources'].get('video'))
         lesson['concepts'] = _lesson_concepts(lesson)
         lesson['reading_minutes'] = _reading_minutes(lesson)
@@ -292,6 +297,15 @@ def curriculum():
     )
     data['course']['estimated_weekly_hours_5_months'] = round(
         data['course']['estimated_hours'] / (5 * 4.345), 1
+    )
+    data['course']['estimated_weekly_hours_9_months'] = round(
+        data['course']['estimated_hours'] / (9 * 4.345), 1
+    )
+    data['course']['estimated_weekly_hours_10_months'] = round(
+        data['course']['estimated_hours'] / (10 * 4.345), 1
+    )
+    data['course']['estimated_weekly_hours_12_months'] = round(
+        data['course']['estimated_hours'] / (12 * 4.345), 1
     )
     return data
 

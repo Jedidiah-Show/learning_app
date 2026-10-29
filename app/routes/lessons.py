@@ -11,7 +11,7 @@ from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 
 from app import db
-from app.curriculum import all_modules, get_lesson, lesson_context
+from app.curriculum import all_modules, curriculum, get_lesson, lesson_context
 from app.learning import lesson_is_available, next_course_action, next_unlocked_lesson
 from app.models import (
     LessonCompletion, PracticeUsageDaily, PracticeWorkspace, StudySession,
@@ -117,6 +117,93 @@ def _next_course_payload():
         ),
         'next_action': action,
     }
+
+
+@lessons_bp.route('/placement', methods=['GET', 'POST'])
+@login_required
+def placement_check():
+    """Place experienced learners out of foundation lessons only.
+
+    Module projects are never skipped. A passing score completes the configured
+    skippable lessons with ``completion_source='placement'``; the normal project
+    gate still controls access to later modules.
+    """
+    placement = curriculum()['course'].get('placement') or {}
+    questions = placement.get('questions') or []
+    if request.method == 'GET':
+        return jsonify({
+            'title': placement.get('title'),
+            'description': placement.get('description'),
+            'passing_score': placement.get('passing_score'),
+            'questions': [
+                {
+                    'id': question['id'],
+                    'prompt': question['prompt'],
+                    'options': question['options'],
+                }
+                for question in questions
+            ],
+        })
+    data = get_json_object()
+    answers = data.get('answers') if isinstance(data, dict) else None
+    if not isinstance(answers, dict):
+        return jsonify({'error': 'Answers must be an object keyed by question id'}), 400
+    submitted = {}
+    for question in questions:
+        value = answers.get(question['id'])
+        if isinstance(value, bool):
+            return jsonify({'error': f"Answer {question['id']} is invalid"}), 400
+        try:
+            value = int(value)
+        except (TypeError, ValueError):
+            return jsonify({'error': f"Answer {question['id']} is invalid"}), 400
+        if value < 0 or value >= len(question['options']):
+            return jsonify({'error': f"Answer {question['id']} is invalid"}), 400
+        submitted[question['id']] = value
+    if len(submitted) != len(questions):
+        return jsonify({'error': 'Answer every placement question'}), 400
+    score = sum(
+        submitted[question['id']] == question['answer'] for question in questions
+    )
+    passing_score = int(placement.get('passing_score', 8))
+    passed = score >= passing_score
+    placed_lessons = []
+    if passed:
+        now = datetime.now(timezone.utc)
+        for lesson_id in placement.get('skippable_lessons') or []:
+            lesson = get_lesson(lesson_id)
+            if not lesson:
+                continue
+            completion = LessonCompletion.query.filter_by(
+                user_id=current_user.id, lesson_id=lesson_id
+            ).first()
+            if completion is None:
+                completion = LessonCompletion(
+                    user_id=current_user.id, lesson_id=lesson_id,
+                    subject_id=lesson['module_id'], day_number=lesson['_ordinal'],
+                )
+                db.session.add(completion)
+            if not completion.completed:
+                completion.completed = True
+                completion.completed_at = now
+                completion.started_at = completion.started_at or now
+                completion.time_spent_minutes = completion.time_spent_minutes or 0
+                completion.completion_source = 'placement'
+                placed_lessons.append(lesson_id)
+        db.session.commit()
+    return jsonify({
+        'score': score,
+        'total': len(questions),
+        'passing_score': passing_score,
+        'passed': passed,
+        'placed_lessons': placed_lessons,
+        'message': (
+            'Placement passed. Foundation lessons are marked complete; module projects and all later lessons still require evidence.'
+            if passed else
+            'Placement not passed. Start with Module 0; the same lessons and projects remain available.'
+        ),
+        **_next_course_payload(),
+    })
 
 
 @lessons_bp.route('/daily/<int:ordinal>', methods=['GET'])

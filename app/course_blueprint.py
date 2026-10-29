@@ -1,77 +1,265 @@
-"""Five-month learning plan and selectable AI engineering capstones."""
+"""Balanced learning-plan tracks and selectable AI engineering capstones.
 
-MONTHS = [
-    {
-        'number': 1,
-        'title': 'LLM fundamentals, APIs, and structured outputs',
-        'summary': 'Treat language models as programmable services with measurable behavior.',
-        'modules': ['00', '01', '02', '03'],
-        'concepts': ['Context windows and tokens', 'Generation variability and evaluation', 'Image and audio inputs', 'Hosted, self-hosted, and adapted model choices'],
-        'weeks': [
-            'Set up Python, Git, and a small AI engineering workspace.',
-            'Call a hosted or local model through a provider API.',
-            'Use system prompts and validate structured JSON responses.',
-            'Build a CLI that processes Markdown notes and records cost and latency.',
+The accelerated track finishes in five months and assumes roughly full-time
+study. The standard track is a ten-month plan inside the recommended 9–12
+month range. Both cover every module and every module project; only the
+milestone grouping changes.
+"""
+
+TRACKS = {
+    'standard': {
+        'id': 'standard',
+        'label': '10-month standard',
+        'range': '9–12 months',
+        'description': (
+            'A sustainable plan at roughly 12 hours per week. Recommended for '
+            'learners who are working or studying alongside the course.'
+        ),
+        'months': 10,
+        'milestones': [
+            {
+                'number': 1,
+                'title': 'Foundations and Python fluency',
+                'summary': 'Build a reliable workspace, then learn Python by writing and debugging small programs.',
+                'modules': ['00', '01'],
+                'concepts': ['Terminal, Git, and a reproducible workspace', 'Data, loops, functions, and files', 'Reading tracebacks and testing'],
+                'weeks': [
+                    'Set up Python, Git, and a small AI engineering workspace.',
+                    'Practice lists, dictionaries, functions, files, and errors.',
+                    'Complete the Module 0 and Module 1 projects with repository evidence.',
+                    'Review weak Python topics before starting backend engineering.',
+                ],
+                'milestone': 'A tested Python toolkit with a clean repository and readable commit history.',
+            },
+            {
+                'number': 2,
+                'title': 'Backend engineering',
+                'summary': 'Expose reliable HTTP services with validation, persistence, and tests.',
+                'modules': ['02'],
+                'concepts': ['HTTP and JSON contracts', 'FastAPI and Pydantic validation', 'SQL persistence and migrations', 'API tests and error handling'],
+                'weeks': [
+                    'Build and test a small JSON API.',
+                    'Add validation, database persistence, and migrations.',
+                    'Handle failures and verify behaviour with automated tests.',
+                    'Complete the backend module project and checks.',
+                ],
+                'milestone': 'A tested backend API that stores data and fails safely.',
+            },
+            {
+                'number': 3,
+                'title': 'LLM fundamentals',
+                'summary': 'Treat language models as programmable services with measurable behaviour.',
+                'modules': ['03'],
+                'concepts': ['Tokens and context windows', 'Hosted, open-weight, and adapted models', 'Reasoning and fine-tuning decisions', 'Structured outputs and evaluation'],
+                'weeks': [
+                    'Call a hosted or local model through an API.',
+                    'Compare model choices, cost, latency, and reliability.',
+                    'Use system prompts and validate structured JSON responses.',
+                    'Complete the LLM fundamentals project with a checks link.',
+                ],
+                'milestone': 'A model-backed tool with cost, latency, and output-quality evidence.',
+            },
+            {
+                'number': 4,
+                'title': 'LLM application engineering',
+                'summary': 'Design prompts, tools, and application boundaries that remain testable.',
+                'modules': ['04'],
+                'concepts': ['Prompt versioning', 'Schema-constrained outputs', 'Application state and errors', 'Evaluation-driven iteration'],
+                'weeks': [
+                    'Define a task and its failure cases.',
+                    'Create a small golden dataset and assertions.',
+                    'Build a prompt-driven application with validation.',
+                    'Add regression checks to CI.',
+                ],
+                'milestone': 'An evaluated LLM application that blocks a failing prompt change.',
+            },
+            {
+                'number': 5,
+                'title': 'Embeddings, vector databases, and RAG',
+                'summary': 'Ground answers in private evidence and abstain when evidence is weak.',
+                'modules': ['05'],
+                'concepts': ['Chunking and embeddings', 'Hybrid retrieval and reranking', 'Permission-aware search', 'Citations and retrieval evaluation'],
+                'weeks': [
+                    'Prepare documents and compare chunking strategies.',
+                    'Create embeddings and index content.',
+                    'Add keyword search, hybrid retrieval, and reranking.',
+                    'Return cited answers and abstain below a confidence threshold.',
+                ],
+                'milestone': 'A RAG pipeline that retrieves useful evidence and cites its sources.',
+            },
+            {
+                'number': 6,
+                'title': 'AI agents',
+                'summary': 'Use the simplest control flow that works before adding autonomy.',
+                'modules': ['06'],
+                'concepts': ['Tool schemas and function calling', 'Bounded ReAct loops', 'State, memory, and retries', 'Computer-use risks'],
+                'weeks': [
+                    'Define tools with strict input and output schemas.',
+                    'Compare a deterministic workflow with a bounded agent.',
+                    'Add retries, tool-error recovery, and approval checkpoints.',
+                    'Complete the agent module project with evidence.',
+                ],
+                'milestone': 'A measured, bounded agent or workflow with scoped tools.',
+            },
+            {
+                'number': 7,
+                'title': 'Agent orchestration and MCP',
+                'summary': 'Coordinate agents and tools only when evaluation justifies the added complexity.',
+                'modules': ['07', '08'],
+                'concepts': ['Orchestration patterns', 'Agent-to-agent communication', 'MCP clients and servers', 'Protocol versions and permissions'],
+                'weeks': [
+                    'Choose a single agent, workflow, or split architecture using evidence.',
+                    'Test supported MCP protocol versions and permissions.',
+                    'Add durable state, approval, and recovery.',
+                    'Complete the orchestration and MCP projects.',
+                ],
+                'milestone': 'A tested orchestration or MCP integration with explicit boundaries.',
+            },
+            {
+                'number': 8,
+                'title': 'Production AI engineering',
+                'summary': 'Operate an AI service with tracing, budgets, safeguards, and incident readiness.',
+                'modules': ['09'],
+                'concepts': ['Structured logs and traces', 'Token and latency budgets', 'Rate limits, caching, and queues', 'Privacy, retention, and incidents'],
+                'weeks': [
+                    'Add request traces, token usage, and latency metrics.',
+                    'Set rate limits, caches, and cost budgets.',
+                    'Document retention, abuse handling, and an incident runbook.',
+                    'Complete the production module project.',
+                ],
+                'milestone': 'A monitored AI service with budgets and an operations runbook.',
+            },
+            {
+                'number': 9,
+                'title': 'Deployment and system design',
+                'summary': 'Package, deploy, and explain a production AI system.',
+                'modules': ['10', '11'],
+                'concepts': ['Containers and Compose', 'Health checks and release process', 'Architecture trade-offs', 'Cost and failure analysis'],
+                'weeks': [
+                    'Containerize the service and supporting dependencies.',
+                    'Add health checks, configuration, and a release process.',
+                    'Write an architecture decision record and failure analysis.',
+                    'Complete the deployment and system-design projects.',
+                ],
+                'milestone': 'A deployable service and a defensible system design review.',
+            },
+            {
+                'number': 10,
+                'title': 'Final capstone',
+                'summary': 'Integrate the course into one production-grade AI system and defend the evidence.',
+                'modules': ['12'],
+                'concepts': ['Capstone scope and evidence', 'End-to-end evaluation', 'Security and operations review', 'Portfolio presentation'],
+                'weeks': [
+                    'Choose one required capstone and define acceptance criteria.',
+                    'Build the end-to-end workflow with automated checks.',
+                    'Run evaluation, security, and operations reviews.',
+                    'Submit the repository, public checks, and project defence.',
+                ],
+                'milestone': 'A deployed capstone with passing checks, evaluation evidence, and a clear defence.',
+            },
         ],
-        'milestone': 'A dependable Markdown-to-JSON CLI with execution cost and latency logs.',
     },
-    {
-        'number': 2,
-        'title': 'Prompt engineering and systematic evaluation',
-        'summary': 'Measure prompt quality with repeatable data and regression checks.',
-        'modules': ['04'],
-        'concepts': ['Prompt design and versioning', 'Golden datasets of 30–50 examples', 'Assertions and quality metrics', 'GitHub Actions evaluation gates'],
-        'weeks': [
-            'Define the task, expected behavior, and failure cases.',
-            'Create a curated golden dataset of representative requests.',
-            'Score correctness, latency, and cost with explicit assertions.',
-            'Run the evaluation suite automatically for prompt changes in GitHub Actions.',
+    'accelerated': {
+        'id': 'accelerated',
+        'label': '5-month accelerated',
+        'range': '5 months',
+        'description': (
+            'An intensive plan at roughly 24 hours per week. Keep the same '
+            'projects, placement rules, and assessment gates.'
+        ),
+        'months': 5,
+        'milestones': [
+            {
+                'number': 1,
+                'title': 'Foundations, Python, and backend services',
+                'summary': 'Build the workspace, learn Python, and ship a tested backend API.',
+                'modules': ['00', '01', '02'],
+                'concepts': ['Python and tooling', 'HTTP and data modelling', 'Tests and error handling', 'Project evidence'],
+                'weeks': [
+                    'Set up Python, Git, and a small AI engineering workspace.',
+                    'Practice Python by completing the runnable exercises.',
+                    'Build and test a small JSON API with persistence.',
+                    'Complete Modules 0–2 projects with repository checks.',
+                ],
+                'milestone': 'A tested Python and backend foundation with passing checks.',
+            },
+            {
+                'number': 2,
+                'title': 'LLM fundamentals and application engineering',
+                'summary': 'Call models reliably, constrain outputs, and evaluate prompt changes.',
+                'modules': ['03', '04', '05'],
+                'concepts': ['Model selection and cost', 'Structured outputs', 'Prompt evaluation', 'Embeddings and RAG'],
+                'weeks': [
+                    'Call a hosted or local model and log cost and latency.',
+                    'Build a schema-validated application and golden dataset.',
+                    'Add embeddings, retrieval, and cited answers.',
+                    'Complete the LLM and RAG projects with automated checks.',
+                ],
+                'milestone': 'An evaluated LLM application and a cited RAG pipeline.',
+            },
+            {
+                'number': 3,
+                'title': 'Agents and orchestration',
+                'summary': 'Compare workflows, bounded agents, and MCP integrations using evaluation evidence.',
+                'modules': ['06', '07'],
+                'concepts': ['Tool schemas', 'Bounded autonomy', 'State and approvals', 'Agent-to-agent protocols'],
+                'weeks': [
+                    'Define tools with strict schemas and failure handling.',
+                    'Compare a workflow with a bounded agent on the same cases.',
+                    'Add approval checkpoints and durable state.',
+                    'Complete the agent and orchestration projects.',
+                ],
+                'milestone': 'A measured agent or workflow with explicit safety boundaries.',
+            },
+            {
+                'number': 4,
+                'title': 'MCP and production engineering',
+                'summary': 'Package tool integrations and operate an observable AI service.',
+                'modules': ['08', '09'],
+                'concepts': ['MCP permissions', 'Tracing and token budgets', 'Rate limits and caching', 'Privacy and incident response'],
+                'weeks': [
+                    'Build an MCP client or server with scoped permissions.',
+                    'Add structured logs, traces, and cost budgets.',
+                    'Add rate limits, caching, and an incident runbook.',
+                    'Complete the MCP and production projects.',
+                ],
+                'milestone': 'A permissioned MCP integration and a monitored AI service.',
+            },
+            {
+                'number': 5,
+                'title': 'Deployment, system design, and capstone',
+                'summary': 'Deploy the system, defend its architecture, and complete the required capstone.',
+                'modules': ['10', '11', '12'],
+                'concepts': ['Containers and release process', 'Architecture trade-offs', 'End-to-end evaluation', 'Portfolio defence'],
+                'weeks': [
+                    'Containerize the service and add health checks.',
+                    'Write the architecture decision record and failure analysis.',
+                    'Run evaluation, security, and operations reviews.',
+                    'Submit the capstone repository and public passing checks.',
+                ],
+                'milestone': 'A deployed capstone with passing checks and a defended design.',
+            },
         ],
-        'milestone': 'A prompt regression harness that reports quality and blocks a failing CI run.',
     },
-    {
-        'number': 3,
-        'title': 'Embeddings, vector databases, and RAG',
-        'summary': 'Ground model answers in private or domain-specific information.',
-        'modules': ['05'],
-        'concepts': ['Chunking and embeddings', 'Permission-aware vector and keyword search', 'Retrieval and answer evaluation', 'Freshness, deletion, citations, and abstention'],
-        'weeks': [
-            'Prepare documents and compare chunk sizes and overlap.',
-            'Create embeddings and index content in a vector store.',
-            'Add keyword search, hybrid retrieval, and reranking.',
-            'Return cited answers and abstain when evidence is weak.',
-        ],
-        'milestone': 'A domain Q&A pipeline that retrieves useful evidence and cites its sources.',
-    },
-    {
-        'number': 4,
-        'title': 'Workflows, agents, tools, and MCP',
-        'summary': 'Choose the simplest control flow that works; use MCP when interoperability justifies its protocol surface.',
-        'modules': ['06', '07', '08'],
-        'concepts': ['Function calling and ReAct loops', 'State and memory', 'MCP clients and servers', 'Retries, tool errors, and human approval'],
-        'weeks': [
-            'Define tools with strict input and output schemas.',
-            'Compare a deterministic workflow with a bounded agent using the same evaluation cases.',
-            'Use an internal tool contract or MCP based on interoperability needs; test supported protocol versions.',
-            'Recover from tool errors and require approval for consequential actions.',
-        ],
-        'milestone': 'A measured workflow or bounded assistant with scoped tools and approval for consequential actions.',
-    },
-    {
-        'number': 5,
-        'title': 'Production, observability, and deployment',
-        'summary': 'Ship a service that can be operated, measured, and safely changed.',
-        'modules': ['09', '10', '11', '12'],
-        'concepts': ['FastAPI and Pydantic', 'Docker and deployment', 'Tracing, token usage, and latency', 'AI risk, privacy, retention, and incident response'],
-        'weeks': [
-            'Wrap the AI workflow in a validated API service.',
-            'Containerize the service and its supporting dependencies.',
-            'Add structured logs, request traces, token usage, latency metrics, and a data-retention plan.',
-            'Deploy with rate limits, caching, health checks, and an operations runbook.',
-        ],
-        'milestone': 'A deployed, containerized AI service with error handling and production monitoring.',
-    },
-]
+}
+
+TRACK_IDS = tuple(TRACKS)
+MONTHS = TRACKS['accelerated']['milestones']
+
+
+def track_for(track_id):
+    """Return a known track, falling back to the standard plan."""
+    return TRACKS.get(track_id) or TRACKS['standard']
+
+
+def milestones_for(track_id):
+    return track_for(track_id)['milestones']
+
+
+def track_label(track_id):
+    track = track_for(track_id)
+    return f"{track['label']} ({track['range']})"
+
 
 REQUIRED_PROJECTS = [
     {

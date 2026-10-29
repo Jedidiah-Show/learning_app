@@ -20,6 +20,17 @@ def completed_project_modules(user):
     }
 
 
+def user_track(user):
+    """Return the learner's selected plan track, defaulting to standard."""
+    from app.course_blueprint import TRACK_IDS
+    from app.models import CoursePlan
+
+    plan = CoursePlan.query.filter_by(user_id=user.id).first()
+    if plan and plan.track in TRACK_IDS:
+        return plan.track
+    return 'standard'
+
+
 def next_unlocked_lesson(user):
     action = next_course_action(user)
     return action['lesson_id'] if action and action['type'] == 'lesson' else None
@@ -87,6 +98,7 @@ def course_progress(user):
             {
                 'id': module['id'], 'number': module['number'],
                 'title': module['title'], 'total_lessons': len(module['lessons']),
+                'estimated_hours': module.get('estimated_hours', 0),
                 'completed_lessons': sum(
                     lesson['id'] in completed for lesson in module['lessons']
                 ),
@@ -96,16 +108,19 @@ def course_progress(user):
     }
 
 
-def monthly_milestone_progress(progress, completed_projects):
-    """Group the sequential course modules into the five learner milestones."""
-    from app.course_blueprint import MONTHS
+def monthly_milestone_progress(progress, completed_projects, track='standard'):
+    """Group sequential modules into the selected track's monthly milestones."""
+    from app.course_blueprint import milestones_for
 
     modules = {module['id']: module for module in progress['modules']}
     result = []
-    for milestone in MONTHS:
+    for milestone in milestones_for(track):
         grouped = [modules[module_id] for module_id in milestone['modules']]
         done_lessons = sum(item['completed_lessons'] for item in grouped)
         total_lessons = sum(item['total_lessons'] for item in grouped)
+        estimated_hours = round(
+            sum(item.get('estimated_hours', 0) for item in grouped), 1
+        )
         done_modules = sum(
             item['completed_lessons'] == item['total_lessons']
             and item['id'] in completed_projects for item in grouped
@@ -121,6 +136,7 @@ def monthly_milestone_progress(progress, completed_projects):
             'module_titles': [item['title'] for item in grouped],
             'completed_lessons': done_lessons,
             'total_lessons': total_lessons,
+            'estimated_hours': estimated_hours,
             'completed_modules': done_modules,
             'total_modules': len(grouped),
             'percent': round(done_lessons / total_lessons * 100) if total_lessons else 0,

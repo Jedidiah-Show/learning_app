@@ -39,12 +39,13 @@ class CommunityAndLeaderboardTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         return response
 
-    def test_progress_lists_five_monthly_milestones_and_leaderboard_privacy(self):
+    def test_progress_lists_standard_monthly_milestones_and_leaderboard_privacy(self):
         self.register(self.client, 'alpha')
         response = self.client.get('/progress')
         self.assertEqual(response.status_code, 200)
         self.assertIn(b'Monthly milestones', response.data)
-        self.assertIn(b'Month 5', response.data)
+        self.assertIn(b'10-month standard', response.data)
+        self.assertIn(b'Month 10', response.data)
         self.assertIn('You\u2019re not ranked yet'.encode(), response.data)
         self.assertNotIn(b'alpha</td>', response.data)
 

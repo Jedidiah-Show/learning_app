@@ -11,10 +11,13 @@ from app import db
 from app.curriculum import all_modules, get_module, curriculum
 from app.learning import (
     module_project_is_available, completed_project_modules, course_progress,
-    monthly_milestone_progress,
+    monthly_milestone_progress, user_track,
 )
-from app.course_blueprint import PROJECT_BY_ID, REQUIRED_PROJECTS
+from app.course_blueprint import (
+    PROJECT_BY_ID, REQUIRED_PROJECTS, TRACKS, track_for, track_label,
+)
 from app.models import CoursePlan, CourseProject
+from app.project_verification import VerificationError, verify_checks
 from app.request_data import get_json_object
 
 projects_bp = Blueprint('projects', __name__)
@@ -29,7 +32,7 @@ def _record(module):
 def _plan(create=False):
     record = CoursePlan.query.filter_by(user_id=current_user.id).first()
     if record is None and create:
-        record = CoursePlan(user_id=current_user.id)
+        record = CoursePlan(user_id=current_user.id, track='standard')
         db.session.add(record)
     return record
 
@@ -41,6 +44,7 @@ def _plan_payload(record):
         'portfolio_summary': record.portfolio_summary if record else '',
         'portfolio_repository_url': record.portfolio_repository_url if record else '',
         'portfolio_demo_url': record.portfolio_demo_url if record else '',
+        'track': record.track if record and record.track in TRACKS else 'standard',
     }
 
 
@@ -64,21 +68,46 @@ def _required_project_brief(project):
 def project_page():
     progress = course_progress(current_user)
     completed = completed_project_modules(current_user)
-    milestones = monthly_milestone_progress(progress, completed)
+    track = user_track(current_user)
+    milestones = monthly_milestone_progress(progress, completed, track)
     plan = _plan()
     return render_template(
         'projects.html', modules=all_modules(), completed_modules=completed,
         milestones=milestones, required_projects=REQUIRED_PROJECTS,
         course_plan=_plan_payload(plan), course=curriculum(),
+        tracks=TRACKS, selected_track=track, track_label=track_label(track),
     )
 
 
 @projects_bp.route('/api/course-plan', methods=['GET'])
 @login_required
 def get_course_plan():
+    payload = _plan_payload(_plan())
     return jsonify({
-        'plan': _plan_payload(_plan()),
+        'plan': payload,
+        'track': track_for(payload['track']),
         'required_projects': REQUIRED_PROJECTS,
+    })
+
+
+@projects_bp.route('/api/course-plan/track', methods=['POST'])
+@login_required
+def save_course_track():
+    data = get_json_object()
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Request body must be a JSON object'}), 400
+    track = data.get('track')
+    if not isinstance(track, str) or track not in TRACKS:
+        return jsonify({
+            'error': 'Choose the standard or accelerated learning plan'
+        }), 400
+    record = _plan(create=True)
+    record.track = track
+    db.session.commit()
+    return jsonify({
+        'plan': _plan_payload(record),
+        'track': track_for(track),
+        'label': track_label(track),
     })
 
 
@@ -247,6 +276,8 @@ def get_module_project(module_id):
                                'readiness_check': module.get('readiness_check')},
                     'submission': record.submission, 'evaluation': record.get_evaluation(),
                     'repository_url': record.repository_url, 'demo_url': record.demo_url,
+                    'checks_url': record.checks_url,
+                    'checks_verified': record.checks_verified,
                     'completed': record.completed,
                     'is_ai_generated': record.is_ai_generated,
                     'is_required_capstone': is_capstone})
@@ -261,7 +292,7 @@ def submit_module_project(module_id):
     submission = data.get('submission')
     if not isinstance(submission, str) or not 30 <= len(submission.strip()) <= 20000:
         return jsonify({'error': 'Submission must be between 30 and 20000 characters'}), 400
-    def _https_url(field):
+    def _optional_https_url(field):
         value = data.get(field, '')
         if not isinstance(value, str) or len(value) > 500:
             raise ValueError(f'{field} must be a valid HTTPS URL')
@@ -272,9 +303,14 @@ def submit_module_project(module_id):
         if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password:
             raise ValueError(f'{field} must be a valid HTTPS URL')
         return value
+    repository_url = data.get('repository_url')
+    checks_url = data.get('checks_url')
+    if not isinstance(repository_url, str) or not repository_url.strip():
+        return jsonify({'error': 'A public repository URL is required'}), 400
+    if not isinstance(checks_url, str) or not checks_url.strip():
+        return jsonify({'error': 'A public automated checks URL is required'}), 400
     try:
-        repository_url = _https_url('repository_url')
-        demo_url = _https_url('demo_url')
+        demo_url = _optional_https_url('demo_url')
     except ValueError as error:
         return jsonify({'error': str(error)}), 400
     module = get_module(module_id)
@@ -285,6 +321,10 @@ def submit_module_project(module_id):
     record = _record(module)
     if record is None:
         return jsonify({'error': 'Open the module project before submitting'}), 409
+    try:
+        verification = verify_checks(repository_url, checks_url)
+    except VerificationError as error:
+        return jsonify({'error': str(error)}), 422
     project_payload = record.get_project()
     if module_id != all_modules()[-1]['id']:
         project_payload['rubric'] = module.get('project_rubric') or project_payload.get('rubric', [])
@@ -302,7 +342,8 @@ def submit_module_project(module_id):
         '"score":0,"evidence":"...","gap":"..."}]}.\n'
         f"Project: {json.dumps(project_payload, ensure_ascii=False)}\n"
         f"Submission: {json.dumps(submission.strip(), ensure_ascii=False)}\n"
-        f"Repository URL: {repository_url or 'not provided'}\n"
+        f"Repository URL: {repository_url}\n"
+        f"Automated checks URL: {checks_url}\n"
         f"Demo URL: {demo_url or 'not provided'}"
     )
     try:
@@ -375,19 +416,29 @@ def submit_module_project(module_id):
             'error': 'Project evaluation returned an invalid result. Please retry.'
         }), 503
     evaluation['evaluation_source'] = evaluation_source
+    evaluation['checks'] = verification
     record.submission = submission.strip()
     record.repository_url = repository_url
     record.demo_url = demo_url
+    record.checks_url = checks_url
+    record.checks_verified = bool(verification.get('verified'))
     record.evaluation = json.dumps(evaluation, ensure_ascii=False)
     # A saved submission is not automatically a passed project. Learners can
-    # revise low scoring work and retry; AI outages never unlock a module.
+    # revise low scoring work and retry; AI outages and failing/missing checks
+    # never unlock a module.
     record.completed = bool(
-        evaluation_source == 'ai' and evaluation.get('score') is not None
+        record.checks_verified
+        and evaluation_source == 'ai'
+        and evaluation.get('score') is not None
         and evaluation['score'] >= 70
         and all(item['score'] >= 50 for item in evaluation.get('criterion_feedback', []))
     )
     db.session.commit()
-    return jsonify({'completed': record.completed, 'evaluation': evaluation})
+    return jsonify({
+        'completed': record.completed,
+        'evaluation': evaluation,
+        'checks': verification,
+    })
 
 
 @projects_bp.route('/portfolio')
@@ -402,6 +453,8 @@ def portfolio_page():
         'project': item.get_project(),
         'repository_url': item.repository_url,
         'demo_url': item.demo_url,
+        'checks_url': item.checks_url,
+        'checks_verified': item.checks_verified,
         'completed': item.completed,
         'evaluation': item.get_evaluation(),
     } for item in records if item.submission and item.module_id in modules_by_id]
@@ -410,50 +463,6 @@ def portfolio_page():
         'portfolio.html', user=current_user, projects=projects,
         personal_project=_plan_payload(plan),
     )
-
-
-@projects_bp.route('/api/projects/module/<module_id>/self-attest', methods=['POST'])
-@login_required
-def self_attest_module_project(module_id):
-    module = get_module(module_id)
-    if not module:
-        return jsonify({'error': 'Module not found'}), 404
-    if not module_project_is_available(current_user, module_id):
-        return jsonify({'error': 'Complete every lesson in this module first'}), 409
-    record = _record(module)
-    if record is None or not record.submission:
-        return jsonify({'error': 'Save a project submission before reviewing the rubric'}), 409
-    data = get_json_object()
-    rubric = (
-        module.get('project_rubric')
-        if module_id != all_modules()[-1]['id']
-        else (record.get_project() or {}).get('rubric')
-    ) or []
-    evidence = data.get('evidence') if isinstance(data, dict) else None
-    if (
-        not isinstance(evidence, list)
-        or len(evidence) != len(rubric)
-        or any(
-            not isinstance(item, dict)
-            or item.get('criterion_index') != index
-            or not isinstance(item.get('evidence'), str)
-            or len(item['evidence'].strip()) < 50
-            or len(item['evidence']) > 3000
-            for index, item in enumerate(evidence)
-        )
-    ):
-        return jsonify({'error': 'Provide at least 50 characters of specific evidence for every rubric criterion'}), 400
-    evaluation = record.get_evaluation() or {}
-    evaluation['learner_reviewed_rubric'] = True
-    evaluation['criterion_evidence'] = [
-        {'criterion': rubric[index].get('criterion', ''), 'evidence': item['evidence'].strip()}
-        for index, item in enumerate(evidence)
-    ]
-    evaluation['evaluation_source'] = evaluation.get('evaluation_source', 'local')
-    record.evaluation = json.dumps(evaluation, ensure_ascii=False)
-    record.completed = True
-    db.session.commit()
-    return jsonify({'completed': True, 'evaluation': evaluation})
 
 
 def _config():

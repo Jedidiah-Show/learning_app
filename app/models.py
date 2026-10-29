@@ -83,6 +83,9 @@ class User(UserMixin, db.Model):
     lesson_notes = db.relationship(
         'LessonNote', backref='user', lazy=True, cascade='all, delete-orphan',
     )
+    support_requests = db.relationship(
+        'SupportRequest', backref='user', lazy=True, cascade='all, delete-orphan',
+    )
     community_posts = db.relationship(
         'CommunityPost', backref='author', lazy=True, cascade='all, delete-orphan',
     )
@@ -127,6 +130,10 @@ class LessonCompletion(db.Model):
     started_at = db.Column(db.DateTime)
     completed_at = db.Column(db.DateTime)
     time_spent_minutes = db.Column(db.Integer, default=0)
+    completion_source = db.Column(
+        db.String(20), nullable=False, default='lesson',
+        server_default='lesson',
+    )
     __table_args__ = (
         db.UniqueConstraint('user_id', 'lesson_id', name='unique_user_lesson_completion'),
         db.Index('idx_lessoncomp_user_lesson', 'user_id', 'lesson_id'),
@@ -452,6 +459,10 @@ class CourseProject(db.Model):
     submission = db.Column(db.Text)
     repository_url = db.Column(db.String(500))
     demo_url = db.Column(db.String(500))
+    checks_url = db.Column(db.String(500))
+    checks_verified = db.Column(
+        db.Boolean, nullable=False, default=False, server_default=db.false()
+    )
     evaluation = db.Column(db.Text)
     completed = db.Column(db.Boolean, default=False, nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
@@ -482,9 +493,31 @@ class CoursePlan(db.Model):
     leaderboard_opt_in = db.Column(
         db.Boolean, nullable=False, default=False, server_default=db.false()
     )
+    track = db.Column(
+        db.String(20), nullable=False, default='standard',
+        server_default='standard',
+    )
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = db.Column(
         db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+
+
+class Credential(db.Model):
+    """Publicly verifiable record of completed course requirements."""
+    __tablename__ = 'credential'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    public_id = db.Column(db.String(64), unique=True, nullable=False)
+    course_title = db.Column(db.String(160), nullable=False)
+    recipient_name = db.Column(db.String(160), nullable=False)
+    issued_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    revoked_at = db.Column(db.DateTime(timezone=True))
+    __table_args__ = (
+        db.Index('idx_credential_user', 'user_id'),
+        db.Index('idx_credential_public', 'public_id'),
     )
 
 
@@ -678,4 +711,27 @@ class LessonNote(db.Model):
     __table_args__ = (
         db.UniqueConstraint('user_id', 'lesson_id', name='unique_user_lesson_note'),
         db.Index('idx_lessonnote_user', 'user_id'),
+    )
+
+
+class SupportRequest(db.Model):
+    """Private learner reports and suggestions for the support team."""
+    __tablename__ = 'support_request'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    category = db.Column(db.String(24), nullable=False)
+    subject = db.Column(db.String(160), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    page_url = db.Column(db.String(500))
+    status = db.Column(
+        db.String(24), nullable=False, default='new', server_default='new'
+    )
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+    updated_at = db.Column(db.DateTime, nullable=False, default=utcnow, onupdate=utcnow)
+    __table_args__ = (
+        db.Index('idx_support_request_created', 'created_at'),
+        db.Index('idx_support_request_status', 'status'),
+        db.Index('idx_support_request_user', 'user_id'),
     )

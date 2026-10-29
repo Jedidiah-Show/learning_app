@@ -1,17 +1,151 @@
 {
   "course": {
-    "starting_assumption": "No programming experience is required. Learners should be comfortable using a computer, installing software, and following written instructions. Python begins with fundamentals; later modules assume you can write and debug small Python programs.",
+    "starting_assumption": "No programming experience is required. Module 0 starts with your first Python program, then adds data structures, functions, files, Git, and HTTP. Experienced learners can take the placement check, but module projects are still required.",
     "time_estimate_note": "Lesson estimates include reading and assigned task time where stated. Untimed tasks use a 30-minute planning estimate; module projects take additional time. Treat these as planning ranges, not deadlines.",
-    "content_maintenance_policy": "Version-sensitive implementation lessons are tagged. Review each against its linked primary documentation every 90 days; show the verified date and source, and keep unreviewed examples visibly marked.",
+    "content_maintenance_policy": "Version-sensitive implementation lessons are tagged with primary documentation. Review each against its linked source every 90 days; show the verified date and source, and keep unreviewed examples visibly marked in the release queue.",
     "learning_routes": {
       "beginner": {
         "title": "Starting from scratch",
-        "description": "Follow the numbered sequence from Module 0. Complete every guided practice exercise, use the worked solution only after an honest attempt, and repeat any exercise you cannot explain."
+        "description": "Follow the numbered sequence from Module 0. Lessons 0.06 to 0.11 are a hands-on coding ramp: run Python, use lists and dictionaries, write functions, read files, use Git, and call HTTP APIs. Complete every guided practice exercise before opening the worked solution."
       },
       "experienced": {
-        "title": "Check your readiness",
-        "description": "Use the entry check and each module readiness gate to identify gaps. The course keeps the same sequence so your portfolio and project evidence remain complete; skip reading you already know, but complete the practice and project evidence."
+        "title": "Placement check and skip path",
+        "description": "Take the ten-question placement check. A score of 8 or more marks the Module 0 and early Module 1 foundation lessons as placed out. The placement never skips module projects, evidence, or the later lessons; those remain the proof that you can build and operate a system."
       }
+    },
+    "placement": {
+      "title": "Experienced learner placement check",
+      "description": "Answer ten questions about the Module 0 and early Module 1 foundations. A score of 8 or more marks those lessons as placed out. Module projects and later lessons are still required.",
+      "passing_score": 8,
+      "skippable_lessons": [
+        "0.01",
+        "0.02",
+        "0.03",
+        "0.04",
+        "0.05",
+        "0.06",
+        "0.07",
+        "0.08",
+        "0.09",
+        "0.10",
+        "0.11",
+        "1.01",
+        "1.02",
+        "1.03",
+        "1.04"
+      ],
+      "questions": [
+        {
+          "id": "q1",
+          "prompt": "Which Python value is a dictionary?",
+          "options": [
+            "[1, 2, 3]",
+            "{\"name\": \"Ada\"}",
+            "(\"a\", \"b\")",
+            "\"a,b\""
+          ],
+          "answer": 1
+        },
+        {
+          "id": "q2",
+          "prompt": "What does an f-string do?",
+          "options": [
+            "Formats a file",
+            "Inserts expressions into a string",
+            "Creates a virtual environment",
+            "Starts a web server"
+          ],
+          "answer": 1
+        },
+        {
+          "id": "q3",
+          "prompt": "Which exception is raised when a dictionary key is missing?",
+          "options": [
+            "TypeError",
+            "KeyError",
+            "ValueError",
+            "NameError"
+          ],
+          "answer": 1
+        },
+        {
+          "id": "q4",
+          "prompt": "What is the main purpose of a virtual environment?",
+          "options": [
+            "Speed up the CPU",
+            "Isolate a project’s Python packages",
+            "Compress source files",
+            "Replace Git"
+          ],
+          "answer": 1
+        },
+        {
+          "id": "q5",
+          "prompt": "Which Git command records staged changes?",
+          "options": [
+            "git push",
+            "git commit",
+            "git clone",
+            "git status"
+          ],
+          "answer": 1
+        },
+        {
+          "id": "q6",
+          "prompt": "Which file should normally be excluded from Git?",
+          "options": [
+            "README.md",
+            ".env",
+            "pyproject.toml",
+            "tests/test_app.py"
+          ],
+          "answer": 1
+        },
+        {
+          "id": "q7",
+          "prompt": "What does HTTP status 404 mean?",
+          "options": [
+            "Server error",
+            "Unauthorized",
+            "Resource not found",
+            "Success"
+          ],
+          "answer": 2
+        },
+        {
+          "id": "q8",
+          "prompt": "Which status codes are usually safe to retry?",
+          "options": [
+            "400 and 401",
+            "429 and 503",
+            "404 and 422",
+            "200 and 201"
+          ],
+          "answer": 1
+        },
+        {
+          "id": "q9",
+          "prompt": "What does a function return statement do?",
+          "options": [
+            "Prints a value",
+            "Hands a value back to the caller",
+            "Creates a file",
+            "Starts a loop"
+          ],
+          "answer": 1
+        },
+        {
+          "id": "q10",
+          "prompt": "Why add type hints to a function?",
+          "options": [
+            "They enforce runtime validation automatically",
+            "They document intended types and help tools",
+            "They make Python compile faster",
+            "They replace tests"
+          ],
+          "answer": 1
+        }
+      ]
     }
   },
   "modules": {
@@ -36,10 +170,10 @@
           "weight": 33
         }
       ],
-      "project_hours": 2
+      "project_hours": 3
     },
     "01": {
-      "assumed_prerequisites": "No coding experience required. Basic computer use and file management.",
+      "assumed_prerequisites": "Complete Module 0, or pass the placement check. You should be able to run a Python file, use lists and dictionaries, write a small function, read a traceback, and make a Git commit. Module projects are still required after placement.",
       "readiness_check": "Build a small typed Python package with validation, bounded HTTP calls, and automated tests.",
       "project_deliverables": [
         "Installable Python API client",
@@ -109,7 +243,7 @@
           "weight": 33
         }
       ],
-      "project_hours": 4
+      "project_hours": 5
     },
     "04": {
       "assumed_prerequisites": "Module 3 concepts and the ability to call a model API with a typed request and response.",
@@ -181,7 +315,7 @@
           "weight": 33
         }
       ],
-      "project_hours": 8
+      "project_hours": 9
     },
     "07": {
       "assumed_prerequisites": "A working single-agent loop, tool calls, and persisted application state.",
@@ -205,7 +339,7 @@
           "weight": 33
         }
       ],
-      "project_hours": 8
+      "project_hours": 9
     },
     "08": {
       "assumed_prerequisites": "JSON-RPC basics, HTTP or stdio, tool schemas, and server-side authorization.",
@@ -795,6 +929,129 @@
         "reviewed_on": null,
         "references": [
           "https://docs.docker.com/build/building/best-practices/"
+        ]
+      }
+    },
+    "0.06": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://docs.python.org/3/tutorial/introduction.html"
+        ]
+      }
+    },
+    "0.07": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://docs.python.org/3/tutorial/datastructures.html"
+        ]
+      }
+    },
+    "0.08": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://docs.python.org/3/tutorial/controlflow.html#defining-functions"
+        ]
+      }
+    },
+    "0.09": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://docs.python.org/3/library/json.html"
+        ]
+      }
+    },
+    "0.10": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://git-scm.com/book/en/v2"
+        ]
+      }
+    },
+    "0.11": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview"
+        ]
+      }
+    },
+    "3.16": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://huggingface.co/docs/transformers/index",
+          "https://docs.vllm.ai/"
+        ]
+      }
+    },
+    "3.17": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://platform.openai.com/docs/guides/reasoning"
+        ]
+      }
+    },
+    "3.18": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://huggingface.co/docs/peft/index",
+          "https://platform.openai.com/docs/guides/fine-tuning"
+        ]
+      }
+    },
+    "6.18": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://docs.anthropic.com/en/docs/build-with-claude/computer-use"
+        ]
+      }
+    },
+    "7.18": {
+      "maintenance": {
+        "kind": "version-sensitive",
+        "review_status": "reviewed",
+        "review_interval_days": 90,
+        "reviewed_on": "2026-10-29",
+        "references": [
+          "https://a2a-protocol.org/"
         ]
       }
     }

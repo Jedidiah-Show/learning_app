@@ -136,7 +136,7 @@
     "instructions": "Implement find_secret_lines(files). Inspect a mapping from file names to text contents, and return sorted (filename, line_number) pairs where a line contains an assignment to api_key or secret_key with a quoted value of at least 8 non-space characters. Ignore comments and do not include the secret value in the result.",
     "starter_code": "import re\n\n\nSECRET_ASSIGNMENT = re.compile(r\"\\b(?:api_key|secret_key)\\s*=\\s*(['\\\"])(\\S{8,}?)\\1\", re.IGNORECASE)\n\n\ndef find_secret_lines(files):\n    # TODO: scan non-comment lines and return file/line pairs only.\n    raise NotImplementedError\n\n\nsample = {\"settings.py\": \"api_key = 'replace-me-with-a-long-key'\\n\"}\nprint(find_secret_lines(sample))",
     "checks_code": "files = {\"z.py\": \"# api_key = 'do-not-flag-this'\\nsecret_key = \\\"very-long-secret-value\\\"\\n\", \"a.env\": \"API_KEY='12345678'\\napi_key='short'\\n\"}\nassert find_secret_lines(files) == [(\"a.env\", 1), (\"z.py\", 2)]\nassert find_secret_lines({\"clean.py\": \"api_key = ''\\nsecret_key = None\\n\"}) == []\nassert \"very-long-secret-value\" not in repr(find_secret_lines(files))\nprint(\"All checks passed.\")",
-    "solution_code": "import re\nSECRET_ASSIGNMENT = re.compile(r\"\\b(?:api_key|secret_key)\\s*=\\s*(['\\\"])(\\S{8,}?)\\1\", re.IGNORECASE)\ndef find_secret_lines(files):\n    found=[]\n    for filename, content in files.items():\n        for number, line in enumerate(content.splitlines(),1):\n            if line.lstrip().startswith(\"#\"): continue\n            if SECRET_ASSIGNMENT.search(line): found.append((filename,number))\n    return found",
+    "solution_code": "import re\nSECRET_ASSIGNMENT = re.compile(r\"\\b(?:api_key|secret_key)\\s*=\\s*(['\\\"])(\\S{8,}?)\\1\", re.IGNORECASE)\ndef find_secret_lines(files):\n    found=[]\n    for filename, content in files.items():\n        for number, line in enumerate(content.splitlines(),1):\n            if line.lstrip().startswith(\"#\"): continue\n            if SECRET_ASSIGNMENT.search(line): found.append((filename,number))\n    return sorted(found)",
     "estimated_minutes": 25
   },
   {
@@ -456,7 +456,7 @@
     "instructions": "Implement authorize_mcp_call(tool, annotation, granted_scopes). Deny unknown or destructive tools unless the required scope is present. The tool annotation is descriptive only and must not grant permissions.",
     "estimated_minutes": 25,
     "starter_code": "def authorize_mcp_call(tool, annotation, granted_scopes):\n    # TODO: decide from a server-owned policy, not model-visible annotation.\n    raise NotImplementedError",
-    "checks_code": "assert authorize_mcp_call(\"read_doc\", {\"readOnlyHint\":True}, {\"docs:read\"}) is True\nassert authorize_mcp_call(\"delete_doc\", {\"readOnlyHint\":True}, {\"docs:write\"}) is False\nassert authorize_mcp_call(\"delete_doc\", {}, {\"docs:write\"}) is True\nassert authorize_mcp_call(\"unknown\", {}, {\"*\"}) is False\nprint(\"All checks passed.\")",
+    "checks_code": "assert authorize_mcp_call(\"read_doc\", {\"readOnlyHint\": True}, {\"docs:read\"}) is True\nassert authorize_mcp_call(\"delete_doc\", {\"readOnlyHint\": True}, set()) is False\nassert authorize_mcp_call(\"delete_doc\", {}, {\"docs:write\"}) is True\nassert authorize_mcp_call(\"unknown\", {}, {\"*\"}) is False\nprint(\"All checks passed.\")",
     "solution_code": "POLICY = {\"read_doc\":\"docs:read\", \"delete_doc\":\"docs:write\"}\ndef authorize_mcp_call(tool, annotation, granted_scopes):\n    required = POLICY.get(tool)\n    return required is not None and required in granted_scopes"
   },
   {
@@ -487,7 +487,7 @@
     "estimated_minutes": 25,
     "starter_code": "def budget_check(stages, max_latency_ms, max_cost_usd):\n    # TODO: validate and aggregate stage estimates.\n    raise NotImplementedError",
     "checks_code": "stages = [{\"latency_ms\":100,\"cost_usd\":0.002},{\"latency_ms\":300,\"cost_usd\":0.01}]\nassert budget_check(stages, 500, 0.02) == {\"latency_ms\":400,\"cost_usd\":0.012,\"exceeded\":[]}\nassert budget_check(stages, 399, 0.01)[\"exceeded\"] == [\"cost\",\"latency\"]\nprint(\"All checks passed.\")",
-    "solution_code": "from math import isfinite\ndef budget_check(stages, max_latency_ms, max_cost_usd):\n    latency=cost=0\n    for stage in stages:\n        for key in (\"latency_ms\",\"cost_usd\"):\n            value=stage.get(key)\n            if isinstance(value,bool) or not isinstance(value,(int,float)) or not isfinite(value) or value<0: raise ValueError(\"invalid stage estimate\")\n        latency += stage[\"latency_ms\"]; cost += stage[\"cost_usd\"]\n    exceeded=[]\n    if latency>max_latency_ms: exceeded.append(\"latency\")\n    if cost>max_cost_usd: exceeded.append(\"cost\")\n    return {\"latency_ms\":latency,\"cost_usd\":round(cost,12),\"exceeded\":exceeded}"
+    "solution_code": "from math import isfinite\ndef budget_check(stages, max_latency_ms, max_cost_usd):\n    latency=cost=0\n    for stage in stages:\n        for key in (\"latency_ms\",\"cost_usd\"):\n            value=stage.get(key)\n            if isinstance(value,bool) or not isinstance(value,(int,float)) or not isfinite(value) or value<0: raise ValueError(\"invalid stage estimate\")\n        latency += stage[\"latency_ms\"]; cost += stage[\"cost_usd\"]\n    exceeded=[]\n    if latency>max_latency_ms: exceeded.append(\"latency\")\n    if cost>max_cost_usd: exceeded.append(\"cost\")\n    return {\"latency_ms\":latency,\"cost_usd\":round(cost,12),\"exceeded\":sorted(exceeded)}"
   },
   {
     "id": "capstone-requirement-trace",
@@ -498,5 +498,115 @@
     "starter_code": "def untested_requirements(requirements, tests):\n    # TODO: return requirements with no linked test.\n    raise NotImplementedError",
     "checks_code": "reqs = [{\"id\":\"R1\"},{\"id\":\"R2\"},{\"id\":\"R3\"}]\ntests = [{\"requirement_ids\":[\"R1\",\"R3\"]}]\nassert untested_requirements(reqs, tests) == [\"R2\"]\nassert untested_requirements([], []) == []\ntry: untested_requirements([{\"id\":\"R1\"},{\"id\":\"R1\"}], [])\nexcept ValueError: pass\nelse: raise AssertionError(\"Duplicate requirements must fail\")\nprint(\"All checks passed.\")",
     "solution_code": "def untested_requirements(requirements, tests):\n    ids=[item.get(\"id\") for item in requirements]\n    if any(not isinstance(i,str) or not i for i in ids) or len(ids)!=len(set(ids)): raise ValueError(\"requirement IDs must be unique\")\n    traced={req_id for test in tests for req_id in test.get(\"requirement_ids\", [])}\n    return sorted(set(ids)-traced)"
+  },
+  {
+    "id": "python-first-script",
+    "lesson_id": "0.06",
+    "title": "Format your first order total",
+    "instructions": "Implement describe_order(name, tickets, price). Return a string in the form \"Ada: 37.50\" using two decimal places. Reject negative tickets or price with ValueError.",
+    "starter_code": "def describe_order(name, tickets, price):\n    # TODO: validate and format the total.\n    raise NotImplementedError\n\n\nprint(describe_order(\"Ada\", 3, 12.5))",
+    "checks_code": "assert describe_order(\"Ada\", 3, 12.5) == \"Ada: 37.50\"\nassert describe_order(\"Bo\", 0, 9.99) == \"Bo: 0.00\"\nfor args in [(\"X\", -1, 1), (\"X\", 1, -1)]:\n    try:\n        describe_order(*args)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"negative values must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "def describe_order(name, tickets, price):\n    if tickets < 0 or price < 0:\n        raise ValueError(\"tickets and price must be non-negative\")\n    return f\"{name}: {tickets * price:.2f}\"",
+    "estimated_minutes": 15
+  },
+  {
+    "id": "python-inventory-value",
+    "lesson_id": "0.07",
+    "title": "Total a list of inventory records",
+    "instructions": "Implement inventory_value(items). Each item is a dictionary with quantity and unit_price. Return the total rounded to two decimals, return 0 for an empty list, and raise ValueError for negative or missing values.",
+    "starter_code": "def inventory_value(items):\n    # TODO: loop over the records and sum quantity * unit_price.\n    raise NotImplementedError",
+    "checks_code": "records = [\n    {\"quantity\": 2, \"unit_price\": 3.5},\n    {\"quantity\": 1, \"unit_price\": 10.0},\n]\nassert inventory_value(records) == 17.0\nassert inventory_value([]) == 0\nfor bad in [[{\"quantity\": -1, \"unit_price\": 1}], [{\"quantity\": 1}]]:\n    try:\n        inventory_value(bad)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid records must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "def inventory_value(items):\n    total = 0.0\n    for item in items:\n        try:\n            quantity = item[\"quantity\"]\n            price = item[\"unit_price\"]\n        except (KeyError, TypeError) as exc:\n            raise ValueError(\"quantity and unit_price are required\") from exc\n        if quantity < 0 or price < 0:\n            raise ValueError(\"values must be non-negative\")\n        total += quantity * price\n    return round(total, 2)",
+    "estimated_minutes": 20
+  },
+  {
+    "id": "python-safe-divide",
+    "lesson_id": "0.08",
+    "title": "Write a safe division function",
+    "instructions": "Implement safe_divide(numerator, denominator, default=0.0). Return the rounded quotient, return default when the denominator is zero, and raise ValueError if either input is not a number or is a boolean.",
+    "starter_code": "def safe_divide(numerator, denominator, default=0.0):\n    # TODO: validate and divide without ZeroDivisionError.\n    raise NotImplementedError",
+    "checks_code": "assert safe_divide(10, 4) == 2.5\nassert safe_divide(1, 0) == 0.0\nassert safe_divide(1, 0, default=None) is None\nfor args in [(\"10\", 2), (10, True)]:\n    try:\n        safe_divide(*args)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid numeric inputs must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "def safe_divide(numerator, denominator, default=0.0):\n    for value in (numerator, denominator):\n        if isinstance(value, bool) or not isinstance(value, (int, float)):\n            raise ValueError(\"numerator and denominator must be numbers\")\n    if denominator == 0:\n        return default\n    return round(numerator / denominator, 4)",
+    "estimated_minutes": 15
+  },
+  {
+    "id": "python-json-summary",
+    "lesson_id": "0.09",
+    "title": "Summarise a JSON payload",
+    "instructions": "Implement summarize_payload(text). Decode JSON, require a top-level object, and return {\"name\": name_or_empty_string, \"items\": number_of_items}. Raise ValueError for invalid JSON, a non-object top level, or a non-list items field.",
+    "starter_code": "import json\n\n\ndef summarize_payload(text):\n    # TODO: decode, validate, and summarise.\n    raise NotImplementedError",
+    "checks_code": "assert summarize_payload('{\"name\": \"demo\", \"items\": [1, 2]}') == {\"name\": \"demo\", \"items\": 2}\nassert summarize_payload('{\"items\": []}') == {\"name\": \"\", \"items\": 0}\nfor bad in [\"{\", \"[]\", '{\"items\": \"nope\"}']:\n    try:\n        summarize_payload(bad)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid payloads must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "import json\n\n\ndef summarize_payload(text):\n    try:\n        data = json.loads(text)\n    except json.JSONDecodeError as exc:\n        raise ValueError(\"invalid JSON\") from exc\n    if not isinstance(data, dict):\n        raise ValueError(\"expected a JSON object\")\n    items = data.get(\"items\", [])\n    if not isinstance(items, list):\n        raise ValueError(\"items must be a list\")\n    name = data.get(\"name\", \"\")\n    return {\"name\": name if isinstance(name, str) else \"\", \"items\": len(items)}",
+    "estimated_minutes": 20
+  },
+  {
+    "id": "git-conventional-message",
+    "lesson_id": "0.10",
+    "title": "Check a commit message",
+    "instructions": "Implement is_conventional_commit(message). Accept a message with an allowed type (feat, fix, docs, test, refactor, chore), an optional lowercase scope in parentheses, a colon and space, then a non-empty summary. Reject a trailing period and a message longer than 72 characters.",
+    "starter_code": "import re\n\n\ndef is_conventional_commit(message):\n    # TODO: validate the commit message format.\n    raise NotImplementedError",
+    "checks_code": "assert is_conventional_commit(\"feat(api): add retry budget\") is True\nassert is_conventional_commit(\"fix: handle empty input\") is True\nassert is_conventional_commit(\"update stuff\") is False\nassert is_conventional_commit(\"feat: add thing.\") is False\nassert is_conventional_commit(\"feat: \" + \"x\" * 80) is False\nprint(\"All checks passed.\")",
+    "solution_code": "import re\n\n\nPATTERN = re.compile(r\"^(feat|fix|docs|test|refactor|chore)(\\([a-z0-9-]+\\))?: \\S.{0,49}$\")\n\n\ndef is_conventional_commit(message):\n    if not isinstance(message, str) or len(message) > 72:\n        return False\n    if message.rstrip().endswith(\".\"):\n        return False\n    return PATTERN.fullmatch(message.strip()) is not None",
+    "estimated_minutes": 20
+  },
+  {
+    "id": "python-http-status",
+    "lesson_id": "0.11",
+    "title": "Classify HTTP status codes",
+    "instructions": "Implement classify_status(code) returning success, redirect, client_error, server_error, or unknown. Implement retryable(code) returning True only for 429, 500, 502, 503, and 504. Reject non-integer or boolean codes with ValueError.",
+    "starter_code": "def classify_status(code):\n    # TODO: classify by the first digit.\n    raise NotImplementedError\n\n\ndef retryable(code):\n    # TODO: return True only for transient failures.\n    raise NotImplementedError",
+    "checks_code": "assert classify_status(200) == \"success\"\nassert classify_status(301) == \"redirect\"\nassert classify_status(404) == \"client_error\"\nassert classify_status(503) == \"server_error\"\nassert classify_status(99) == \"unknown\"\nassert retryable(429) is True\nassert retryable(503) is True\nassert retryable(422) is False\nfor bad in [\"200\", True]:\n    try:\n        classify_status(bad)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid codes must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "def _validate(code):\n    if isinstance(code, bool) or not isinstance(code, int):\n        raise ValueError(\"status code must be an integer\")\n    return code\n\n\ndef classify_status(code):\n    code = _validate(code)\n    if 200 <= code <= 299:\n        return \"success\"\n    if 300 <= code <= 399:\n        return \"redirect\"\n    if 400 <= code <= 499:\n        return \"client_error\"\n    if 500 <= code <= 599:\n        return \"server_error\"\n    return \"unknown\"\n\n\ndef retryable(code):\n    return _validate(code) in {429, 500, 502, 503, 504}",
+    "estimated_minutes": 20
+  },
+  {
+    "id": "open-weight-vram",
+    "lesson_id": "3.16",
+    "title": "Estimate model VRAM",
+    "instructions": "Implement estimate_vram_gb(params_b, bytes_per_param=2.0, overhead=1.2). Return the estimate rounded to one decimal place. Reject non-positive values and an overhead below 1 with ValueError.",
+    "starter_code": "def estimate_vram_gb(params_b, bytes_per_param=2.0, overhead=1.2):\n    # TODO: estimate weights plus overhead.\n    raise NotImplementedError",
+    "checks_code": "assert estimate_vram_gb(7) == 16.8\nassert estimate_vram_gb(7, 1.0, 1.0) == 7.0\nfor args in [(0,), (7, 0), (7, 2, 0.5)]:\n    try:\n        estimate_vram_gb(*args)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid sizing inputs must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "def estimate_vram_gb(params_b, bytes_per_param=2.0, overhead=1.2):\n    if params_b <= 0 or bytes_per_param <= 0 or overhead < 1:\n        raise ValueError(\"invalid model sizing input\")\n    return round(params_b * bytes_per_param * overhead, 1)",
+    "estimated_minutes": 20
+  },
+  {
+    "id": "reasoning-effort-router",
+    "lesson_id": "3.17",
+    "title": "Route a task to a reasoning effort",
+    "instructions": "Implement choose_effort(complexity, risk, budget). Inputs are low, medium, or high. Return small when complexity and risk are low; return low when the budget is low; return high when complexity or risk is high; otherwise return medium. Reject unknown levels with ValueError.",
+    "starter_code": "def choose_effort(complexity, risk, budget):\n    # TODO: apply the routing rules.\n    raise NotImplementedError",
+    "checks_code": "assert choose_effort(\"low\", \"low\", \"high\") == \"small\"\nassert choose_effort(\"medium\", \"medium\", \"low\") == \"low\"\nassert choose_effort(\"high\", \"low\", \"high\") == \"high\"\nassert choose_effort(\"medium\", \"medium\", \"medium\") == \"medium\"\ntry:\n    choose_effort(\"huge\", \"low\", \"high\")\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"unknown levels must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "def choose_effort(complexity, risk, budget):\n    levels = {\"low\", \"medium\", \"high\"}\n    if complexity not in levels or risk not in levels or budget not in levels:\n        raise ValueError(\"levels must be low, medium, or high\")\n    if complexity == \"low\" and risk == \"low\":\n        return \"small\"\n    if budget == \"low\":\n        return \"low\"\n    if complexity == \"high\" or risk == \"high\":\n        return \"high\"\n    return \"medium\"",
+    "estimated_minutes": 20
+  },
+  {
+    "id": "adaptation-decision",
+    "lesson_id": "3.18",
+    "title": "Choose an adaptation strategy",
+    "instructions": "Implement choose_adaptation(examples, needs_fresh_facts, latency_sensitive, privacy_required). Return retrieval for fresh facts, prompting below 50 examples, distillation when latency matters, fine_tuning when privacy is required or there are at least 500 examples, otherwise prompting. Reject a negative example count.",
+    "starter_code": "def choose_adaptation(examples, needs_fresh_facts, latency_sensitive, privacy_required):\n    # TODO: choose the simplest method that fits the constraints.\n    raise NotImplementedError",
+    "checks_code": "assert choose_adaptation(1000, True, False, False) == \"retrieval\"\nassert choose_adaptation(10, False, False, False) == \"prompting\"\nassert choose_adaptation(100, False, True, False) == \"distillation\"\nassert choose_adaptation(100, False, False, True) == \"fine_tuning\"\nassert choose_adaptation(600, False, False, False) == \"fine_tuning\"\ntry:\n    choose_adaptation(-1, False, False, False)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"negative example counts must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "def choose_adaptation(examples, needs_fresh_facts, latency_sensitive, privacy_required):\n    if examples < 0:\n        raise ValueError(\"examples must be non-negative\")\n    if needs_fresh_facts:\n        return \"retrieval\"\n    if examples < 50:\n        return \"prompting\"\n    if latency_sensitive:\n        return \"distillation\"\n    if privacy_required or examples >= 500:\n        return \"fine_tuning\"\n    return \"prompting\"",
+    "estimated_minutes": 20
+  },
+  {
+    "id": "computer-use-action-guard",
+    "lesson_id": "6.18",
+    "title": "Guard computer-use actions",
+    "instructions": "Implement is_action_allowed(action, approved). read, scroll, and screenshot are always allowed; click, type, and navigate are allowed; submit, delete, purchase, and send require approved=True; unknown action types are denied.",
+    "starter_code": "def is_action_allowed(action, approved):\n    # TODO: allow read-only actions and gate destructive ones.\n    raise NotImplementedError",
+    "checks_code": "assert is_action_allowed({\"type\": \"read\"}, False) is True\nassert is_action_allowed({\"type\": \"click\"}, False) is True\nassert is_action_allowed({\"type\": \"delete\"}, False) is False\nassert is_action_allowed({\"type\": \"delete\"}, True) is True\nassert is_action_allowed({\"type\": \"unknown\"}, True) is False\nprint(\"All checks passed.\")",
+    "solution_code": "READ_ONLY = {\"read\", \"scroll\", \"screenshot\"}\nREVERSIBLE = {\"click\", \"type\", \"navigate\"}\nDESTRUCTIVE = {\"submit\", \"delete\", \"purchase\", \"send\"}\n\n\ndef is_action_allowed(action, approved):\n    kind = action.get(\"type\") if isinstance(action, dict) else None\n    if kind in READ_ONLY or kind in REVERSIBLE:\n        return True\n    if kind in DESTRUCTIVE:\n        return approved is True\n    return False",
+    "estimated_minutes": 20
+  },
+  {
+    "id": "a2a-capability-router",
+    "lesson_id": "7.18",
+    "title": "Route an A2A handoff",
+    "instructions": "Implement route_task(task, agents, remaining_budget). A task has a capability. Eligible agents are healthy, advertise the capability, and have cost <= remaining_budget. Return the cheapest eligible agent id, breaking ties by id, or None.",
+    "starter_code": "def route_task(task, agents, remaining_budget):\n    # TODO: filter and choose deterministically.\n    raise NotImplementedError",
+    "checks_code": "agents = [\n    {\"id\": \"legal-b\", \"capabilities\": [\"legal\"], \"healthy\": True, \"cost\": 3},\n    {\"id\": \"legal-a\", \"capabilities\": [\"legal\"], \"healthy\": True, \"cost\": 3},\n    {\"id\": \"legal-c\", \"capabilities\": [\"legal\"], \"healthy\": False, \"cost\": 1},\n    {\"id\": \"research\", \"capabilities\": [\"research\"], \"healthy\": True, \"cost\": 1},\n]\nassert route_task({\"capability\": \"legal\"}, agents, 5) == \"legal-a\"\nassert route_task({\"capability\": \"legal\"}, agents, 2) is None\nassert route_task({\"capability\": \"unknown\"}, agents, 100) is None\nprint(\"All checks passed.\")",
+    "solution_code": "def route_task(task, agents, remaining_budget):\n    capability = task.get(\"capability\") if isinstance(task, dict) else None\n    eligible = [\n        agent for agent in agents\n        if agent.get(\"healthy\")\n        and capability in agent.get(\"capabilities\", ())\n        and agent.get(\"cost\", 0) <= remaining_budget\n    ]\n    if not eligible:\n        return None\n    return min(eligible, key=lambda agent: (agent[\"cost\"], agent[\"id\"]))[\"id\"]",
+    "estimated_minutes": 25
   }
 ]

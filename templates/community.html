@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% block title %}Learner Community · RUACH{% endblock %}
 {% block content %}
-<header class="mb-6"><p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Build with other learners</p><h1 class="mt-2 text-3xl font-bold">Community</h1><p class="mt-2 max-w-3xl text-slate-600">Ask for help, compare approaches, share useful resources, and find collaborators across the five-month AI engineering plan.</p></header>
+<header class="mb-6"><p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Build with other learners</p><h1 class="mt-2 text-3xl font-bold">Community</h1><p class="mt-2 max-w-3xl text-slate-600">Ask for help, compare approaches, share useful resources, and find collaborators across the selected AI engineering learning plan.</p></header>
 <section class="mb-6 rounded-2xl border border-indigo-100 bg-indigo-50 p-5"><h2 class="text-lg font-bold">Start a discussion</h2><p class="mt-1 text-sm text-slate-600">Keep it constructive. Never post passwords, API keys, private learner information, or other secrets.</p><form method="post" action="{{ url_for('community.create_post') }}" class="mt-4 grid gap-3">
   <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <div class="grid gap-3 md:grid-cols-[14rem_1fr]"><label class="text-sm font-semibold">Topic<select name="topic" required class="mt-1 w-full rounded-lg border bg-white p-3">{% for topic in topics %}<option value="{{ topic }}" {% if selected_topic == topic %}selected{% endif %}>{{ topic }}</option>{% endfor %}</select></label><label class="text-sm font-semibold">Title<input name="title" required maxlength="140" class="mt-1 w-full rounded-lg border bg-white p-3" placeholder="What are you working through?"></label></div>

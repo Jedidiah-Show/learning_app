@@ -448,7 +448,12 @@ def main():
             page
         )) for page in record.get('pages', [])]
 
-    data['course']['description'] = ('A 13-module, 201-lesson AI engineering course covering Python, backend systems, LLM applications, multimodal inputs, RAG, agents, MCP, security, evaluation, governance, and deployment. Lessons and framework examples are versioned for review.')
+    data['course']['description'] = (
+        f"A {len(data['modules'])}-module, {len(data['lessons'])}-lesson AI "
+        'engineering course covering Python, backend systems, LLM applications, '
+        'multimodal inputs, RAG, agents, MCP, security, evaluation, governance, '
+        'and deployment. Lessons and framework examples are versioned for review.'
+    )
     for module in data['modules']:
         if module['id'] == '03':
             module['description'] = 'Understand model behavior, generation controls, multimodal inputs, and deployment choices before building AI features.'

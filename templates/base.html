@@ -96,6 +96,9 @@
                     <a aria-label="Progress" title="Progress" href="{{ url_for('main.progress') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.progress' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">📈</span><span class="nav-label">Progress</span>
                     </a>
+                    <a aria-label="Credential" title="Credential" href="{{ url_for('credentials.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint and request.endpoint.startswith('credentials.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">🎓</span><span class="nav-label">Credential</span>
+                    </a>
                     <a aria-label="Community" title="Community" href="{{ url_for('community.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint and request.endpoint.startswith('community.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">💬</span><span class="nav-label">Community</span>
                     </a>
@@ -109,6 +112,9 @@
                         </button>
                         <a href="{{ url_for('main.settings') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.settings' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                             <span class="nav-icon" aria-hidden="true">⚙️</span><span class="nav-label">Settings</span>
+                        </a>
+                        <a href="{{ url_for('main.support') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.support' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                            <span class="nav-icon" aria-hidden="true">🛠️</span><span class="nav-label">Tech Support & Ideas</span>
                         </a>
                         {% if current_user.is_admin %}
                         <a href="{{ url_for('admin_portal.dashboard') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint and request.endpoint.startswith('admin_portal.') %}bg-red-50 text-red-700{% else %}text-red-600 hover:text-red-700 hover:bg-red-50{% endif %}">

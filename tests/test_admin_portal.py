@@ -8,7 +8,7 @@ import unittest
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import create_app, db
-from app.models import AdminAuditLog, LessonCompletion, User
+from app.models import AdminAuditLog, LessonCompletion, SupportRequest, User
 
 
 class AdminPortalTests(unittest.TestCase):
@@ -151,6 +151,36 @@ class AdminPortalTests(unittest.TestCase):
         for path in paths:
             response = self.client.get(path)
             self.assertEqual(response.status_code, 200, path)
+
+    def test_learner_support_request_reaches_admin_inbox_and_status(self):
+        self._login_learner()
+        self.assertEqual(self.client.get('/support').status_code, 200)
+        submitted = self.client.post('/support', data={
+            'category': 'feature',
+            'subject': 'Add model comparison guide',
+            'message': 'A short guide comparing common model tradeoffs would help learners choose tools.',
+        })
+        self.assertEqual(submitted.status_code, 302)
+        with self.app.app_context():
+            report = SupportRequest.query.one()
+            self.assertEqual(report.user_id, self.learner_id)
+            self.assertEqual(report.status, 'new')
+            report_id = report.id
+
+        self._login_admin()
+        inbox = self.client.get('/admin/support')
+        self.assertEqual(inbox.status_code, 200)
+        self.assertIn('Add model comparison guide', inbox.get_data(as_text=True))
+        updated = self.client.post(
+            f'/admin/support/{report_id}', data={'status': 'in_review'},
+        )
+        self.assertEqual(updated.status_code, 302)
+
+        learner_client = self.app.test_client()
+        self._login_learner(client=learner_client)
+        learner_page = learner_client.get('/support')
+        self.assertEqual(learner_page.status_code, 200)
+        self.assertIn('In Review', learner_page.get_data(as_text=True))
 
     def test_admin_session_expires(self):
         self._login_admin()

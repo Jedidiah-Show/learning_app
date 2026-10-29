@@ -272,6 +272,11 @@ course-project repository/demo URLs, and the learner course-plan table for a
 selected capstone and personal portfolio project. They do not drop or rename
 existing objects.
 
+The support inbox adds revision `6d9f2a4c8b10`, which creates the
+`support_request` table for learner bug reports and feature suggestions. Apply
+it with the same guarded migration procedure before deploying code that exposes
+the learner support form or administrator inbox.
+
 Keep `d1a6f9c2b840` in the migration graph: the production database is stamped
 at that already-applied project-link revision. `4b7c9d1e2f30` now descends from
 it, allowing Alembic to upgrade production without stamping or rewriting the

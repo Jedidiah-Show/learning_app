@@ -3,20 +3,23 @@
 import os
 from datetime import datetime, timezone
 from functools import lru_cache
+from urllib.parse import urlsplit
 
 from flask import (Blueprint, Response, abort, current_app, flash, jsonify,
-                   render_template, request, url_for)
+                   redirect, render_template, request, url_for)
 from flask_login import current_user, login_required
 from sqlalchemy.exc import SQLAlchemyError
 from app import db
 from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
 from app.learning import (
-    course_progress, lesson_is_available, monthly_milestone_progress,
+    course_progress, lesson_is_available, monthly_milestone_progress, user_track,
 )
+from app.course_blueprint import TRACKS, track_label
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
 from app.integrations import database_status
 from app.models import (CalendarEvent, LessonBookmark, LessonNote, LessonCompletion,
-                        CourseProject, QuizResult, ReviewItem, StudySession)
+                        CourseProject, QuizResult, ReviewItem, StudySession,
+                        SupportRequest)
 from app.user_preferences import get_effective_config_for_user, get_user_preferences, set_user_preferences
 from app.request_data import get_json_object
 
@@ -151,9 +154,15 @@ def index():
 @login_required
 def lessons():
     from app.learning import completed_lesson_ids
+    completions = LessonCompletion.query.filter_by(
+        user_id=current_user.id, completed=True
+    ).all()
     return render_template('lessons.html', config=get_effective_config_for_user(current_user),
                            user=current_user, course=curriculum(), modules=all_modules(),
                            completed_ids=completed_lesson_ids(current_user),
+                           completion_sources={
+                               item.lesson_id: item.completion_source for item in completions
+                           },
                            next_lesson_id=course_progress(current_user)['next_lesson_id'])
 
 
@@ -231,14 +240,17 @@ def progress():
     ).all()
     progress_data = course_progress(current_user)
     completed_project_ids = {item.module_id for item in projects}
+    track = user_track(current_user)
     from app.leaderboard import leaderboard_data
     leaderboard_info = leaderboard_data(current_user)
     return render_template('progress.html', config=config,
                            user=current_user, progress=progress_data,
                            analytics=analytics,
                            milestones=monthly_milestone_progress(
-                               progress_data, completed_project_ids
+                               progress_data, completed_project_ids, track
                            ),
+                           tracks=TRACKS, selected_track=track,
+                           track_label=track_label(track),
                            leaderboard=leaderboard_info,
                            leaderboard_opted_in=leaderboard_info['opted_in'],
                            recent_completions=recent_completions,
@@ -259,6 +271,50 @@ def settings():
     return render_template('settings.html', config=get_effective_config_for_user(current_user),
                            user=current_user,
                            gemini_configured=bool(current_app.config.get('GEMINI_API_KEY')))
+
+
+@main_bp.route('/support', methods=['GET', 'POST'])
+@login_required
+def support():
+    """Let learners privately report a bug or suggest an improvement."""
+    if request.method == 'POST':
+        category = (request.form.get('category') or '').strip()
+        subject = (request.form.get('subject') or '').strip()
+        message = (request.form.get('message') or '').strip()
+        allowed_categories = {'bug', 'feature', 'content', 'other'}
+        if category not in allowed_categories:
+            flash('Choose a valid request type.', 'error')
+        elif not 4 <= len(subject) <= 160:
+            flash('Add a short subject (4–160 characters).', 'error')
+        elif not 20 <= len(message) <= 5000:
+            flash('Describe the issue or idea in 20–5,000 characters.', 'error')
+        else:
+            from app.rate_limit import enforce_rate_limit
+            enforce_rate_limit(
+                'support-request-user', 5, 86400, str(current_user.id)
+            )
+            referrer = urlsplit(request.referrer or '')
+            request_host = urlsplit(request.host_url).netloc
+            page_path = (
+                referrer.path[:500]
+                if referrer.netloc == request_host and referrer.path.startswith('/')
+                else None
+            )
+            report = SupportRequest(
+                user_id=current_user.id,
+                category=category,
+                subject=subject,
+                message=message,
+                page_url=page_path,
+            )
+            db.session.add(report)
+            db.session.commit()
+            flash('Thanks for helping improve RUACH. Your request was sent to the support team.', 'success')
+            return redirect(url_for('main.support'))
+    reports = SupportRequest.query.filter_by(user_id=current_user.id).order_by(
+        SupportRequest.created_at.desc()
+    ).limit(10).all()
+    return render_template('support.html', user=current_user, reports=reports)
 
 
 @main_bp.route('/lesson/<lesson_id>')
@@ -315,6 +371,7 @@ def lesson_detail(lesson_id):
                                next_lesson is not None
                                and lesson_is_available(current_user, next_lesson['id'])
                            ),
+                           total_lessons=len(lessons),
                            bookmarked=bookmarked,
                            lesson_note=note.content if note else '',
                            config=get_effective_config_for_user(current_user), user=current_user)
