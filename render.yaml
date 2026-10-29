@@ -37,7 +37,8 @@ services:
       - key: PUBLIC_APP_URL
         sync: false
 
-      # Postgres/Neon tuning. Two gunicorn workers keep four connections max.
+      # Postgres/Neon tuning. Each worker allows four connections by default,
+      # for up to eight total across the two gunicorn workers.
       - key: DB_POOL_SIZE
         value: "2"
       - key: DB_MAX_OVERFLOW

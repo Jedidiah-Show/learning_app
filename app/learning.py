@@ -28,6 +28,10 @@ def next_unlocked_lesson(user):
 def next_course_action(user):
     completed = completed_lesson_ids(user)
     project_modules = completed_project_modules(user)
+    return _next_course_action(completed, project_modules)
+
+
+def _next_course_action(completed, project_modules):
     for module in all_modules():
         if any(lesson['id'] not in completed for lesson in module['lessons']):
             lesson = next(item for item in module['lessons'] if item['id'] not in completed)
@@ -64,11 +68,14 @@ def course_progress(user):
     completed_projects = completed_project_modules(user)
     lessons = all_lessons()
     modules = all_modules()
-    action = next_course_action(user)
+    # Reuse these sets for all progress fields. Re-querying through
+    # next_course_action() and next_unlocked_lesson() made dashboard renders
+    # issue the same two completion queries three times.
+    action = _next_course_action(completed, completed_projects)
     return {
         'total_lessons': len(lessons),
         'completed_lessons': sum(lesson['id'] in completed for lesson in lessons),
-        'next_lesson_id': next_unlocked_lesson(user),
+        'next_lesson_id': action['lesson_id'] if action and action['type'] == 'lesson' else None,
         'next_action': action,
         'total_projects': len(modules),
         'completed_projects': sum(module['id'] in completed_projects for module in modules),

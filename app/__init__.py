@@ -221,8 +221,10 @@ def create_app(config_override=None):
         app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
             'pool_pre_ping': True,
             'pool_recycle': int(os.environ.get('DB_POOL_RECYCLE', '300')),
-            # Render's free plan runs two gunicorn workers. Keep the pool
-            # small so Neon autosuspend and connection limits stay healthy.
+            # Each of Render's two gunicorn workers can open a pool of
+            # pool_size + max_overflow connections (four by default), for up
+            # to eight app connections total. Keep this budget explicit so
+            # Neon connection limits stay healthy.
             'pool_size': int(os.environ.get('DB_POOL_SIZE', '2')),
             'max_overflow': int(os.environ.get('DB_MAX_OVERFLOW', '2')),
             'pool_timeout': int(os.environ.get('DB_POOL_TIMEOUT', '30')),
