@@ -261,25 +261,39 @@ def create_app(config_override=None):
             try:
                 user = db.session.get(User, int(user_id))
             except (ValueError, TypeError):
-                user = db.session.execute(
-                    db.select(User).filter_by(id=int(user_id))
-                ).scalar_one_or_none()
+                try:
+                    user = db.session.execute(
+                        db.select(User).filter_by(id=int(user_id))
+                    ).scalar_one_or_none()
+                except Exception:
+                    user = None
         except Exception:
-            current_app.logger.exception('Failed to load user %s', user_id)
+            try:
+                session.clear()
+            except Exception:
+                pass
             return None
         if user is None:
             return None
         if not getattr(user, 'is_active', True):
-            session.clear()
+            try:
+                session.clear()
+            except Exception:
+                pass
             return None
         try:
             session_version = int(session.get('auth_version'))
         except (TypeError, ValueError):
             session_version = None
-        if session_version is None or session_version != int(user.auth_version or 0):
-            # A password/email/phone change rotates auth_version.  Sessions
-            # created before the change are no longer accepted.
-            session.clear()
+        try:
+            if session_version is None or session_version != int(user.auth_version or 0):
+                session.clear()
+                return None
+        except Exception:
+            try:
+                session.clear()
+            except Exception:
+                pass
             return None
         return user
     
