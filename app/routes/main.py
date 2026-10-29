@@ -101,10 +101,13 @@ def index():
     config = get_effective_config_for_user(current_user)
     next_lesson = get_lesson(progress['next_lesson_id']) if progress['next_lesson_id'] else None
     next_project = progress['next_action'] if progress['next_action'] and progress['next_action']['type'] == 'project' else None
+    streak = getattr(current_user, 'streak', 0) or 0
+    longest_streak = getattr(current_user, 'longest_streak', 0) or 0
     return render_template('dashboard.html', config=config, user=current_user,
                            course=curriculum(),
                            progress=progress, next_lesson=next_lesson,
-                           next_project=next_project)
+                           next_project=next_project, streak=streak,
+                           longest_streak=longest_streak)
 
 
 @main_bp.route('/lessons')

@@ -15,6 +15,9 @@
     <a class="rounded-xl bg-gold-400 px-5 py-3 font-semibold text-brand-950 shadow-sm transition hover:bg-gold-300" href="{{ url_for('main.lessons') }}">Start learning</a>
     {% endif %}
     <span>{{ progress.completed_lessons }} of {{ progress.total_lessons }} lessons complete</span>
+    {% if streak and streak > 0 %}
+    <span class="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-3 py-1 text-sm font-semibold">🔥 {{ streak }} day streak</span>
+    {% endif %}
   </div>
   <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/15"><div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-gold-400" style="width:{{ (progress.completed_lessons / progress.total_lessons * 100)|round(1) }}%"></div></div>
 </section>

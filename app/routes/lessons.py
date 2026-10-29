@@ -242,6 +242,7 @@ def lesson_note(lesson_id):
 @lessons_bp.route('/complete', methods=['POST'])
 @login_required
 def complete_lesson():
+    from datetime import date, timedelta
     data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'error': 'Request body must be a JSON object'}), 400
@@ -283,6 +284,20 @@ def complete_lesson():
             subjects_studied=json.dumps([lesson['module_id']]), completed=True,
         ))
     try:
+        from datetime import date as _date, timedelta
+        _today = _date.today()
+        if current_user.last_study_date is None:
+            current_user.streak = 1
+            current_user.longest_streak = max(current_user.longest_streak or 0, 1)
+        elif current_user.last_study_date == _today:
+            pass
+        elif current_user.last_study_date == _today - timedelta(days=1):
+            current_user.streak = (current_user.streak or 0) + 1
+            current_user.longest_streak = max(current_user.longest_streak or 0, current_user.streak)
+        else:
+            current_user.streak = 1
+        current_user.last_study_date = _today
+        db.session.add(current_user)
         db.session.commit()
     except IntegrityError:
         # Two tabs completed the same lesson at once. The unique constraint

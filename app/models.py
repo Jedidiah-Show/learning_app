@@ -39,6 +39,9 @@ class User(UserMixin, db.Model):
     is_active = db.Column(
         db.Boolean, default=True, nullable=False, server_default='1'
     )
+    streak = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    longest_streak = db.Column(db.Integer, default=0, nullable=False, server_default='0')
+    last_study_date = db.Column(db.Date)
     
     progress = db.relationship('Progress', backref='user', lazy=True, cascade='all, delete-orphan')
     lesson_completions = db.relationship('LessonCompletion', backref='user', lazy=True, cascade='all, delete-orphan')
