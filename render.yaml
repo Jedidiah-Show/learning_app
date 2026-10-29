@@ -15,7 +15,8 @@ services:
     plan: free
     branch: main
     autoDeploy: true
-    buildCommand: pip install -r requirements.txt && python -m flask db upgrade
+    # Keep schema changes in the guarded manual migration workflow/runbook.
+    buildCommand: pip install -r requirements.txt
     startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60
     healthCheckPath: /healthz
     envVars:
