@@ -4,38 +4,21 @@ import os
 from datetime import datetime
 from functools import lru_cache
 
-<<<<<<< HEAD
-from flask import Blueprint, abort, current_app, jsonify, render_template, url_for, send_from_directory
-=======
 from flask import Blueprint, abort, current_app, jsonify, render_template, request, url_for
->>>>>>> 38fa593 (Add UX improvements: search, bookmarks, notes, PWA, rebrand to RUACH AI Engineering)
 from flask_login import current_user, login_required
-import os
-
 from app import db
 from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
 from app.learning import course_progress, lesson_is_available
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
 from app.integrations import database_status
-<<<<<<< HEAD
-from app.models import CalendarEvent, LessonCompletion, QuizResult, ReviewItem, StudySession
-=======
-from app.models import CalendarEvent, LessonBookmark, LessonNote, LessonCompletion, CourseProject
->>>>>>> 38fa593 (Add UX improvements: search, bookmarks, notes, PWA, rebrand to RUACH AI Engineering)
+from app.models import (CalendarEvent, LessonBookmark, LessonNote, LessonCompletion,
+                        CourseProject, QuizResult, ReviewItem, StudySession)
 from app.user_preferences import get_effective_config_for_user, get_user_preferences, set_user_preferences
 from app.request_data import get_json_object
 
 main_bp = Blueprint('main', __name__)
 
 
-<<<<<<< HEAD
-@main_bp.route('/uploads/<path:filename>')
-def uploaded_file(filename):
-    upload_folder = current_app.config.get('UPLOAD_FOLDER') or os.path.join(
-        current_app.instance_path, 'uploads'
-    )
-    return send_from_directory(upload_folder, filename)
-=======
 @lru_cache(maxsize=1)
 def _lesson_search_index():
     indexed = []
@@ -48,7 +31,16 @@ def _lesson_search_index():
         ])
         indexed.append((lesson, text, text.lower()))
     return indexed
->>>>>>> 38fa593 (Add UX improvements: search, bookmarks, notes, PWA, rebrand to RUACH AI Engineering)
+
+
+@main_bp.route('/uploads/<path:filename>')
+@login_required
+def uploaded_file(filename):
+    from flask import send_from_directory
+    upload_folder = current_app.config.get('UPLOAD_FOLDER') or os.path.join(
+        current_app.instance_path, 'uploads'
+    )
+    return send_from_directory(upload_folder, filename)
 
 
 @main_bp.route('/healthz')
@@ -151,7 +143,6 @@ def schedule():
 @main_bp.route('/progress')
 @login_required
 def progress():
-<<<<<<< HEAD
     from datetime import date, datetime, timedelta, timezone
     config = get_effective_config_for_user(current_user)
     completions = LessonCompletion.query.filter_by(
@@ -184,26 +175,25 @@ def progress():
     }
     if not config.get('progress', {}).get('track_time_spent', True):
         minutes = 0
+    recent_completions = LessonCompletion.query.filter_by(
+        user_id=current_user.id, completed=True
+    ).order_by(LessonCompletion.completed_at.desc()).limit(8).all()
+    projects = CourseProject.query.filter_by(
+        user_id=current_user.id, completed=True
+    ).all()
     return render_template('progress.html', config=config,
                            user=current_user, progress=course_progress(current_user),
-                           analytics=analytics)
+                           analytics=analytics,
+                           recent_completions=recent_completions,
+                           recent_lessons={item.lesson_id: get_lesson(item.lesson_id)
+                                           for item in recent_completions},
+                           completed_project_ids={item.module_id for item in projects})
 
 
 @main_bp.route('/review')
 @login_required
 def review():
     return render_template('review.html', user=current_user)
-=======
-    recent_completions = LessonCompletion.query.filter_by(
-        user_id=current_user.id, completed=True
-    ).order_by(LessonCompletion.completed_at.desc()).limit(8).all()
-    projects = CourseProject.query.filter_by(user_id=current_user.id).all()
-    return render_template('progress.html', config=get_effective_config_for_user(current_user),
-                           user=current_user, progress=course_progress(current_user),
-                           recent_completions=recent_completions,
-                           recent_lessons={item.lesson_id: get_lesson(item.lesson_id) for item in recent_completions},
-                           completed_project_ids={item.module_id for item in projects if item.completed})
->>>>>>> 38fa593 (Add UX improvements: search, bookmarks, notes, PWA, rebrand to RUACH AI Engineering)
 
 
 @main_bp.route('/settings')
