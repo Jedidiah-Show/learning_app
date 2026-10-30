@@ -1,9 +1,11 @@
-const CACHE_NAME = 'ruach-v2';
+const CACHE_NAME = 'ruach-v3';
 const ASSETS = [
   '/static/css/tailwind.css',
   '/static/css/style.css',
   '/static/js/app.js',
   '/static/img/ruach-icon-96.png',
+  '/static/img/ruach-icon-192.png',
+  '/static/img/ruach-icon-512.png',
 ];
 
 self.addEventListener('install', (event) => {

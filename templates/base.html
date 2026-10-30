@@ -45,7 +45,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 {% if current_user.is_authenticated %}lg:max-w-none lg:h-full lg:flex lg:flex-col lg:px-4 lg:py-4{% endif %}">
             <div class="flex min-h-16 items-center justify-between gap-2 sm:gap-3 {% if current_user.is_authenticated %}lg:flex-col lg:items-stretch lg:min-h-0 lg:gap-4{% endif %}">
                 <a href="{{ url_for('main.index') if current_user.is_authenticated else url_for('auth.login') }}" class="app-brand flex items-center space-x-2 sm:space-x-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 flex-shrink-0 {% if current_user.is_authenticated %}lg:px-2{% endif %}" aria-label="RUACH AI Engineering home">
-                    <span class="brand-mark"><img src="{{ url_for('static', filename='img/ruach-icon-96.png') }}" alt="" width="40" height="40" loading="eager"></span>
+                    <span class="brand-mark"><img src="{{ url_for('static', filename='img/ruachai.png') }}" alt="" width="40" height="40" loading="eager"></span>
                     <div class="brand-copy">
                         <h1 class="brand-wordmark">RUACH</h1>
                         {% if current_user.is_authenticated %}<p class="brand-subtitle hidden sm:block lg:block">AI Engineering</p>{% else %}<p class="brand-subtitle hidden sm:block">Spirit · Connection · Growth</p>{% endif %}
