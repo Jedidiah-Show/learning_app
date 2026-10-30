@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools==75.6.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ruach-ml-data-audit"
+version = "0.1.0"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+  "numpy==2.4.6",
+  "pandas==3.1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest==8.3.4"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

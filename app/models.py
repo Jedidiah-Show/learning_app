@@ -472,6 +472,71 @@ class CourseProject(db.Model):
         return json.loads(self.evaluation) if self.evaluation else None
 
 
+class MLSpecializationLessonCompletion(db.Model):
+    """Completion records kept separate from the shared AI course lessons."""
+    __tablename__ = 'ml_specialization_lesson_completion'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    pathway_id = db.Column(db.String(80), nullable=False)
+    lesson_id = db.Column(db.String(100), nullable=False)
+    completed_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    __table_args__ = (
+        db.UniqueConstraint(
+            'user_id', 'pathway_id', 'lesson_id',
+            name='unique_user_ml_pathway_lesson',
+        ),
+        db.Index('idx_ml_lesson_user_pathway', 'user_id', 'pathway_id'),
+    )
+
+
+class MLSpecializationProject(db.Model):
+    """Independent progress record for a specialization module project."""
+    __tablename__ = 'ml_specialization_project'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    pathway_id = db.Column(db.String(80), nullable=False)
+    module_id = db.Column(db.String(100), nullable=False)
+    submission = db.Column(db.Text)
+    evaluation = db.Column(db.Text)
+    completed = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+    __table_args__ = (
+        db.UniqueConstraint(
+            'user_id', 'pathway_id', 'module_id',
+            name='unique_user_ml_pathway_project',
+        ),
+        db.Index('idx_ml_project_user_pathway', 'user_id', 'pathway_id'),
+    )
+
+
+class MLSpecializationCredential(db.Model):
+    """Verifiable credential for the optional ML specialization."""
+    __tablename__ = 'ml_specialization_credential'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    pathway_id = db.Column(db.String(80), nullable=False)
+    public_id = db.Column(db.String(64), unique=True, nullable=False)
+    recipient_name = db.Column(db.String(160), nullable=False)
+    issued_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    revoked_at = db.Column(db.DateTime(timezone=True))
+    __table_args__ = (
+        db.UniqueConstraint(
+            'user_id', 'pathway_id', name='unique_user_ml_pathway_credential'
+        ),
+        db.Index('idx_ml_credential_user', 'user_id'),
+        db.Index('idx_ml_credential_public', 'public_id'),
+    )
+
+
 class CoursePlan(db.Model):
     """Learner-selected required capstone and independent portfolio project."""
     __tablename__ = 'course_plan'

@@ -1,0 +1,84 @@
+{% extends 'base.html' %}
+{% block title %}{{ module.title }} project · Machine Learning Engineering{% endblock %}
+{% block content %}
+<article class="mx-auto max-w-4xl">
+  <a class="text-sm font-semibold text-indigo-700 hover:underline" href="{{ url_for('main.machine_learning_specialization') }}">← Machine Learning Engineering</a>
+  <header class="mt-4 rounded-2xl bg-brand-950 p-6 text-white sm:p-8">
+    <p class="text-sm font-semibold uppercase tracking-wide text-emerald-200">Module {{ module.number }} project</p>
+    <h2 class="mt-2 text-3xl font-bold">{% if module.number == 1 %}Audit a prediction dataset{% elif module.number == 2 %}Train and evaluate a classifier{% elif module.number == 3 %}Make a training run reproducible{% else %}Serve and operate a tabular model{% endif %}</h2>
+    <p class="mt-3 text-emerald-50">{{ module.project }}</p>
+  </header>
+
+  <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-6">
+    <h3 class="text-lg font-bold">Download the CPU-only starter kit</h3>
+    <p class="mt-2 text-sm text-slate-600">The kit includes a synthetic dataset, pinned Python dependencies, a failing test suite with fixed expectations, and a GitHub Actions workflow.</p>
+    <a class="mt-3 inline-flex rounded-lg border border-indigo-200 px-4 py-2 text-sm font-semibold text-indigo-700" href="{{ url_for('ml_specialization.project_starter', module_id=module.id) }}">Download starter kit</a>
+  </section>
+
+  <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-6">
+    <h3 class="text-lg font-bold">Submit your evidence</h3>
+    {% if module.number == 1 %}<p class="mt-2 text-sm leading-6 text-slate-600">Implement the audit, keep the supplied dataset and expected checks intact, and make the CI run pass. Paste the report produced by your code and explain the data quality findings, the time split, and why refund reason is unavailable at prediction time.</p>
+    {% elif module.number == 2 %}<p class="mt-2 text-sm leading-6 text-slate-600">Build a baseline and a leakage-safe scikit-learn pipeline, keep the supplied train and fixed evaluation files unchanged, and make the metric checks pass in CI. Paste the report produced by your code and explain why the selected metrics support the intended review decision.</p>
+    {% elif module.number == 3 %}<p class="mt-2 text-sm leading-6 text-slate-600">Record the dataset digest, seed, parameters, package versions, source revision, cross-validation result, and fixed-set metrics. Run the same command twice and explain what the comparison demonstrates.</p>
+    {% else %}<p class="mt-2 text-sm leading-6 text-slate-600">Implement strict single and batch prediction contracts, monitoring for the fixed shift fixture, and a canary stop/rollback decision. Include your runbook and make every CI check pass.</p>{% endif %}
+    <form id="ml-project-form" class="mt-5 space-y-4">
+      <label class="block text-sm font-semibold">Public repository URL<input required type="url" name="repository_url" maxlength="500" value="{{ submission.get('repository_url', '') }}" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal"></label>
+      <label class="block text-sm font-semibold">Successful public CI run URL<input required type="url" name="checks_url" maxlength="500" value="{{ submission.get('checks_url', '') }}" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal"></label>
+      <label class="block text-sm font-semibold">Project report JSON<textarea required name="report" rows="12" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-mono text-xs font-normal">{{ submission.get('report', {})|tojson(indent=2) }}</textarea></label>
+      <details class="rounded-lg bg-slate-50 p-3 text-sm">
+        <summary class="cursor-pointer font-semibold">Required report fields</summary>
+        {% if module.number == 1 %}<pre class="mt-3 overflow-x-auto text-xs">{"row_count": 0, "required_columns_present": true, "unique_order_ids": 0, "missing_order_total_count": 0, "nonpositive_order_total_count": 0, "returned_count": 0, "development_rows": 0, "evaluation_rows": 0, "split_strategy": "time_ordered", "leakage_features": []}</pre>
+        {% elif module.number == 2 %}<pre class="mt-3 overflow-x-auto text-xs">{"train_rows": 0, "evaluation_rows": 0, "baseline_accuracy": 0.0, "accuracy": 0.0, "precision": 0.0, "recall": 0.0, "f1": 0.0, "cross_validation_f1_mean": 0.0, "feature_columns": [], "leakage_features": [], "cross_validation_folds": 5, "preprocessing_in_pipeline": true, "evaluation_set_used_for_fitting": false, "data_split": "fixed_holdout"}</pre>
+        {% elif module.number == 3 %}<pre class="mt-3 overflow-x-auto text-xs">{"train_rows": 0, "evaluation_rows": 0, "seed": 7, "dataset_sha256": "", "feature_columns": [], "artifact_version": "1.0.0", "run_manifest_fields": [], "repeated_run_predictions_match": false, "evaluation_set_used_for_fitting": true, "accuracy": 0.0, "f1": 0.0, "validation_f1_mean": 0.0}</pre>
+        {% else %}<pre class="mt-3 overflow-x-auto text-xs">{"health_status": 0, "model_version": "", "batch_prediction_count": 0, "invalid_feature_rejected": false, "extra_feature_rejected": false, "input_drift_detected": false, "drift_proves_quality_failure": true, "canary_promoted": true, "rollback_active_version": "", "rollback_triggered": false}</pre>{% endif %}
+      </details>
+      <label class="block text-sm font-semibold">Project reflection<textarea required name="reflection" minlength="80" maxlength="12000" rows="7" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal">{{ submission.get('reflection', '') }}</textarea></label>
+      <button class="rounded-lg bg-indigo-700 px-4 py-2 font-semibold text-white" type="submit">Save and evaluate project</button>
+    </form>
+    <p id="ml-project-result" class="mt-4 text-sm" role="status" aria-live="polite"></p>
+  </section>
+
+  {% if evaluation %}
+  <section class="mt-5 rounded-2xl border {{ 'border-emerald-200 bg-emerald-50' if record.completed else 'border-amber-200 bg-amber-50' }} p-6">
+    <h3 class="text-lg font-bold">Latest review · {{ evaluation.score }}/100{% if record.completed %} · Project complete ✓{% endif %}</h3>
+    <p class="mt-2 text-sm">{{ evaluation.summary }}</p>
+    {% for item in evaluation.criterion_feedback %}<div class="mt-3 rounded-lg bg-white/70 p-3"><p class="font-semibold">{{ item.criterion }} · {{ item.score }}/100</p><p class="mt-1 text-sm">Evidence: {{ item.evidence }}</p>{% if item.gap %}<p class="mt-1 text-sm">Next improvement: {{ item.gap }}</p>{% endif %}</div>{% endfor %}
+  </section>
+  {% endif %}
+</article>
+<script>
+(() => {
+  const form = document.getElementById('ml-project-form');
+  const result = document.getElementById('ml-project-result');
+  const csrf = document.querySelector('meta[name="csrf-token"]').content;
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const fields = new FormData(form);
+    let report;
+    try { report = JSON.parse(fields.get('report')); }
+    catch { result.textContent = 'Report must be valid JSON.'; result.className = 'mt-4 text-sm text-red-700'; return; }
+    result.textContent = 'Saving draft, checking the report and CI result, then requesting a rubric review…';
+    result.className = 'mt-4 text-sm text-slate-600';
+    try {
+      const response = await fetch({{ url_for('ml_specialization.submit_project', module_id=module.id)|tojson }}, {
+        method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+        body: JSON.stringify({
+          repository_url: fields.get('repository_url'), checks_url: fields.get('checks_url'),
+          reflection: fields.get('reflection'), report,
+        }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Project could not be evaluated.');
+      result.textContent = data.completed
+        ? `Project passed with ${data.evaluation.score}/100. Specialization progress is saved.`
+        : `Review saved (${data.evaluation.score}/100). Address the feedback and resubmit.`;
+      result.className = `mt-4 text-sm ${data.completed ? 'text-emerald-800' : 'text-amber-800'}`;
+      window.setTimeout(() => window.location.reload(), 900);
+    } catch (error) {
+      result.textContent = error.message || 'Project could not be evaluated.';
+      result.className = 'mt-4 text-sm text-red-700';
+    }
+  });
+})();
+</script>
+{% endblock %}

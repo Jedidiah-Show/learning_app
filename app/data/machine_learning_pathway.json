@@ -1,0 +1,231 @@
+{
+  "id": "machine-learning-engineering",
+  "title": "Machine Learning Engineering",
+  "subtitle": "An optional specialization in production tabular machine learning",
+  "description": "Build, evaluate, reproduce, and operate CPU friendly tabular machine learning systems. This specialization is separate from the AI Engineering course and its pacing plans.",
+  "status": "pilot-planning",
+  "entry_requirements": [
+    "Complete Python foundations and be comfortable with functions, data structures, files, and debugging.",
+    "Complete backend foundations and be comfortable with APIs, validation, and persistent data."
+  ],
+  "scope_note": "The pilot focuses on conventional tabular models and production practice. Deep learning and GPU training are a later advanced extension.",
+  "modules": [
+    {
+      "id": "mle.data-problem-formulation",
+      "number": 1,
+      "title": "Data and problem formulation",
+      "summary": "Turn a product question into a defensible tabular ML problem, then validate data and build features without leaking the answer.",
+      "topics": ["NumPy and pandas", "Dataset validation", "Descriptive statistics", "Feature engineering", "Data leakage and split design"],
+      "project": "Create a documented dataset audit and a reproducible feature preparation pipeline on a small synthetic or appropriately licensed dataset.",
+      "project_rubric": [
+        {"criterion": "Dataset contract and quality checks", "weight": 40},
+        {"criterion": "Split and leakage reasoning", "weight": 35},
+        {"criterion": "Reproducible implementation and evidence", "weight": 25}
+      ],
+      "lessons": [
+        {
+          "id": "mle.data.01", "title": "Frame the prediction problem", "status": "ready",
+          "goal": "Write down what decision a model should support before choosing an algorithm.",
+          "sections": [
+            {"heading": "Start with the decision", "body": ["A model is useful only when its prediction changes a real decision. Describe who acts on the prediction, what they can do, and when they need the answer. For example, predicting whether a subscription will be cancelled next month is more actionable than predicting whether a customer is generally unhappy.", "Define the prediction unit (one row per customer, order, or day), the prediction time, and the outcome window. These choices determine which fields are available at prediction time and how you must split the data."]},
+            {"heading": "Choose the target and baseline", "body": ["The target is the outcome the model learns to predict. Specify its exact source, time window, and treatment of missing or ambiguous outcomes. Check how often each target value occurs; a rare positive class changes which metrics and baselines are useful.", "Before training a model, record a simple baseline. A majority-class prediction or a historical rate tells you what a useful model must improve on. Set a success metric and a minimum acceptable value before looking at candidate model results."]},
+            {"heading": "Write an evaluation contract", "body": ["Document the unit, prediction time, target, eligible data, baseline, evaluation population, and decision threshold. Keep this contract fixed while comparing candidates. If you change the business question, revise the contract and treat it as a new experiment."]}
+          ],
+          "task": "Draft an evaluation contract for predicting whether a fictional online shop order will be returned within 30 days. State the prediction unit and time, target definition, a plausible baseline, and one metric you would report.",
+          "quiz": {"question": "An order return model will be used to choose which orders receive a manual quality check. What should you define first?", "choices": ["The model architecture", "The decision, prediction time, and target window", "The largest dataset available", "The hyperparameter search space"], "answer": 1, "explanation": "The decision and timing define what the model must predict and what data can legitimately be used."}
+        },
+        {
+          "id": "mle.data.02", "title": "Inspect and validate a tabular dataset", "status": "ready",
+          "goal": "Find structural and quality problems before they silently affect model training.",
+          "sections": [
+            {"heading": "Treat a dataset as a contract", "body": ["For every column, record its meaning, type, allowed values, unit, and whether it may be missing. Validate that the table has the expected columns and that each row represents the intended entity. A customer table should not unexpectedly contain duplicate customer IDs unless the task is about customer events.", "Separate schema checks from statistical checks. Schema checks catch missing columns and wrong types. Statistical checks catch impossible values, unexpected category changes, duplicate rows, and sudden shifts in missingness."]},
+            {"heading": "Inspect with safe summaries", "body": ["Start with row and column counts, duplicate keys, missing-value counts, numeric ranges, and category frequencies. Look at distributions rather than only averages: a mean can hide a long tail or an invalid negative value.", "Compare summaries across time and across relevant groups. A field that is mostly complete overall may be missing for one source system or one month. Do not silently fill values until you understand why they are absent."]},
+            {"heading": "Make failures actionable", "body": ["Turn important assumptions into executable checks: required columns exist, IDs are unique where expected, numeric values fall in valid ranges, and category values are recognized. Fail loudly when an assumption breaks; log enough context to locate the bad rows without exposing sensitive records."]}
+          ],
+          "task": "List five validation checks for a table with one row per order, including a unique order ID, an order total, a status category, and an order date.",
+          "quiz": {"question": "A dataset has the expected columns, but order_id is duplicated. What is the best next step?", "choices": ["Drop duplicates automatically", "Check whether rows are orders or order events and resolve the table grain", "Train anyway because the schema matches", "Convert order_id to a number"], "answer": 1, "explanation": "Duplicate keys can be valid only if the row-level unit allows them. Clarify the dataset grain before deleting data or training."}
+        },
+        {
+          "id": "mle.data.03", "title": "Choose a split that matches the real question", "status": "ready",
+          "goal": "Evaluate on examples that represent future use without leaking information across splits.",
+          "sections": [
+            {"heading": "Random splits are not always realistic", "body": ["A random split is reasonable when rows are independent and future examples resemble a random sample of current examples. It can overstate quality when the same person, device, or organization appears in both training and test data.", "For repeated entities, keep all rows for an entity in one split. When predicting future outcomes, use a time-based split: train on earlier periods and evaluate on later periods. Match the split to the deployment question, not to whichever split gives the highest score."]},
+            {"heading": "Keep the test set for final evaluation", "body": ["Use training data to fit model parameters and validation data to choose features, thresholds, and settings. Keep the test set untouched until those choices are settled. Repeatedly checking test results turns the test set into part of the training process.", "Cross-validation estimates variation across training folds when data volume is limited. Grouped or time-aware folds are needed when entities repeat or time order matters."]},
+            {"heading": "Check the split itself", "body": ["Record the split rule, time boundaries or group key, random seed where relevant, and row counts. Confirm that every evaluation example would have been available in the intended deployment scenario."]}
+          ],
+          "task": "A hospital wants to predict next week's readmission risk for patients who may have several visits. Recommend a split strategy and explain how it prevents an unrealistic evaluation.",
+          "quiz": {"question": "A model will predict next month's demand using historical monthly data. Which evaluation split is the best starting point?", "choices": ["Randomly shuffle all months", "Train on earlier months and evaluate on later months", "Put the highest-demand month in every fold", "Evaluate on the training rows"], "answer": 1, "explanation": "A forward time split simulates predicting future demand from past observations."}
+        },
+        {
+          "id": "mle.data.04", "title": "Build features and detect leakage", "status": "ready",
+          "goal": "Create useful features only from information available at prediction time.",
+          "sections": [
+            {"heading": "Availability defines a valid feature", "body": ["For each feature, ask when it is created and whether it exists at the exact prediction time. A field populated after the outcome, such as a refund reason for return prediction, leaks the answer even if it looks predictive.", "Leakage can also happen through duplicate entities across splits, aggregates computed over future records, or preprocessing fitted using the full dataset. These shortcuts make offline scores look strong while failing in production."]},
+            {"heading": "Fit transformations on training data", "body": ["Imputation, scaling, category encoding, and feature selection learn information from data. Fit them only on each training fold. A scikit-learn Pipeline keeps preprocessing and the estimator together so cross-validation can refit every step correctly.", "Feature engineering should preserve a reproducible mapping from raw columns to model inputs. Give features clear names and document their units, time windows, and missing-value behavior."]},
+            {"heading": "Audit suspiciously strong results", "body": ["When a feature produces a dramatic score increase, check its creation time and relationship to the target. Compare performance with and without it. A lower but honest score is more useful than a high score built on information unavailable at prediction time."]}
+          ],
+          "task": "For a model that predicts whether a loan will default at approval time, identify two plausible leakage features and describe a safe preprocessing rule for numeric missing values.",
+          "quiz": {"question": "Why should an imputer be fitted separately inside each cross-validation training fold?", "choices": ["To make the model train more slowly", "To avoid using validation-fold information during fitting", "To guarantee every value is non-null", "To increase the number of features"], "answer": 1, "explanation": "Fitting preprocessing on validation rows leaks information from the evaluation data into the training process."}
+        }
+      ]
+    },
+    {
+      "id": "mle.classical-ml",
+      "status": "pilot-planned",
+      "number": 2,
+      "title": "Classical machine learning",
+      "summary": "Build reliable scikit-learn baselines and assess them with metrics that match the decision being made.",
+      "topics": ["scikit-learn pipelines", "Dummy and linear baselines", "Cross-validation", "Classification and regression metrics", "Class imbalance and calibration"],
+      "project": "Train and compare a baseline and a candidate model with a fixed evaluation set, deterministic metric checks, and an explanation of trade-offs.",
+      "project_rubric": [
+        {"criterion": "Leakage-safe preprocessing and model pipeline", "weight": 30},
+        {"criterion": "Baseline and fixed-set metric evaluation", "weight": 40},
+        {"criterion": "Validation and decision-focused explanation", "weight": 30}
+      ],
+      "lessons": [
+        {
+          "id": "mle.classical.01", "title": "Build a baseline before a model", "status": "ready",
+          "goal": "Compare a candidate model with a simple reference that exposes the value of learning from features.",
+          "sections": [
+            {"heading": "A baseline makes performance interpretable", "body": ["A model score has no meaning without a reference. For classification, a DummyClassifier can always predict the majority class or follow the observed class distribution. For regression, a mean or median predictor gives a simple error floor.", "Baselines expose class imbalance. If 80% of examples are negative, predicting negative for every row gets 80% accuracy while detecting no positive examples. Accuracy alone can make that system look useful when it is not."]},
+            {"heading": "Compare on the same held-out rows", "body": ["Fit the baseline and candidate using the same training data. Evaluate both on the same fixed holdout set. Record the split rule, class counts, and metric definitions so the comparison can be repeated.", "Do not tune the candidate by repeatedly checking the final test set. Use training folds or a validation set for model choices, then reserve the test set for a final comparison."]},
+            {"heading": "Keep the baseline in the report", "body": ["A baseline that is hard to beat can reveal weak features, a noisy target, or an evaluation mismatch. Keep it in the project report; it gives future model changes a stable comparison point."]}
+          ],
+          "task": "Explain why a churn model with 82% accuracy may still be no better than a baseline when only 18% of customers churn.",
+          "quiz": {"question": "A dataset is 90% negative. A model predicts negative for every row and reports 90% accuracy. What should you do next?", "choices": ["Declare success based on accuracy", "Compare with a baseline and inspect positive-class recall and precision", "Remove all negative examples", "Tune until accuracy reaches 100%"], "answer": 1, "explanation": "Majority-class accuracy hides whether the model detects the positive cases that matter."}
+        },
+        {
+          "id": "mle.classical.02", "title": "Keep preprocessing inside a pipeline", "status": "ready",
+          "goal": "Fit transformations only on training folds and keep inference behavior reproducible.",
+          "sections": [
+            {"heading": "Preprocessing learns from data", "body": ["Imputation values, category vocabularies, scaling statistics, and feature selection all depend on the rows used to fit them. If you fit these steps before splitting, validation data influences training and the score becomes optimistic.", "A scikit-learn Pipeline chains transformations with an estimator. During cross-validation, each fold fits its own preprocessing using only that fold's training rows."]},
+            {"heading": "Use ColumnTransformer for mixed columns", "body": ["Numeric columns often need missing-value imputation and scaling. Categorical columns often need most-frequent imputation and one-hot encoding. ColumnTransformer applies each recipe to named columns and keeps the resulting feature mapping consistent.", "Keep identifiers and post-outcome fields out of model features. A record ID is not a meaningful predictor, and a value generated after the prediction time is leakage even if it improves a score."]},
+            {"heading": "Save the whole inference path", "body": ["Persist the fitted pipeline rather than only the final estimator. That package includes the transformations needed to turn a new raw row into the model's expected inputs. Record the feature list and library versions beside it."]}
+          ],
+          "task": "Sketch a scikit-learn Pipeline for numeric columns with missing values and a logistic regression classifier. State where the imputer and scaler are fitted during cross-validation.",
+          "quiz": {"question": "Where should a numeric imputer be placed when using cross-validation?", "choices": ["Fit it once on the entire dataset before splitting", "Inside the pipeline that is refitted on each training fold", "Fit it on the final test set", "Replace missing values after predictions"], "answer": 1, "explanation": "A pipeline ensures each fold learns imputation values only from its training rows."}
+        },
+        {
+          "id": "mle.classical.03", "title": "Measure model quality for the decision", "status": "ready",
+          "goal": "Select metrics that reflect the costs and consequences of model errors.",
+          "sections": [
+            {"heading": "Read the confusion matrix", "body": ["For binary classification, true positives are positive cases found, false positives are negative cases flagged, false negatives are missed positives, and true negatives are correctly rejected. Precision is the share of flagged cases that are positive. Recall is the share of positive cases found.", "A false positive may waste a review or intervention. A false negative may miss a serious event. Choose the metric and operating threshold with the decision owner, and report both when the costs are uncertain."]},
+            {"heading": "Use metrics with clear meanings", "body": ["Accuracy is the share of all rows classified correctly, but it can hide failure on rare classes. F1 is the harmonic mean of precision and recall and is useful when both matter, although it does not encode a business cost directly.", "ROC AUC measures ranking across thresholds; precision-recall curves can be more informative for rare positive classes. For regression, choose error metrics such as MAE or RMSE based on how large errors should be treated."]},
+            {"heading": "Report the threshold", "body": ["A probability model becomes a class decision only after a threshold is chosen. Show the threshold with precision and recall. Choose it using validation data, not the final test set, then evaluate the chosen threshold once on the holdout."]}
+          ],
+          "task": "A safety review team can inspect only 20 alerts per day and wants to avoid missing high-risk cases. Which classification metrics and threshold evidence would you report?",
+          "quiz": {"question": "A fraud team wants to miss as few fraudulent transactions as possible and can tolerate extra manual reviews. Which metric should be emphasized when selecting a threshold?", "choices": ["Positive-class recall", "Negative-class precision only", "Training accuracy", "Number of input columns"], "answer": 0, "explanation": "High positive-class recall reduces missed fraud; precision and review volume should still be reported as the operational trade-off."}
+        },
+        {
+          "id": "mle.classical.04", "title": "Validate, compare, and calibrate", "status": "ready",
+          "goal": "Estimate variation, make fair model comparisons, and interpret predicted probabilities carefully.",
+          "sections": [
+            {"heading": "Use cross-validation for model choices", "body": ["A single validation split can be unusually easy or difficult. Cross-validation repeats fitting across multiple training and validation folds, giving a view of score variation. Keep groups together or preserve time order when the data structure requires it.", "Compare candidate models on the same folds and record the mean and spread of the selected metric. Large fold-to-fold variation is a signal to investigate data size, drift, or unstable subgroups."]},
+            {"heading": "Do not tune on the test set", "body": ["Feature choices, hyperparameters, thresholds, and calibration methods are model selection. Use cross-validation or a validation set for those decisions. Touch the fixed test set only after the approach is chosen, and document that it remained held out."]},
+            {"heading": "A score is not automatically a probability", "body": ["A model can rank examples well while its predicted probabilities are systematically too high or too low. Calibration compares predicted risk with observed event rates. Calibrate on held-out or cross-validated training predictions, never by fitting a calibrator on the final test labels.", "Calibration matters when actions depend on risk levels or when probabilities are communicated as expected likelihoods. Check reliability across meaningful groups as well as overall."]}
+          ],
+          "task": "Describe one way to compare two classifiers without reusing the fixed test set, and explain when calibration would matter to a product team.",
+          "quiz": {"question": "When should the fixed test set be used during model development?", "choices": ["After choices are settled, for a final estimate", "For every hyperparameter trial", "To fit the imputer", "To choose the feature list"], "answer": 0, "explanation": "Repeated model selection on test results turns the test set into training feedback and makes its final score unreliable."}
+        }
+      ]
+    },
+    {
+      "id": "mle.reproducible-training",
+      "status": "pilot-extension",
+      "number": 3,
+      "title": "Reproducible training",
+      "summary": "Make training runs explainable and repeatable as datasets, parameters, and code change.",
+      "topics": ["Experiment tracking", "Dataset and model versions", "Hyperparameter search", "Artifact storage", "Repeatable training"],
+      "project": "Build a repeatable training command that records code and dataset identity, parameters, cross-validation results, and a fixed-set evaluation in a run manifest.",
+      "project_rubric": [
+        {"criterion": "Dataset, code, and configuration identity", "weight": 30},
+        {"criterion": "Repeatable training and validation procedure", "weight": 40},
+        {"criterion": "Run manifest and artifact explanation", "weight": 30}
+      ],
+      "lessons": [
+        {
+          "id": "mle.repro.01", "title": "Make a training run repeatable", "status": "ready",
+          "goal": "Identify the inputs and controls needed to reproduce a model training run.",
+          "sections": [
+            {"heading": "A model file is not a training record", "body": ["A trained model without its data identity, feature code, parameters, and environment is difficult to reproduce. A useful run record identifies the source revision, dataset version, feature list, estimator settings, random seeds, dependency versions, and evaluation procedure.", "Determinism has limits. A fixed seed controls many sources of randomness, but different hardware, BLAS implementations, library versions, or parallel reductions may still change low-order results. State the environment and the tolerance used when comparing runs."]},
+            {"heading": "Separate configuration from code", "body": ["Put experiment choices in a small validated configuration rather than changing source constants for every run. Record the resolved configuration in the output manifest so the exact values used are visible.", "Use stable identifiers for a run, but keep the inputs that produced it. A timestamp is useful metadata, not a substitute for a data or code version."]},
+            {"heading": "Repeat before you trust", "body": ["Run the same training command twice from a clean state. Compare the configuration, dataset digest, validation results, and model predictions. Explain any expected nondeterminism rather than claiming bit-for-bit reproducibility without evidence."]}
+          ],
+          "task": "List the minimum metadata you would save so a teammate can rerun a tabular classification experiment three months later.",
+          "quiz": {"question": "Which record best supports reproducing a training result?", "choices": ["The serialized model file alone", "A screenshot of the final score", "Code revision, dataset identity, parameters, environment, seed, and evaluation procedure", "The learner's username and training date"], "answer": 2, "explanation": "A model artifact is only one output; the run inputs and evaluation method are needed to reproduce and interpret it."}
+        },
+        {
+          "id": "mle.repro.02", "title": "Version datasets and model artifacts", "status": "ready",
+          "goal": "Track which data and model files a run used without placing sensitive raw data in experiment logs.",
+          "sections": [
+            {"heading": "Fingerprint the data you used", "body": ["A cryptographic digest such as SHA-256 can identify an exact file without copying its rows into a log. Record the digest, schema version, source or license, and any filtering steps. A hash proves byte identity, not that the dataset is valid or legally usable.", "If data contains personal or confidential information, do not upload it to a tracking service just to make an experiment reproducible. Store approved data in its controlled system and log a version or access-controlled identifier."]},
+            {"heading": "Version the complete inference artifact", "body": ["Save the fitted preprocessing and estimator together, plus the ordered feature schema and expected input types. Include a model version and the training run identifier in the artifact metadata.", "Treat serialized model files as executable trust boundaries. Load only artifacts from controlled, verified sources, and avoid accepting arbitrary learner-provided pickle files in a server process."]},
+            {"heading": "Keep an experiment index", "body": ["An experiment index can link run ID, source revision, dataset digest, parameters, validation metrics, fixed-set metrics, and artifact location. Keep the record small and immutable after publication; create a new run when inputs change."]}
+          ],
+          "task": "Explain what a SHA-256 dataset digest does and does not prove, then name two pieces of model metadata you would store beside a fitted pipeline.",
+          "quiz": {"question": "What does a matching SHA-256 digest for two dataset files establish?", "choices": ["That both datasets are unbiased", "That the byte contents match, assuming a secure hash", "That both files have a valid license", "That the model is accurate"], "answer": 1, "explanation": "A digest is a useful identity check but does not establish data quality, permission, or model performance."}
+        },
+        {
+          "id": "mle.repro.03", "title": "Search parameters without overfitting validation", "status": "ready",
+          "goal": "Tune models on training data while preserving a final evaluation set for one honest comparison.",
+          "sections": [
+            {"heading": "Search inside training folds", "body": ["Grid search and randomized search compare parameter settings using cross-validation on the training data. Put preprocessing and the estimator in the searched pipeline so each fold fits transformations correctly.", "Record the search space, scoring metric, fold strategy, random seed, and selected parameters. If you try many options, variation in cross-validation results matters as much as the highest mean score."]},
+            {"heading": "Keep the final test set out of the search", "body": ["A fixed evaluation set is not another validation fold. Do not use its labels to select the model, threshold, features, or calibration method. Once a development decision is made, evaluate the chosen process on the fixed set and save the result in the run record.", "If the test result is disappointing and you revise the model based on it, that set has become development feedback. Collect a new future holdout before claiming an unbiased final estimate."]},
+            {"heading": "Promote artifacts deliberately", "body": ["Store candidate artifacts separately from the current production model. Promote only a run that satisfies the agreed quality and operational checks, and keep the previous artifact available for rollback."]}
+          ],
+          "task": "Describe a safe place for hyperparameter search, a metric you would optimize, and when you would evaluate the fixed holdout.",
+          "quiz": {"question": "Where should hyperparameter search happen?", "choices": ["Repeatedly on the fixed test set", "Within cross-validation on the training data", "On production traffic without logging", "On the labels after the model is deployed"], "answer": 1, "explanation": "Training-only cross-validation supports model selection while keeping the final evaluation set independent."}
+        }
+      ]
+    },
+    {
+      "id": "mle.production-ml",
+      "status": "pilot-extension",
+      "number": 4,
+      "title": "Production machine learning",
+      "summary": "Serve predictions and operate a model with monitoring, change control, and recovery plans.",
+      "topics": ["Batch and online inference", "Model serving", "Performance monitoring", "Drift signals", "Canaries and rollback"],
+      "project": "Package a versioned tabular model behind validated batch and online prediction contracts, then demonstrate monitoring, a canary decision, and rollback on a small synthetic workload.",
+      "project_rubric": [
+        {"criterion": "Prediction contract and safe model serving", "weight": 35},
+        {"criterion": "Monitoring and drift response", "weight": 35},
+        {"criterion": "Canary, rollback, and operational evidence", "weight": 30}
+      ],
+      "lessons": [
+        {
+          "id": "mle.production.01", "title": "Choose a prediction serving pattern", "status": "ready",
+          "goal": "Choose batch or online inference based on the decision's latency, volume, and reliability needs.",
+          "sections": [
+            {"heading": "Batch and online inference solve different timing needs", "body": ["Batch inference scores many records on a schedule and writes predictions for later use. It can be cheaper and easier to retry, but predictions may be stale until the next run. Online inference scores a request immediately and is useful when a decision needs a fresh result, but adds latency, availability, and capacity requirements to a user-facing path.", "A hybrid design can precompute expensive features or risk scores, then combine them with fresh request data. Choose the simplest serving pattern that meets a stated service objective."]},
+            {"heading": "Define a stable prediction contract", "body": ["Specify required feature names, types, units, null handling, model version, and response fields. Reject malformed input clearly. Do not silently coerce an unknown category or missing required feature into a plausible-looking prediction.", "Version the model and input schema together. A new model that expects different features needs a compatible serving contract and a rollout plan."]},
+            {"heading": "Protect the application boundary", "body": ["Set request size limits, timeouts, and concurrency bounds. Keep model artifacts in trusted storage and load a verified version during startup or a controlled refresh. Never fetch a model file from a user-supplied URL in the prediction request."]}
+          ],
+          "task": "Choose batch or online serving for a daily overnight churn list used by a retention team, then name one operational trade-off and one input validation rule.",
+          "quiz": {"question": "A retention team acts on a list once each morning. Which first serving design is a reasonable fit?", "choices": ["A batch scoring job with a documented freshness window", "A GPU cluster for every row", "An online endpoint with no timeout", "A model trained again for each request"], "answer": 0, "explanation": "A scheduled list does not need per-request latency; a batch job can be simpler if its freshness meets the decision need."}
+        },
+        {
+          "id": "mle.production.02", "title": "Monitor data and model behavior", "status": "ready",
+          "goal": "Detect service failures, input shifts, and changes in model quality with appropriate signals.",
+          "sections": [
+            {"heading": "Monitor the service and the model separately", "body": ["Service signals include request volume, error rate, latency, resource use, and batch completion. Model signals include missingness, feature ranges, category frequencies, prediction distributions, and—when labels arrive—quality metrics.", "A service can be healthy while its predictions are wrong. A model can also remain statistically stable while the product's action or population changes. Monitor the complete decision path, including whether people can act on the prediction."]},
+            {"heading": "Drift is a signal to investigate", "body": ["Input drift means the feature distribution changed. It does not prove that model quality fell. A prediction shift can be caused by a real population change, a broken upstream field, or a new model version. Compare against a documented reference window and investigate before retraining.", "When labels arrive late, track leading data-quality signals now and measure predictive quality later. Segment by meaningful groups where the data volume supports it, and protect privacy in logs."]},
+            {"heading": "Set actions before alerts fire", "body": ["For each alert, define an owner, threshold, severity, and response. A missing required feature may stop a batch job; a gradual drift alert may trigger investigation; an online error-rate breach may roll traffic back. Alerts without a runbook become noise."]}
+          ],
+          "task": "A prediction input's missing rate jumps from 2% to 30%, but labels will not arrive for three weeks. Name an immediate check, a safe operational response, and a later model-quality measure.",
+          "quiz": {"question": "An input-distribution drift alert fires. What does that establish by itself?", "choices": ["The model's accuracy has definitely decreased", "The observed input distribution changed and needs investigation", "The model must be retrained immediately", "The feature is now a protected attribute"], "answer": 1, "explanation": "Drift is a diagnostic signal, not direct proof of worse predictive quality or an automatic retraining command."}
+        },
+        {
+          "id": "mle.production.03", "title": "Release with a canary and rollback", "status": "ready",
+          "goal": "Limit the impact of a model update and restore a known-good version safely.",
+          "sections": [
+            {"heading": "Treat model promotion as a release", "body": ["A model release includes the artifact, schema, preprocessing, runtime dependencies, evaluation record, and owner. Verify these together before traffic moves. Keep an explicit pointer to the current model version rather than overwriting the only production artifact.", "A canary sends a small, controlled share of traffic to the candidate. Compare service metrics, input validity, prediction behavior, and delayed quality signals with the current model. Define the sample size and decision window before starting."]},
+            {"heading": "Use stop and rollback conditions", "body": ["Set limits for latency, error rate, data-contract failures, and important quality or safety metrics. If a limit is crossed, stop increasing candidate traffic and return to the last known-good version.", "Rollback should restore the model and its compatible preprocessing and feature schema. Record who made the change, which run was promoted, what triggered rollback, and how the issue will be investigated."]},
+            {"heading": "Retraining is a governed decision", "body": ["Retrain when evidence and a defined process support it, not just because time passed or one distribution alert fired. Validate the candidate against the same fixed evaluation contract, review subgroup effects, and keep a human accountable for promotion."]}
+          ],
+          "task": "Write two stop conditions for a canary release and state what must be restored during rollback besides the estimator file.",
+          "quiz": {"question": "A canary candidate breaches the agreed error-rate limit. What should the release process do?", "choices": ["Increase its traffic to gather more failures", "Stop promotion and return to the last known-good model and compatible preprocessing", "Delete the previous artifact", "Ignore the alert until retraining"], "answer": 1, "explanation": "A canary limits exposure; a breach of its predefined stop condition should halt rollout and restore the compatible known-good version."}
+        }
+      ]
+    }
+  ]
+}

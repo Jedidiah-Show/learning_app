@@ -11,6 +11,8 @@ from flask_login import current_user, login_required
 from sqlalchemy.exc import SQLAlchemyError
 from app import db
 from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
+from app.ml_pathway import machine_learning_pathway
+from app.ml_pathway import get_machine_learning_lesson, machine_learning_lessons
 from app.learning import (
     course_progress, lesson_is_available, monthly_milestone_progress, user_track,
 )
@@ -18,8 +20,9 @@ from app.course_data import SETUP_CHECKS, TRACKS, track_label
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
 from app.integrations import database_status
 from app.models import (CalendarEvent, LessonBookmark, LessonNote, LessonCompletion,
-                        CourseProject, QuizResult, ReviewItem, StudySession,
-                        SupportRequest)
+                        CoursePlan, CourseProject, MLSpecializationLessonCompletion,
+                        MLSpecializationProject, Quiz, QuizResult, ReviewItem,
+                        StudySession, SupportRequest)
 from app.routes.lessons import _stored_setup_checks
 from app.user_preferences import get_effective_config_for_user, get_user_preferences, set_user_preferences
 from app.request_data import get_json_object
@@ -145,12 +148,45 @@ def index():
         setup_checks = SETUP_CHECKS
         setup_states = _stored_setup_checks(current_user)
         setup_done = sum(1 for check in setup_checks if setup_states.get(check['id']))
+        plan = CoursePlan.query.filter_by(user_id=current_user.id).first()
+        onboarding_complete = bool(
+            plan and plan.skill_level and plan.weekly_hours
+        )
+        next_module_id = None
+        if progress.get('next_action'):
+            action = progress['next_action']
+            if action['type'] == 'project':
+                next_module_id = action.get('module_id')
+            elif action.get('lesson_id'):
+                focused = get_lesson(action['lesson_id'])
+                next_module_id = focused.get('module_id') if focused else None
+        due_reviews = ReviewItem.query.filter_by(
+            user_id=current_user.id, active=True
+        ).filter(ReviewItem.due_at <= datetime.now(timezone.utc)).count()
+        module_states = {}
+        for module in progress['modules']:
+            if (
+                module['project_completed']
+                and module['completed_lessons'] == module['total_lessons']
+            ):
+                module_states[module['id']] = 'complete'
+            elif module['id'] == next_module_id:
+                module_states[module['id']] = (
+                    'project'
+                    if module['completed_lessons'] == module['total_lessons']
+                    else 'current'
+                )
+            else:
+                module_states[module['id']] = 'locked'
         return render_template('dashboard.html', config=config, user=current_user,
                                course=curriculum(),
                                progress=progress, next_lesson=next_lesson,
                                next_project=next_project, streak=streak,
                                longest_streak=longest_streak, setup_checks=setup_checks,
-                               setup_states=setup_states, setup_done=setup_done)
+                               setup_states=setup_states, setup_done=setup_done,
+                               onboarding_complete=onboarding_complete,
+                               next_module_id=next_module_id,
+                               due_reviews=due_reviews)
     except Exception:
         current_app.logger.exception('Dashboard error')
         # The template dereferences progress even in the error branch, so the
@@ -166,7 +202,8 @@ def index():
                                },
                                next_lesson=None, next_project=None,
                                streak=0, longest_streak=0,
-                               progress_error=True), 503
+                               onboarding_complete=True, next_module_id=None,
+                               due_reviews=0, progress_error=True), 503
 
 
 @main_bp.route('/lessons')
@@ -180,6 +217,12 @@ def lessons():
     completed_ids = {item.lesson_id for item in completions}
     progress = course_progress(current_user, completed=completed_ids)
     plan = CoursePlan.query.filter_by(user_id=current_user.id).first()
+    current_module_id = None
+    if progress.get('next_lesson_id'):
+        current = get_lesson(progress['next_lesson_id'])
+        current_module_id = current.get('module_id') if current else None
+    elif progress.get('next_action', {}).get('type') == 'project':
+        current_module_id = progress['next_action'].get('module_id')
     return render_template('lessons.html', config=get_effective_config_for_user(current_user),
                            user=current_user, course=curriculum(), modules=all_modules(),
                            completed_ids=completed_ids,
@@ -187,14 +230,161 @@ def lessons():
                                item.lesson_id: item.completion_source for item in completions
                            },
                            next_lesson_id=progress['next_lesson_id'],
+                           current_module_id=current_module_id,
                            skill_level=(plan.skill_level if plan else '') or '')
+
+
+@main_bp.route('/specializations/machine-learning')
+@login_required
+def machine_learning_specialization():
+    """Show the optional ML pathway without adding it to the shared course."""
+    pathway = machine_learning_pathway()
+    completions = MLSpecializationLessonCompletion.query.filter_by(
+        user_id=current_user.id, pathway_id=pathway['id']
+    ).all()
+    completed = {item.lesson_id for item in completions}
+    projects = {
+        item.module_id: item for item in MLSpecializationProject.query.filter_by(
+            user_id=current_user.id, pathway_id=pathway['id']
+        ).all()
+    }
+    shared_projects = {
+        item.module_id for item in CourseProject.query.filter_by(
+            user_id=current_user.id, completed=True
+        ).filter(CourseProject.module_id.in_(['01', '02'])).all()
+    }
+    prerequisites_met = {'01', '02'}.issubset(shared_projects)
+    ml_project_ids = {
+        item.module_id for item in MLSpecializationProject.query.filter_by(
+            user_id=current_user.id, pathway_id=pathway['id'], completed=True
+        ).all()
+    }
+    ready_lessons = [
+        lesson for lesson in machine_learning_lessons()
+        if lesson.get('status') == 'ready'
+    ]
+    next_lesson_id = None
+    if prerequisites_met:
+        for lesson in ready_lessons:
+            prior_modules = [
+                module for module in pathway['modules']
+                if module['number'] < lesson['module_number']
+                and all(item.get('status') == 'ready' for item in module['lessons'])
+            ]
+            if any(module['id'] not in ml_project_ids for module in prior_modules):
+                break
+            if lesson['id'] not in completed:
+                next_lesson_id = lesson['id']
+                break
+    module_progress = {}
+    project_unlocked = {}
+    for module in pathway['modules']:
+        module_lessons = [lesson['id'] for lesson in module['lessons']]
+        prior_modules = [
+            item for item in pathway['modules']
+            if item['number'] < module['number']
+            and all(lesson.get('status') == 'ready' for lesson in item['lessons'])
+        ]
+        project_unlocked[module['id']] = bool(
+            prerequisites_met
+            and all(lesson.get('status') == 'ready' for lesson in module['lessons'])
+            and set(module_lessons).issubset(completed)
+            and all(item['id'] in ml_project_ids for item in prior_modules)
+        )
+        module_progress[module['id']] = {
+            'completed_lessons': sum(lesson_id in completed for lesson_id in module_lessons),
+            'total_lessons': len(module_lessons),
+            'project_completed': bool(projects.get(module['id']) and projects[module['id']].completed),
+        }
+    return render_template(
+        'specializations/machine_learning.html',
+        pathway=pathway, completed_ids=completed, prerequisites_met=prerequisites_met,
+        module_progress=module_progress, project_unlocked=project_unlocked,
+        next_lesson_id=next_lesson_id,
+    )
+
+
+@main_bp.route('/specializations/machine-learning/lessons/<lesson_id>', methods=['GET', 'POST'])
+@login_required
+def machine_learning_lesson(lesson_id):
+    pathway = machine_learning_pathway()
+    lesson = get_machine_learning_lesson(lesson_id)
+    if not lesson or lesson.get('status') != 'ready':
+        abort(404)
+    completions = MLSpecializationLessonCompletion.query.filter_by(
+        user_id=current_user.id, pathway_id=pathway['id']
+    ).all()
+    completed = {item.lesson_id for item in completions}
+    module_complete = CourseProject.query.filter(
+        CourseProject.user_id == current_user.id,
+        CourseProject.module_id.in_(['01', '02']),
+        CourseProject.completed.is_(True),
+    ).all()
+    if not {'01', '02'}.issubset({project.module_id for project in module_complete}):
+        abort(403)
+    prior_modules = [
+        module for module in machine_learning_pathway()['modules']
+        if module['number'] < lesson['module_number']
+        and all(item.get('status') == 'ready' for item in module['lessons'])
+    ]
+    prior_project_ids = {
+        item.module_id for item in MLSpecializationProject.query.filter_by(
+            user_id=current_user.id, pathway_id=pathway['id'], completed=True
+        ).all()
+    }
+    if any(module['id'] not in prior_project_ids for module in prior_modules):
+        abort(403)
+    ready_lessons = [item for item in machine_learning_lessons() if item['status'] == 'ready']
+    lesson_position = next(i for i, item in enumerate(ready_lessons) if item['id'] == lesson_id)
+    if any(item['id'] not in completed for item in ready_lessons[:lesson_position]):
+        abort(403)
+
+    if request.method == 'POST':
+        try:
+            selected = int(request.form.get('answer', '-1'))
+        except (TypeError, ValueError):
+            selected = -1
+        existing = MLSpecializationLessonCompletion.query.filter_by(
+            user_id=current_user.id, pathway_id=pathway['id'], lesson_id=lesson_id
+        ).first()
+        if selected != lesson['quiz']['answer']:
+            flash('That answer needs another look. Review the lesson and try again.', 'error')
+        else:
+            if not existing:
+                db.session.add(MLSpecializationLessonCompletion(
+                    user_id=current_user.id, pathway_id=pathway['id'], lesson_id=lesson_id,
+                ))
+            db.session.commit()
+            flash('Lesson complete. Your specialization progress has been saved.', 'success')
+            return redirect(url_for('main.machine_learning_specialization'))
+
+    existing = lesson_id in completed
+    return render_template(
+        'specializations/machine_learning_lesson.html',
+        lesson=lesson, completed=existing,
+    )
 
 
 @main_bp.route('/quizzes')
 @login_required
 def quizzes():
-    return render_template('quizzes.html', config=get_effective_config_for_user(current_user),
-                           user=current_user, modules=all_modules())
+    existing = {
+        quiz.quiz_id: quiz
+        for quiz in Quiz.query.filter(
+            Quiz.quiz_id.like('dynamoai_lesson_%')
+            | Quiz.quiz_id.like('dynamoai_module_%')
+        ).all()
+    }
+    last_scores = {}
+    for result in QuizResult.query.filter_by(user_id=current_user.id).order_by(
+        QuizResult.taken_at.desc()
+    ).limit(100).all():
+        last_scores.setdefault(result.quiz_id, result.score)
+    return render_template(
+        'quizzes.html', config=get_effective_config_for_user(current_user),
+        user=current_user, modules=all_modules(), existing_quizzes=existing,
+        last_scores=last_scores,
+    )
 
 
 @main_bp.route('/schedule')

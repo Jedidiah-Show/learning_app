@@ -1,0 +1,13 @@
+customer_id,support_tickets,tenure_months,cancelled_after_snapshot,churn_within_30_days
+E001,0,10,0,0
+E002,1,17,0,0
+E003,2,25,0,0
+E004,0,32,0,0
+E005,1,6,0,0
+E006,2,38,0,0
+E007,0,21,0,0
+E008,1,29,0,0
+E009,4,8,1,1
+E010,5,16,1,1
+E011,4,34,1,1
+E012,5,23,1,1
