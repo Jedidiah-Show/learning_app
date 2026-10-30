@@ -96,7 +96,7 @@ class CurriculumAuditTests(unittest.TestCase):
         )
         self.assertEqual(errors, [])
         self.assertEqual(modules, 13)
-        self.assertEqual(lessons, 212)
+        self.assertEqual(lessons, 213)
         self.assertGreaterEqual(exercises, 61)
         # Review queue and coverage gaps are reported, not hard failures
         # unless the lesson is inside the enforced plain-language scope.

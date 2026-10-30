@@ -1,7 +1,7 @@
 app:
   name: "RUACH AI Engineering"
   version: "2.0.0"
-  curriculum_days: 212 # Compatibility name: number of lessons in the bundled curriculum.
+  curriculum_days: 213 # Compatibility name: number of lessons in the bundled curriculum.
 
 ai:
   model_tier: "flash"

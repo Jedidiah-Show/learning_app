@@ -1337,7 +1337,7 @@
     "concepts": [
       {
         "example": "The sample code scores 'How long until I get my money back?' against two lines: 'Refunds are paid within five working days' outranks 'A chargeback is a disputed card payment' despite sharing no keywords.",
-        "plain": "Each phrase maps to a point in a big space, recorded as a fixed list of numbers (often hundreds of them), and phrases used in similar situations land near each other. Cosine similarity compares the direction two lists point, ignoring their length.",
+        "plain": "Each phrase maps to a point in a big space, recorded as a fixed list of numbers (often hundreds of them), and phrases used in similar situations land near each other. Cosine similarity compares the direction two lists point, ignoring their length. A dot product multiplies two equal-length lists element by element and adds up the results; cosine similarity is that total divided by the two lists' lengths, so it measures the angle between them, not how far apart their ends are.",
         "title": "Meaning as geometry"
       },
       {
@@ -3360,5 +3360,31 @@
       }
     ],
     "intro": "The model behind your app is a dependency you do not control: providers retire builds and refresh names while your code stays untouched. A suite that passed in March can drift by June with no diff to read. Naming the exact build, testing before you switch, and rolling out in slices keeps that drift off the incident log."
+  },
+  "1.00": {
+    "intro": "Every later module talks about p99 latency, token budgets, and cost percents as if they are obvious. This short lesson teaches the few maths words behind them - mean, median, percentile, and simple cost maths - so nothing you read later starts with a term you were never given.",
+    "concepts": [
+      {
+        "title": "Mean, median, and why both matter",
+        "plain": "Add everything and divide by the count to get the mean; sort and take the middle to get the median. One huge number moves the mean a lot and the median barely at all, so a big gap between them means a few outliers are doing the damage.",
+        "example": "Latencies 95, 105, 108, 110, 112, 115, 118, 120, 300, 500 average to 168 ms but have a median near 113 ms - the average is lying."
+      },
+      {
+        "title": "Percentiles and the slow tail",
+        "plain": "Sort the numbers and ask what value a given share of them fall under. p50 is the middle; p95 is beaten by 95% of results; p99 by 99%. Users feel the top percentiles, not the average.",
+        "example": "Saying \"p95 latency is 380 ms\" means 95 out of 100 requests came back in 380 ms or less, and the slowest 5% were worse."
+      },
+      {
+        "title": "Turning usage into cost",
+        "plain": "Cost is just multiplication: tokens per request times requests per day, divided by one million, times the price per million, plus any retries. Write the formula down before trusting a bill.",
+        "example": "1800 tokens x 500 requests / 1,000,000 x $2.50 per million comes to about $2.25 a day."
+      }
+    ],
+    "answers": [
+      "Because the mean hides the tail: one service has every request around the average, the other has many quick ones and a few very slow ones that users actually notice.",
+      "p99 = 1200 ms means the slowest 1% of requests take about 1.2 seconds or more, revealing a tail that the p50 of 200 ms never shows.",
+      "Multiplying by the per-million price but forgetting to divide the token count by one million makes the estimate a thousand times too big (reading it the wrong way round makes it a thousand times too small).",
+      "When a few extreme outliers would distort the mean, the median gives the more honest \"typical\" value."
+    ]
   }
 }
