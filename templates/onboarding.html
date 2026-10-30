@@ -7,6 +7,7 @@
   <p class="mt-2 text-slate-600">They stay separate on purpose. What you already know decides which route through the foundations is worth showing; how much time you can give the course decides the pace. Your answers never overwrite your explicit track choice on the Projects page.</p>
 </header>
 <form method="post" action="{{ url_for('auth.onboarding') }}" class="max-w-2xl space-y-5 rounded-2xl border bg-white p-6">
+  <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
   <fieldset>
     <legend class="text-lg font-semibold">What do you already know?</legend>
     {% for level in skills %}
@@ -39,7 +40,10 @@
       {% endfor %}
     </div>
   </fieldset>
-  <button class="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white" type="submit">Finish setup</button>
+  <div class="flex flex-wrap items-center gap-3">
+    <button class="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white" type="submit">Finish setup</button>
+    <button class="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700" type="submit" name="action" value="skip" formnovalidate>Skip for now</button>
+  </div>
 </form>
-<p class="mt-4 text-sm text-slate-500">Your pace can still be changed later from the Projects page.</p>
+<p class="mt-4 text-sm text-slate-500">Skipping keeps your course available; the dashboard will remind you until you answer. Your pace can still be changed later from the Projects page.</p>
 {% endblock %}

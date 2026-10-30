@@ -112,6 +112,12 @@ def course_progress(user, completed=None, completed_projects=None):
                 'id': module['id'], 'number': module['number'],
                 'title': module['title'], 'total_lessons': len(module['lessons']),
                 'estimated_hours': module.get('estimated_hours', 0),
+                'project_completed': module['id'] in completed_projects,
+                'outcome': (
+                    (module.get('outcomes') or [])[0]
+                    if module.get('outcomes')
+                    else module.get('project') or module.get('description', '')
+                ),
                 'study_minutes': sum(
                     (lesson.get('study_minutes') or 0)
                     for lesson in module['lessons']

@@ -42,6 +42,7 @@ class PracticeWorkspaceTests(unittest.TestCase):
             'full_name': username.title(),
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
+        self.client.post('/onboarding', data={'action': 'skip'})
 
     def unlock(self, username, lesson_id):
         lesson = next(item for item in all_lessons() if item['id'] == lesson_id)

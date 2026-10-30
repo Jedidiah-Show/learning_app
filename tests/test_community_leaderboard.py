@@ -37,6 +37,9 @@ class CommunityAndLeaderboardTests(unittest.TestCase):
             'confirm_password': 'secure-pass-123',
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
+        # These tests exercise gated learning pages, so clear the first-run
+        # onboarding gate the way a real learner would: skip the two questions.
+        client.post('/onboarding', data={'action': 'skip'})
         return response
 
     def test_progress_lists_standard_monthly_milestones_and_leaderboard_privacy(self):

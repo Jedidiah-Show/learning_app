@@ -1,6 +1,6 @@
-from flask import Flask, flash, jsonify, request, redirect, url_for, session
+from flask import Flask, flash, jsonify, request, redirect, render_template, url_for, session
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
 from datetime import date, time, timedelta
 import hmac
@@ -15,6 +15,42 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
+
+# Routes the first-run onboarding gate must never redirect: a learner can always
+# reach their own account, security, support, and credential pages before they
+# have answered the two setup questions. Everything else is gated once.
+_NEVER_GATED_ENDPOINTS = frozenset({
+    'static', 'main.healthz', 'main.readyz',
+    'auth.onboarding', 'auth.login', 'auth.logout', 'auth.register',
+    'auth.profile', 'auth.profile_photo', 'auth.update_account',
+    'auth.delete_account', 'auth.reset_account', 'auth.forgot_password',
+    'auth.reset_password', 'auth.verify_phone', 'auth.resend_phone_verification',
+    'main.settings', 'main.support',
+    'credentials.index', 'credentials.issue', 'credentials.verify',
+})
+
+
+def hours_range(value):
+    """Render an hour estimate as a friendly, rounded range.
+
+    Course estimates are stored with one decimal place so pacing calculations
+    stay precise, but learners should read "about 20–25 hours" rather than
+    "22.6 hours". The bucket widens as the estimate grows.
+    """
+    if value in (None, ''):
+        return '—'
+    try:
+        number = float(value)
+    except (TypeError, ValueError):
+        return str(value)
+    if number <= 0:
+        return '0'
+    step = 5 if number < 100 else 25 if number < 500 else 50
+    low = int(number // step) * step
+    high = low + step
+    if low == number and high - low > 1:
+        low = max(0, low - step)
+    return f'{low:,}–{high:,}'
 
 
 def validate_app_config(config):
@@ -402,6 +438,7 @@ def create_app(config_override=None):
     from app.routes.leaderboard import leaderboard_bp
     from app.routes.integrations import integrations_bp
     from app.routes.credentials import credentials_bp
+    from app.routes.ml_specialization import ml_specialization_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -416,6 +453,8 @@ def create_app(config_override=None):
     app.register_blueprint(leaderboard_bp)
     app.register_blueprint(integrations_bp, url_prefix='/api/integrations')
     app.register_blueprint(credentials_bp)
+    app.register_blueprint(ml_specialization_bp)
+
     def _admin_header_token_valid():
         supplied = request.headers.get('X-Admin-Token', '')
         if not supplied:
@@ -428,11 +467,15 @@ def create_app(config_override=None):
 
     @app.before_request
     def gate_post_setup():
-        # First-run onboarding: a learner who just registered with a safe
-        # destination is routed to /onboarding until they answer the two
-        # questions. Completing the flow clears the pending destination.
+        # First-run onboarding: every new learner sees the two setup questions
+        # once before they start learning. Account, security, support, and
+        # credential routes stay reachable so a learner can always manage their
+        # own account (change a password, delete it, verify a phone) even before
+        # they have answered; completing or skipping the flow clears the gate.
         if (
-            request.endpoint != 'auth.onboarding'
+            current_user.is_authenticated
+            and request.endpoint not in _NEVER_GATED_ENDPOINTS
+            and not request.path.startswith('/api/')
             and session.get('_post_setup_next')
             and not session.get('_onboarding_done')
         ):
@@ -460,6 +503,8 @@ def create_app(config_override=None):
     from app.gemini import GeminiRateLimitExceeded
     from app.rate_limit import RateLimitExceeded, rate_limit_response
 
+    app.jinja_env.filters['hours_range'] = hours_range
+
     @app.errorhandler(GeminiRateLimitExceeded)
     def gemini_rate_limit_exceeded(error):
         response = jsonify({'error': str(error)})
@@ -471,6 +516,62 @@ def create_app(config_override=None):
     @app.errorhandler(RateLimitExceeded)
     def request_rate_limit_exceeded(error):
         return rate_limit_response(error)
+
+    def _error_page(status, title, message, next_url, next_label,
+                    secondary_url=None, secondary_label=None):
+        return render_template(
+            f'error/{status}.html',
+            blocker_title=title,
+            blocker_message=message,
+            next_url=next_url,
+            next_label=next_label,
+            secondary_url=secondary_url,
+            secondary_label=secondary_label,
+        ), status
+
+    @app.errorhandler(403)
+    def forbidden(error):
+        if request.path.startswith('/api/'):
+            return jsonify({'error': getattr(error, 'description', None)
+                            or 'You do not have access to this resource.'}), 403
+        message = getattr(error, 'description', None)
+        if not message or message == 'You don\'t have the permission to access the requested resource. It is either read-protected or not readable by the server.':
+            message = 'This page is locked for your account.'
+        if request.path.startswith('/lesson/'):
+            lesson_id = request.path.rstrip('/').rsplit('/', 1)[-1]
+            from app.curriculum import get_lesson
+            lesson = get_lesson(lesson_id)
+            title = f'Lesson {lesson_id} is locked'
+            message = (
+                'Complete the earlier lessons and the module project before '
+                'this lesson. Lessons unlock in course order, and module '
+                'projects are never skipped.'
+            )
+            if lesson:
+                title = f'“{lesson["title"]}” is locked'
+            return _error_page(
+                403, title, message,
+                url_for('main.lessons'), 'See the lesson order',
+                url_for('projects.project_page'), 'Check module projects',
+            )
+        return _error_page(
+            403, 'This page is locked', message,
+            url_for('main.index'), 'Back to your dashboard',
+            url_for('main.support'), 'Ask for help',
+        )
+
+    @app.errorhandler(404)
+    def not_found(error):
+        if request.path.startswith('/api/'):
+            return jsonify({'error': 'Not found'}), 404
+        message = 'The page may have moved, or the link may be incomplete.'
+        if request.path.startswith('/lesson/'):
+            message = 'That lesson does not exist in the current curriculum.'
+        return _error_page(
+            404, 'We could not find that page', message,
+            url_for('main.index'), 'Go to your dashboard',
+            url_for('main.lessons'), 'Browse all lessons',
+        )
 
     @app.after_request
     def add_security_headers(response):

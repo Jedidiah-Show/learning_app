@@ -97,7 +97,7 @@ def create_reply(post_id):
 def delete_post(post_id):
     post = db.get_or_404(CommunityPost, post_id)
     if post.user_id != current_user.id and not current_user.is_admin:
-        abort(403)
+        abort(403, description='Only the author or an administrator can remove this discussion.')
     db.session.delete(post)
     db.session.commit()
     flash('Discussion removed.', 'success')
@@ -109,7 +109,7 @@ def delete_post(post_id):
 def delete_reply(reply_id):
     reply = db.get_or_404(CommunityReply, reply_id)
     if reply.user_id != current_user.id and not current_user.is_admin:
-        abort(403)
+        abort(403, description='Only the author or an administrator can remove this reply.')
     post_id = reply.post_id
     db.session.delete(reply)
     db.session.commit()

@@ -48,6 +48,7 @@ class RuachAICourseTests(unittest.TestCase):
             'full_name': username.title(),
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
+        self.client.post('/onboarding', data={'action': 'skip'})
         return response
 
     def complete_lesson(self, lesson_id):
@@ -93,9 +94,9 @@ class RuachAICourseTests(unittest.TestCase):
 
     def test_bundled_course_has_its_declared_modules_and_lessons(self):
         self.assertEqual(len(all_modules()), 13)
-        self.assertEqual(len(all_lessons()), 212)
+        self.assertEqual(len(all_lessons()), 213)
         self.assertEqual(
-            sum(len(module['lessons']) for module in all_modules()), 212
+            sum(len(module['lessons']) for module in all_modules()), 213
         )
         self.assertEqual(
             curriculum()['course']['title'],

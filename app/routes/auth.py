@@ -415,10 +415,13 @@ def register():
         flash('Registration successful!', 'success')
         if phone and _issue_phone_verification_code(user):
             flash('A verification code was texted to your phone number.', 'info')
-        # Keep the destination through the required first-run setup.
+        # Every new learner starts with the two setup questions. Keep a safe
+        # destination when one was supplied; otherwise return to the dashboard.
         next_page = request.form.get('next', '')
-        if safe_local_redirect(next_page):
-            session['_post_setup_next'] = next_page
+        session['_post_setup_next'] = (
+            next_page if safe_local_redirect(next_page) else url_for('main.index')
+        )
+        session.pop('_onboarding_done', None)
         return redirect(url_for('main.index'))
     
     return render_template('auth/register.html', values={}, errors={})
@@ -443,6 +446,19 @@ def onboarding():
     selected_hours_id = selected_pace['id'] if selected_pace else ''
     recommended = recommend_track(selected_hours) or selected_track
     if request.method == 'POST':
+        if request.form.get('action') == 'skip':
+            session['_onboarding_done'] = True
+            session.pop('_post_setup_next', None)
+            flash(
+                'Setup skipped. You can answer the two questions any time from '
+                'the dashboard.', 'info',
+            )
+            next_page = request.form.get('next') or ''
+            return (
+                redirect(next_page)
+                if safe_local_redirect(next_page)
+                else redirect(url_for('main.index'))
+            )
         skill_level = (request.form.get('skill_level') or '').strip()
         weekly_hours = (request.form.get('weekly_hours') or '').strip()
         track = (request.form.get('track') or '').strip()

@@ -97,7 +97,7 @@ def admin_required(view):
             not getattr(current_user, 'is_admin', False)
             or not getattr(current_user, 'is_active', True)
         ):
-            abort(403)
+            abort(403, description='The admin portal is available to administrators only.')
         if not _admin_session_valid(current_user):
             return redirect(url_for(
                 'admin_portal.login', next=request.full_path
