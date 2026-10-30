@@ -1,5 +1,15 @@
 [
   {
+    "id": "first-python-greeting",
+    "lesson_id": "0.01",
+    "title": "Run your first tiny Python program",
+    "instructions": "A program follows instructions. Change the name in greet(\"AI engineering\") to your own name, run the program, then change the greeting text and run it again. Notice how changing the input changes the result.",
+    "starter_code": "def greet(name):\n    return f\"Hello, {name}!\"\n\n\nprint(greet(\"AI engineering\"))",
+    "checks_code": "assert greet(\"Ada\") == \"Hello, Ada!\"\nassert greet(\"AI engineering\") == \"Hello, AI engineering!\"\nprint(\"Great work: your function responds to different names.\")",
+    "solution_code": "def greet(name):\n    return f\"Hello, {name}!\"\n\n\nprint(greet(\"AI engineering\"))",
+    "estimated_minutes": 8
+  },
+  {
     "id": "python-cheapest-by-provider",
     "lesson_id": "1.01",
     "title": "Find the cheapest model per provider",

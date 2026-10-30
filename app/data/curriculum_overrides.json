@@ -6,11 +6,11 @@
     "learning_routes": {
       "beginner": {
         "title": "Starting from scratch",
-        "description": "Follow the numbered sequence from Module 0. Lessons 0.06 to 0.11 are a hands-on coding ramp: run Python, use lists and dictionaries, write functions, read files, use Git, and call HTTP APIs. Complete every guided practice exercise before opening the worked solution."
+        "description": "Start with the runnable greeting exercise in the welcome lesson, then follow the numbered sequence. Lessons 0.06 to 0.11 deepen the coding ramp: run Python programs, use lists and dictionaries, write functions, read files, use Git, and call HTTP APIs. Complete the guided practice before opening each worked solution."
       },
       "experienced": {
         "title": "Placement check and skip path",
-        "description": "Take the ten-question placement check. A score of 8 or more marks the Module 0 and early Module 1 foundation lessons as placed out. The placement never skips module projects, evidence, or the later lessons; those remain the proof that you can build and operate a system."
+        "description": "Take the placement check, which mixes short coding-workflow answers with concept questions. A score of 8 or more marks the Module 0 and early Module 1 foundation lessons as placed out. The placement never skips module projects, evidence, or the later lessons; those remain the proof that you can build and operate a system."
       }
     },
     "placement": {
@@ -59,14 +59,13 @@
         },
         {
           "id": "q3",
-          "prompt": "Which exception is raised when a dictionary key is missing?",
-          "options": [
-            "TypeError",
-            "KeyError",
-            "ValueError",
-            "NameError"
-          ],
-          "answer": 1
+          "type": "short",
+          "prompt": "A traceback ends with `line 8` followed by `KeyError: 'price'`. Enter the line number you should inspect first.",
+          "answer": "8",
+          "accepted_answers": [
+            "8",
+            "line 8"
+          ]
         },
         {
           "id": "q4",
@@ -81,25 +80,22 @@
         },
         {
           "id": "q5",
-          "prompt": "Which Git command records staged changes?",
-          "options": [
-            "git push",
+          "type": "short",
+          "prompt": "You ran `git add app.py` and the file is staged. Enter the Git command that records the staged snapshot locally.",
+          "answer": "git commit",
+          "accepted_answers": [
             "git commit",
-            "git clone",
-            "git status"
-          ],
-          "answer": 1
+            "commit"
+          ]
         },
         {
           "id": "q6",
-          "prompt": "Which file should normally be excluded from Git?",
-          "options": [
-            "README.md",
-            ".env",
-            "pyproject.toml",
-            "tests/test_app.py"
-          ],
-          "answer": 1
+          "type": "short",
+          "prompt": "Your API key is in a local file named `.env`. Enter the filename you should put in `.gitignore`.",
+          "answer": ".env",
+          "accepted_answers": [
+            ".env"
+          ]
         },
         {
           "id": "q7",
@@ -125,14 +121,12 @@
         },
         {
           "id": "q9",
-          "prompt": "What does a function return statement do?",
-          "options": [
-            "Prints a value",
-            "Hands a value back to the caller",
-            "Creates a file",
-            "Starts a loop"
-          ],
-          "answer": 1
+          "type": "short",
+          "prompt": "A Python function should give a value back to the code that called it. Enter the keyword used for that.",
+          "answer": "return",
+          "accepted_answers": [
+            "return"
+          ]
         },
         {
           "id": "q10",

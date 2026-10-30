@@ -116,6 +116,10 @@ class RuachAICourseTests(unittest.TestCase):
         public_payload = public.get_json()
         self.assertEqual(len(public_payload['questions']), 10)
         self.assertNotIn('answer', public_payload['questions'][0])
+        self.assertEqual(
+            sum(question.get('type') == 'short' for question in public_payload['questions']),
+            4,
+        )
 
         passed = self.client.post('/api/lessons/placement', json={
             'answers': {
@@ -143,11 +147,24 @@ class RuachAICourseTests(unittest.TestCase):
             )
             self.assertEqual(CourseProject.query.filter_by(completed=True).count(), 0)
 
+    def test_welcome_lesson_has_a_runnable_first_python_exercise(self):
+        self.register()
+        response = self.client.get(
+            '/api/lessons/practice/0.01/first-python-greeting'
+        )
+        self.assertEqual(response.status_code, 200, response.get_json())
+        self.assertIn('def greet(name):', response.get_json()['source'])
+        self.assertIn('function responds to different names', response.get_json()['exercise']['checks_code'])
+
     def test_failed_placement_does_not_mark_lessons_complete(self):
         self.register()
         placement = curriculum()['course']['placement']
         answers = {
-            question['id']: (question['answer'] + 1) % len(question['options'])
+            question['id']: (
+                'not the answer'
+                if question.get('type') == 'short'
+                else (question['answer'] + 1) % len(question['options'])
+            )
             for question in placement['questions']
         }
         response = self.client.post('/api/lessons/placement', json={'answers': answers})

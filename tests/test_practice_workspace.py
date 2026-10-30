@@ -105,6 +105,7 @@ class PracticeWorkspaceTests(unittest.TestCase):
             f'1.{lesson_number:02d}' for lesson_number in range(1, 18)
         }
         expected_guided_lessons = {
+            '0.01',
             '2.02', '2.19', '3.06', '3.15', '4.03', '5.02', '5.17',
             '6.01', '6.16', '8.01', '8.03', '9.01', '9.10', '9.13',
             '10.01', '10.07', '11.01', '12.01', '12.09',
@@ -135,7 +136,9 @@ class PracticeWorkspaceTests(unittest.TestCase):
         self.register('learner')
         regular_lesson = self.client.get('/lesson/0.01')
         self.assertEqual(regular_lesson.status_code, 200)
-        self.assertNotIn('practice-panel', regular_lesson.get_data(as_text=True))
+        welcome_html = regular_lesson.get_data(as_text=True)
+        self.assertIn('data-practice-workspace', welcome_html)
+        self.assertIn('Run your first tiny Python program', welcome_html)
 
         self.unlock('learner', '1.01')
         practice_lesson = self.client.get('/lesson/1.01')

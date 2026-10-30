@@ -149,6 +149,7 @@ def monthly_milestone_progress(progress, completed_projects, track='standard'):
             'completed_lessons': done_lessons,
             'total_lessons': total_lessons,
             'estimated_hours': estimated_hours,
+            'estimated_weekly_hours': round(estimated_hours / 4.345, 1),
             'completed_modules': done_modules,
             'total_modules': len(grouped),
             'percent': round(done_lessons / total_lessons * 100) if total_lessons else 0,

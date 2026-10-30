@@ -135,12 +135,21 @@ def _validate_placement(errors, course, lesson_ids):
         if not qid or qid in seen:
             errors.append(f'Placement question id is missing or duplicated: {qid!r}')
         seen.add(qid)
-        options = question.get('options')
-        if not isinstance(options, list) or len(options) < 2:
-            errors.append(f'Placement question {qid} needs at least two options')
+        options = question.get('options') or []
         answer = question.get('answer')
-        if not isinstance(answer, int) or isinstance(answer, bool) or not 0 <= answer < len(options or []):
-            errors.append(f'Placement question {qid} has an invalid answer index')
+        if question.get('type') == 'short':
+            accepted = question.get('accepted_answers')
+            if (
+                not isinstance(answer, str) or not answer.strip()
+                or not isinstance(accepted, list) or not accepted
+                or any(not isinstance(item, str) or not item.strip() for item in accepted)
+            ):
+                errors.append(f'Placement short-answer question {qid} has invalid accepted answers')
+        else:
+            if not isinstance(options, list) or len(options) < 2:
+                errors.append(f'Placement question {qid} needs at least two options')
+            if not isinstance(answer, int) or isinstance(answer, bool) or not 0 <= answer < len(options):
+                errors.append(f'Placement question {qid} has an invalid answer index')
     skippable = placement.get('skippable_lessons') or []
     if not isinstance(skippable, list) or not skippable:
         errors.append('Placement check has no skippable lessons')

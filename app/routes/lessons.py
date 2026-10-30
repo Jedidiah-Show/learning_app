@@ -155,7 +155,8 @@ def placement_check():
                 {
                     'id': question['id'],
                     'prompt': question['prompt'],
-                    'options': question['options'],
+                    'type': question.get('type', 'choice'),
+                    'options': question.get('options') or [],
                 }
                 for question in questions
             ],
@@ -170,19 +171,30 @@ def placement_check():
     submitted = {}
     for question in questions:
         value = answers.get(question['id'])
-        if isinstance(value, bool):
-            return jsonify({'error': f"Answer {question['id']} is invalid"}), 400
-        try:
-            value = int(value)
-        except (TypeError, ValueError):
-            return jsonify({'error': f"Answer {question['id']} is invalid"}), 400
-        if value < 0 or value >= len(question['options']):
-            return jsonify({'error': f"Answer {question['id']} is invalid"}), 400
+        if question.get('type') == 'short':
+            if not isinstance(value, str) or not value.strip() or len(value) > 120:
+                return jsonify({'error': f"Answer {question['id']} is invalid"}), 400
+            value = re.sub(r'\s+', ' ', value).strip().casefold()
+        else:
+            if isinstance(value, bool):
+                return jsonify({'error': f"Answer {question['id']} is invalid"}), 400
+            try:
+                value = int(value)
+            except (TypeError, ValueError):
+                return jsonify({'error': f"Answer {question['id']} is invalid"}), 400
+            if value < 0 or value >= len(question['options']):
+                return jsonify({'error': f"Answer {question['id']} is invalid"}), 400
         submitted[question['id']] = value
     if len(submitted) != len(questions):
         return jsonify({'error': 'Answer every placement question'}), 400
     score = sum(
-        submitted[question['id']] == question['answer'] for question in questions
+        submitted[question['id']] == question['answer']
+        if question.get('type') != 'short'
+        else submitted[question['id']] in {
+            re.sub(r'\s+', ' ', answer).strip().casefold()
+            for answer in question.get('accepted_answers', [question['answer']])
+        }
+        for question in questions
     )
     passing_score = int(placement.get('passing_score', 8))
     passed = score >= passing_score

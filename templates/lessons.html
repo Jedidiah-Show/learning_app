@@ -19,9 +19,13 @@
       <fieldset class="rounded-xl border border-slate-200 p-3">
         <legend class="px-1 text-sm font-semibold">{{ loop.index }}. {{ question.prompt }}</legend>
         <div class="mt-2 grid gap-2 sm:grid-cols-2">
+          {% if question.get('type') == 'short' %}
+          <label class="text-sm text-slate-700 sm:col-span-2">Your answer<input class="mt-1 w-full rounded-lg border border-slate-300 p-2" type="text" name="{{ question.id }}" maxlength="120" autocomplete="off" required></label>
+          {% else %}
           {% for option in question.options %}
           <label class="flex gap-2 text-sm"><input type="radio" name="{{ question.id }}" value="{{ loop.index0 }}" required> <span>{{ option }}</span></label>
           {% endfor %}
+          {% endif %}
         </div>
       </fieldset>
       {% endfor %}
@@ -81,7 +85,10 @@ document.getElementById('placement-form')?.addEventListener('submit', async (eve
   const button = form.querySelector('button[type="submit"]');
   const result = document.getElementById('placement-result');
   const answers = {};
-  new FormData(form).forEach((value, key) => { answers[key] = Number(value); });
+  new FormData(form).forEach((value, key) => {
+    const field = form.querySelector(`[name="${key}"]`);
+    answers[key] = field?.type === 'radio' ? Number(value) : value;
+  });
   button.disabled = true;
   result.textContent = 'Scoring your placement check…';
   try {

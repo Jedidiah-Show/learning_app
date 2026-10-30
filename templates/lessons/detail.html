@@ -218,11 +218,12 @@
       <p class="lesson-eyebrow">Check yourself</p>
       <h2 class="lesson-card-title">Can you answer these?</h2>
       <p class="lesson-text lesson-muted">Say the answer out loud before opening it. Each answer below is drawn from this lesson, so you can compare your wording with it.</p>
+      <p class="lesson-text lesson-muted">In beginner mode, start with the first three questions. Turn beginner mode off when you want the full review set.</p>
       <div class="lesson-questions">
         {% set answers = lesson.question_answers or [] %}
         {% for question in lesson.questions %}
         {% set answer = answers[loop.index0] if answers|length > loop.index0 else '' %}
-        <details class="lesson-question">
+        <details class="lesson-question {% if loop.index > 3 %}lesson-deep-dive{% endif %}">
           <summary>{{ question if question is string else question.question }}</summary>
           {% if answer %}
           <div class="lesson-question-answer">

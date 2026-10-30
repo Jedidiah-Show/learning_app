@@ -34,8 +34,8 @@ TRACKS = {
         'label': '10-month standard',
         'range': '9–12 months',
         'description': (
-            'A balanced plan at roughly 12 hours per week for learners who '
-            'are working or studying alongside the course.'
+            'A roughly 12-hour weekly average for learners who are working or '
+            'studying alongside the course. Individual months vary with project load.'
         ),
         'months': 10,
         'milestones': [
@@ -186,8 +186,9 @@ TRACKS = {
         'label': '5-month accelerated',
         'range': '5 months',
         'description': (
-            'An intensive plan at roughly 24 hours per week. Keep the same '
-            'projects, placement rules, and assessment gates.'
+            'An intensive plan averaging roughly 24 hours per week. Some months '
+            'need more time because projects are uneven; keep the same projects, '
+            'placement rules, and assessment gates.'
         ),
         'months': 5,
         'milestones': [
