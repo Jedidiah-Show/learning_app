@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, redirect, url_for, session
+from flask import Flask, flash, jsonify, request, redirect, url_for, session
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager
 from flask_migrate import Migrate
@@ -181,6 +181,12 @@ def create_app(config_override=None):
     # Set SECRET_KEY in the environment to keep sessions valid across restarts.
     app.config['SECRET_KEY'] = secret_key or os.urandom(32)
     app.config['TOKEN_ENCRYPTION_KEY'] = os.environ.get('TOKEN_ENCRYPTION_KEY')
+    if production and not app.config['TOKEN_ENCRYPTION_KEY']:
+        # Deriving the Fernet key from SECRET_KEY would silently invalidate
+        # every stored OAuth refresh token whenever SECRET_KEY rotates.
+        raise RuntimeError(
+            'TOKEN_ENCRYPTION_KEY must be configured in production'
+        )
     # Allow multipart framing around the separately enforced 2 MiB photo cap.
     app.config['MAX_CONTENT_LENGTH'] = 3 * 1024 * 1024
     app.config['UPLOAD_FOLDER'] = os.path.join(app.instance_path, 'uploads')
@@ -410,9 +416,24 @@ def create_app(config_override=None):
     app.register_blueprint(leaderboard_bp)
     app.register_blueprint(integrations_bp, url_prefix='/api/integrations')
     app.register_blueprint(credentials_bp)
+    def _admin_header_token_valid():
+        supplied = request.headers.get('X-Admin-Token', '')
+        if not supplied:
+            return False
+        for env_key in ('ADMIN_API_TOKEN', 'LESSON_EXTRAS_TOKEN'):
+            expected = os.environ.get(env_key) or ''
+            if expected and hmac.compare_digest(supplied, expected):
+                return True
+        return False
+
     @app.before_request
     def enforce_csrf_protection():
         if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'} and not app.testing:
+            # A custom header cannot be set by a cross-site form post, so
+            # requests already proven by X-Admin-Token are CSRF-immune and
+            # need no session token (keeps scripted maintenance calls working).
+            if request.path.startswith('/api/admin/') and _admin_header_token_valid():
+                return None
             token = session.get('_csrf_token')
             supplied = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
             if not token or not supplied or not hmac.compare_digest(token, supplied):

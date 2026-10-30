@@ -14,7 +14,7 @@ from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
 from app.learning import (
     course_progress, lesson_is_available, monthly_milestone_progress, user_track,
 )
-from app.course_blueprint import TRACKS, track_label
+from app.course_data import TRACKS, track_label
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
 from app.integrations import database_status
 from app.models import (CalendarEvent, LessonBookmark, LessonNote, LessonCompletion,
@@ -90,6 +90,8 @@ def readyz():
         'database': {
             'ok': database['ok'],
             'revision': database['current_revision'],
+            'head_revision': database.get('head_revision'),
+            'migration_current': database.get('migration_current', True),
             'missing_tables': database['missing_tables'],
             'missing_columns': database.get('missing_columns', []),
         },
@@ -146,7 +148,19 @@ def index():
                                longest_streak=longest_streak)
     except Exception:
         current_app.logger.exception('Dashboard error')
+        # The template dereferences progress even in the error branch, so the
+        # 503 fallback must render with an explicitly empty progress payload
+        # rather than omitting it (omitting it raised a second exception).
         return render_template('dashboard.html', course=curriculum(),
+                               user=current_user, config={},
+                               progress={
+                                   'total_lessons': 0, 'completed_lessons': 0,
+                                   'total_projects': 0, 'completed_projects': 0,
+                                   'course_complete': False, 'modules': [],
+                                   'next_lesson_id': None, 'next_action': None,
+                               },
+                               next_lesson=None, next_project=None,
+                               streak=0, longest_streak=0,
                                progress_error=True), 503
 
 
@@ -157,13 +171,15 @@ def lessons():
     completions = LessonCompletion.query.filter_by(
         user_id=current_user.id, completed=True
     ).all()
+    completed_ids = {item.lesson_id for item in completions}
+    progress = course_progress(current_user, completed=completed_ids)
     return render_template('lessons.html', config=get_effective_config_for_user(current_user),
                            user=current_user, course=curriculum(), modules=all_modules(),
-                           completed_ids=completed_lesson_ids(current_user),
+                           completed_ids=completed_ids,
                            completion_sources={
                                item.lesson_id: item.completion_source for item in completions
                            },
-                           next_lesson_id=course_progress(current_user)['next_lesson_id'])
+                           next_lesson_id=progress['next_lesson_id'])
 
 
 @main_bp.route('/quizzes')
@@ -179,7 +195,7 @@ def schedule():
     progress = course_progress(current_user)
     upcoming_events = CalendarEvent.query.filter(
         CalendarEvent.user_id == current_user.id,
-        CalendarEvent.start_time >= datetime.now(timezone.utc).replace(tzinfo=None),
+        CalendarEvent.start_time >= datetime.now(timezone.utc),
         CalendarEvent.delete_pending.is_(False),
     ).order_by(CalendarEvent.start_time).limit(20).all()
     from app.google_calendar import resolve_timezone, stored_utc
@@ -199,14 +215,15 @@ def schedule():
 @main_bp.route('/progress')
 @login_required
 def progress():
-    from datetime import date, datetime, timedelta, timezone
+    from datetime import datetime, timedelta, timezone
+    from app.routes.lessons import _learner_today
     config = get_effective_config_for_user(current_user)
     completions = LessonCompletion.query.filter_by(
         user_id=current_user.id, completed=True
     ).all()
     dates = {item.completed_at.date() for item in completions if item.completed_at}
     streak = 0
-    cursor = date.today()
+    cursor = _learner_today()
     if cursor not in dates:
         cursor -= timedelta(days=1)
     while cursor in dates:
@@ -232,17 +249,21 @@ def progress():
         'streak': streak, 'minutes_30d': minutes, 'due_reviews': due_reviews,
         'quiz_results': quizzes,
     }
-    recent_completions = LessonCompletion.query.filter_by(
-        user_id=current_user.id, completed=True
-    ).order_by(LessonCompletion.completed_at.desc()).limit(8).all()
+    recent_completions = sorted(
+        completions, key=lambda item: item.completed_at or datetime.now(timezone.utc), reverse=True
+    )[:8]
+    completed = {item.lesson_id for item in completions}
     projects = CourseProject.query.filter_by(
         user_id=current_user.id, completed=True
     ).all()
-    progress_data = course_progress(current_user)
     completed_project_ids = {item.module_id for item in projects}
+    progress_data = course_progress(
+        current_user, completed=completed, completed_projects=completed_project_ids
+    )
     track = user_track(current_user)
     from app.leaderboard import leaderboard_data
     leaderboard_info = leaderboard_data(current_user)
+    lesson_map = {lesson['id']: lesson for lesson in all_lessons()}
     return render_template('progress.html', config=config,
                            user=current_user, progress=progress_data,
                            analytics=analytics,
@@ -254,8 +275,10 @@ def progress():
                            leaderboard=leaderboard_info,
                            leaderboard_opted_in=leaderboard_info['opted_in'],
                            recent_completions=recent_completions,
-                           recent_lessons={item.lesson_id: get_lesson(item.lesson_id)
-                                           for item in recent_completions},
+                           recent_lessons={
+                               item.lesson_id: lesson_map.get(item.lesson_id)
+                               for item in recent_completions
+                           },
                            completed_project_ids=completed_project_ids)
 
 
@@ -323,11 +346,15 @@ def lesson_detail(lesson_id):
     lesson = get_lesson(lesson_id)
     if not lesson:
         abort(404)
-    if not lesson_is_available(current_user, lesson_id):
-        abort(403)
-    from app.learning import completed_lesson_ids
+    from app.learning import completed_lesson_ids, completed_project_modules
     from app.practice import practice_exercises_for_lesson
     from app.models import VideoProgress, LessonBookmark, LessonNote
+    completed = completed_lesson_ids(current_user)
+    completed_projects = completed_project_modules(current_user)
+    if not lesson_is_available(
+        current_user, lesson_id, completed=completed, completed_projects=completed_projects
+    ):
+        abort(403)
     video_progress = None
     if lesson.get('video'):
         video_progress = VideoProgress.query.filter_by(
@@ -339,8 +366,9 @@ def lesson_detail(lesson_id):
     ordinal = lesson['_ordinal'] - 1
     previous_lesson = lessons[ordinal - 1] if ordinal > 0 else None
     next_lesson = lessons[ordinal + 1] if ordinal + 1 < len(lessons) else None
-    completed = lesson_id in completed_lesson_ids(current_user)
-    progress = course_progress(current_user)
+    progress = course_progress(
+        current_user, completed=completed, completed_projects=completed_projects
+    )
     try:
         bookmarked = LessonBookmark.query.filter_by(
             user_id=current_user.id, lesson_id=lesson_id
@@ -369,7 +397,10 @@ def lesson_detail(lesson_id):
                            next_lesson=next_lesson,
                            next_lesson_available=(
                                next_lesson is not None
-                               and lesson_is_available(current_user, next_lesson['id'])
+                               and lesson_is_available(
+                                   current_user, next_lesson['id'],
+                                   completed=completed, completed_projects=completed_projects,
+                               )
                            ),
                            total_lessons=len(lessons),
                            bookmarked=bookmarked,
@@ -409,12 +440,17 @@ def update_preferences():
                 calendar[field] = calendar[field].strip()
         if 'enabled' in calendar and not isinstance(calendar['enabled'], bool):
             return jsonify({'error': 'enabled must be true or false'}), 400
-        if 'reminder_minutes' in calendar and (
-            not isinstance(calendar['reminder_minutes'], int)
-            or isinstance(calendar['reminder_minutes'], bool)
-            or not 0 <= calendar['reminder_minutes'] <= 10080
-        ):
-            return jsonify({'error': 'reminder_minutes must be an integer between 0 and 10080'}), 400
+        if 'reminder_minutes' in calendar:
+            reminders = calendar['reminder_minutes']
+            # Consumers (app.google_calendar) expect a list of minute offsets;
+            # Google allows at most five overrides per event.
+            if (not isinstance(reminders, list) or len(reminders) > 5
+                    or any(not isinstance(value, int) or isinstance(value, bool)
+                           or not 0 <= value <= 40320 for value in reminders)):
+                return jsonify({
+                    'error': 'reminder_minutes must be a list of at most five '
+                             'integers between 0 and 40320'
+                }), 400
         previous_config = get_effective_config_for_user(current_user)
         if (
             'calendar_id' in calendar

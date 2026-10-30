@@ -167,8 +167,8 @@ def _block_times(local_date, block, zone):
     if end <= start:
         end += timedelta(days=1)
     return (
-        start.astimezone(timezone.utc).replace(tzinfo=None),
-        end.astimezone(timezone.utc).replace(tzinfo=None),
+        start.astimezone(timezone.utc),
+        end.astimezone(timezone.utc),
     )
 
 
@@ -689,18 +689,8 @@ def schedule_study_sessions():
         })
     db.session.commit()
 
-    # Keep the stored rows aligned with the current schedule so a later sync
-    # pushes the right times.
-    _plan_events(
-        user,
-        list(existing.values()),
-        blocks,
-        calendar_config,
-        subjects,
-        _configured_start_date(config),
-    )
-    db.session.commit()
-
+    # _run_sync -> _sync_events plans and commits the local state before
+    # pushing outstanding operations, so no separate planning pass is needed.
     sync_state = None
     if calendar_config['enabled'] and _user_connected(user):
         try:
@@ -741,9 +731,7 @@ def schedule_study_sessions():
                 }
 
     pending = sum(
-        1 for event in CalendarEvent.query.filter_by(
-            user_id=user.id, day_number=day_number,
-        ).all()
+        1 for event in events
         if not event.synced_to_google or event.sync_pending or event.delete_pending
     )
     response = {
@@ -986,7 +974,7 @@ def google_auth():
     if not current_user.google_refresh_token:
         request_options['prompt'] = 'consent'
     authorization_url, state = flow.authorization_url(**request_options)
-    session['state'] = state
+    session['google_oauth_state'] = state
     return redirect(authorization_url)
 
 
@@ -1003,10 +991,10 @@ def google_callback():
         )
         return redirect(url_for('main.schedule'))
     if request.args.get('error'):
-        session.pop('state', None)
+        session.pop('google_oauth_state', None)
         flash('Google Calendar authorization was cancelled or denied.', 'error')
         return redirect(url_for('main.schedule'))
-    state = session.pop('state', None)
+    state = session.pop('google_oauth_state', None)
     returned_state = request.args.get('state', '')
     if not state or not returned_state or not hmac.compare_digest(state, returned_state):
         flash('Google OAuth state validation failed. Please try connecting again.', 'error')
@@ -1031,8 +1019,11 @@ def google_callback():
             raise ValueError('Google OAuth callback did not include an authorization code')
         # Google can return scopes that were previously granted to this OAuth
         # client even when only calendar.events was requested. oauthlib treats
-        # that superset as an error unless scope validation is relaxed. The
-        # token is still valid, and this app only uses calendar.events here.
+        # that superset as an error, and the only opt-out it honours here is
+        # the process-level OAUTHLIB_RELAX_TOKEN_SCOPE variable (the per-call
+        # relax_token_scope kwarg governs a different requests_oauthlib check).
+        # Render runs single-threaded sync workers, so the set/restore pair
+        # never overlaps; do not enable gunicorn threads without revisiting.
         previous_relax = os.environ.get('OAUTHLIB_RELAX_TOKEN_SCOPE')
         os.environ['OAUTHLIB_RELAX_TOKEN_SCOPE'] = '1'
         try:
@@ -1052,7 +1043,7 @@ def google_callback():
     if credentials.refresh_token:
         user.google_refresh_token = credentials.refresh_token
     if credentials.expiry:
-        user.token_expiry = gcal.naive_utc(credentials.expiry)
+        user.token_expiry = gcal.as_utc(credentials.expiry)
     db.session.commit()
     flash('Google Calendar connected successfully!', 'success')
     return redirect(url_for('main.schedule'))

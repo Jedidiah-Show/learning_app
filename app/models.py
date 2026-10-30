@@ -10,11 +10,6 @@ def utcnow():
 
 
 class User(UserMixin, db.Model):
-    __table_args__ = (
-        db.Index('idx_user_email', 'email'),
-        db.Index('idx_user_username', 'username'),
-        db.Index('idx_user_public_id', 'public_id'),
-    )
     id = db.Column(db.Integer, primary_key=True)
     public_id = db.Column(db.String(32), unique=True, nullable=True)
     username = db.Column(db.String(80), unique=True, nullable=True)
@@ -23,15 +18,15 @@ class User(UserMixin, db.Model):
     password_hash = db.Column(db.String(255), nullable=True)
     full_name = db.Column(db.String(120), nullable=True)
     profile_photo = db.Column(db.String(500), nullable=True)
-    google_id = db.Column(db.String(255), nullable=True)
+    google_id = db.Column(db.String(255), unique=True, nullable=True)
     google_access_token = db.Column(EncryptedText, nullable=True)
     google_refresh_token = db.Column(EncryptedText, nullable=True)
-    token_expiry = db.Column(db.DateTime, nullable=True)
+    token_expiry = db.Column(db.DateTime(timezone=True), nullable=True)
     auth_version = db.Column(
         db.Integer, nullable=False, default=0, server_default='0'
     )
-    created_at = db.Column(db.DateTime, default=utcnow)
-    last_active = db.Column(db.DateTime, default=utcnow)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+    last_active = db.Column(db.DateTime(timezone=True), default=utcnow)
     subjects_configured = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
     # Overrides UserMixin.is_active so deactivated accounts cannot sign in and
@@ -42,6 +37,9 @@ class User(UserMixin, db.Model):
     streak = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     longest_streak = db.Column(db.Integer, default=0, nullable=False, server_default='0')
     last_study_date = db.Column(db.Date)
+    phone_verified = db.Column(
+        db.Boolean, nullable=False, default=False, server_default=db.false()
+    )
     
     progress = db.relationship('Progress', backref='user', lazy=True, cascade='all, delete-orphan')
     lesson_completions = db.relationship('LessonCompletion', backref='user', lazy=True, cascade='all, delete-orphan')
@@ -84,7 +82,12 @@ class User(UserMixin, db.Model):
         'LessonNote', backref='user', lazy=True, cascade='all, delete-orphan',
     )
     support_requests = db.relationship(
-        'SupportRequest', backref='user', lazy=True, cascade='all, delete-orphan',
+        'SupportRequest',
+        backref='user',
+        primaryjoin='SupportRequest.user_id == User.id',
+        foreign_keys='SupportRequest.user_id',
+        lazy=True,
+        cascade='all, delete-orphan',
     )
     community_posts = db.relationship(
         'CommunityPost', backref='author', lazy=True, cascade='all, delete-orphan',
@@ -102,33 +105,31 @@ class UserProfilePhoto(db.Model):
     )
     data = db.Column(db.LargeBinary, nullable=False)
     mime_type = db.Column(db.String(32), nullable=False)
-    updated_at = db.Column(db.DateTime, nullable=False, default=utcnow, onupdate=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
 
 
 class Progress(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     subject_id = db.Column(db.String(50), nullable=False)
     day_number = db.Column(db.Integer, nullable=False)
     completed = db.Column(db.Boolean, default=False)
-    completion_date = db.Column(db.DateTime)
+    completion_date = db.Column(db.DateTime(timezone=True))
     time_spent_minutes = db.Column(db.Integer, default=0)
     
     __table_args__ = (
         db.UniqueConstraint('user_id', 'subject_id', 'day_number', name='unique_user_subject_day'),
-        db.Index('idx_progress_user_subject_day', 'user_id', 'subject_id', 'day_number'),
-        db.Index('idx_progress_user', 'user_id'),
     )
 
 class LessonCompletion(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     lesson_id = db.Column(db.String(100), nullable=False)
     subject_id = db.Column(db.String(50), nullable=False)
     day_number = db.Column(db.Integer, nullable=False)
     completed = db.Column(db.Boolean, default=False)
-    started_at = db.Column(db.DateTime)
-    completed_at = db.Column(db.DateTime)
+    started_at = db.Column(db.DateTime(timezone=True))
+    completed_at = db.Column(db.DateTime(timezone=True))
     time_spent_minutes = db.Column(db.Integer, default=0)
     completion_source = db.Column(
         db.String(20), nullable=False, default='lesson',
@@ -136,7 +137,6 @@ class LessonCompletion(db.Model):
     )
     __table_args__ = (
         db.UniqueConstraint('user_id', 'lesson_id', name='unique_user_lesson_completion'),
-        db.Index('idx_lessoncomp_user_lesson', 'user_id', 'lesson_id'),
         db.Index('idx_lessoncomp_user_subject_day', 'user_id', 'subject_id', 'day_number'),
     )
 
@@ -162,7 +162,6 @@ class VideoProgress(db.Model):
     )
     __table_args__ = (
         db.UniqueConstraint('user_id', 'lesson_id', name='unique_user_video_progress'),
-        db.Index('idx_videoprogress_user', 'user_id'),
         db.Index(
             'idx_videoprogress_user_completed', 'user_id', 'completed'
         ),
@@ -203,7 +202,7 @@ class PracticeUsageDaily(db.Model):
 
 class QuizResult(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     quiz_type = db.Column(db.String(20), nullable=False)  # 'daily', 'weekly'
     quiz_id = db.Column(db.String(100), nullable=False)
     subject_id = db.Column(db.String(50))
@@ -215,21 +214,21 @@ class QuizResult(db.Model):
     answers_data = db.Column(db.Text)  # JSON
     evaluation = db.Column(db.Text)
     attempt_id = db.Column(db.String(64))
-    taken_at = db.Column(db.DateTime, default=utcnow)
+    taken_at = db.Column(db.DateTime(timezone=True), default=utcnow)
     passed = db.Column(db.Boolean, default=False)
     __table_args__ = (
-        db.Index('idx_quizresult_user', 'user_id'),
         db.Index('idx_quizresult_quiz_id', 'quiz_id'),
         db.UniqueConstraint('user_id', 'quiz_id', 'attempt_id', name='unique_quiz_attempt'),
+        db.Index('idx_quizresult_user_subject_day', 'user_id', 'subject_id', 'day_number'),
     )
 
 class StudySession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     session_type = db.Column(db.String(20), nullable=False)  # 'morning', 'evening'
     date = db.Column(db.Date, default=date.today)
-    start_time = db.Column(db.DateTime)
-    end_time = db.Column(db.DateTime)
+    start_time = db.Column(db.DateTime(timezone=True))
+    end_time = db.Column(db.DateTime(timezone=True))
     duration_minutes = db.Column(db.Integer)
     subjects_studied = db.Column(db.Text)  # JSON list
     completed = db.Column(db.Boolean, default=False)
@@ -247,11 +246,10 @@ class Lesson(db.Model):
     objectives = db.Column(db.Text)
     difficulty = db.Column(db.Integer, default=1)
     estimated_minutes = db.Column(db.Integer, default=90)
-    generated_at = db.Column(db.DateTime, default=utcnow)
+    generated_at = db.Column(db.DateTime(timezone=True), default=utcnow)
     is_ai_generated = db.Column(db.Boolean, default=False)
     __table_args__ = (
         db.Index('idx_lesson_subject_day', 'subject_id', 'day_number'),
-        db.Index('idx_lesson_lesson_id', 'lesson_id'),
     )
     
     def get_content(self):
@@ -270,9 +268,8 @@ class Quiz(db.Model):
     questions = db.Column(db.Text, nullable=False)  # JSON
     passing_threshold = db.Column(db.Integer, default=80)
     is_ai_generated = db.Column(db.Boolean, default=False, server_default=db.false(), nullable=False)
-    created_at = db.Column(db.DateTime, default=utcnow)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
     __table_args__ = (
-        db.Index('idx_quiz_quiz_id', 'quiz_id'),
         db.Index('idx_quiz_type_day', 'quiz_type', 'day_number'),
         db.Index('idx_quiz_type_week', 'quiz_type', 'week_number'),
     )
@@ -282,17 +279,17 @@ class Quiz(db.Model):
 
 class CalendarEvent(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     event_id = db.Column(db.String(200), unique=True)  # Google Calendar event ID
     title = db.Column(db.String(200), nullable=False)
     description = db.Column(db.Text)
-    start_time = db.Column(db.DateTime, nullable=False)
-    end_time = db.Column(db.DateTime, nullable=False)
+    start_time = db.Column(db.DateTime(timezone=True), nullable=False)
+    end_time = db.Column(db.DateTime(timezone=True), nullable=False)
     subject_ids = db.Column(db.Text)  # JSON
     day_number = db.Column(db.Integer)
     block_name = db.Column(db.String(100))
     time_zone = db.Column(db.String(64))
-    created_at = db.Column(db.DateTime, default=utcnow)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
     synced_to_google = db.Column(db.Boolean, default=False)
     sync_pending = db.Column(db.Boolean, default=False, nullable=False)
     delete_pending = db.Column(db.Boolean, default=False, nullable=False)
@@ -300,6 +297,7 @@ class CalendarEvent(db.Model):
     __table_args__ = (
         db.Index('idx_calendarevent_user', 'user_id'),
         db.Index('idx_calendarevent_user_day', 'user_id', 'day_number'),
+        db.Index('idx_calendarevent_user_start', 'user_id', 'start_time'),
     )
     
     def get_subject_ids(self):
@@ -309,24 +307,23 @@ class CalendarEvent(db.Model):
 class UserSubjectConfig(db.Model):
     __tablename__ = 'user_subject_config'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     subject_id = db.Column(db.String(50), nullable=False)
     proficiency = db.Column(db.String(20), nullable=False)  # Novice through Expert
     tested = db.Column(db.Boolean, default=False)
     acquired_proficiency = db.Column(db.String(20))
     test_score = db.Column(db.Integer)
-    configured_at = db.Column(db.DateTime, default=utcnow)
-    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+    configured_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow)
     __table_args__ = (
         db.UniqueConstraint('user_id', 'subject_id', name='unique_user_subject_config'),
-        db.Index('idx_usersubjectconfig_user', 'user_id'),
     )
 
 
 class UserSubject(db.Model):
     __tablename__ = 'user_subject'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     subject_id = db.Column(db.String(50), nullable=False)
     name = db.Column(db.String(100), nullable=False)
     icon = db.Column(db.String(10), default='📚')
@@ -334,11 +331,10 @@ class UserSubject(db.Model):
     color = db.Column(db.String(20), default='#6366f1')
     priority = db.Column(db.Integer, default=1)
     topics = db.Column(db.Text)  # JSON list
-    created_at = db.Column(db.DateTime, default=utcnow)
-    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow)
     __table_args__ = (
         db.UniqueConstraint('user_id', 'subject_id', name='unique_user_custom_subject'),
-        db.Index('idx_usersubject_user', 'user_id'),
     )
 
     def get_topics(self):
@@ -359,10 +355,10 @@ class UserSubject(db.Model):
 class UserSchedule(db.Model):
     __tablename__ = 'user_schedule'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False, unique=True)
     daily_blocks = db.Column(db.Text)  # JSON list of blocks
-    created_at = db.Column(db.DateTime, default=utcnow)
-    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     def get_daily_blocks(self):
         return json.loads(self.daily_blocks) if self.daily_blocks else []
@@ -371,11 +367,11 @@ class UserSchedule(db.Model):
 class UserConfig(db.Model):
     __tablename__ = 'user_config'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, unique=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False, unique=True)
     assessment_date = db.Column(db.String(20))  # YYYY-MM-DD
     extra_config = db.Column(db.Text)  # JSON for other overrides
-    created_at = db.Column(db.DateTime, default=utcnow)
-    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow)
 
     def get_extra_config(self):
         return json.loads(self.extra_config) if self.extra_config else {}
@@ -384,7 +380,7 @@ class UserConfig(db.Model):
 class ProficiencyTest(db.Model):
     __tablename__ = 'proficiency_test'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     subject_id = db.Column(db.String(50), nullable=False)
     questions = db.Column(db.Text, nullable=False)  # JSON
     answers_data = db.Column(db.Text)  # JSON
@@ -393,8 +389,8 @@ class ProficiencyTest(db.Model):
     source_signature = db.Column(db.String(64))
     is_ai_generated = db.Column(db.Boolean, default=False, nullable=False)
     completed = db.Column(db.Boolean, default=False)
-    taken_at = db.Column(db.DateTime)
-    created_at = db.Column(db.DateTime, default=utcnow)
+    taken_at = db.Column(db.DateTime(timezone=True))
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
     __table_args__ = (
         db.Index('idx_proftest_user_subject', 'user_id', 'subject_id'),
     )
@@ -406,17 +402,16 @@ class ProficiencyTest(db.Model):
 class SubjectCurriculum(db.Model):
     __tablename__ = 'subject_curriculum'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     subject_id = db.Column(db.String(50), nullable=False)
     starting_proficiency = db.Column(db.String(20), nullable=False)
     source_signature = db.Column(db.String(64))
     plan = db.Column(db.Text, nullable=False)
     is_ai_generated = db.Column(db.Boolean, default=False, nullable=False)
-    created_at = db.Column(db.DateTime, default=utcnow)
-    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow)
     __table_args__ = (
         db.UniqueConstraint('user_id', 'subject_id', name='unique_user_subject_curriculum'),
-        db.Index('idx_curriculum_user_subject', 'user_id', 'subject_id'),
     )
 
     def get_plan(self):
@@ -426,7 +421,7 @@ class SubjectCurriculum(db.Model):
 class LearningProject(db.Model):
     __tablename__ = 'learning_project'
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
     week_number = db.Column(db.Integer, nullable=False)
     project = db.Column(db.Text, nullable=False)
     submission = db.Column(db.Text)
@@ -434,11 +429,10 @@ class LearningProject(db.Model):
     completed = db.Column(db.Boolean, default=False, nullable=False)
     is_ai_generated = db.Column(db.Boolean, default=False, nullable=False)
     source_signature = db.Column(db.String(64))
-    created_at = db.Column(db.DateTime, default=utcnow)
-    updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow)
     __table_args__ = (
         db.UniqueConstraint('user_id', 'week_number', name='unique_user_week_project'),
-        db.Index('idx_project_user_week', 'user_id', 'week_number'),
     )
 
     def get_project(self):
@@ -469,7 +463,6 @@ class CourseProject(db.Model):
     updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
     __table_args__ = (
         db.UniqueConstraint('user_id', 'module_id', name='unique_user_course_module_project'),
-        db.Index('idx_courseproject_user_module', 'user_id', 'module_id'),
     )
 
     def get_project(self):
@@ -517,7 +510,6 @@ class Credential(db.Model):
     revoked_at = db.Column(db.DateTime(timezone=True))
     __table_args__ = (
         db.Index('idx_credential_user', 'user_id'),
-        db.Index('idx_credential_public', 'public_id'),
     )
 
 
@@ -539,6 +531,7 @@ class CommunityPost(db.Model):
         order_by='CommunityReply.created_at',
     )
     __table_args__ = (
+        db.Index('idx_community_post_user', 'user_id'),
         db.Index('idx_community_post_updated', 'updated_at'),
         db.Index('idx_community_post_topic_updated', 'topic', 'updated_at'),
     )
@@ -557,6 +550,7 @@ class CommunityReply(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     __table_args__ = (
         db.Index('idx_community_reply_post_created', 'post_id', 'created_at'),
+        db.Index('idx_community_reply_user', 'user_id'),
     )
 
 
@@ -581,7 +575,7 @@ class RateLimitCounter(db.Model):
     __tablename__ = 'rate_limit_counter'
     id = db.Column(db.Integer, primary_key=True)
     bucket = db.Column(db.String(255), nullable=False)
-    window_start = db.Column(db.DateTime, nullable=False)
+    window_start = db.Column(db.DateTime(timezone=True), nullable=False)
     count = db.Column(db.Integer, nullable=False, default=0)
     __table_args__ = (
         db.UniqueConstraint(
@@ -593,9 +587,11 @@ class RateLimitCounter(db.Model):
 
 class GeminiUsageBucket(db.Model):
     __tablename__ = 'gemini_usage_bucket'
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), primary_key=True
+    )
     window = db.Column(db.String(10), primary_key=True)
-    bucket_start = db.Column(db.DateTime, primary_key=True)
+    bucket_start = db.Column(db.DateTime(timezone=True), primary_key=True)
     request_count = db.Column(db.Integer, nullable=False, default=0)
     __table_args__ = (
         db.Index('idx_gemini_usage_user_bucket', 'user_id', 'bucket_start'),
@@ -665,7 +661,7 @@ class AdminAuditLog(db.Model):
     detail = db.Column(db.Text)
     ip_address = db.Column(db.String(64))
     created_at = db.Column(
-        db.DateTime, nullable=False, default=utcnow, index=True
+        db.DateTime(timezone=True), nullable=False, default=utcnow, index=True
     )
     __table_args__ = (
         db.Index('idx_admin_audit_admin', 'admin_user_id'),
@@ -728,10 +724,36 @@ class SupportRequest(db.Model):
     status = db.Column(
         db.String(24), nullable=False, default='new', server_default='new'
     )
-    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
-    updated_at = db.Column(db.DateTime, nullable=False, default=utcnow, onupdate=utcnow)
+    admin_reply = db.Column(db.Text)
+    replied_at = db.Column(db.DateTime(timezone=True))
+    replied_by_user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True
+    )
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
     __table_args__ = (
         db.Index('idx_support_request_created', 'created_at'),
         db.Index('idx_support_request_status', 'status'),
         db.Index('idx_support_request_user', 'user_id'),
+    )
+
+
+class PhoneVerificationCode(db.Model):
+    """Short-lived SMS code proving the learner controls a phone number."""
+    __tablename__ = 'phone_verification_code'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    phone = db.Column(db.String(50), nullable=False)
+    code_hash = db.Column(db.String(64), unique=True, nullable=False)
+    purpose = db.Column(
+        db.String(20), nullable=False, default='verify_phone',
+        server_default='verify_phone',
+    )
+    attempts = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    expires_at = db.Column(db.DateTime(timezone=True), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    __table_args__ = (
+        db.Index('idx_phone_verification_user', 'user_id', 'purpose'),
     )

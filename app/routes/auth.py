@@ -4,8 +4,11 @@ from flask import (
 )
 from flask_login import login_user, logout_user, login_required, current_user
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.exc import IntegrityError
 from app import db
-from app.models import PasswordResetToken, User, UserProfilePhoto
+from app.models import (
+    PasswordResetToken, PhoneVerificationCode, User, UserProfilePhoto,
+)
 from app.phone import PhoneError, normalize_phone
 from app.rate_limit import client_ip, enforce_rate_limit, identity_hash
 from datetime import datetime, timedelta, timezone
@@ -46,6 +49,9 @@ def _set_auth_session(user):
     session.pop('admin_user_id', None)
     session.pop('admin_authenticated_at', None)
     session['auth_version'] = int(user.auth_version or 0)
+    session.permanent = True
+    # Rotate the CSRF token on privilege change to defeat session fixation.
+    session['_csrf_token'] = secrets.token_urlsafe(32)
 
 
 def _bump_auth_version(user):
@@ -109,6 +115,38 @@ def _deliver_password_reset(user, channels, reset_url):
                 channel, user.id,
             )
     return None
+
+
+def _issue_phone_verification_code(user):
+    """Create and text a fresh 6-digit phone verification code for a user."""
+    from app.sms import password_reset_sms_configured, send_phone_verification_sms
+
+    if not (user.phone and password_reset_sms_configured()):
+        return False
+    PhoneVerificationCode.query.filter_by(
+        user_id=user.id, purpose='verify_phone'
+    ).delete(synchronize_session=False)
+    code = f'{secrets.randbelow(1_000_000):06d}'
+    db.session.add(PhoneVerificationCode(
+        user_id=user.id,
+        phone=user.phone,
+        code_hash=hashlib.sha256(code.encode('utf-8')).hexdigest(),
+        purpose='verify_phone',
+        expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
+    ))
+    db.session.commit()
+    try:
+        send_phone_verification_sms(user.phone, code)
+    except Exception:
+        current_app.logger.exception(
+            'Could not send phone verification SMS for user %s', user.id
+        )
+        PhoneVerificationCode.query.filter_by(
+            user_id=user.id, purpose='verify_phone'
+        ).delete(synchronize_session=False)
+        db.session.commit()
+        return False
+    return True
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -218,6 +256,13 @@ def forgot_password():
                 if not _deliver_password_reset(user, channels, reset_url):
                     db.session.delete(token)
                     db.session.commit()
+                    # The learner was promised instructions through every
+                    # configured channel and none arrived; surface loudly.
+                    current_app.logger.error(
+                        'Password recovery failed for user %s over all '
+                        'configured channels %s; no reset was delivered.',
+                        user.id, channels,
+                    )
     flash(
         'If an account exists for that email or phone number, password reset '
         'instructions will be sent.',
@@ -311,7 +356,7 @@ def register():
                     errors['phone'] = str(error)
         if not isinstance(password, str) or len(password) < 8:
             errors['password'] = 'Use a password with at least 8 characters.'
-        elif password != request.form.get('confirm_password', password):
+        elif password != request.form.get('confirm_password', ''):
             errors['confirm_password'] = 'The passwords do not match.'
         if errors:
             return render_template(
@@ -331,7 +376,6 @@ def register():
                 next_page=request.form.get('next', ''),
             ), 200
         
-        import uuid
         user = User(
             username=username,
             email=email,
@@ -343,17 +387,10 @@ def register():
             last_active=datetime.now(timezone.utc)
         )
         db.session.add(user)
-        from sqlalchemy.exc import IntegrityError
         try:
             db.session.commit()
         except IntegrityError:
             db.session.rollback()
-            if User.query.filter_by(username=username).first():
-                errors['username'] = 'That username is already in use.'
-            if email and User.query.filter_by(email=email).first():
-                errors['email'] = 'An account with that email already exists.'
-            if phone and User.query.filter_by(phone=phone).first():
-                errors['phone'] = 'That phone number is already in use.'
             if not errors:
                 errors['form'] = (
                     'Registration could not be completed. Please try again.'
@@ -373,10 +410,11 @@ def register():
         login_user(user)
         _set_auth_session(user)
         flash('Registration successful!', 'success')
+        if phone and _issue_phone_verification_code(user):
+            flash('A verification code was texted to your phone number.', 'info')
         # Keep the destination through the required first-run setup.
         next_page = request.form.get('next', '')
         if safe_local_redirect(next_page):
-            from flask import session
             session['_post_setup_next'] = next_page
         return redirect(url_for('main.index'))
     
@@ -394,7 +432,72 @@ def logout():
 @auth_bp.route('/profile')
 @login_required
 def profile():
-    return render_template('auth/profile.html', user=current_user)
+    from app.sms import password_reset_sms_configured
+
+    return render_template(
+        'auth/profile.html', user=current_user,
+        phone_verification_available=(
+            bool(current_user.phone) and password_reset_sms_configured()
+        ),
+    )
+
+
+@auth_bp.route('/account/verify-phone', methods=['POST'])
+@login_required
+def verify_phone():
+    from app.sms import password_reset_sms_configured
+
+    if not (current_user.phone and password_reset_sms_configured()):
+        flash('Phone verification is not available for this account.', 'error')
+        return redirect(url_for('auth.profile'))
+    enforce_rate_limit(
+        'phone_verify', 8, 900, identity_hash(str(current_user.id))
+    )
+    submitted = (request.form.get('code') or '').strip()
+    if not submitted.isdigit():
+        flash('Enter the 6-digit code from the text message.', 'error')
+        return redirect(url_for('auth.profile'))
+    code_hash = hashlib.sha256(submitted.encode('utf-8')).hexdigest()
+    now = datetime.now(timezone.utc)
+    record = PhoneVerificationCode.query.filter_by(
+        user_id=current_user.id, purpose='verify_phone', code_hash=code_hash
+    ).first()
+    if record is None or record.expires_at <= now:
+        flash('That code is invalid or expired. Request a new one.', 'error')
+        return redirect(url_for('auth.profile'))
+    record.attempts = int(record.attempts or 0) + 1
+    if record.attempts > 5:
+        db.session.delete(record)
+        db.session.commit()
+        flash('Too many incorrect attempts. Request a new code.', 'error')
+        return redirect(url_for('auth.profile'))
+    if len(submitted) != 6:
+        db.session.commit()
+        flash('That code is invalid or expired. Request a new one.', 'error')
+        return redirect(url_for('auth.profile'))
+    db.session.delete(record)
+    current_user.phone_verified = True
+    db.session.commit()
+    flash('Phone number verified.', 'success')
+    return redirect(url_for('auth.profile'))
+
+
+@auth_bp.route('/account/verify-phone/resend', methods=['POST'])
+@login_required
+def resend_phone_verification():
+    from app.sms import password_reset_sms_configured
+
+    if not (current_user.phone and password_reset_sms_configured()):
+        flash('Phone verification is not available for this account.', 'error')
+        return redirect(url_for('auth.profile'))
+    enforce_rate_limit(
+        'phone_resend', 3, 1800, identity_hash(str(current_user.id))
+    )
+    if _issue_phone_verification_code(current_user):
+        flash('A new verification code was texted to you.', 'success')
+    else:
+        flash('Could not send a verification code right now. Try again later.', 'error')
+    return redirect(url_for('auth.profile'))
 
 
 @auth_bp.route('/profile-photo/<int:user_id>')
@@ -412,8 +515,6 @@ def profile_photo(user_id):
 @auth_bp.route('/account/update', methods=['POST'])
 @login_required
 def update_account():
-    from sqlalchemy.exc import IntegrityError
-
     data = request.get_json(silent=True) if request.is_json else request.form
     if not hasattr(data, 'get'):
         return jsonify({'error': 'Request body must be an object'}), 400
@@ -532,6 +633,7 @@ def update_account():
         current_user.email = email or None
     if phone_changed:
         current_user.phone = phone
+        current_user.phone_verified = False
     if full_name_changed and full_name is not None:
         current_user.full_name = full_name
     if photo_file_uploaded:
@@ -566,6 +668,8 @@ def update_account():
 
     if email_changed or phone_changed or password_changed:
         _set_auth_session(current_user)
+    if phone_changed and phone and _issue_phone_verification_code(current_user):
+        flash('A new verification code was texted to your phone number.', 'info')
     if request.is_json:
         return {'status': 'success'}
     flash('Account updated successfully', 'success')

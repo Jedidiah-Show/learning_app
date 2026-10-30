@@ -274,6 +274,7 @@ class ProductionCookieTests(unittest.TestCase):
         self.environment = patch.dict(os.environ, {
             'APP_ENV': 'production',
             'SECRET_KEY': 'production-test-secret-key',
+            'TOKEN_ENCRYPTION_KEY': 'production-test-token-key',
             'DATABASE_URL': f'sqlite:///{self.temp_dir.name}/test.db',
         }, clear=False)
         self.environment.start()

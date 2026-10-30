@@ -18,6 +18,7 @@ from app.models import (
     VideoProgress,
 )
 from app.practice import get_practice_exercise
+from app.rate_limit import enforce_rate_limit
 from app.request_data import get_json_object
 
 lessons_bp = Blueprint('lessons', __name__)
@@ -31,6 +32,21 @@ TUTOR_GREETING_RE = re.compile(
 
 MAX_VIDEO_SECONDS = 24 * 60 * 60
 VIDEO_COMPLETION_RATIO = 0.9
+
+
+def _learner_today():
+    """Current calendar date in the learner's timezone (X-Timezone header)."""
+    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+    name = (request.headers.get('X-Timezone') or '').strip()
+    tz = timezone.utc
+    if name:
+        try:
+            tz = ZoneInfo(name)
+        except (ValueError, ZoneInfoNotFoundError):
+            pass
+    now = datetime.now(tz)
+    return now.date()
 
 
 @lessons_bp.cli.command('practice-usage')
@@ -145,6 +161,9 @@ def placement_check():
             ],
         })
     data = get_json_object()
+    # The placement questions ship with the curriculum; throttle retries so
+    # brute-force scoring cannot mass-complete skippable lessons.
+    enforce_rate_limit('placement', 3, 3600, str(current_user.id))
     answers = data.get('answers') if isinstance(data, dict) else None
     if not isinstance(answers, dict):
         return jsonify({'error': 'Answers must be an object keyed by question id'}), 400
@@ -210,14 +229,23 @@ def placement_check():
 @login_required
 def get_daily_lessons(ordinal):
     from app.curriculum import all_lessons
-    from app.learning import completed_lesson_ids
+    from app.learning import completed_lesson_ids, completed_project_modules
     lessons = all_lessons()
     if ordinal < 1 or ordinal > len(lessons):
         return jsonify({'error': 'Lesson number not found'}), 404
     lesson = lessons[ordinal - 1]
-    if not lesson_is_available(current_user, lesson['id']):
-        return jsonify({'error': 'Lesson is locked', 'next_lesson_id': next_unlocked_lesson(current_user)}), 403
-    return jsonify({'lesson': lesson_context(lesson), 'completed': lesson['id'] in completed_lesson_ids(current_user)})
+    completed = completed_lesson_ids(current_user)
+    completed_projects = completed_project_modules(current_user)
+    if not lesson_is_available(
+        current_user, lesson['id'], completed=completed, completed_projects=completed_projects
+    ):
+        return jsonify({'error': 'Lesson is locked', 'next_lesson_id': next_unlocked_lesson(
+            current_user, completed=completed, completed_projects=completed_projects
+        )}), 403
+    return jsonify({
+        'lesson': lesson_context(lesson),
+        'completed': lesson['id'] in completed,
+    })
 
 
 @lessons_bp.route(
@@ -371,8 +399,8 @@ def complete_lesson():
             subjects_studied=json.dumps([lesson['module_id']]), completed=True,
         ))
     try:
-        from datetime import date as _date, timedelta
-        _today = _date.today()
+        from datetime import timedelta
+        _today = _learner_today()
         if current_user.last_study_date is None:
             current_user.streak = 1
             current_user.longest_streak = max(current_user.longest_streak or 0, 1)

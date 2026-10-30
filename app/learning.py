@@ -22,7 +22,7 @@ def completed_project_modules(user):
 
 def user_track(user):
     """Return the learner's selected plan track, defaulting to standard."""
-    from app.course_blueprint import TRACK_IDS
+    from app.course_data import TRACK_IDS
     from app.models import CoursePlan
 
     plan = CoursePlan.query.filter_by(user_id=user.id).first()
@@ -31,15 +31,19 @@ def user_track(user):
     return 'standard'
 
 
-def next_unlocked_lesson(user):
-    action = next_course_action(user)
+def next_unlocked_lesson(user, completed=None, completed_projects=None):
+    action = next_course_action(
+        user, completed=completed, completed_projects=completed_projects
+    )
     return action['lesson_id'] if action and action['type'] == 'lesson' else None
 
 
-def next_course_action(user):
-    completed = completed_lesson_ids(user)
-    project_modules = completed_project_modules(user)
-    return _next_course_action(completed, project_modules)
+def next_course_action(user, completed=None, completed_projects=None):
+    if completed is None:
+        completed = completed_lesson_ids(user)
+    if completed_projects is None:
+        completed_projects = completed_project_modules(user)
+    return _next_course_action(completed, completed_projects)
 
 
 def _next_course_action(completed, project_modules):
@@ -54,29 +58,37 @@ def _next_course_action(completed, project_modules):
     return None
 
 
-def lesson_is_available(user, lesson_id):
+def lesson_is_available(user, lesson_id, completed=None, completed_projects=None):
     from app.curriculum import get_lesson
     lesson = get_lesson(lesson_id)
     if not lesson:
         return False
-    if lesson_id in completed_lesson_ids(user):
+    if completed is None:
+        completed = completed_lesson_ids(user)
+    if completed_projects is None:
+        completed_projects = completed_project_modules(user)
+    if lesson_id in completed:
         return True
-    unlocked = next_unlocked_lesson(user)
-    return lesson_id == unlocked
+    return lesson_id == next_unlocked_lesson(
+        user, completed=completed, completed_projects=completed_projects
+    )
 
 
-def module_project_is_available(user, module_id):
+def module_project_is_available(user, module_id, completed=None):
     from app.curriculum import get_module
     module = get_module(module_id)
     if not module:
         return False
-    completed = completed_lesson_ids(user)
+    if completed is None:
+        completed = completed_lesson_ids(user)
     return all(lesson['id'] in completed for lesson in module['lessons'])
 
 
-def course_progress(user):
-    completed = completed_lesson_ids(user)
-    completed_projects = completed_project_modules(user)
+def course_progress(user, completed=None, completed_projects=None):
+    if completed is None:
+        completed = completed_lesson_ids(user)
+    if completed_projects is None:
+        completed_projects = completed_project_modules(user)
     lessons = all_lessons()
     modules = all_modules()
     # Reuse these sets for all progress fields. Re-querying through
@@ -110,7 +122,7 @@ def course_progress(user):
 
 def monthly_milestone_progress(progress, completed_projects, track='standard'):
     """Group sequential modules into the selected track's monthly milestones."""
-    from app.course_blueprint import milestones_for
+    from app.course_data import milestones_for
 
     modules = {module['id']: module for module in progress['modules']}
     result = []
@@ -142,11 +154,6 @@ def monthly_milestone_progress(progress, completed_projects, track='standard'):
             'percent': round(done_lessons / total_lessons * 100) if total_lessons else 0,
         })
     return result
-
-
-def curriculum_days(config=None):
-    """Compatibility name for the number of fixed course lessons."""
-    return len(all_lessons())
 
 
 def next_unlocked_day(user, config=None):

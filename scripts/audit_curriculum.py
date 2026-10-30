@@ -153,7 +153,7 @@ def _validate_placement(errors, course, lesson_ids):
 
 def _validate_tracks(errors):
     try:
-        from app.course_blueprint import TRACKS
+        from app.course_data import TRACKS
     except ImportError as error:  # pragma: no cover - environment failure
         errors.append(f'Could not import course blueprint: {error}')
         return

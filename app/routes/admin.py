@@ -7,8 +7,10 @@ from flask import Blueprint, current_app, jsonify, request
 from flask_login import current_user, login_required
 
 from app import db, validate_app_config
+from app.access import json_admin_required
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
 from app.models import CalendarEvent, UserSchedule
+from app.rate_limit import enforce_rate_limit
 from app.user_preferences import get_effective_config_for_user
 from app.request_data import get_json_object
 
@@ -39,7 +41,7 @@ def _validate_schedule(blocks):
 
 
 @admin_bp.route('/config', methods=['GET'])
-@login_required
+@json_admin_required
 def get_config():
     return jsonify(get_effective_config_for_user(current_user))
 
@@ -115,6 +117,10 @@ def generate_ai_json():
     supplied_token = request.headers.get('X-Admin-Token', '')
     if not admin_token or not hmac.compare_digest(supplied_token, admin_token):
         return jsonify({'error': 'Administrator access required'}), 403
+    # Token holders share one paid AI quota; cap burst and daily volume so a
+    # leaked token cannot burn unlimited Pro-tier credits.
+    enforce_rate_limit('admin_ai_json_burst', 6, 60)
+    enforce_rate_limit('admin_ai_json_daily', 100, 86400)
     data = get_json_object()
     prompt = data.get('prompt') if isinstance(data, dict) else None
     if not isinstance(prompt, str) or not 0 < len(prompt) <= 24000:
@@ -131,7 +137,7 @@ def generate_ai_json():
 
 
 @admin_bp.route('/config', methods=['POST'])
-@login_required
+@json_admin_required
 def update_config():
     admin_token = os.environ.get('ADMIN_API_TOKEN') or ''
     supplied_token = request.headers.get('X-Admin-Token', '')

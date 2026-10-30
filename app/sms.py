@@ -23,6 +23,31 @@ def password_reset_sms_configured():
     )
 
 
+def send_phone_verification_sms(recipient, code):
+    """Send a short phone-verification code through Twilio."""
+    if not password_reset_sms_configured():
+        raise RuntimeError('Phone verification SMS configuration is incomplete')
+
+    account_sid = os.environ['TWILIO_ACCOUNT_SID'].strip()
+    auth_token = os.environ['TWILIO_AUTH_TOKEN'].strip()
+    from_number = os.environ['TWILIO_FROM_NUMBER'].strip()
+    response = requests.post(
+        f'{TWILIO_API_BASE}/Accounts/{account_sid}/Messages.json',
+        auth=(account_sid, auth_token),
+        data={
+            'From': from_number,
+            'To': recipient,
+            'Body': (
+                f'Your RUACH phone verification code is {code}. '
+                'It expires in 15 minutes. Reply STOP to opt out.'
+            ),
+        },
+        timeout=TWILIO_TIMEOUT_SECONDS,
+    )
+    if response.status_code >= 400:
+        raise RuntimeError(f'Twilio returned HTTP {response.status_code}')
+
+
 def send_password_reset_sms(recipient, reset_url):
     """Send a password reset link to a phone number through Twilio."""
     if not password_reset_sms_configured():

@@ -24,8 +24,8 @@ from app.curriculum import all_lessons, all_modules
 from app.integrations import database_status
 from app.learning import course_progress
 from app.models import (
-    AdminAuditLog, CourseProject, LessonCompletion, PasswordResetToken, QuizResult,
-    StudySession, SupportRequest, User,
+    AdminAuditLog, CourseProject, Credential, LessonCompletion,
+    PasswordResetToken, QuizResult, StudySession, SupportRequest, User,
 )
 from app.phone import PhoneError, normalize_phone
 from app.rate_limit import client_ip, enforce_rate_limit, identity_hash
@@ -36,9 +36,9 @@ ADMIN_SESSION_MINUTES = 30
 PAGE_SIZE = 20
 
 
-def _naive_utcnow():
-    """UTC now in the naive form used by the application's DateTime columns."""
-    return datetime.now(timezone.utc).replace(tzinfo=None)
+def _utcnow():
+    """UTC now in the aware form used by every application timestamp column."""
+    return datetime.now(timezone.utc)
 
 
 def _password_matches(user, password):
@@ -115,7 +115,7 @@ def _record_admin_action(action, target_user_id=None, detail=None):
         target_user_id=target_user_id,
         detail=(detail or '')[:2000] or None,
         ip_address=client_ip(),
-        created_at=_naive_utcnow(),
+        created_at=_utcnow(),
     )
     db.session.add(entry)
     return entry
@@ -189,7 +189,7 @@ def login():
             session['admin_authenticated_at'] = datetime.now(
                 timezone.utc
             ).timestamp()
-            account.last_active = _naive_utcnow()
+            account.last_active = _utcnow()
             _record_admin_action(
                 'admin.login', target_user_id=account.id,
                 detail='Administrator signed in to the portal.',
@@ -239,7 +239,7 @@ def exit_portal():
 @admin_portal_bp.route('/')
 @admin_required
 def dashboard():
-    since = _naive_utcnow() - timedelta(days=30)
+    since = _utcnow() - timedelta(days=30)
     total_users = User.query.count()
     active_accounts = User.query.filter(User.is_active.is_(True)).count()
     active_admins = User.query.filter(
@@ -476,12 +476,16 @@ def user_detail(user_id):
             AdminAuditLog.admin_user_id == account.id,
         )
     ).order_by(AdminAuditLog.created_at.desc()).limit(10).all()
+    credentials = Credential.query.filter_by(
+        user_id=account.id
+    ).order_by(Credential.issued_at.desc()).limit(5).all()
     return render_template(
         'admin/user_detail.html',
         account=account,
         progress=progress,
         total_minutes=int(total_minutes or 0),
         completions=completions,
+        credentials=credentials,
         audit_entries=audit_entries,
     )
 
@@ -522,6 +526,8 @@ def update_profile(user_id):
         changed.append('full name')
     if (account.phone or None) != (phone or None):
         account.phone = phone
+        if phone is not None:
+            account.phone_verified = False
         changed.append('phone')
     if 'username' in changed or 'email' in changed or 'phone' in changed:
         account.auth_version = int(account.auth_version or 0) + 1
@@ -753,10 +759,31 @@ def delete_user(user_id):
     return redirect(url_for('admin_portal.users'))
 
 
+@admin_portal_bp.route('/credentials/<public_id>/revoke', methods=['POST'])
+@admin_required
+def revoke_credential(public_id):
+    credential = Credential.query.filter_by(public_id=public_id).first()
+    if credential is None:
+        abort(404)
+    if credential.revoked_at is None:
+        credential.revoked_at = _utcnow()
+        _record_admin_action(
+            'credential.revoke', target_user_id=credential.user_id,
+            detail=f'Revoked credential {credential.public_id}.',
+        )
+        db.session.commit()
+        flash('Credential revoked. Its public verification page now shows it as revoked.', 'success')
+    else:
+        flash('That credential was already revoked.', 'error')
+    return redirect(url_for(
+        'admin_portal.user_detail', user_id=credential.user_id
+    ))
+
+
 @admin_portal_bp.route('/analytics')
 @admin_required
 def analytics():
-    since = _naive_utcnow() - timedelta(days=30)
+    since = _utcnow() - timedelta(days=30)
     completions = db.session.query(
         func.date(LessonCompletion.completed_at).label('date'),
         func.count(LessonCompletion.id).label('count'),
@@ -780,15 +807,22 @@ def analytics():
     ).group_by(LessonCompletion.subject_id).all()
     module_lessons = {module['id']: {lesson['id'] for lesson in module['lessons']}
                       for module in all_modules()}
-    learner_module_lessons = {}
-    for learner_id, module_id, lesson_id in db.session.query(
+    learners_by_module = {}
+    per_learner_module = db.session.query(
         LessonCompletion.user_id, LessonCompletion.subject_id,
-        LessonCompletion.lesson_id,
+        func.count(func.distinct(LessonCompletion.lesson_id)).label('lesson_count'),
     ).join(User, User.id == LessonCompletion.user_id).filter(
         LessonCompletion.completed.is_(True), User.is_active.is_(True),
         User.is_admin.is_(False),
-    ).all():
-        learner_module_lessons.setdefault((learner_id, module_id), set()).add(lesson_id)
+    ).group_by(LessonCompletion.user_id, LessonCompletion.subject_id).all()
+    for _learner_id, module_id, lesson_count in per_learner_module:
+        module_stats = learners_by_module.setdefault(module_id, {
+            'started': 0, 'finished': 0,
+        })
+        module_stats['started'] += 1
+        total = len(module_lessons.get(module_id, ()))
+        if total and lesson_count >= total:
+            module_stats['finished'] += 1
     project_counts = dict(db.session.query(
         CourseProject.module_id, func.count(CourseProject.id),
     ).join(User, User.id == CourseProject.user_id).filter(
@@ -801,19 +835,12 @@ def analytics():
     module_funnel = []
     for module in all_modules():
         module_id = module['id']
-        started = sum(
-            bool(learner_module_lessons.get((learner_id, module_id)))
-            for learner_id, grouped_module_id in learner_module_lessons
-            if grouped_module_id == module_id
-        )
-        finished = sum(
-            lessons.issuperset(module_lessons[module_id])
-            for (learner_id, grouped_module_id), lessons in learner_module_lessons.items()
-            if grouped_module_id == module_id
+        module_stats = learners_by_module.get(
+            module_id, {'started': 0, 'finished': 0}
         )
         module_funnel.append({
             'number': module['number'], 'title': module['title'],
-            'started': started, 'finished': finished,
+            'started': module_stats['started'], 'finished': module_stats['finished'],
             'projects': project_counts.get(module_id, 0),
         })
     quiz_summary = db.session.query(
@@ -915,11 +942,32 @@ def support_request_detail(request_id):
     if request.method == 'POST':
         status = (request.form.get('status') or '').strip()
         allowed_statuses = {'new', 'in_review', 'planned', 'resolved', 'declined'}
-        if status not in allowed_statuses:
+        reply = request.form.get('reply')
+        if reply is not None:
+            reply = reply.strip()[:4000]
+            if not reply:
+                flash('Write a reply before sending it.', 'error')
+            else:
+                report.admin_reply = reply
+                report.replied_at = _utcnow()
+                report.replied_by_user_id = current_user.id
+                if status in allowed_statuses:
+                    report.status = status
+                report.updated_at = _utcnow()
+                _record_admin_action(
+                    'support.reply', target_user_id=report.user_id,
+                    detail=f'Replied to support request #{report.id}.',
+                )
+                db.session.commit()
+                flash('Reply saved and visible to the learner.', 'success')
+                return redirect(url_for(
+                    'admin_portal.support_request_detail', request_id=report.id
+                ))
+        elif status not in allowed_statuses:
             flash('Choose a valid status.', 'error')
         else:
             report.status = status
-            report.updated_at = _naive_utcnow()
+            report.updated_at = _utcnow()
             db.session.commit()
             flash('Support request updated.', 'success')
             return redirect(url_for(

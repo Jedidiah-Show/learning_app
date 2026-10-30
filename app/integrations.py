@@ -209,6 +209,19 @@ def google_calendar_status(user):
     }
 
 
+def _alembic_head():
+    """Read the newest migration revision from the migrations directory."""
+    from alembic.config import Config
+    from alembic.script import ScriptDirectory
+
+    root = os.path.abspath(
+        os.path.join(current_app.root_path, '..', 'migrations')
+    )
+    config = Config()
+    config.set_main_option('script_location', root.replace('%', '%%'))
+    return ScriptDirectory.from_config(config).get_current_head()
+
+
 def database_status():
     """Return migration/table readiness without returning connection data."""
     try:
@@ -236,9 +249,24 @@ def database_status():
         missing = sorted(
             table for table in REQUIRED_TABLES if table not in tables
         )
+        head_revision = None
+        migration_current = True
+        try:
+            head_revision = _alembic_head()
+        except Exception:
+            current_app.logger.warning(
+                'Could not read the alembic head revision', exc_info=True
+            )
+        if head_revision is not None and revision is not None:
+            migration_current = revision == head_revision
+        # An unversioned database (e.g. a fresh dev create_all) is tolerated;
+        # a versioned database behind head reports degraded so deploys cannot
+        # ship schema changes the application code no longer matches.
         return {
-            'ok': not missing and not missing_columns,
+            'ok': not missing and not missing_columns and migration_current,
             'current_revision': revision,
+            'head_revision': head_revision,
+            'migration_current': migration_current,
             'missing_tables': missing,
             'missing_columns': missing_columns,
         }
@@ -247,6 +275,8 @@ def database_status():
         return {
             'ok': False,
             'current_revision': None,
+            'head_revision': None,
+            'migration_current': False,
             'missing_tables': [],
             'missing_columns': [],
             'error': 'Database metadata could not be read. Check the server logs.',

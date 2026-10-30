@@ -9,11 +9,27 @@
     <p class="mt-2 text-xs text-slate-500">From {{ report.user.username or report.user.email or 'Learner' }} · {{ report.created_at.strftime('%b %-d, %Y at %H:%M UTC') }}</p>
     {% if report.page_url %}<p class="mt-2 text-xs text-slate-500">Reported from <code class="rounded bg-slate-100 px-1.5 py-1">{{ report.page_url }}</code></p>{% endif %}
     <div class="mt-6 whitespace-pre-wrap break-words rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-800">{{ report.message }}</div>
+    {% if report.admin_reply %}
+    <div class="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+      <p class="text-xs font-bold uppercase tracking-wide text-emerald-800">Your reply · {{ report.replied_at.strftime('%b %-d, %Y at %H:%M UTC') if report.replied_at }}</p>
+      <div class="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-emerald-950">{{ report.admin_reply }}</div>
+    </div>
+    {% endif %}
   </article>
-  <aside class="h-fit rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-    <h2 class="font-bold">Request status</h2>
-    <form method="post" class="mt-3"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><label for="request-status" class="sr-only">Status</label><select id="request-status" name="status" class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">{% for value, label in [('new','New'),('in_review','In review'),('planned','Planned'),('resolved','Resolved'),('declined','Declined')] %}<option value="{{ value }}" {% if report.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="mt-3 w-full rounded-lg bg-brand-800 px-4 py-2.5 text-sm font-bold text-white">Save status</button></form>
-    <p class="mt-4 text-xs text-slate-500">Last updated {{ report.updated_at.strftime('%b %-d, %Y at %H:%M UTC') }}</p>
+  <aside class="h-fit space-y-5">
+    <form method="post" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="font-bold">Reply to learner</h2>
+      <p class="mt-1 text-xs text-slate-500">Visible on the learner's support page. Keep it helpful and brief; never include secrets or credentials.</p>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <textarea name="reply" rows="6" maxlength="4000" class="mt-3 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm leading-6 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20">{{ report.admin_reply or '' }}</textarea>
+      <button class="mt-3 w-full rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-900">{{ 'Update reply' if report.admin_reply else 'Send reply' }}</button>
+    </form>
+    <form method="post" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="font-bold">Request status</h2>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label for="request-status" class="sr-only">Status</label><select id="request-status" name="status" class="mt-3 w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm">{% for value, label in [('new','New'),('in_review','In review'),('planned','Planned'),('resolved','Resolved'),('declined','Declined')] %}<option value="{{ value }}" {% if report.status == value %}selected{% endif %}>{{ label }}</option>{% endfor %}</select><button class="mt-3 w-full rounded-lg bg-brand-800 px-4 py-2.5 text-sm font-bold text-white">Save status</button>
+      <p class="mt-4 text-xs text-slate-500">Last updated {{ report.updated_at.strftime('%b %-d, %Y at %H:%M UTC') }}</p>
+    </form>
   </aside>
 </div>
 {% endblock %}

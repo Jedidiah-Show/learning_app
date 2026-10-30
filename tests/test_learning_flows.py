@@ -814,10 +814,16 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertEqual(credential['status'], 'active')
         self.assertTrue(credential['public_id'])
         self.client.post('/logout')
-        public = self.client.get(f"/credentials/{credential['public_id']}")
+        public = self.client.get(
+            f"/credentials/{credential['public_id']}",
+            query_string={'sig': credential['signature']},
+        )
         self.assertEqual(public.status_code, 200)
         self.assertIn(b'Verified', public.data)
         self.assertIn(b'Learner', public.data)
+        unsigned = self.client.get(f"/credentials/{credential['public_id']}")
+        self.assertEqual(unsigned.status_code, 200)
+        self.assertNotIn(b'issuer signature valid', unsigned.data)
         missing = self.client.get('/credentials/not-a-real-credential')
         self.assertEqual(missing.status_code, 404)
 

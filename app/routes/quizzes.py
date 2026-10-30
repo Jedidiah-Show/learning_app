@@ -14,6 +14,25 @@ from app.request_data import get_json_object
 
 quizzes_bp = Blueprint('quizzes', __name__)
 
+LESSON_QUIZ_PREFIX = 'dynamoai_lesson_'
+MODULE_QUIZ_PREFIX = 'dynamoai_module_'
+
+
+def _locked_quiz_response(quiz):
+    """Re-check availability gates on submit; mirrors the GET endpoints."""
+    quiz_id = quiz.quiz_id or ''
+    if quiz_id.startswith(LESSON_QUIZ_PREFIX):
+        lesson_id = quiz_id[len(LESSON_QUIZ_PREFIX):]
+        if not lesson_is_available(current_user, lesson_id):
+            return jsonify({'error': 'Lesson is locked'}), 403
+    elif quiz_id.startswith(MODULE_QUIZ_PREFIX):
+        module_id = quiz_id[len(MODULE_QUIZ_PREFIX):]
+        if not module_project_is_available(current_user, module_id):
+            return jsonify(
+                {'error': 'Complete the module lessons before taking its quiz'}
+            ), 409
+    return None
+
 
 def _quiz_for(quiz_id, quiz_type, lesson, module):
     quiz = Quiz.query.filter_by(quiz_id=quiz_id).first()
@@ -144,6 +163,9 @@ def submit_quiz():
     quiz = Quiz.query.filter_by(quiz_id=data.get('quiz_id')).first()
     if not quiz:
         return jsonify({'error': 'Quiz not found'}), 404
+    locked = _locked_quiz_response(quiz)
+    if locked is not None:
+        return locked
     answers = data.get('answers')
     questions = quiz.get_questions()
     expected_keys = {str(i) for i in range(len(questions))}
@@ -172,20 +194,34 @@ def submit_quiz():
                         passed=passed)
     db.session.add(result)
     # Missed questions enter the learner's spaced-review queue. Repeated
-    # misses reset the interval so the concept returns sooner.
+    # misses reset the interval so the concept returns sooner. Batch the
+    # lookups so a multi-question quiz does not issue one query per miss.
     from datetime import datetime, timezone
     now = datetime.now(timezone.utc)
+    missed_questions = []
     for index, question in enumerate(questions):
         if normalized[str(index)] == question['correct']:
             continue
-        item = ReviewItem.query.filter_by(
-            user_id=current_user.id, quiz_id=quiz.quiz_id,
-            question_id=question.get('id', f'{quiz.quiz_id}_{index}'),
-        ).first()
+        missed_questions.append((
+            question,
+            question.get('id', f'{quiz.quiz_id}_{index}'),
+        ))
+    missed_questions_added = len(missed_questions)
+    missed_by_question_id = {}
+    if missed_questions:
+        missed_question_ids = [question_id for _, question_id in missed_questions]
+        missed_items = ReviewItem.query.filter(
+            ReviewItem.user_id == current_user.id,
+            ReviewItem.quiz_id == quiz.quiz_id,
+            ReviewItem.question_id.in_(missed_question_ids),
+        ).all()
+        missed_by_question_id = {item.question_id: item for item in missed_items}
+    for question, question_id in missed_questions:
+        item = missed_by_question_id.get(question_id)
         if item is None:
             item = ReviewItem(
                 user_id=current_user.id, quiz_id=quiz.quiz_id,
-                question_id=question.get('id', f'{quiz.quiz_id}_{index}'),
+                question_id=question_id,
                 subject_id=quiz.subject_id or '', question=question['question'],
                 options=json.dumps(question['options'], ensure_ascii=False),
                 correct_index=question['correct'],

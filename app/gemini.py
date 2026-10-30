@@ -204,7 +204,7 @@ def _record_user_request():
     from app import db
     from app.models import GeminiUsageBucket
 
-    now = datetime.now(timezone.utc).replace(tzinfo=None)
+    now = datetime.now(timezone.utc)
     minute_start = now.replace(second=0, microsecond=0)
     day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
     user_id = current_user.id

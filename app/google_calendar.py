@@ -188,9 +188,16 @@ def _as_utc(value):
 
 
 def naive_utc(value):
-    """Return ``value`` as a naive UTC datetime for naive database columns."""
+    """Return ``value`` as naive UTC for google-auth ``Credentials.expiry``.
+
+    Database columns are aware UTC; only the google library boundary needs
+    the naive form.
+    """
     moment = _as_utc(value)
     return moment.replace(tzinfo=None) if moment else None
+
+
+as_utc = _as_utc
 
 
 def needs_refresh(credentials):
@@ -244,7 +251,7 @@ def persist_refreshed_token(user, credentials):
     from app import db
 
     user.google_access_token = credentials.token
-    user.token_expiry = naive_utc(credentials.expiry)
+    user.token_expiry = _as_utc(credentials.expiry)
     try:
         db.session.commit()
     except Exception:  # pragma: no cover - depends on the storage backend

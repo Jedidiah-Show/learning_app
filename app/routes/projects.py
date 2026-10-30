@@ -13,7 +13,7 @@ from app.learning import (
     module_project_is_available, completed_project_modules, course_progress,
     monthly_milestone_progress, user_track,
 )
-from app.course_blueprint import (
+from app.course_data import (
     PROJECT_BY_ID, REQUIRED_PROJECTS, TRACKS, track_for, track_label,
 )
 from app.models import CoursePlan, CourseProject
@@ -66,8 +66,8 @@ def _required_project_brief(project):
 @projects_bp.route('/projects')
 @login_required
 def project_page():
-    progress = course_progress(current_user)
     completed = completed_project_modules(current_user)
+    progress = course_progress(current_user, completed_projects=completed)
     track = user_track(current_user)
     milestones = monthly_milestone_progress(progress, completed, track)
     plan = _plan()

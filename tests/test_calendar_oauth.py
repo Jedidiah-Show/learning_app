@@ -66,11 +66,11 @@ class CalendarOAuthTests(unittest.TestCase):
         self.assertEqual(query['prompt'], ['consent'])
         self.assertNotIn('include_granted_scopes', query)
         with self.client.session_transaction() as session:
-            self.assertTrue(session.get('state'))
+            self.assertTrue(session.get('google_oauth_state'))
 
     def test_callback_accepts_previously_granted_extra_scopes(self):
         with self.client.session_transaction() as session:
-            session['state'] = 'test-state'
+            session['google_oauth_state'] = 'test-state'
 
         def fake_fetch_token(oauth_session, token_url, **kwargs):
             oauth_session._client.parse_request_body_response(

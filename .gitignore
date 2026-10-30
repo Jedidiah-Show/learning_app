@@ -12,3 +12,13 @@ node_modules/
 test-results/
 playwright-report/
 backup*.dump
+
+# Large source/design assets kept locally but out of the repository.
+# scripts/build_dynamoai_curriculum.py reads the PDF when regenerating
+# app/data/dynamoai_curriculum.json.
+/DynamoAI_*.pdf
+/DynamoAI_*.docx
+/RUACH Brand Identity Board.png
+/Ruach-ai.png
+/ruachai_logo.png
+/command_status.txt

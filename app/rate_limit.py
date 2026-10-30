@@ -45,18 +45,25 @@ def _bucket_key(name, identity):
 def _increment(bucket, window_start):
     from app.models import RateLimitCounter
 
-    row = RateLimitCounter.query.filter_by(
-        bucket=bucket, window_start=window_start
-    ).with_for_update().first()
-    if row is None:
-        row = RateLimitCounter(
-            bucket=bucket, window_start=window_start, count=1
-        )
-        db.session.add(row)
-    else:
-        row.count += 1
-    db.session.commit()
-    return row.count
+    # Counters commit on their own session: a request that later aborts (or
+    # rolls back) must not lose its counter, and the counter commit must never
+    # flush a view's half-finished changes early.
+    from sqlalchemy.orm import Session
+
+    with Session(db.engine) as session:
+        row = session.query(RateLimitCounter).filter_by(
+            bucket=bucket, window_start=window_start
+        ).with_for_update().first()
+        if row is None:
+            session.add(RateLimitCounter(
+                bucket=bucket, window_start=window_start, count=1
+            ))
+            count = 1
+        else:
+            row.count += 1
+            count = row.count
+        session.commit()
+        return count
 
 
 def check_rate_limit(name, limit, window_seconds, identity=None):
@@ -70,8 +77,8 @@ def check_rate_limit(name, limit, window_seconds, identity=None):
         epoch = int(aware_now.timestamp())
         window_start = datetime.fromtimestamp(
             epoch - (epoch % window_seconds), tz=timezone.utc
-        ).replace(tzinfo=None)
-        now = aware_now.replace(tzinfo=None)
+        )
+        now = aware_now
         bucket = _bucket_key(name, identity)
         try:
             count = _increment(bucket, window_start)
