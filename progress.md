@@ -98,8 +98,8 @@ Last updated: 2026-10-30
   static/js/practice-sandbox.js` → pass. Inline page scripts were extracted from
   the rendered lessons, projects, lesson, and onboarding pages and checked with
   `node --check`.
-* Pending: commit, push to `upstream/main` and `upstream/migrate/render`, then
-  verify Render `/healthz` and `/readyz`.
+* Deployed to Render; `/healthz` and `/readyz` report the new commit and a healthy,
+  current database schema. GitHub CI passed.
 
 ## Safety notes
 
