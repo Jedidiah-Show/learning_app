@@ -1,7 +1,9 @@
+import io
 import json
 import os
 import tempfile
 import unittest
+import zipfile
 from datetime import datetime
 from unittest.mock import patch
 
@@ -172,6 +174,86 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertFalse(response.get_json()['passed'])
         with self.app.app_context():
             self.assertEqual(LessonCompletion.query.count(), 0)
+
+    def test_setup_checks_round_trip_through_the_guided_start(self):
+        self.register()
+        first = self.client.get('/lesson/0.01')
+        self.assertEqual(first.status_code, 200)
+        html = first.get_data(as_text=True)
+        self.assertIn('lesson-setup-check', html)
+        self.assertIn('data-check-id="python"', html)
+        self.assertIn('python -c "print(\'Hello, AI engineering!\')"', html)
+        saved = self.client.post('/api/lessons/setup-checks', json={
+            'checks': {'python': True, 'first_program': True},
+        })
+        self.assertEqual(saved.status_code, 200, saved.get_json())
+        self.assertEqual(saved.get_json()['done'], 2)
+        reloaded = self.client.get('/api/lessons/setup-checks')
+        self.assertEqual(reloaded.status_code, 200, reloaded.get_json())
+        checks = reloaded.get_json()['checks']
+        self.assertTrue(checks['python'])
+        self.assertTrue(checks['first_program'])
+        self.assertFalse(checks['terminal'])
+
+    def test_lessons_page_renders_the_placement_topics(self):
+        self.register()
+        page = self.client.get('/lessons')
+        self.assertEqual(page.status_code, 200)
+        html = page.get_data(as_text=True)
+        self.assertIn('placement-check', html)
+        self.assertIn('placement-topics-result', html)
+        self.assertIn('placement-skip-confirm', html)
+        for topic in curriculum()['course']['placement']['topics']:
+            self.assertIn(f'data-topic-id="{topic["id"]}"', html)
+
+    def test_onboarding_persists_prior_knowledge_and_available_hours(self):
+        self.register()
+        page = self.client.get('/onboarding')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b'What do you already know?', page.data)
+        posted = self.client.post('/onboarding', data={
+            'skill_level': 'some_programming',
+            'weekly_hours': '15-20',
+            'track': 'standard',
+        })
+        self.assertEqual(posted.status_code, 302)
+        with self.app.app_context():
+            plan = CoursePlan.query.one()
+            self.assertEqual(plan.skill_level, 'some_programming')
+            self.assertEqual(plan.weekly_hours, 17)
+            self.assertEqual(plan.track, 'standard')
+
+    def test_onboarding_rejects_unknown_answers(self):
+        self.register()
+        posted = self.client.post('/onboarding', data={
+            'skill_level': 'expert',
+            'weekly_hours': '',
+        })
+        self.assertEqual(posted.status_code, 200)
+        self.assertIn(b'Choose what you already know', posted.data)
+
+    def test_recommend_track_uses_available_hours_not_assumed_experience(self):
+        from app.course_data import recommend_track
+        self.assertIsNone(recommend_track(None))
+        self.assertEqual(recommend_track(6), 'steady')
+        self.assertEqual(recommend_track(11), 'standard')
+        self.assertEqual(recommend_track(24), 'accelerated')
+
+    def test_registration_with_safe_destination_routes_through_onboarding(self):
+        response = self.client.post('/register', data={
+            'username': 'onboarded', 'email': 'onboarded@example.test',
+            'password': 'secure-pass-123', 'confirm_password': 'secure-pass-123',
+            'next': '/projects',
+        }, follow_redirects=False)
+        self.assertEqual(response.status_code, 302)
+        gated = self.client.get('/projects', follow_redirects=False)
+        self.assertEqual(gated.status_code, 302)
+        self.assertIn('/onboarding', gated.headers['Location'])
+        completed = self.client.post('/onboarding', data={
+            'skill_level': 'new', 'weekly_hours': '10-12', 'track': 'standard',
+        }, follow_redirects=False)
+        self.assertEqual(completed.status_code, 302)
+        self.assertEqual(self.client.get('/projects').status_code, 200)
 
     def test_registration_commit_conflict_never_authenticates_the_requester(self):
         with patch('app.routes.auth.db.session.commit',
@@ -586,10 +668,10 @@ class RuachAICourseTests(unittest.TestCase):
             'track': 'accelerated',
         })
         self.assertEqual(switched.status_code, 200, switched.get_json())
-        self.assertEqual(switched.get_json()['label'], '5-month accelerated (5 months)')
+        self.assertEqual(switched.get_json()['label'], '5-month intensive (≈24 focused hours/week)')
         accelerated = self.client.get('/progress')
         self.assertEqual(accelerated.status_code, 200)
-        self.assertIn(b'5-month accelerated', accelerated.data)
+        self.assertIn(b'5-month intensive', accelerated.data)
         self.assertIn(b'Month 5', accelerated.data)
         self.assertNotIn(b'Month 10', accelerated.data)
         with self.app.app_context():
@@ -802,6 +884,36 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertEqual(failed_checks.status_code, 422)
         with self.app.app_context():
             self.assertFalse(CourseProject.query.one().completed)
+        with self.app.app_context():
+            # A failing checks run keeps the learner's draft instead of
+            # discarding the submission text.
+            self.assertEqual(
+                CourseProject.query.one().submission.strip(), submission.strip()
+            )
+
+    def test_module_zero_starter_kit_is_the_docs_kit(self):
+        self.register()
+        response = self.client.get('/projects/starter/00')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.mimetype, 'application/zip')
+        archive = zipfile.ZipFile(io.BytesIO(response.data))
+        names = archive.namelist()
+        self.assertIn('ruach-module-00/README.md', names)
+        self.assertIn('ruach-module-00/docs/glossary.md', names)
+        self.assertIn('ruach-module-00/docs/architecture-sketch.md', names)
+        self.assertIn('ruach-module-00/SETUP.md', names)
+        self.assertIn('ruach-module-00/.github/workflows/docs.yml', names)
+
+    def test_module_one_starter_kit_is_the_code_kit(self):
+        self.register()
+        response = self.client.get('/projects/starter/01')
+        self.assertEqual(response.status_code, 200)
+        archive = zipfile.ZipFile(io.BytesIO(response.data))
+        names = archive.namelist()
+        self.assertIn('ruach-module-01/src/main.py', names)
+        self.assertIn('ruach-module-01/tests/test_main.py', names)
+        self.assertIn('ruach-module-01/.github/workflows/tests.yml', names)
+        self.assertIn('ruach-module-01/SETUP.md', names)
 
     def test_credential_requires_full_completion_and_is_publicly_verifiable(self):
         self.register()

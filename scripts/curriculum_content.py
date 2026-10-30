@@ -1711,72 +1711,127 @@ MAINTENANCE = {
 }
 
 
+# Placement is the single source of truth for /api/lessons/placement and the
+# lesson-listing card; upgrade_curriculum.py deep-copies it over the live
+# overrides. Keep the invariants the release audit and tests check: ten
+# questions, exactly four of them `short`, and the union of topics[].lessons
+# equal to skippable_lessons.
 PLACEMENT = {
     'title': 'Experienced learner placement check',
-    'description': 'Answer ten questions about the Module 0 and early Module 1 foundations. A score of 8 or more marks those lessons as placed out. Module projects and later lessons are still required.',
+    'description': (
+        'This is a short knowledge check for Python, Git, and HTTP basics, not a '
+        'practical coding assessment. A score of 8 or more places out the listed '
+        'foundation lessons; module projects still verify that you can apply the '
+        'skills. If the questions feel unfamiliar, use the beginner route. Module '
+        'projects and later lessons are still required.'
+    ),
     'passing_score': 8,
     'skippable_lessons': [
         '0.01', '0.02', '0.03', '0.04', '0.05',
         '0.06', '0.07', '0.08', '0.09', '0.10', '0.11',
         '1.01', '1.02', '1.03', '1.04',
     ],
+    # Each topic is scored on its own: a topic counts as placed out only when
+    # every question in it is correct, and its lessons become the recommended
+    # skip set. This is what lets a learner who knows Git but not HTTP keep the
+    # lessons they actually need.
+    'topics': [
+        {
+            'id': 'setup_runtime',
+            'title': 'Course setup, running code, and reading errors',
+            'questions': ['q3'],
+            'lessons': ['0.01', '0.02', '0.03', '0.04', '0.05', '0.06', '1.02'],
+        },
+        {
+            'id': 'python_data',
+            'title': 'Python values, functions, and type hints',
+            'questions': ['q1', 'q2', 'q9', 'q10'],
+            'lessons': ['0.07', '0.08', '1.01', '1.03', '1.04'],
+        },
+        {
+            'id': 'files_git_envs',
+            'title': 'Files, virtual environments, and Git',
+            'questions': ['q4', 'q5', 'q6'],
+            'lessons': ['0.09', '0.10'],
+        },
+        {
+            'id': 'http_status',
+            'title': 'HTTP status codes and API responses',
+            'questions': ['q7', 'q8'],
+            'lessons': ['0.11'],
+        },
+    ],
     'questions': [
         {
             'id': 'q1',
+            'topic': 'python_data',
             'prompt': 'Which Python value is a dictionary?',
             'options': ['[1, 2, 3]', '{"name": "Ada"}', '("a", "b")', '"a,b"'],
             'answer': 1,
         },
         {
             'id': 'q2',
+            'topic': 'python_data',
             'prompt': 'What does an f-string do?',
             'options': ['Formats a file', 'Inserts expressions into a string', 'Creates a virtual environment', 'Starts a web server'],
             'answer': 1,
         },
         {
             'id': 'q3',
-            'prompt': 'Which exception is raised when a dictionary key is missing?',
-            'options': ['TypeError', 'KeyError', 'ValueError', 'NameError'],
-            'answer': 1,
+            'topic': 'setup_runtime',
+            'type': 'short',
+            'prompt': 'A traceback ends with `line 8` followed by `KeyError: \'price\'`. Enter the line number you should inspect first.',
+            'answer': '8',
+            'accepted_answers': ['8', 'line 8'],
         },
         {
             'id': 'q4',
+            'topic': 'files_git_envs',
             'prompt': 'What is the main purpose of a virtual environment?',
             'options': ['Speed up the CPU', 'Isolate a project’s Python packages', 'Compress source files', 'Replace Git'],
             'answer': 1,
         },
         {
             'id': 'q5',
-            'prompt': 'Which Git command records staged changes?',
-            'options': ['git push', 'git commit', 'git clone', 'git status'],
-            'answer': 1,
+            'topic': 'files_git_envs',
+            'type': 'short',
+            'prompt': 'You ran `git add app.py` and the file is staged. Enter the Git command that records the staged snapshot locally.',
+            'answer': 'git commit',
+            'accepted_answers': ['git commit', 'commit'],
         },
         {
             'id': 'q6',
-            'prompt': 'Which file should normally be excluded from Git?',
-            'options': ['README.md', '.env', 'pyproject.toml', 'tests/test_app.py'],
-            'answer': 1,
+            'topic': 'files_git_envs',
+            'type': 'short',
+            'prompt': 'Your API key is in a local file named `.env`. Enter the filename you should put in `.gitignore`.',
+            'answer': '.env',
+            'accepted_answers': ['.env'],
         },
         {
             'id': 'q7',
+            'topic': 'http_status',
             'prompt': 'What does HTTP status 404 mean?',
             'options': ['Server error', 'Unauthorized', 'Resource not found', 'Success'],
             'answer': 2,
         },
         {
             'id': 'q8',
+            'topic': 'http_status',
             'prompt': 'Which status codes are usually safe to retry?',
             'options': ['400 and 401', '429 and 503', '404 and 422', '200 and 201'],
             'answer': 1,
         },
         {
             'id': 'q9',
-            'prompt': 'What does a function return statement do?',
-            'options': ['Prints a value', 'Hands a value back to the caller', 'Creates a file', 'Starts a loop'],
-            'answer': 1,
+            'topic': 'python_data',
+            'type': 'short',
+            'prompt': 'A Python function should give a value back to the code that called it. Enter the keyword used for that.',
+            'answer': 'return',
+            'accepted_answers': ['return'],
         },
         {
             'id': 'q10',
+            'topic': 'python_data',
             'prompt': 'Why add type hints to a function?',
             'options': ['They enforce runtime validation automatically', 'They document intended types and help tools', 'They make Python compile faster', 'They replace tests'],
             'answer': 1,

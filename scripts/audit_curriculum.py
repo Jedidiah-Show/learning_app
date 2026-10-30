@@ -41,6 +41,22 @@ STRUCTURED_FIELDS = (
     'key_terms', 'mental_model', 'worked_example', 'steps', 'tasks',
     'capstone_connection', 'questions', 'project', 'project_deliverables',
 )
+# Phrases that have appeared in generated explanations. Each one says nothing
+# about the lesson, so an intro or concept built from them is a placeholder.
+BANNED_PLACEHOLDER_PHRASES = (
+    'slow down, name the idea, and connect it to one concrete action',
+    'in plain words: read slowly',
+    'this lesson covers the importance of',
+    'lorem ipsum',
+    'placeholder',
+    'coming soon',
+    'not yet written',
+    'todo: write',
+)
+MIN_INTRO_CHARS = 80
+MIN_PLAIN_CHARS = 40
+MIN_EXAMPLE_CHARS = 30
+MIN_ANSWER_CHARS = 25
 
 
 def _load(name):
@@ -159,6 +175,46 @@ def _validate_placement(errors, course, lesson_ids):
         if not str(lesson_id).startswith(('0.', '1.0')):
             errors.append(f'Placement skip {lesson_id} is outside the foundation ramp')
 
+    # Topics are what turn an all-or-nothing score into a per-skill skip
+    # recommendation, so the question and lesson groupings must be exhaustive.
+    topics = placement.get('topics') or []
+    if not isinstance(topics, list) or not topics:
+        errors.append('Placement check has no topics')
+        return
+    question_ids = {question.get('id') for question in questions if isinstance(question, dict)}
+    topic_ids = set()
+    assigned_questions = set()
+    assigned_lessons = set()
+    for topic in topics:
+        if not isinstance(topic, dict):
+            errors.append('Placement topic is not an object')
+            continue
+        tid = topic.get('id')
+        if not tid or tid in topic_ids:
+            errors.append(f'Placement topic id is missing or duplicated: {tid!r}')
+            continue
+        topic_ids.add(tid)
+        if not str(topic.get('title') or '').strip():
+            errors.append(f'Placement topic {tid} has no title')
+        for qid in topic.get('questions') or []:
+            if qid not in question_ids:
+                errors.append(f'Placement topic {tid} references unknown question {qid}')
+            if qid in assigned_questions:
+                errors.append(f'Placement question {qid} belongs to more than one topic')
+            assigned_questions.add(qid)
+        for lesson_id in topic.get('lessons') or []:
+            if lesson_id not in skippable:
+                errors.append(f'Placement topic {tid} skips a lesson outside skippable_lessons: {lesson_id}')
+            assigned_lessons.add(lesson_id)
+    for question in questions:
+        if isinstance(question, dict) and question.get('id') not in assigned_questions:
+            errors.append(f'Placement question {question.get("id")} belongs to no topic')
+        if isinstance(question, dict) and question.get('topic') not in topic_ids:
+            errors.append(f'Placement question {question.get("id")} has an unknown topic {question.get("topic")!r}')
+    if assigned_lessons != set(skippable):
+        missing = sorted(set(skippable) - assigned_lessons)
+        errors.append(f'Placement topics do not cover every skippable lesson; missing {missing}')
+
 
 def _validate_tracks(errors):
     try:
@@ -243,14 +299,135 @@ def _validate_code(errors, lessons):
                     )
 
 
+def _plain_language_scope(overrides, lessons):
+    """Lessons that must carry a curated explanation.
+
+    The scope lives in the course overlay so it survives a curriculum
+    regeneration, and grows as modules are written.
+    """
+    scope = (overrides.get('course') or {}).get('plain_language_scope') or {}
+    modules = {str(module_id) for module_id in scope.get('modules') or []}
+    required = {
+        lesson['id'] for lesson in lessons
+        if str(lesson.get('module_id')) in modules
+    }
+    required.update(scope.get('lesson_ids') or [])
+    required.update(MODERN_TOPIC_IDS)
+    return required
+
+
+def _has_placeholder(text):
+    lowered = str(text or '').casefold()
+    return any(phrase in lowered for phrase in BANNED_PLACEHOLDER_PHRASES)
+
+
+def _validate_plain_language_coverage(errors, lessons, overrides, extras):
+    """Require a plain-language explanation and a worked example per concept."""
+    from app.curriculum import _lesson_concepts
+
+    required = _plain_language_scope(overrides, lessons)
+    by_id = {lesson['id']: lesson for lesson in lessons}
+    for lesson_id in sorted(required):
+        lesson = by_id.get(lesson_id)
+        if lesson is None:
+            errors.append(f'Plain-language scope lists unknown lesson {lesson_id}')
+            continue
+        entry = extras.get(lesson_id)
+        if not isinstance(entry, dict):
+            errors.append(
+                f'Lesson {lesson_id} has no curated plain-language explanation'
+            )
+            continue
+        intro = ' '.join(str(entry.get('intro') or '').split())
+        subtitle = ' '.join(str(lesson.get('subtitle') or '').split())
+        if len(intro) < MIN_INTRO_CHARS:
+            errors.append(
+                f'Lesson {lesson_id} plain-language intro is too short to teach with'
+            )
+        elif intro == subtitle:
+            errors.append(
+                f'Lesson {lesson_id} plain-language intro just repeats the subtitle'
+            )
+        elif _has_placeholder(intro):
+            errors.append(f'Lesson {lesson_id} plain-language intro is placeholder text')
+
+        concepts = entry.get('concepts')
+        concepts = concepts if isinstance(concepts, list) else []
+        # Concept extras bind by index on the lesson page, so the count and the
+        # titles must match the blocks the loader actually renders.
+        rendered = _lesson_concepts(lesson)
+        if len(concepts) != len(rendered):
+            errors.append(
+                f'Lesson {lesson_id} explains {len(concepts)} concepts but the page '
+                f'renders {len(rendered)}'
+            )
+        for index, concept in enumerate(rendered, start=1):
+            candidate = concepts[index - 1] if index <= len(concepts) else {}
+            candidate = candidate if isinstance(candidate, dict) else {}
+            title = str(concept.get('title') or 'Concept')
+            if str(candidate.get('title') or '').strip() != title.strip():
+                errors.append(
+                    f'Lesson {lesson_id} concept {index} is titled for a different idea'
+                )
+            plain = ' '.join(str(candidate.get('plain') or '').split())
+            example = ' '.join(str(candidate.get('example') or '').split())
+            if len(plain) < MIN_PLAIN_CHARS:
+                errors.append(
+                    f'Lesson {lesson_id} concept {index} has no plain-language explanation'
+                )
+            if _has_placeholder(plain):
+                errors.append(
+                    f'Lesson {lesson_id} concept {index} is placeholder text'
+                )
+            if len(example) < MIN_EXAMPLE_CHARS:
+                errors.append(
+                    f'Lesson {lesson_id} concept {index} has no worked example'
+                )
+            elif example.casefold() == plain.casefold():
+                errors.append(
+                    f'Lesson {lesson_id} concept {index} repeats its explanation as its example'
+                )
+
+        questions = lesson.get('questions') or []
+        answers = entry.get('answers')
+        answers = answers if isinstance(answers, list) else []
+        if len(answers) != len(questions):
+            errors.append(
+                f'Lesson {lesson_id} needs {len(questions)} checkpoint answers, '
+                f'has {len(answers)}'
+            )
+        for index, answer in enumerate(answers, start=1):
+            text = ' '.join(str(answer or '').split())
+            if len(text) < MIN_ANSWER_CHARS:
+                errors.append(
+                    f'Lesson {lesson_id} checkpoint answer {index} is too short to check against'
+                )
+            elif _has_placeholder(text):
+                errors.append(f'Lesson {lesson_id} checkpoint answer {index} is placeholder text')
+
+
+def _plain_language_gaps(lessons, overrides, extras):
+    """Lessons outside the enforced scope that still lack a curated intro."""
+    required = _plain_language_scope(overrides, lessons)
+    return [
+        lesson['id'] for lesson in lessons
+        if lesson['id'] not in required
+        and not str((extras.get(lesson['id']) or {}).get('intro') or '').strip()
+    ]
+
+
 def _validate_beginner_support(errors, lessons, extras):
-    filler = 'slow down, name the idea, and connect it to one concrete action'
     for lesson in lessons:
         if not lesson.get('mental_model'):
             errors.append(f"Lesson {lesson['id']} has no mental model for first-pass teaching")
         extra = extras.get(lesson['id']) or {}
-        if filler in str(extra.get('intro') or '').lower():
+        if _has_placeholder(extra.get('intro')):
             errors.append(f"Lesson {lesson['id']} has generic plain-language filler")
+        for concept in extra.get('concepts') or []:
+            if isinstance(concept, dict) and _has_placeholder(
+                f"{concept.get('plain') or ''} {concept.get('example') or ''}"
+            ):
+                errors.append(f"Lesson {lesson['id']} has generic plain-language filler")
 
 
 def _validate_exercises(errors, exercises):
@@ -352,10 +529,12 @@ def audit(strict_reviews=False, run_exercises=True):
     _validate_tracks(errors)
     _validate_code(errors, lessons)
     _validate_beginner_support(errors, lessons, extras)
+    _validate_plain_language_coverage(errors, lessons, overrides, extras)
     queue = _validate_reviews(errors, overrides, strict_reviews)
     if run_exercises:
         _validate_exercises(errors, exercises)
-    return errors, len(modules), len(lessons), len(exercises), queue
+    gaps = _plain_language_gaps(lessons, overrides, extras)
+    return errors, len(modules), len(lessons), len(exercises), queue, gaps
 
 
 def main():
@@ -363,7 +542,7 @@ def main():
     parser.add_argument('--strict-reviews', action='store_true')
     parser.add_argument('--skip-exercises', action='store_true')
     args = parser.parse_args()
-    problems, module_count, lesson_count, exercise_count, queue = audit(
+    problems, module_count, lesson_count, exercise_count, queue, gaps = audit(
         strict_reviews=args.strict_reviews,
         run_exercises=not args.skip_exercises,
     )
@@ -378,6 +557,9 @@ def main():
     print(f'Version-sensitive lessons awaiting review: {len(queue)}.')
     for lesson_id in queue:
         print(f'  review-needed: {lesson_id}')
+    print(f'Lessons outside the plain-language scope still lacking an intro: {len(gaps)}.')
+    if gaps:
+        print('  ' + ', '.join(gaps))
 
 
 if __name__ == '__main__':

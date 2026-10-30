@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+{% block title %}First-run setup · RUACH{% endblock %}
+{% block content %}
+<header class="mb-6 max-w-2xl">
+  <p class="text-xs font-bold uppercase tracking-widest text-indigo-600">First-run setup</p>
+  <h2 class="mt-2 text-3xl font-bold">Two questions before the plan</h2>
+  <p class="mt-2 text-slate-600">They stay separate on purpose. What you already know decides which route through the foundations is worth showing; how much time you can give the course decides the pace. Your answers never overwrite your explicit track choice on the Projects page.</p>
+</header>
+<form method="post" action="{{ url_for('auth.onboarding') }}" class="max-w-2xl space-y-5 rounded-2xl border bg-white p-6">
+  <fieldset>
+    <legend class="text-lg font-semibold">What do you already know?</legend>
+    {% for level in skills %}
+    <label class="mt-3 flex gap-2 text-sm">
+      <input type="radio" name="skill_level" value="{{ level.id }}" {% if selected_skill == level.id %}checked{% endif %}>
+      <span><strong>{{ level.label }}</strong><span class="block text-slate-600">{{ level.description }}</span></span>
+    </label>
+    {% endfor %}
+    {% if errors.get('skill_level') %}<p class="mt-2 text-sm text-rose-700">{{ errors['skill_level'] }}</p>{% endif %}
+  </fieldset>
+  <fieldset>
+    <legend class="text-lg font-semibold">How many hours can you study each week?</legend>
+    {% for pace in paces %}
+    <label class="mt-3 flex gap-2 text-sm">
+      <input type="radio" name="weekly_hours" value="{{ pace.id }}" {% if selected_hours == pace.id %}checked{% endif %}>
+      <span>{{ pace.label }} · recommended pace: {{ tracks[pace.track].label }}</span>
+    </label>
+    {% endfor %}
+    {% if errors.get('weekly_hours') %}<p class="mt-2 text-sm text-rose-700">{{ errors['weekly_hours'] }}</p>{% endif %}
+  </fieldset>
+  <fieldset>
+    <legend class="text-lg font-semibold">Recommended pace</legend>
+    <p class="mt-1 text-sm text-slate-600">Based on your available hours, the course recommends the <strong>{{ tracks[recommended_track].label }}</strong> pace. You can accept it or choose another on the Projects page.</p>
+    <div class="mt-2">
+      {% for id, track in tracks.items() %}
+      <label class="mt-2 flex gap-2 text-sm">
+        <input type="radio" name="track" value="{{ id }}" {% if selected_track == id %}checked{% endif %}>
+        <span>{{ track.label }} ({{ track.range }})</span>
+      </label>
+      {% endfor %}
+    </div>
+  </fieldset>
+  <button class="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white" type="submit">Finish setup</button>
+</form>
+<p class="mt-4 text-sm text-slate-500">Your pace can still be changed later from the Projects page.</p>
+{% endblock %}

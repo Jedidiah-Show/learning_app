@@ -490,6 +490,11 @@ class CoursePlan(db.Model):
         db.String(20), nullable=False, default='standard',
         server_default='standard',
     )
+    # Prior knowledge and available time are separate answers; conflating them
+    # made the pace recommendation assume that a beginner needs more months.
+    skill_level = db.Column(db.String(32))
+    weekly_hours = db.Column(db.Integer)
+    setup_checks = db.Column(db.Text)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = db.Column(
         db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False

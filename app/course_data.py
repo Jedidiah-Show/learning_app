@@ -10,8 +10,9 @@ TRACKS = {
         'label': '12-month steady',
         'range': '12 months',
         'description': (
-            'A gentler plan at roughly 10 hours per week. Recommended when you '
-            'are new to programming or need more room for practice and review.'
+            'The long plan at roughly 10 hours per week. Choose it for the time '
+            'you have, not for your experience; prior knowledge is a separate '
+            'question and never shortens the projects you must build.'
         ),
         'months': 12,
         'milestones': [
@@ -183,12 +184,13 @@ TRACKS = {
     },
     'accelerated': {
         'id': 'accelerated',
-        'label': '5-month accelerated',
-        'range': '5 months',
+        'label': '5-month intensive',
+        'range': '≈24 focused hours/week',
         'description': (
-            'An intensive plan averaging roughly 24 hours per week. Some months '
-            'need more time because projects are uneven; keep the same projects, '
-            'placement rules, and assessment gates.'
+            'An intensive plan for learners who can reserve roughly 24 focused '
+            'hours every week. Some months need more time because projects are '
+            'uneven; keep the same projects, placement rules, and assessment '
+            'gates.'
         ),
         'months': 5,
         'milestones': [
@@ -210,41 +212,41 @@ TRACKS = {
                 'number': 2,
                 'title': 'LLM fundamentals and application engineering',
                 'summary': 'Call models reliably, constrain outputs, and evaluate prompt changes.',
-                'modules': ['03', '04', '05'],
-                'concepts': ['Model selection and cost', 'Structured outputs', 'Prompt evaluation', 'Embeddings and RAG'],
+                'modules': ['03', '04'],
+                'concepts': ['Model selection and cost', 'Structured outputs', 'Prompt evaluation', 'Application validation'],
                 'weeks': [
                     'Call a hosted or local model and log cost and latency.',
                     'Build a schema-validated application and golden dataset.',
-                    'Add embeddings, retrieval, and cited answers.',
-                    'Complete the LLM and RAG projects with automated checks.',
+                    'Add regression checks for prompt changes.',
+                    'Complete the LLM projects with automated checks.',
                 ],
-                'milestone': 'An evaluated LLM application and a cited RAG pipeline.',
+                'milestone': 'An evaluated LLM application that blocks a failing prompt change.',
             },
             {
                 'number': 3,
-                'title': 'Agents and orchestration',
-                'summary': 'Compare workflows, bounded agents, and MCP integrations using evaluation evidence.',
-                'modules': ['06', '07'],
-                'concepts': ['Tool schemas', 'Bounded autonomy', 'State and approvals', 'Agent-to-agent protocols'],
+                'title': 'RAG and agents',
+                'summary': 'Ground answers with retrieval and compare workflows with bounded agents using evaluation evidence.',
+                'modules': ['05', '06'],
+                'concepts': ['Embeddings and retrieval', 'Tool schemas', 'Bounded autonomy', 'State and approvals'],
                 'weeks': [
-                    'Define tools with strict schemas and failure handling.',
+                    'Embed and retrieve relevant passages for grounded answers.',
                     'Compare a workflow with a bounded agent on the same cases.',
                     'Add approval checkpoints and durable state.',
-                    'Complete the agent and orchestration projects.',
+                    'Complete the RAG and agent projects.',
                 ],
                 'milestone': 'A measured agent or workflow with explicit safety boundaries.',
             },
             {
                 'number': 4,
-                'title': 'MCP and production engineering',
-                'summary': 'Package tool integrations and operate an observable AI service.',
-                'modules': ['08', '09'],
-                'concepts': ['MCP permissions', 'Tracing and token budgets', 'Rate limits and caching', 'Privacy and incident response'],
+                'title': 'Agents, MCP, and production',
+                'summary': 'Package tool integrations, run orchestration, and operate an observable AI service.',
+                'modules': ['07', '08', '09'],
+                'concepts': ['Tool schemas', 'Bounded autonomy', 'State and approvals', 'MCP permissions', 'Tracing and token budgets', 'Rate limits and caching', 'Privacy and incident response'],
                 'weeks': [
                     'Build an MCP client or server with scoped permissions.',
                     'Add structured logs, traces, and cost budgets.',
                     'Add rate limits, caching, and an incident runbook.',
-                    'Complete the MCP and production projects.',
+                    'Complete the orchestration, MCP, and production projects.',
                 ],
                 'milestone': 'A permissioned MCP integration and a monitored AI service.',
             },
@@ -282,6 +284,97 @@ def milestones_for(track_id):
 def track_label(track_id):
     track = track_for(track_id)
     return f"{track['label']} ({track['range']})"
+
+
+# Two separate onboarding questions. Prior knowledge decides which route through
+# Module 0 is worth showing; available hours decide the pace. Asking them as one
+# question is what made the app assume a beginner needs more months.
+SKILL_LEVELS = [
+    {
+        'id': 'new',
+        'label': 'New to programming',
+        'description': 'You have not written a program that runs, or you have only followed tutorials.',
+    },
+    {
+        'id': 'some_programming',
+        'label': 'Some programming',
+        'description': 'You have written scripts or small programs, but not built, tested, and deployed an application.',
+    },
+    {
+        'id': 'experienced',
+        'label': 'Experienced',
+        'description': 'You ship software already and want the AI-specific lessons and the module projects.',
+    },
+]
+
+PACE_CHOICES = [
+    {'id': '4-8', 'label': '4 to 8 hours a week', 'hours': 6, 'track': 'steady'},
+    {'id': '10-12', 'label': '10 to 12 hours a week', 'hours': 11, 'track': 'standard'},
+    {'id': '15-20', 'label': '15 to 20 hours a week', 'hours': 17, 'track': 'standard'},
+    {'id': '24+', 'label': '24 hours or more a week', 'hours': 24, 'track': 'accelerated'},
+]
+
+# Setup checks for the guided start in lesson 0.01. The learner attests to each
+# one; the app only records that they did, so a stuck beginner is visible on the
+# dashboard instead of looking absent.
+SETUP_CHECKS = [
+    {
+        'id': 'terminal',
+        'label': 'You can open a terminal in your project folder',
+        'command': 'pwd',
+        'expect': 'It prints the folder you are standing in. Every command below runs from there.',
+    },
+    {
+        'id': 'python',
+        'label': 'Python is installed',
+        'command': 'python3 --version',
+        'expect': 'Python 3.10 or newer. On Windows the command is usually `python --version`. '
+                  'If it is not found, install Python from python.org, then reopen the terminal.',
+    },
+    {
+        'id': 'editor',
+        'label': 'An editor can open that folder',
+        'command': 'code .',
+        'expect': 'Your editor opens with the folder in its sidebar. Any plain-text editor works for this course.',
+    },
+    {
+        'id': 'git',
+        'label': 'Git is installed',
+        'command': 'git --version',
+        'expect': 'git version 2.x. You need Git to publish every module project.',
+    },
+    {
+        'id': 'first_program',
+        'label': 'You have run your first Python program',
+        'command': 'python3 -c "print(\'Hello, AI engineering!\')"',
+        'expect': 'Hello, AI engineering! appears on the next line. That is a program running on your machine.',
+    },
+]
+
+
+def skill_level_for(value):
+    for level in SKILL_LEVELS:
+        if level['id'] == value:
+            return level
+    return None
+
+
+def pace_choice_for(value):
+    for choice in PACE_CHOICES:
+        if choice['id'] == value:
+            return choice
+    return None
+
+
+def recommend_track(weekly_hours):
+    """Pick a pace from hours available, never from assumed experience."""
+    if not isinstance(weekly_hours, int) or isinstance(weekly_hours, bool):
+        return None
+    if weekly_hours < 9:
+        return 'steady'
+    if weekly_hours < 22:
+        return 'standard'
+    return 'accelerated'
 
 
 REQUIRED_PROJECTS = [

@@ -24,6 +24,159 @@ from app.request_data import get_json_object
 
 projects_bp = Blueprint('projects', __name__)
 
+# Module 0 delivers a glossary plus an architecture sketch, so it gets the docs
+# kit; every later module gets a code kit shaped by its project brief.
+STARTER_KITS = {
+    '00': 'docs',
+    '01': 'python-cli',
+    '02': 'fastapi-service',
+    '03': 'rag',
+    '04': 'agent',
+    '05': 'mcp',
+    '06': 'evaluation-harness',
+    '07': 'deploy',
+    '08': 'mcp',
+    '09': 'deploy',
+    '10': 'deploy',
+    '11': 'capstone',
+    '12': 'capstone',
+}
+DEFAULT_STARTER_KIT = 'python-cli'
+
+
+def _module_starter_kit(module_id):
+    module = get_module(module_id)
+    key = module_id if module_id in STARTER_KITS else (
+        f"{module.get('number'):02d}" if module else ''
+    )
+    return STARTER_KITS.get(key, DEFAULT_STARTER_KIT)
+
+
+def _starter_files(module_id):
+    module = get_module(module_id) or {}
+    number = module.get('number') or 0
+    title = module.get('title') or 'Module project'
+    project = module.get('project') or module.get('description') or ''
+    deliverables = module.get('project_deliverables') or []
+    kit_id = _module_starter_kit(module_id)
+    slug = ''.join(
+        char.lower() if char.isalnum() else '-' for char in module_id
+    ).strip('-')
+    root = f'ruach-module-{slug}'
+
+    setup_lines = [
+        '# Module project setup',
+        '',
+        '## Start',
+        '',
+        '1. Install Python 3.11 or newer.',
+        '2. Create and activate a virtual environment.',
+        '3. Install the development dependency with `python -m pip install -e .`.',
+        '4. Run `pytest`.',
+        '5. Replace the starter code with your project, then add tests for each requirement.',
+        '',
+        '## Publish',
+        '',
+        '1. `git init` (skip if the folder is already a repository).',
+        '2. `git add -A && git commit -m "module project"`.',
+        '3. `gh repo create <your-github-user>/<repo-name> --public --source . --remote origin --push`.',
+        '4. Enable GitHub Actions for the new repository.',
+        '5. Copy your automated-checks run URL into the course submission.',
+        '',
+        '## Verify',
+        '',
+        'Run the repository checks locally before publishing. The course submission requires a public repository and a public automated-checks page showing a successful build.',
+    ]
+    setup_md = '\n'.join(setup_lines) + '\n'
+
+    readme_lines = [
+        f'# Module {number}: {title}',
+        '',
+        '## Project brief',
+        '',
+        project,
+        '',
+        '## Start locally',
+        '',
+        '1. Install Python 3.11 or newer.',
+        '2. Create and activate a virtual environment.',
+        '3. Install the development dependency with `python -m pip install -e .`.',
+        '4. Run `pytest`.',
+        '5. Replace the starter with your project, then add tests for each requirement.',
+        '',
+    ]
+    for index, deliverable in enumerate(deliverables, start=1):
+        readme_lines.append(f'{index}. Deliverable: {deliverable}')
+    readme_lines += [
+        '',
+        'Keep credentials out of this repository. Add a README section describing setup, decisions, limitations, and evidence. The course submission still asks for a public repository, passing automated checks, and the project evaluation.',
+    ]
+    readme = '\n'.join(readme_lines) + '\n'
+
+    pyproject = '[build-system]\nrequires = ["setuptools>=68"]\nbuild-backend = "setuptools.build_meta"\n\n[project]\nname = "ruach-module-starter"\nversion = "0.1.0"\nrequires-python = ">=3.11"\ndependencies = []\n\n[project.optional-dependencies]\ndev = ["pytest>=8"]\n\n[tool.pytest.ini_options]\npythonpath = ["src"]\n'
+    gitignore = '.venv/\n__pycache__/\n.pytest_cache/\n*.py[cod]\n.env\n'
+    ci = 'name: tests\non:\n  push:\n  pull_request:\njobs:\n  pytest:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-python@v5\n        with:\n          python-version: "3.11"\n      - run: python -m pip install -e ".[dev]"\n      - run: pytest\n'
+    src_main = '"""Start here: replace this starter with the module project."""\n\n\ndef main() -> str:\n    return "Implement the project described in README.md"\n\n\nif __name__ == "__main__":\n    print(main())\n'
+    test_main = 'from main import main\n\n\ndef test_main_returns_a_string():\n    assert isinstance(main(), str)\n'
+
+    files = {}
+    if kit_id == 'docs':
+        files[f'{root}/README.md'] = readme
+        files[f'{root}/SETUP.md'] = setup_md
+        files[f'{root}/pyproject.toml'] = pyproject
+        files[f'{root}/.gitignore'] = gitignore
+        files[f'{root}/.github/workflows/docs.yml'] = (
+            'name: docs\non:\n  push:\n  pull_request:\njobs:\n  docs:\n'
+            '    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n'
+            '      - uses: actions/setup-python@v5\n        with:\n          python-version: "3.11"\n'
+            '      - run: python -m pytest tests/test_docs.py\n'
+        )
+        files[f'{root}/tests/test_docs.py'] = (
+            '"""Starter kit checks for the module documentation deliverable."""\n\n'
+            'def test_glossary_is_present():\n    glossary = (  # noqa: SIM108\n        Path(__file__).parent.parent / "docs" / "glossary.md"\n    ).read_text()\n    assert glossary.strip()\n\n\n'
+            'def test_architecture_sketch_is_present():\n    sketch = (\n        Path(__file__).parent.parent / "docs" / "architecture-sketch.md"\n    ).read_text()\n    assert sketch.strip()\n'
+        )
+        files[f'{root}/docs/glossary.md'] = (
+            f'# Module {number} glossary\n\n## Key terms\n\n- {title}: the subject of this module.\n'
+        )
+        files[f'{root}/docs/architecture-sketch.md'] = (
+            f'# Module {number} architecture sketch\n\n'
+            '## System sketch\n\nDescribe the request, data, tool, application, and operations boundaries for the module project.\n'
+        )
+    else:
+        files[f'{root}/README.md'] = readme
+        files[f'{root}/SETUP.md'] = setup_md
+        files[f'{root}/pyproject.toml'] = pyproject
+        files[f'{root}/.gitignore'] = gitignore
+        files[f'{root}/.github/workflows/tests.yml'] = ci
+        files[f'{root}/src/main.py'] = src_main
+        files[f'{root}/tests/test_main.py'] = test_main
+    return files
+
+
+@projects_bp.route('/projects/starter/<module_id>')
+@login_required
+def download_project_starter(module_id):
+    """Download the starter kit for a module project.
+
+    Module 0 gets the docs kit (glossary plus architecture sketch); later modules
+    get the code kit named for their project shape, each shipping tests, CI,
+    ``.gitignore``, ``pyproject.toml``, and a ``SETUP.md``.
+    """
+    module = get_module(module_id)
+    if module is None:
+        return jsonify({'error': 'Unknown module'}), 404
+    files = _starter_files(module_id)
+    archive = BytesIO()
+    with ZipFile(archive, 'w', ZIP_DEFLATED) as bundle:
+        for path, content in files.items():
+            bundle.writestr(path, content)
+    archive.seek(0)
+    return send_file(
+        archive, mimetype='application/zip', as_attachment=True,
+        download_name=f'ruach-module-{module_id}.zip',
+    )
+
 
 def _record(module):
     return CourseProject.query.filter_by(
@@ -78,36 +231,7 @@ def project_page():
         milestones=milestones, required_projects=REQUIRED_PROJECTS,
         course_plan=_plan_payload(plan), course=curriculum(),
         tracks=TRACKS, selected_track=track, track_label=track_label(track),
-        track_months=track_for(track)['months'],
-    )
-
-
-@projects_bp.route('/projects/starter/<module_id>')
-@login_required
-def download_project_starter(module_id):
-    """Download a small, runnable Python/pytest starter for a module project."""
-    module = get_module(module_id)
-    if module is None:
-        return jsonify({'error': 'Unknown module'}), 404
-    slug = ''.join(char.lower() if char.isalnum() else '-' for char in module_id).strip('-')
-    root = f'ruach-module-{slug}'
-    readme = f'''# Module {module.get('number')}: {module['title']}\n\n## Project brief\n\n{module.get('project') or module.get('description')}\n\n## Start locally\n\n1. Install Python 3.11 or newer.\n2. Create and activate a virtual environment.\n3. Install the development dependency with `python -m pip install -e .`.\n4. Run `pytest`.\n5. Replace the starter function with your project, then add tests for each requirement.\n\nKeep credentials out of this repository. Add a README section describing setup, decisions, limitations, and evidence. The course submission still asks for a public repository, passing automated checks, and the project evaluation.\n'''
-    files = {
-        f'{root}/README.md': readme,
-        f'{root}/pyproject.toml': '[build-system]\nrequires = ["setuptools>=68"]\nbuild-backend = "setuptools.build_meta"\n\n[project]\nname = "ruach-module-starter"\nversion = "0.1.0"\nrequires-python = ">=3.11"\ndependencies = []\n\n[project.optional-dependencies]\ndev = ["pytest>=8"]\n\n[tool.pytest.ini_options]\npythonpath = ["src"]\n',
-        f'{root}/.gitignore': '.venv/\n__pycache__/\n.pytest_cache/\n*.py[cod]\n.env\n',
-        f'{root}/src/main.py': '"""Start here: replace this function with your module project."""\n\ndef main() -> str:\n    return "Implement the project described in README.md"\n\n\nif __name__ == "__main__":\n    print(main())\n',
-        f'{root}/tests/test_main.py': 'from main import main\n\n\ndef test_main_returns_a_string():\n    assert isinstance(main(), str)\n',
-        f'{root}/.github/workflows/tests.yml': 'name: tests\non:\n  push:\n  pull_request:\njobs:\n  pytest:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-python@v5\n        with:\n          python-version: "3.11"\n      - run: python -m pip install -e ".[dev]"\n      - run: pytest\n',
-    }
-    archive = BytesIO()
-    with ZipFile(archive, 'w', ZIP_DEFLATED) as bundle:
-        for path, content in files.items():
-            bundle.writestr(path, content)
-    archive.seek(0)
-    return send_file(
-        archive, mimetype='application/zip', as_attachment=True,
-        download_name=f'{root}.zip',
+        track_months=track_for(track)['months'], recalibration=progress.get('recalibration'),
     )
 
 
@@ -353,6 +477,12 @@ def submit_module_project(module_id):
     record = _record(module)
     if record is None:
         return jsonify({'error': 'Open the module project before submitting'}), 409
+    # Save the learner's submission before verification runs so a failing or
+    # unreachable checks page keeps the draft instead of discarding the work.
+    record.submission = submission.strip()
+    record.repository_url = repository_url
+    record.checks_url = checks_url
+    record.demo_url = demo_url
     try:
         verification = verify_checks(repository_url, checks_url)
     except VerificationError as error:
@@ -449,10 +579,6 @@ def submit_module_project(module_id):
         }), 503
     evaluation['evaluation_source'] = evaluation_source
     evaluation['checks'] = verification
-    record.submission = submission.strip()
-    record.repository_url = repository_url
-    record.demo_url = demo_url
-    record.checks_url = checks_url
     record.checks_verified = bool(verification.get('verified'))
     record.evaluation = json.dumps(evaluation, ensure_ascii=False)
     # A saved submission is not automatically a passed project. Learners can

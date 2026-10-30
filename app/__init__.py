@@ -427,6 +427,19 @@ def create_app(config_override=None):
         return False
 
     @app.before_request
+    def gate_post_setup():
+        # First-run onboarding: a learner who just registered with a safe
+        # destination is routed to /onboarding until they answer the two
+        # questions. Completing the flow clears the pending destination.
+        if (
+            request.endpoint != 'auth.onboarding'
+            and session.get('_post_setup_next')
+            and not session.get('_onboarding_done')
+        ):
+            return redirect(url_for('auth.onboarding'))
+        return None
+
+    @app.before_request
     def enforce_csrf_protection():
         if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'} and not app.testing:
             # A custom header cannot be set by a cross-site form post, so

@@ -106,6 +106,7 @@ def course_progress(user, completed=None, completed_projects=None):
             all(lesson['id'] in completed for lesson in lessons)
             and all(module['id'] in completed_projects for module in modules)
         ),
+        'recalibration': study_recalibration(user, completed, completed_projects),
         'modules': [
             {
                 'id': module['id'], 'number': module['number'],
@@ -133,6 +134,17 @@ def monthly_milestone_progress(progress, completed_projects, track='standard'):
         estimated_hours = round(
             sum(item.get('estimated_hours', 0) for item in grouped), 1
         )
+        reading_hours = round(
+            sum(
+                sum(
+                    (lesson.get('study_minutes') or 0) for lesson in item.get('lessons') or []
+                ) / 60
+                for item in grouped
+            ),
+            1,
+        )
+        # Catch-up time is metadata for the month, never an extra month.
+        review_hours = round(estimated_hours * 0.2, 1)
         done_modules = sum(
             item['completed_lessons'] == item['total_lessons']
             and item['id'] in completed_projects for item in grouped
@@ -150,11 +162,55 @@ def monthly_milestone_progress(progress, completed_projects, track='standard'):
             'total_lessons': total_lessons,
             'estimated_hours': estimated_hours,
             'estimated_weekly_hours': round(estimated_hours / 4.345, 1),
+            # Asymmetric spread: project work varies more than reading, so the
+            # low end is reading-only and the headline figure includes projects.
+            'estimated_weekly_hours_low': round(reading_hours / 4.345, 1),
+            'review_hours': review_hours,
             'completed_modules': done_modules,
             'total_modules': len(grouped),
             'percent': round(done_lessons / total_lessons * 100) if total_lessons else 0,
         })
     return result
+
+
+def study_recalibration(user, completed=None, completed_projects=None):
+    """Compare observed study minutes against estimates for this learner.
+
+    The comparison is user-scoped: it uses the learner's own
+    ``LessonCompletion.time_spent_minutes`` against the curated
+    ``_study_minutes`` estimates. It only reports; the learner decides what to
+    do with the observed multiplier.
+    """
+    from app.curriculum import all_lessons
+    from app.models import LessonCompletion
+
+    if completed is None:
+        completed = completed_lesson_ids(user)
+    estimated_minutes = 0.0
+    observed_minutes = 0.0
+    counted = set()
+    for lesson in all_lessons():
+        lesson_id = lesson.get('id')
+        if lesson_id in counted or lesson_id not in completed:
+            continue
+        counted.add(lesson_id)
+        estimated_minutes += float(lesson.get('study_minutes') or 0)
+        row = LessonCompletion.query.filter_by(
+            user_id=user.id, lesson_id=lesson_id
+        ).first()
+        if row is not None and row.time_spent_minutes:
+            observed_minutes += float(row.time_spent_minutes)
+    estimated_hours = estimated_minutes / 60
+    observed_hours = observed_minutes / 60
+    multiplier = round(observed_hours / estimated_hours, 2) if estimated_hours > 0 else None
+    return {
+        'estimated_hours': round(estimated_hours, 1),
+        'observed_hours': round(observed_hours, 1),
+        'multiplier': multiplier,
+        'calibrated': bool(
+            multiplier is not None and estimated_hours > 0 and observed_hours > 0
+        ),
+    }
 
 
 def next_unlocked_day(user, config=None):

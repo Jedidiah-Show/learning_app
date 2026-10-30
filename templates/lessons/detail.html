@@ -35,7 +35,21 @@
     {% if lesson.id == '0.01' %}
     <section class="lesson-card lesson-first-win">
       <p class="lesson-eyebrow">Get a quick win</p>
-      <p class="lesson-text">Before the course overview, check that Python can run a tiny program. Open a terminal and enter:</p>
+      <p class="lesson-text">Before the course overview, check that Python can run a tiny program. Work through the setup checks below, self-attest the ones you have done, then run your first program.</p>
+      <ul class="lesson-setup-checks">
+        {% for check in setup_checks %}
+        <li class="lesson-setup-check{% if setup_states.get(check.id) %} lesson-setup-done{% endif %}" data-setup-check="{{ check.id }}">
+          <label class="lesson-setup-label">
+            <input type="checkbox" class="setup-check" data-check-id="{{ check.id }}" {% if setup_states.get(check.id) %}checked{% endif %}>
+            <span>{{ check.label }}</span>
+          </label>
+          <p class="lesson-setup-command"><code>{{ check.command }}</code></p>
+          <p class="lesson-setup-expect">{{ check.expect }}</p>
+          <p class="lesson-setup-status" data-setup-status="{{ check.id }}"></p>
+        </li>
+        {% endfor %}
+      </ul>
+      <p class="lesson-text">Now run your first program:</p>
       <pre class="lesson-code"><code>python -c "print('Hello, AI engineering!')"</code></pre>
       <p class="lesson-text">If your computer does not recognize <code>python</code>, try <code>python3</code> or <code>py</code>. Lesson 0.06 will explain how the program works.</p>
     </section>
@@ -57,15 +71,6 @@
           <p class="lesson-eyebrow">Why it matters</p>
           {% for item in lesson.why_it_matters %}{% for paragraph in item|readable %}<p class="lesson-text">{{ paragraph }}</p>{% endfor %}{% endfor %}
         </div>
-      </div>
-      <div class="lesson-howto">
-        <p class="lesson-howto-title">How to work through this lesson</p>
-        <ol class="lesson-howto-steps">
-          <li><strong>Skim the key words</strong> below so nothing feels unfamiliar.</li>
-          <li><strong>Read one concept at a time.</strong> Each one starts with its key idea in a sentence.</li>
-          <li><strong>Try the example</strong> in your own editor. Change one line and see what happens.</li>
-          <li><strong>Check yourself</strong> with the short questions, then mark the lesson complete.</li>
-        </ol>
       </div>
     </section>
 
@@ -111,7 +116,6 @@
           <p class="lesson-eyebrow">Core concepts</p>
           <h2 class="lesson-card-title">The ideas, one at a time</h2>
         </div>
-        <p class="lesson-section-note">Take each card slowly. You do not need to memorise them — understanding the key idea is enough.</p>
       </div>
       {% set concepts = lesson.concepts if lesson.concepts else lesson.core_concepts %}
       {% set extra_concepts = lesson.extras.concepts if lesson.extras else [] %}
@@ -196,20 +200,20 @@
     </section>
     {% endif %}
 
+    {% if lesson.checklist %}
+    <section id="checklist" class="lesson-card">
+      <p class="lesson-eyebrow">Before you move on</p>
+      <h2 class="lesson-card-title">Checkpoint checklist</h2>
+      <ul class="lesson-list lesson-list-check">{% for item in lesson.checklist %}<li>{{ item }}</li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+
     {% if lesson.production_notes %}
     <section id="production" class="lesson-card lesson-deep-dive">
       <p class="lesson-eyebrow">Going deeper</p>
       <h2 class="lesson-card-title">In production</h2>
       <p class="lesson-text lesson-muted">Optional for your first pass. Come back once the core idea is comfortable.</p>
       <ul class="lesson-list">{% for item in lesson.production_notes %}<li>{{ item }}</li>{% endfor %}</ul>
-    </section>
-    {% endif %}
-
-    {% if lesson.checklist %}
-    <section id="checklist" class="lesson-card">
-      <p class="lesson-eyebrow">Before you move on</p>
-      <h2 class="lesson-card-title">Checkpoint checklist</h2>
-      <ul class="lesson-list lesson-list-check">{% for item in lesson.checklist %}<li>{{ item }}</li>{% endfor %}</ul>
     </section>
     {% endif %}
 
@@ -361,6 +365,8 @@
     {% else %}<button id="next-lesson-button" type="button" disabled data-next-lesson-id="{{ next_lesson.id }}" data-next-lesson-url="{{ url_for('main.lesson_detail', lesson_id=next_lesson.id) }}">Next lesson locked 🔒</button>{% endif %}
   {% elif next_action and next_action.type == 'project' %}<a id="next-lesson-button" href="{{ projects_url }}#module-{{ next_action.module_id }}">Open Module {{ next_action.module_number }} project →</a>
   {% else %}<button id="next-lesson-button" type="button" disabled>Course complete ✓</button>{% endif %}
+  {% if next_action and next_action.type == 'project' %}<a class="lesson-starter-link" href="{{ url_for('projects.download_project_starter', module_id=next_action.module_id) }}">Get the starter kit →</a>
+  {% endif %}
 </nav>
 {% if practice_exercises %}<div id="practice-anchor">{% include "lessons/_practice_workspace.html" %}</div>{% endif %}
 {% endblock %}
@@ -561,6 +567,25 @@ if (saveNotes && notesArea) {
     finally { saveNotes.disabled = false; }
   });
 }
+const setupCheckInputs = document.querySelectorAll('.setup-check');
+const saveSetupCheck = async (id, done) => {
+  const status = document.querySelector(`[data-setup-status="${id}"]`);
+  if (status) status.textContent = done ? 'Setup check saved ✓' : 'Setup check cleared.';
+  try {
+    const response = await fetch('/api/lessons/setup-checks', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body:JSON.stringify({checks:{[id]:done}})});
+    const data = await readJson(response);
+    if (!response.ok) throw new Error(data.error || 'Could not save the setup check.');
+  } catch (error) { if (status) status.textContent = 'Could not save the setup check. Retry.'; }
+};
+document.addEventListener('change', async (event) => {
+  const input = event.target;
+  if (!input || !input.classList || !input.classList.contains('setup-check')) return;
+  const id = input.dataset.checkId;
+  const done = input.checked;
+  if (input.checked) input.closest('li').classList.add('lesson-setup-done');
+  else input.closest('li').classList.remove('lesson-setup-done');
+  await saveSetupCheck(id, done);
+});
 const completeButton=document.getElementById('complete-button');
 let activeSeconds = 0;
 let visibleSince = document.visibilityState === 'visible' ? Date.now() : null;

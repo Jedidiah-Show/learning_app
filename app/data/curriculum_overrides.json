@@ -3,14 +3,24 @@
     "starting_assumption": "No programming experience is required. Module 0 starts with your first Python program, then adds data structures, functions, files, Git, and HTTP. Experienced learners can take the placement check, but module projects are still required.",
     "time_estimate_note": "Lesson estimates include reading and assigned task time where stated. Untimed tasks use a 30-minute planning estimate; module projects take additional time. Treat these as planning ranges, not deadlines.",
     "content_maintenance_policy": "Version-sensitive implementation lessons are tagged with primary documentation. Review each against its linked source every 90 days; show the verified date and source, and keep unreviewed examples visibly marked in the release queue.",
+    "plain_language_scope": {
+      "note": "Modules whose lessons must ship a curated plain-language intro, a worked example for every core concept, and checkpoint answers. The release audit fails when one is missing or reads as a placeholder. Grow this list as modules are written.",
+      "modules": [
+        "05",
+        "06",
+        "08",
+        "09"
+      ],
+      "lesson_ids": []
+    },
     "learning_routes": {
       "beginner": {
         "title": "Starting from scratch",
-        "description": "Start with the runnable greeting exercise in the welcome lesson, then follow the numbered sequence. Lessons 0.06 to 0.11 deepen the coding ramp: run Python programs, use lists and dictionaries, write functions, read files, use Git, and call HTTP APIs. Complete the guided practice before opening each worked solution."
+        "description": "Follow the numbered sequence from Module 0. Lessons 0.06 to 0.11 are a hands-on coding ramp: run Python, use lists and dictionaries, write functions, read files, use Git, and call HTTP APIs. Complete every guided practice exercise before opening the worked solution."
       },
       "experienced": {
         "title": "Placement check and skip path",
-        "description": "Take the placement check, which mixes short coding-workflow answers with concept questions. A score of 8 or more marks the Module 0 and early Module 1 foundation lessons as placed out. The placement never skips module projects, evidence, or the later lessons; those remain the proof that you can build and operate a system."
+        "description": "Take the ten-question placement check. A score of 8 or more marks the Module 0 and early Module 1 foundation lessons as placed out. The placement never skips module projects, evidence, or the later lessons; those remain the proof that you can build and operate a system."
       }
     },
     "placement": {
@@ -34,9 +44,69 @@
         "1.03",
         "1.04"
       ],
+      "topics": [
+        {
+          "id": "setup_runtime",
+          "title": "Course setup, running code, and reading errors",
+          "questions": [
+            "q3"
+          ],
+          "lessons": [
+            "0.01",
+            "0.02",
+            "0.03",
+            "0.04",
+            "0.05",
+            "0.06",
+            "1.02"
+          ]
+        },
+        {
+          "id": "python_data",
+          "title": "Python values, functions, and type hints",
+          "questions": [
+            "q1",
+            "q2",
+            "q9",
+            "q10"
+          ],
+          "lessons": [
+            "0.07",
+            "0.08",
+            "1.01",
+            "1.03",
+            "1.04"
+          ]
+        },
+        {
+          "id": "files_git_envs",
+          "title": "Files, virtual environments, and Git",
+          "questions": [
+            "q4",
+            "q5",
+            "q6"
+          ],
+          "lessons": [
+            "0.09",
+            "0.10"
+          ]
+        },
+        {
+          "id": "http_status",
+          "title": "HTTP status codes and API responses",
+          "questions": [
+            "q7",
+            "q8"
+          ],
+          "lessons": [
+            "0.11"
+          ]
+        }
+      ],
       "questions": [
         {
           "id": "q1",
+          "topic": "python_data",
           "prompt": "Which Python value is a dictionary?",
           "options": [
             "[1, 2, 3]",
@@ -48,6 +118,7 @@
         },
         {
           "id": "q2",
+          "topic": "python_data",
           "prompt": "What does an f-string do?",
           "options": [
             "Formats a file",
@@ -59,6 +130,7 @@
         },
         {
           "id": "q3",
+          "topic": "setup_runtime",
           "type": "short",
           "prompt": "A traceback ends with `line 8` followed by `KeyError: 'price'`. Enter the line number you should inspect first.",
           "answer": "8",
@@ -69,6 +141,7 @@
         },
         {
           "id": "q4",
+          "topic": "files_git_envs",
           "prompt": "What is the main purpose of a virtual environment?",
           "options": [
             "Speed up the CPU",
@@ -80,6 +153,7 @@
         },
         {
           "id": "q5",
+          "topic": "files_git_envs",
           "type": "short",
           "prompt": "You ran `git add app.py` and the file is staged. Enter the Git command that records the staged snapshot locally.",
           "answer": "git commit",
@@ -90,6 +164,7 @@
         },
         {
           "id": "q6",
+          "topic": "files_git_envs",
           "type": "short",
           "prompt": "Your API key is in a local file named `.env`. Enter the filename you should put in `.gitignore`.",
           "answer": ".env",
@@ -99,6 +174,7 @@
         },
         {
           "id": "q7",
+          "topic": "http_status",
           "prompt": "What does HTTP status 404 mean?",
           "options": [
             "Server error",
@@ -110,6 +186,7 @@
         },
         {
           "id": "q8",
+          "topic": "http_status",
           "prompt": "Which status codes are usually safe to retry?",
           "options": [
             "400 and 401",
@@ -121,6 +198,7 @@
         },
         {
           "id": "q9",
+          "topic": "python_data",
           "type": "short",
           "prompt": "A Python function should give a value back to the code that called it. Enter the keyword used for that.",
           "answer": "return",
@@ -130,6 +208,7 @@
         },
         {
           "id": "q10",
+          "topic": "python_data",
           "prompt": "Why add type hints to a function?",
           "options": [
             "They enforce runtime validation automatically",
@@ -931,7 +1010,7 @@
         "kind": "version-sensitive",
         "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": "2026-10-29",
+        "reviewed_on": "2026-10-30",
         "references": [
           "https://docs.python.org/3/tutorial/introduction.html"
         ]
@@ -942,7 +1021,7 @@
         "kind": "version-sensitive",
         "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": "2026-10-29",
+        "reviewed_on": "2026-10-30",
         "references": [
           "https://docs.python.org/3/tutorial/datastructures.html"
         ]
@@ -953,7 +1032,7 @@
         "kind": "version-sensitive",
         "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": "2026-10-29",
+        "reviewed_on": "2026-10-30",
         "references": [
           "https://docs.python.org/3/tutorial/controlflow.html#defining-functions"
         ]
@@ -964,7 +1043,7 @@
         "kind": "version-sensitive",
         "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": "2026-10-29",
+        "reviewed_on": "2026-10-30",
         "references": [
           "https://docs.python.org/3/library/json.html"
         ]
@@ -975,7 +1054,7 @@
         "kind": "version-sensitive",
         "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": "2026-10-29",
+        "reviewed_on": "2026-10-30",
         "references": [
           "https://git-scm.com/book/en/v2"
         ]
@@ -986,7 +1065,7 @@
         "kind": "version-sensitive",
         "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": "2026-10-29",
+        "reviewed_on": "2026-10-30",
         "references": [
           "https://developer.mozilla.org/en-US/docs/Web/HTTP/Overview"
         ]
@@ -997,7 +1076,7 @@
         "kind": "version-sensitive",
         "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": "2026-10-29",
+        "reviewed_on": "2026-10-30",
         "references": [
           "https://huggingface.co/docs/transformers/index",
           "https://docs.vllm.ai/"
@@ -1009,7 +1088,7 @@
         "kind": "version-sensitive",
         "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": "2026-10-29",
+        "reviewed_on": "2026-10-30",
         "references": [
           "https://platform.openai.com/docs/guides/reasoning"
         ]
@@ -1020,7 +1099,7 @@
         "kind": "version-sensitive",
         "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": "2026-10-29",
+        "reviewed_on": "2026-10-30",
         "references": [
           "https://huggingface.co/docs/peft/index",
           "https://platform.openai.com/docs/guides/fine-tuning"
@@ -1032,7 +1111,7 @@
         "kind": "version-sensitive",
         "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": "2026-10-29",
+        "reviewed_on": "2026-10-30",
         "references": [
           "https://docs.anthropic.com/en/docs/build-with-claude/computer-use"
         ]
@@ -1043,7 +1122,7 @@
         "kind": "version-sensitive",
         "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": "2026-10-29",
+        "reviewed_on": "2026-10-30",
         "references": [
           "https://a2a-protocol.org/"
         ]

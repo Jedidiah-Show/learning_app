@@ -11,10 +11,11 @@ from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 
 from app import db
+from app.course_data import SETUP_CHECKS
 from app.curriculum import all_modules, curriculum, get_lesson, lesson_context
 from app.learning import lesson_is_available, next_course_action, next_unlocked_lesson
 from app.models import (
-    LessonCompletion, PracticeUsageDaily, PracticeWorkspace, StudySession,
+    CoursePlan, LessonCompletion, PracticeUsageDaily, PracticeWorkspace, StudySession,
     VideoProgress,
 )
 from app.practice import get_practice_exercise
@@ -140,9 +141,11 @@ def _next_course_payload():
 def placement_check():
     """Place experienced learners out of foundation lessons only.
 
-    Module projects are never skipped. A passing score completes the configured
-    skippable lessons with ``completion_source='placement'``; the normal project
-    gate still controls access to later modules.
+    Scoring is per topic: a topic places its lessons out only when every
+    question in it is correct, so a learner keeps the foundation lessons in the
+    areas they are actually weak in. ``skip_lesson_ids`` lets a learner confirm
+    a subset of the recommended lessons. Module projects are never skipped and
+    the normal project gate still controls access to later modules.
     """
     placement = curriculum()['course'].get('placement') or {}
     questions = placement.get('questions') or []
@@ -151,11 +154,21 @@ def placement_check():
             'title': placement.get('title'),
             'description': placement.get('description'),
             'passing_score': placement.get('passing_score'),
+            'topics': [
+                {
+                    'id': topic.get('id'),
+                    'title': topic.get('title'),
+                    'questions': topic.get('questions') or [],
+                    'lessons': topic.get('lessons') or [],
+                }
+                for topic in placement.get('topics') or []
+            ],
             'questions': [
                 {
                     'id': question['id'],
                     'prompt': question['prompt'],
                     'type': question.get('type', 'choice'),
+                    'topic': question.get('topic'),
                     'options': question.get('options') or [],
                 }
                 for question in questions
@@ -187,21 +200,61 @@ def placement_check():
         submitted[question['id']] = value
     if len(submitted) != len(questions):
         return jsonify({'error': 'Answer every placement question'}), 400
-    score = sum(
-        submitted[question['id']] == question['answer']
-        if question.get('type') != 'short'
-        else submitted[question['id']] in {
+
+    def is_correct(question):
+        given = submitted[question['id']]
+        if question.get('type') != 'short':
+            return given == question['answer']
+        accepted = {
             re.sub(r'\s+', ' ', answer).strip().casefold()
             for answer in question.get('accepted_answers', [question['answer']])
         }
-        for question in questions
-    )
+        return given in accepted
+
+    correct = {question['id']: is_correct(question) for question in questions}
+    score = sum(correct.values())
+    skippable = list(placement.get('skippable_lessons') or [])
+    # A topic is placed out only when every question in it is right, so a learner
+    # who can commit to Git but not to HTTP keeps the HTTP lesson they need.
+    topic_results = []
+    recommended = []
+    for topic in placement.get('topics') or []:
+        question_ids = [qid for qid in topic.get('questions') or [] if qid in correct]
+        lessons = [lesson_id for lesson_id in topic.get('lessons') or [] if lesson_id in skippable]
+        topic_passed = bool(question_ids) and all(correct[qid] for qid in question_ids)
+        topic_results.append({
+            'id': topic.get('id'),
+            'title': topic.get('title'),
+            'correct': sum(1 for qid in question_ids if correct[qid]),
+            'total': len(question_ids),
+            'passed': topic_passed,
+            'lessons': lessons if topic_passed else [],
+            'keep': [] if topic_passed else lessons,
+        })
+        if topic_passed:
+            for lesson_id in lessons:
+                if lesson_id not in recommended:
+                    recommended.append(lesson_id)
+    recommended = [lesson_id for lesson_id in skippable if lesson_id in recommended]
+
+    requested = data.get('skip_lesson_ids')
+    if requested is None:
+        to_place = recommended
+    elif isinstance(requested, list) and all(
+        isinstance(lesson_id, str) and lesson_id in recommended for lesson_id in requested
+    ):
+        to_place = [lesson_id for lesson_id in skippable if lesson_id in set(requested)]
+    else:
+        return jsonify(
+            {'error': 'skip_lesson_ids must list lessons this check placed you out of'}
+        ), 400
+
     passing_score = int(placement.get('passing_score', 8))
     passed = score >= passing_score
     placed_lessons = []
-    if passed:
+    if to_place:
         now = datetime.now(timezone.utc)
-        for lesson_id in placement.get('skippable_lessons') or []:
+        for lesson_id in to_place:
             lesson = get_lesson(lesson_id)
             if not lesson:
                 continue
@@ -222,19 +275,87 @@ def placement_check():
                 completion.completion_source = 'placement'
                 placed_lessons.append(lesson_id)
         db.session.commit()
+
+    weak = [topic['title'] for topic in topic_results if not topic['passed']]
+    if placed_lessons:
+        message = (
+            f'Placed out of {len(placed_lessons)} foundation lessons. Keep working '
+            f'through: {", ".join(weak)}. Module projects and all later lessons '
+            'still require evidence.'
+        )
+    elif passed and not weak:
+        message = (
+            'Placement passed. Foundation lessons are marked complete; module '
+            'projects and all later lessons still require evidence.'
+        )
+    else:
+        message = (
+            'Placement not passed. Start with Module 0; the same lessons and '
+            'projects remain available.'
+        )
     return jsonify({
         'score': score,
         'total': len(questions),
         'passing_score': passing_score,
         'passed': passed,
+        'topics': topic_results,
+        'recommended_lessons': recommended,
         'placed_lessons': placed_lessons,
-        'message': (
-            'Placement passed. Foundation lessons are marked complete; module projects and all later lessons still require evidence.'
-            if passed else
-            'Placement not passed. Start with Module 0; the same lessons and projects remain available.'
-        ),
+        'message': message,
         **_next_course_payload(),
     })
+
+
+def _setup_checks_of(plan):
+    stored = {}
+    if plan and plan.setup_checks:
+        try:
+            decoded = json.loads(plan.setup_checks)
+        except (TypeError, ValueError):
+            decoded = None
+        if isinstance(decoded, dict):
+            stored = {
+                check['id']: bool(decoded.get(check['id']))
+                for check in SETUP_CHECKS
+            }
+    return {check['id']: bool(stored.get(check['id'])) for check in SETUP_CHECKS}
+
+
+def _stored_setup_checks(user):
+    """Per-check guided-start ticks for one learner, from their persisted plan."""
+    plan = CoursePlan.query.filter_by(user_id=user.id).first()
+    return _setup_checks_of(plan) if plan else _setup_checks_of(None)
+
+
+@lessons_bp.route('/setup-checks', methods=['GET', 'POST'])
+@login_required
+def setup_checks():
+    """Record the guided-start ticks on the server so a device change keeps them.
+
+    Each tick is self-attested; the app only stores that the learner confirmed
+    it, which is what separates a stuck beginner from an absent one.
+    """
+    plan = CoursePlan.query.filter_by(user_id=current_user.id).first()
+    if plan is None:
+        plan = CoursePlan(user_id=current_user.id, track='standard')
+        db.session.add(plan)
+    checks = _setup_checks_of(plan)
+    if request.method == 'GET':
+        return jsonify({'checks': checks, 'done': sum(checks.values())})
+
+    data = get_json_object()
+    submitted = data.get('checks') if data else None
+    if not isinstance(submitted, dict):
+        return jsonify({'error': 'checks must be an object of tick ids'}), 400
+    known = {check['id'] for check in SETUP_CHECKS}
+    for key, value in submitted.items():
+        if key in known:
+            checks[key] = bool(value)
+    plan.setup_checks = json.dumps(
+        {key: value for key, value in checks.items() if value}, sort_keys=True
+    )
+    db.session.commit()
+    return jsonify({'checks': checks, 'done': sum(checks.values())})
 
 
 @lessons_bp.route('/daily/<int:ordinal>', methods=['GET'])

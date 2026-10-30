@@ -207,12 +207,13 @@ def _attach_extras(lesson, extras):
     if not isinstance(entry, dict):
         entry = {}
     intro = entry.get('intro')
-    if not isinstance(intro, str) or not intro.strip():
-        # Every lesson has a curated subtitle. Use it as a specific first-pass
-        # orientation when no separately authored plain-language layer exists.
-        intro = lesson.get('subtitle') or lesson.get('goal') or ''
+    # An authored explanation is the only thing allowed in the plain-language
+    # card. Falling back to the subtitle presented marketing copy as teaching,
+    # so unauthored lessons render no card at all and are reported by the audit.
+    intro = intro if isinstance(intro, str) and intro.strip() else ''
     lesson['extras'] = {
         'intro': intro,
+        'authored': bool(intro),
         'concepts': entry.get('concepts') if isinstance(
             entry.get('concepts'), list
         ) else [],

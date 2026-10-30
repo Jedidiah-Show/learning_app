@@ -7,10 +7,13 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.exc import IntegrityError
 from app import db
 from app.models import (
-    PasswordResetToken, PhoneVerificationCode, User, UserProfilePhoto,
+    CoursePlan, PasswordResetToken, PhoneVerificationCode, User, UserProfilePhoto,
 )
 from app.phone import PhoneError, normalize_phone
 from app.rate_limit import client_ip, enforce_rate_limit, identity_hash
+from app.course_data import (
+    PACE_CHOICES, SKILL_LEVELS, TRACKS, recommend_track,
+)
 from datetime import datetime, timedelta, timezone
 import hashlib
 import os
@@ -419,6 +422,64 @@ def register():
         return redirect(url_for('main.index'))
     
     return render_template('auth/register.html', values={}, errors={})
+
+@auth_bp.route('/onboarding', methods=['GET', 'POST'])
+@login_required
+def onboarding():
+    """Answer the two first-run questions: prior knowledge, then available hours.
+
+    Both answers persist on ``CoursePlan``. The pace recommendation is displayed
+    for the learner to accept or change; it is never written silently, and the
+    explicit ``POST /api/course-plan/track`` endpoint stays the learner's choice.
+    """
+    plan = CoursePlan.query.filter_by(user_id=current_user.id).first()
+    if plan is None:
+        plan = CoursePlan(user_id=current_user.id, track='standard')
+        db.session.add(plan)
+    selected_skill = plan.skill_level or ''
+    selected_hours = plan.weekly_hours
+    selected_track = plan.track if plan.track in TRACKS else recommend_track(selected_hours)
+    selected_hours_id = ''
+    for pace in PACE_CHOICES:
+        if pace['hours'] == selected_hours:
+            selected_hours_id = pace['id']
+            break
+    if request.method == 'POST':
+        skill_level = (request.form.get('skill_level') or '').strip()
+        weekly_hours = (request.form.get('weekly_hours') or '').strip()
+        track = (request.form.get('track') or '').strip()
+        errors = {}
+        if skill_level not in {level['id'] for level in SKILL_LEVELS}:
+            errors['skill_level'] = 'Choose what you already know.'
+        pace_ids = {pace['id'] for pace in PACE_CHOICES}
+        hours = None
+        if weekly_hours in pace_ids:
+            hours = next(pace['hours'] for pace in PACE_CHOICES if pace['id'] == weekly_hours)
+        elif weekly_hours.strip().isdigit():
+            hours = int(weekly_hours.strip())
+        if hours is None:
+            errors['weekly_hours'] = 'Choose how many hours you can study each week.'
+        if errors:
+            return render_template(
+                'onboarding.html', errors=errors, skills=SKILL_LEVELS, paces=PACE_CHOICES,
+                tracks=TRACKS, selected_skill=skill_level, selected_hours=weekly_hours,
+                selected_track=track if track in TRACKS else selected_track,
+                recommended_track=selected_track,
+            ), 200
+        plan.skill_level = skill_level
+        plan.weekly_hours = hours
+        if track and track in TRACKS:
+            plan.track = track
+        db.session.commit()
+        session['_onboarding_done'] = True
+        session.pop('_post_setup_next', None)
+        next_page = request.form.get('next') or ''
+        return redirect(next_page) if safe_local_redirect(next_page) else redirect(url_for('main.index'))
+    return render_template(
+        'onboarding.html', errors={}, skills=SKILL_LEVELS, paces=PACE_CHOICES,
+        tracks=TRACKS, selected_skill=selected_skill, selected_hours=selected_hours_id,
+        selected_track=selected_track, recommended_track=selected_track,
+    )
 
 @auth_bp.route('/logout', methods=['POST'])
 @login_required

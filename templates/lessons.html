@@ -15,27 +15,42 @@
     <summary class="cursor-pointer font-semibold text-slate-900">{{ placement.title }} · optional knowledge check</summary>
     <p class="mt-2 text-sm text-slate-600">{{ placement.description }} Module projects are never skipped.</p>
     <form id="placement-form" class="mt-4 space-y-4">
-      {% for question in placement.questions %}
-      <fieldset class="rounded-xl border border-slate-200 p-3">
-        <legend class="px-1 text-sm font-semibold">{{ loop.index }}. {{ question.prompt }}</legend>
-        <div class="mt-2 grid gap-2 sm:grid-cols-2">
-          {% if question.get('type') == 'short' %}
-          <label class="text-sm text-slate-700 sm:col-span-2">Your answer<input class="mt-1 w-full rounded-lg border border-slate-300 p-2" type="text" name="{{ question.id }}" maxlength="120" autocomplete="off" required></label>
-          {% else %}
-          {% for option in question.options %}
-          <label class="flex gap-2 text-sm"><input type="radio" name="{{ question.id }}" value="{{ loop.index0 }}" required> <span>{{ option }}</span></label>
-          {% endfor %}
-          {% endif %}
-        </div>
-      </fieldset>
+      {% for topic in placement.topics %}
+      <div class="placement-topic" data-topic-id="{{ topic.id }}">
+        <p class="placement-topic-title">{{ loop.index }}. {{ topic.title }}</p>
+        {% for question in placement.questions %}
+        {% if question.topic == topic.id %}
+        <fieldset class="rounded-xl border border-slate-200 p-3">
+          <legend class="px-1 text-sm font-semibold">{{ loop.index }}. {{ question.prompt }}</legend>
+          <div class="mt-2 grid gap-2 sm:grid-cols-2">
+            {% if question.get('type') == 'short' %}
+            <label class="text-sm text-slate-700 sm:col-span-2">Your answer<input class="mt-1 w-full rounded-lg border border-slate-300 p-2" type="text" name="{{ question.id }}" maxlength="120" autocomplete="off" required></label>
+            {% else %}
+            {% for option in question.options %}
+            <label class="flex gap-2 text-sm"><input type="radio" name="{{ question.id }}" value="{{ loop.index0 }}" required> <span>{{ option }}</span></label>
+            {% endfor %}
+            {% endif %}
+          </div>
+        </fieldset>
+        {% endif %}
+        {% endfor %}
+      </div>
       {% endfor %}
       <button class="rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white" type="submit">Score placement check</button>
       <p id="placement-result" class="text-sm text-slate-700" role="status" aria-live="polite"></p>
     </form>
+    <div id="placement-topics-result" class="mt-4 space-y-3"></div>
+    <div id="placement-skip-confirm" class="mt-4 hidden rounded-xl border border-slate-200 p-4">
+      <p class="text-sm font-semibold text-slate-900">Recommended foundation lessons to skip</p>
+      <p class="mt-1 text-xs text-slate-600">Module projects are never skipped. Confirm the pre-checked rows, or untick any lesson you want to keep working through.</p>
+      <div id="placement-skip-list" class="mt-2 space-y-2"></div>
+      <button id="placement-confirm-button" type="button" class="mt-3 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white">Confirm recommended skips and place them</button>
+      <p id="placement-confirm-status" class="mt-2 text-sm text-slate-700" role="status"></p>
+    </div>
   </details>
   <div class="mt-4 grid gap-3 md:grid-cols-2">
-    {% for key in ['beginner', 'experienced'] %}{% set route = course.course.learning_routes[key] %}
-    <div class="rounded-xl border border-slate-200 bg-white p-4"><h3 class="font-semibold">{{ route.title }}</h3><p class="mt-1 text-sm text-slate-600">{{ route.description }}</p>{% if key == 'beginner' %}<a class="mt-3 inline-block text-sm font-semibold text-indigo-700" href="{{ url_for('main.lesson_detail', lesson_id='0.01') }}">Start with the first lesson →</a>{% else %}<button type="button" class="mt-3 text-sm font-semibold text-indigo-700" data-open-placement>Take the optional knowledge check →</button>{% endif %}</div>
+    {% for key in ['beginner', 'experienced'] %}{% set route = course.course.learning_routes[key] %}{% set skill = skill_level or '' %}
+    <div class="rounded-xl border border-slate-200 bg-white p-4"><h3 class="font-semibold">{{ route.title }}</h3><p class="mt-1 text-sm text-slate-600">{{ route.description }}</p>{% if key == 'beginner' %}<a class="mt-3 inline-block text-sm font-semibold text-indigo-700" href="{{ url_for('main.lesson_detail', lesson_id='0.01') }}">{% if skill in ['new', 'some_programming'] or not skill %}Run the guided start →{% else %}Start with the first lesson →{% endif %}</a>{% else %}<button type="button" class="mt-3 text-sm font-semibold text-indigo-700" data-open-placement>{% if skill == 'experienced' %}Take the optional knowledge check →{% else %}Run the guided start →{% endif %}</button>{% endif %}</div>
     {% endfor %}
   </div>
 </header>
@@ -89,6 +104,7 @@ document.getElementById('placement-form')?.addEventListener('submit', async (eve
     const field = form.querySelector(`[name="${key}"]`);
     answers[key] = field?.type === 'radio' ? Number(value) : value;
   });
+  placementAnswers = answers;
   button.disabled = true;
   result.textContent = 'Scoring your placement check…';
   try {
@@ -100,6 +116,7 @@ document.getElementById('placement-form')?.addEventListener('submit', async (eve
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Could not score the placement check.');
     result.textContent = `${data.message} Score: ${data.score}/${data.total}.`;
+    renderPlacementTopics(data.topics || []);
     if (data.passed) {
       result.textContent += ' Reloading your lesson list…';
       window.setTimeout(() => window.location.reload(), 1200);
@@ -110,6 +127,99 @@ document.getElementById('placement-form')?.addEventListener('submit', async (eve
     button.disabled = false;
   }
 });
+const placementAnswers = {};
+let placementRecommendations = [];
+function renderPlacementTopics(topics) {
+  const area = document.getElementById('placement-topics-result');
+  const confirm = document.getElementById('placement-skip-confirm');
+  const list = document.getElementById('placement-skip-list');
+  area.replaceChildren();
+  list.replaceChildren();
+  const recommended = new Map();
+  const order = [];
+  topics.forEach((topic) => {
+    const passed = topic.passed;
+    const lessons = passed ? (topic.lessons || []) : (topic.keep || []);
+    const card = document.createElement('div');
+    card.className = 'rounded-xl border p-3 text-sm ' + (passed ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50');
+    const heading = document.createElement('p');
+    heading.className = 'font-semibold';
+    heading.textContent = `${topic.title}: ${passed ? 'passed' : 'not passed'} · ${topic.correct}/${topic.total} correct`;
+    card.append(heading);
+    const detail = document.createElement('p');
+    detail.className = 'mt-1 text-slate-600';
+    detail.textContent = passed
+      ? 'This topic placed its foundation lessons out as recommended.'
+      : 'This topic did not pass, so keep working through these foundation lessons.';
+    card.append(detail);
+    const lessonIds = passed ? (topic.lessons || []) : (topic.keep || []);
+    if (lessonIds.length) {
+      const rows = document.createElement('ul');
+      rows.className = 'mt-3 list-inside list-decimal space-y-1 text-slate-700';
+      lessonIds.forEach((lessonId) => {
+        const row = document.createElement('li');
+        row.textContent = `${lessonId} · ${passed ? 'skip recommended' : 'keep working through'}`;
+        rows.append(row);
+      });
+      card.append(rows);
+      if (passed) {
+        lessonIds.forEach((lessonId) => {
+          if (!recommended.has(lessonId)) {
+            recommended.set(lessonId, topic.title);
+            order.push(lessonId);
+          }
+        });
+      }
+    }
+    area.append(card);
+  });
+  placementRecommendations = order.slice();
+  const confirmWrap = document.getElementById('placement-skip-confirm');
+  const hasRecommendations = order.length > 0;
+  if (hasRecommendations) confirmWrap.classList.remove('hidden');
+  else confirmWrap.classList.add('hidden');
+  list.replaceChildren();
+  order.forEach((lessonId) => {
+    const label = document.createElement('label');
+    label.className = 'flex gap-2 text-sm';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.className = 'skip-lesson-check';
+    input.value = lessonId;
+    input.checked = true;
+    const span = document.createElement('span');
+    span.textContent = lessonId;
+    label.append(input, span);
+    list.append(label);
+  });
+  const confirmButton = document.getElementById('placement-confirm-button');
+  if (confirmButton && !confirmButton.dataset.bound) {
+    confirmButton.dataset.bound = 'true';
+      confirmButton.addEventListener('click', async () => {
+        const status = document.getElementById('placement-confirm-status');
+        const chosen = [];
+        list.querySelectorAll('input.skip-lesson-check').forEach((input) => {
+          if (input.checked) chosen.push(input.value);
+        });
+        confirmButton.disabled = true;
+        status.textContent = 'Placing foundation lessons…';
+        try {
+          const response = await fetch('/api/lessons/placement', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content},
+            body: JSON.stringify({answers: placementAnswers, skip_lesson_ids: chosen}),
+          });
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || 'Could not place foundation lessons.');
+          status.textContent = data.message || 'Placement updated.';
+        } catch (error) {
+          status.textContent = error.message || 'Could not place foundation lessons. Retry.';
+        } finally {
+          confirmButton.disabled = false;
+        }
+      });
+    }
+}
 document.querySelector('[data-open-placement]')?.addEventListener('click', () => {
   const placement = document.getElementById('placement-check');
   placement.open = true;

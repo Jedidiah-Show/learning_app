@@ -765,24 +765,46 @@ def make_pages(lesson, module, index, count):
 
 
 def build_extras(lesson, answers):
-    why = (lesson.get('why_it_matters') or [''])[0]
+    """Fallback explanation layer for lessons nobody has curated yet.
+
+    It deliberately leaves ``intro`` and ``example`` empty. Padding them with a
+    generic sentence is what the release audit calls filler, and an empty field
+    is an honest gap the lesson page renders nothing for.
+    """
     concepts = []
     for concept in lesson.get('core_concepts') or []:
-        content = clean_text(concept.get('content'))
         concepts.append({
             'title': clean_text(concept.get('title')),
-            'plain': content,
+            'plain': clean_text(concept.get('content')),
             'example': '',
         })
     return {
-        'intro': (
-            first_sentence(why)
-            + ' In plain words: slow down, name the idea, and connect it to one '
-            'concrete action in the lesson project.'
-        ).strip(),
+        'intro': '',
         'concepts': concepts,
         'answers': [str(answer) for answer in answers or []],
     }
+
+
+def _is_authored(entry):
+    """True when a human or generator curated a real plain-language layer."""
+    if not isinstance(entry, dict):
+        return False
+    concepts = entry.get('concepts') or []
+    return bool(
+        str(entry.get('intro') or '').strip()
+        and any(str(item.get('example') or '').strip() for item in concepts if isinstance(item, dict))
+    )
+
+
+def _fill_extras(existing, fallback):
+    """Use the fallback only for gaps, never over curated intros, examples, or answers."""
+    if _is_authored(existing):
+        return existing
+    merged = dict(fallback)
+    for key, value in (existing or {}).items():
+        if value:
+            merged[key] = value
+    return merged
 
 
 def main():
@@ -921,6 +943,18 @@ def main():
         'show the verified date and source, and keep unreviewed examples '
         'visibly marked in the release queue.'
     )
+    # Which lessons must ship a curated explanation. setdefault so a
+    # regeneration widens the scope only when a human adds modules to it.
+    course_overrides.setdefault('plain_language_scope', {
+        'note': (
+            'Modules whose lessons must ship a curated plain-language intro, a '
+            'worked example for every core concept, and checkpoint answers. The '
+            'release audit fails when one is missing or reads as a placeholder. '
+            'Grow this list as modules are written.'
+        ),
+        'modules': ['05', '06', '08', '09'],
+        'lesson_ids': [],
+    })
     routes = course_overrides.setdefault('learning_routes', {})
     routes['beginner'] = {
         'title': 'Starting from scratch',
@@ -980,13 +1014,17 @@ def main():
     for module_id, value in MODULE_RESOURCES.items():
         resources.setdefault(f'module:{module_id}', value)
 
-    # Extras: add the new lessons and a plain-language layer for the beginner
-    # module where it is still missing.
+    # Extras: fill only lessons whose plain-language layer nobody has authored.
+    # Regeneration must never overwrite curated intros, examples, or answers.
     for lesson in LESSONS:
-        extras[lesson['id']] = build_extras(lesson, lesson.get('_answers') or [])
+        extras[lesson['id']] = _fill_extras(
+            extras.get(lesson['id']), build_extras(lesson, lesson.get('_answers') or [])
+        )
     for lesson in base['lessons']:
-        if lesson['module_id'] in {'00', '01'} and lesson['id'] not in extras:
-            extras[lesson['id']] = build_extras(lesson, [])
+        if lesson['module_id'] in {'00', '01'}:
+            extras[lesson['id']] = _fill_extras(
+                extras.get(lesson['id']), build_extras(lesson, [])
+            )
 
     # Practice: remove old copies of generated exercises, then fix the three
     # known failures in the reviewed set.

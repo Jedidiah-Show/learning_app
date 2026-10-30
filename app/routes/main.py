@@ -14,12 +14,13 @@ from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
 from app.learning import (
     course_progress, lesson_is_available, monthly_milestone_progress, user_track,
 )
-from app.course_data import TRACKS, track_label
+from app.course_data import SETUP_CHECKS, TRACKS, track_label
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
 from app.integrations import database_status
 from app.models import (CalendarEvent, LessonBookmark, LessonNote, LessonCompletion,
                         CourseProject, QuizResult, ReviewItem, StudySession,
                         SupportRequest)
+from app.routes.lessons import _stored_setup_checks
 from app.user_preferences import get_effective_config_for_user, get_user_preferences, set_user_preferences
 from app.request_data import get_json_object
 
@@ -141,11 +142,15 @@ def index():
         next_project = progress['next_action'] if progress['next_action'] and progress['next_action']['type'] == 'project' else None
         streak = getattr(current_user, 'streak', 0) or 0
         longest_streak = getattr(current_user, 'longest_streak', 0) or 0
+        setup_checks = SETUP_CHECKS
+        setup_states = _stored_setup_checks(current_user)
+        setup_done = sum(1 for check in setup_checks if setup_states.get(check['id']))
         return render_template('dashboard.html', config=config, user=current_user,
                                course=curriculum(),
                                progress=progress, next_lesson=next_lesson,
                                next_project=next_project, streak=streak,
-                               longest_streak=longest_streak)
+                               longest_streak=longest_streak, setup_checks=setup_checks,
+                               setup_states=setup_states, setup_done=setup_done)
     except Exception:
         current_app.logger.exception('Dashboard error')
         # The template dereferences progress even in the error branch, so the
@@ -168,18 +173,21 @@ def index():
 @login_required
 def lessons():
     from app.learning import completed_lesson_ids
+    from app.models import CoursePlan
     completions = LessonCompletion.query.filter_by(
         user_id=current_user.id, completed=True
     ).all()
     completed_ids = {item.lesson_id for item in completions}
     progress = course_progress(current_user, completed=completed_ids)
+    plan = CoursePlan.query.filter_by(user_id=current_user.id).first()
     return render_template('lessons.html', config=get_effective_config_for_user(current_user),
                            user=current_user, course=curriculum(), modules=all_modules(),
                            completed_ids=completed_ids,
                            completion_sources={
                                item.lesson_id: item.completion_source for item in completions
                            },
-                           next_lesson_id=progress['next_lesson_id'])
+                           next_lesson_id=progress['next_lesson_id'],
+                           skill_level=(plan.skill_level if plan else '') or '')
 
 
 @main_bp.route('/quizzes')
@@ -388,6 +396,8 @@ def lesson_detail(lesson_id):
         flash('Lesson loaded, but saved notes and bookmarks are unavailable until the database update is applied.', 'info')
     return render_template('lessons/detail.html', lesson=lesson, module=lesson['_module'],
                            completed=completed,
+                           setup_checks=SETUP_CHECKS,
+                           setup_states=_stored_setup_checks(current_user),
                            practice_exercises=practice_exercises_for_lesson(lesson_id),
                            next_lesson_id=progress['next_lesson_id'],
                            next_action=progress['next_action'],
