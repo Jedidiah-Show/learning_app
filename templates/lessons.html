@@ -94,6 +94,66 @@
 {% endfor %}
 </div>
 <script>
+let placementAnswers = {};
+function placementHeaders() {
+  return {
+    'Content-Type': 'application/json',
+    'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content,
+  };
+}
+function renderPlacementTopics(topics) {
+  const area = document.getElementById('placement-topics-result');
+  const list = document.getElementById('placement-skip-list');
+  const confirmWrap = document.getElementById('placement-skip-confirm');
+  const confirmStatus = document.getElementById('placement-confirm-status');
+  area.replaceChildren();
+  list.replaceChildren();
+  if (confirmStatus) confirmStatus.textContent = '';
+  const recommended = new Set();
+  topics.forEach((topic) => {
+    const passed = Boolean(topic.passed);
+    const lessonIds = passed ? (topic.lessons || []) : (topic.keep || []);
+    const card = document.createElement('div');
+    card.className = 'rounded-xl border p-3 text-sm ' + (passed ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50');
+    const heading = document.createElement('p');
+    heading.className = 'font-semibold';
+    heading.textContent = `${topic.title}: ${passed ? 'passed' : 'not passed'} · ${topic.correct}/${topic.total} correct`;
+    card.append(heading);
+    const detail = document.createElement('p');
+    detail.className = 'mt-1 text-slate-600';
+    detail.textContent = passed
+      ? 'You can skip these foundation lessons after confirming below.'
+      : 'Keep working through these foundation lessons.';
+    card.append(detail);
+    if (lessonIds.length) {
+      const rows = document.createElement('ul');
+      rows.className = 'mt-3 list-inside list-decimal space-y-1 text-slate-700';
+      lessonIds.forEach((lessonId) => {
+        const row = document.createElement('li');
+        row.textContent = `${lessonId} · ${passed ? 'recommended skip' : 'keep working through'}`;
+        rows.append(row);
+      });
+      card.append(rows);
+      if (passed) lessonIds.forEach((lessonId) => recommended.add(lessonId));
+    }
+    area.append(card);
+  });
+  const order = Array.from(recommended);
+  confirmWrap.classList.toggle('hidden', order.length === 0);
+  order.forEach((lessonId) => {
+    const label = document.createElement('label');
+    label.className = 'flex gap-2 text-sm';
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.className = 'skip-lesson-check';
+    input.value = lessonId;
+    input.checked = true;
+    const span = document.createElement('span');
+    span.textContent = lessonId;
+    label.append(input, span);
+    list.append(label);
+  });
+}
 document.getElementById('placement-form')?.addEventListener('submit', async (event) => {
   event.preventDefault();
   const form = event.currentTarget;
@@ -108,18 +168,22 @@ document.getElementById('placement-form')?.addEventListener('submit', async (eve
   button.disabled = true;
   result.textContent = 'Scoring your placement check…';
   try {
+    // An explicit empty skip list asks for the diagnostic without placing any
+    // lessons yet. Placement happens only after the learner confirms below.
     const response = await fetch('/api/lessons/placement', {
       method: 'POST',
-      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content},
-      body: JSON.stringify({answers}),
+      headers: placementHeaders(),
+      body: JSON.stringify({answers, skip_lesson_ids: []}),
     });
     const data = await response.json();
     if (!response.ok) throw new Error(data.error || 'Could not score the placement check.');
-    result.textContent = `${data.message} Score: ${data.score}/${data.total}.`;
+    result.textContent = `Score: ${data.score}/${data.total}. ${data.passed ? 'You passed the overall check.' : 'Review the topic results below.'}`;
     renderPlacementTopics(data.topics || []);
-    if (data.passed) {
-      result.textContent += ' Reloading your lesson list…';
-      window.setTimeout(() => window.location.reload(), 1200);
+    const confirmWrap = document.getElementById('placement-skip-confirm');
+    if (confirmWrap && !confirmWrap.classList.contains('hidden')) {
+      result.textContent += ' Confirm the foundation lessons you want to skip.';
+    } else {
+      result.textContent += ' Keep working through the foundation lessons.';
     }
   } catch (error) {
     result.textContent = error.message || 'Could not score the placement check. Retry.';
@@ -127,99 +191,35 @@ document.getElementById('placement-form')?.addEventListener('submit', async (eve
     button.disabled = false;
   }
 });
-const placementAnswers = {};
-let placementRecommendations = [];
-function renderPlacementTopics(topics) {
-  const area = document.getElementById('placement-topics-result');
-  const confirm = document.getElementById('placement-skip-confirm');
+document.getElementById('placement-confirm-button')?.addEventListener('click', async () => {
+  const button = document.getElementById('placement-confirm-button');
+  const status = document.getElementById('placement-confirm-status');
   const list = document.getElementById('placement-skip-list');
-  area.replaceChildren();
-  list.replaceChildren();
-  const recommended = new Map();
-  const order = [];
-  topics.forEach((topic) => {
-    const passed = topic.passed;
-    const lessons = passed ? (topic.lessons || []) : (topic.keep || []);
-    const card = document.createElement('div');
-    card.className = 'rounded-xl border p-3 text-sm ' + (passed ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50');
-    const heading = document.createElement('p');
-    heading.className = 'font-semibold';
-    heading.textContent = `${topic.title}: ${passed ? 'passed' : 'not passed'} · ${topic.correct}/${topic.total} correct`;
-    card.append(heading);
-    const detail = document.createElement('p');
-    detail.className = 'mt-1 text-slate-600';
-    detail.textContent = passed
-      ? 'This topic placed its foundation lessons out as recommended.'
-      : 'This topic did not pass, so keep working through these foundation lessons.';
-    card.append(detail);
-    const lessonIds = passed ? (topic.lessons || []) : (topic.keep || []);
-    if (lessonIds.length) {
-      const rows = document.createElement('ul');
-      rows.className = 'mt-3 list-inside list-decimal space-y-1 text-slate-700';
-      lessonIds.forEach((lessonId) => {
-        const row = document.createElement('li');
-        row.textContent = `${lessonId} · ${passed ? 'skip recommended' : 'keep working through'}`;
-        rows.append(row);
-      });
-      card.append(rows);
-      if (passed) {
-        lessonIds.forEach((lessonId) => {
-          if (!recommended.has(lessonId)) {
-            recommended.set(lessonId, topic.title);
-            order.push(lessonId);
-          }
-        });
-      }
-    }
-    area.append(card);
+  const chosen = [];
+  list.querySelectorAll('input.skip-lesson-check').forEach((input) => {
+    if (input.checked) chosen.push(input.value);
   });
-  placementRecommendations = order.slice();
-  const confirmWrap = document.getElementById('placement-skip-confirm');
-  const hasRecommendations = order.length > 0;
-  if (hasRecommendations) confirmWrap.classList.remove('hidden');
-  else confirmWrap.classList.add('hidden');
-  list.replaceChildren();
-  order.forEach((lessonId) => {
-    const label = document.createElement('label');
-    label.className = 'flex gap-2 text-sm';
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.className = 'skip-lesson-check';
-    input.value = lessonId;
-    input.checked = true;
-    const span = document.createElement('span');
-    span.textContent = lessonId;
-    label.append(input, span);
-    list.append(label);
-  });
-  const confirmButton = document.getElementById('placement-confirm-button');
-  if (confirmButton && !confirmButton.dataset.bound) {
-    confirmButton.dataset.bound = 'true';
-      confirmButton.addEventListener('click', async () => {
-        const status = document.getElementById('placement-confirm-status');
-        const chosen = [];
-        list.querySelectorAll('input.skip-lesson-check').forEach((input) => {
-          if (input.checked) chosen.push(input.value);
-        });
-        confirmButton.disabled = true;
-        status.textContent = 'Placing foundation lessons…';
-        try {
-          const response = await fetch('/api/lessons/placement', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json', 'X-CSRF-Token': document.querySelector('meta[name="csrf-token"]').content},
-            body: JSON.stringify({answers: placementAnswers, skip_lesson_ids: chosen}),
-          });
-          const data = await response.json();
-          if (!response.ok) throw new Error(data.error || 'Could not place foundation lessons.');
-          status.textContent = data.message || 'Placement updated.';
-        } catch (error) {
-          status.textContent = error.message || 'Could not place foundation lessons. Retry.';
-        } finally {
-          confirmButton.disabled = false;
-        }
-      });
+  button.disabled = true;
+  status.textContent = 'Placing foundation lessons…';
+  try {
+    const response = await fetch('/api/lessons/placement', {
+      method: 'POST',
+      headers: placementHeaders(),
+      body: JSON.stringify({answers: placementAnswers, skip_lesson_ids: chosen}),
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Could not place foundation lessons.');
+    status.textContent = data.message || 'Placement updated.';
+    if ((data.placed_lessons || []).length) {
+      status.textContent += ' Reloading your lesson list…';
+      window.setTimeout(() => window.location.reload(), 1200);
     }
-}
+  } catch (error) {
+    status.textContent = error.message || 'Could not place foundation lessons. Retry.';
+  } finally {
+    button.disabled = false;
+  }
+});
 document.querySelector('[data-open-placement]')?.addEventListener('click', () => {
   const placement = document.getElementById('placement-check');
   placement.open = true;

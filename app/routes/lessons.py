@@ -278,15 +278,21 @@ def placement_check():
 
     weak = [topic['title'] for topic in topic_results if not topic['passed']]
     if placed_lessons:
+        message = f'Placed out of {len(placed_lessons)} foundation lessons.'
+        if weak:
+            message += f' Keep working through: {", ".join(weak)}.'
+        message += ' Module projects and all later lessons still require evidence.'
+    elif passed:
         message = (
-            f'Placed out of {len(placed_lessons)} foundation lessons. Keep working '
-            f'through: {", ".join(weak)}. Module projects and all later lessons '
-            'still require evidence.'
+            'Placement passed, but no foundation lessons were placed out. Keep the '
+            'lessons you selected; module projects and all later lessons still '
+            'require evidence.'
         )
-    elif passed and not weak:
+    elif recommended:
         message = (
-            'Placement passed. Foundation lessons are marked complete; module '
-            'projects and all later lessons still require evidence.'
+            'Some topics passed, but no foundation lessons were placed out. Keep '
+            'working through: '
+            f'{", ".join(weak)}. Module projects and later lessons still require evidence.'
         )
     else:
         message = (
@@ -349,8 +355,11 @@ def setup_checks():
         return jsonify({'error': 'checks must be an object of tick ids'}), 400
     known = {check['id'] for check in SETUP_CHECKS}
     for key, value in submitted.items():
-        if key in known:
-            checks[key] = bool(value)
+        if key not in known:
+            continue
+        if not isinstance(value, bool):
+            return jsonify({'error': f'Setup check {key} must be true or false'}), 400
+        checks[key] = value
     plan.setup_checks = json.dumps(
         {key: value for key, value in checks.items() if value}, sort_keys=True
     )

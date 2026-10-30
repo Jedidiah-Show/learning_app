@@ -224,14 +224,20 @@ def project_page():
     completed = completed_project_modules(current_user)
     progress = course_progress(current_user, completed_projects=completed)
     track = user_track(current_user)
-    milestones = monthly_milestone_progress(progress, completed, track)
+    recalibration = progress.get('recalibration') or {}
+    milestones = monthly_milestone_progress(
+        progress, completed, track,
+        calibration_multiplier=(
+            recalibration.get('multiplier') if recalibration.get('calibrated') else None
+        ),
+    )
     plan = _plan()
     return render_template(
         'projects.html', modules=all_modules(), completed_modules=completed,
         milestones=milestones, required_projects=REQUIRED_PROJECTS,
         course_plan=_plan_payload(plan), course=curriculum(),
         tracks=TRACKS, selected_track=track, track_label=track_label(track),
-        track_months=track_for(track)['months'], recalibration=progress.get('recalibration'),
+        track_months=track_for(track)['months'], recalibration=recalibration,
     )
 
 
@@ -483,10 +489,11 @@ def submit_module_project(module_id):
     record.repository_url = repository_url
     record.checks_url = checks_url
     record.demo_url = demo_url
+    db.session.commit()
     try:
         verification = verify_checks(repository_url, checks_url)
     except VerificationError as error:
-        return jsonify({'error': str(error)}), 422
+        return jsonify({'error': str(error), 'draft_saved': True}), 422
     project_payload = record.get_project()
     if module_id != all_modules()[-1]['id']:
         project_payload['rubric'] = module.get('project_rubric') or project_payload.get('rubric', [])
@@ -575,7 +582,8 @@ def submit_module_project(module_id):
         or not criteria_ok
     ):
         return jsonify({
-            'error': 'Project evaluation returned an invalid result. Please retry.'
+            'error': 'Project evaluation returned an invalid result. Please retry.',
+            'draft_saved': True,
         }), 503
     evaluation['evaluation_source'] = evaluation_source
     evaluation['checks'] = verification

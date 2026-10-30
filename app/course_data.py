@@ -210,43 +210,43 @@ TRACKS = {
             },
             {
                 'number': 2,
-                'title': 'LLM fundamentals and application engineering',
-                'summary': 'Call models reliably, constrain outputs, and evaluate prompt changes.',
-                'modules': ['03', '04'],
-                'concepts': ['Model selection and cost', 'Structured outputs', 'Prompt evaluation', 'Application validation'],
+                'title': 'LLM application engineering and RAG',
+                'summary': 'Call models reliably, constrain outputs, evaluate prompt changes, and ground answers with retrieval.',
+                'modules': ['03', '04', '05'],
+                'concepts': ['Model selection and cost', 'Structured outputs', 'Prompt evaluation', 'Embeddings and retrieval'],
                 'weeks': [
                     'Call a hosted or local model and log cost and latency.',
                     'Build a schema-validated application and golden dataset.',
-                    'Add regression checks for prompt changes.',
-                    'Complete the LLM projects with automated checks.',
+                    'Add embeddings, retrieval, and cited answers.',
+                    'Complete the LLM and RAG projects with automated checks.',
                 ],
-                'milestone': 'An evaluated LLM application that blocks a failing prompt change.',
+                'milestone': 'An evaluated LLM application and a cited RAG pipeline.',
             },
             {
                 'number': 3,
-                'title': 'RAG and agents',
-                'summary': 'Ground answers with retrieval and compare workflows with bounded agents using evaluation evidence.',
-                'modules': ['05', '06'],
-                'concepts': ['Embeddings and retrieval', 'Tool schemas', 'Bounded autonomy', 'State and approvals'],
+                'title': 'Agents and orchestration',
+                'summary': 'Compare workflows with bounded agents, then coordinate them only when evaluation evidence justifies it.',
+                'modules': ['06', '07'],
+                'concepts': ['Tool schemas', 'Bounded autonomy', 'State and approvals', 'Agent-to-agent coordination'],
                 'weeks': [
-                    'Embed and retrieve relevant passages for grounded answers.',
+                    'Define tools with strict schemas and failure handling.',
                     'Compare a workflow with a bounded agent on the same cases.',
                     'Add approval checkpoints and durable state.',
-                    'Complete the RAG and agent projects.',
+                    'Complete the agent and orchestration projects.',
                 ],
                 'milestone': 'A measured agent or workflow with explicit safety boundaries.',
             },
             {
                 'number': 4,
-                'title': 'Agents, MCP, and production',
-                'summary': 'Package tool integrations, run orchestration, and operate an observable AI service.',
-                'modules': ['07', '08', '09'],
-                'concepts': ['Tool schemas', 'Bounded autonomy', 'State and approvals', 'MCP permissions', 'Tracing and token budgets', 'Rate limits and caching', 'Privacy and incident response'],
+                'title': 'MCP and production engineering',
+                'summary': 'Package tool integrations and operate an observable AI service with budgets and recovery.',
+                'modules': ['08', '09'],
+                'concepts': ['MCP permissions', 'Tracing and token budgets', 'Rate limits and caching', 'Privacy and incident response'],
                 'weeks': [
                     'Build an MCP client or server with scoped permissions.',
                     'Add structured logs, traces, and cost budgets.',
                     'Add rate limits, caching, and an incident runbook.',
-                    'Complete the orchestration, MCP, and production projects.',
+                    'Complete the MCP and production projects.',
                 ],
                 'milestone': 'A permissioned MCP integration and a monitored AI service.',
             },
@@ -375,6 +375,61 @@ def recommend_track(weekly_hours):
     if weekly_hours < 22:
         return 'standard'
     return 'accelerated'
+
+
+def pace_choice_for_hours(hours):
+    """Return the onboarding pace option closest to a stored weekly total."""
+    if not isinstance(hours, int) or isinstance(hours, bool):
+        return None
+    exact = next((pace for pace in PACE_CHOICES if pace['hours'] == hours), None)
+    if exact:
+        return exact
+    return min(PACE_CHOICES, key=lambda pace: abs(pace['hours'] - hours))
+
+
+def partition_module_groups(module_hours, month_count):
+    """Split modules into contiguous, balanced month groups.
+
+    The course is sequential, so a month must contain a contiguous run of
+    modules. An O(months × modules²) dynamic program finds the split that
+    minimises the sum of squared deviations from the average month load. This
+    keeps project-heavy modules from piling into one month while preserving the
+    curriculum order and the requirement that every module appears exactly once.
+    """
+    if month_count <= 0 or not module_hours:
+        return []
+    if month_count > len(module_hours):
+        return (
+            [[index] for index in range(len(module_hours))]
+            + [[] for _ in range(month_count - len(module_hours))]
+        )
+
+    prefix = [0.0]
+    for hours in module_hours:
+        prefix.append(prefix[-1] + max(0.0, float(hours or 0)))
+    target = prefix[-1] / month_count
+    infinity = float('inf')
+    cost = [[infinity] * (len(module_hours) + 1) for _ in range(month_count + 1)]
+    split = [[0] * (len(module_hours) + 1) for _ in range(month_count + 1)]
+    cost[0][0] = 0.0
+
+    for month in range(1, month_count + 1):
+        for end in range(month, len(module_hours) + 1):
+            for start in range(month - 1, end):
+                group_hours = prefix[end] - prefix[start]
+                candidate = cost[month - 1][start] + (group_hours - target) ** 2
+                if candidate < cost[month][end]:
+                    cost[month][end] = candidate
+                    split[month][end] = start
+
+    groups = []
+    end = len(module_hours)
+    for month in range(month_count, 0, -1):
+        start = split[month][end]
+        groups.append(list(range(start, end)))
+        end = start
+    return list(reversed(groups))
+
 
 
 REQUIRED_PROJECTS = [

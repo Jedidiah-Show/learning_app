@@ -74,6 +74,15 @@
       </div>
     </section>
 
+    {% if lesson.checklist %}
+    <section id="checklist" class="lesson-card lesson-checkpoint">
+      <p class="lesson-eyebrow">Your checkpoint</p>
+      <h2 class="lesson-card-title">Checkpoint checklist</h2>
+      <p class="lesson-text lesson-muted">Keep this visible as you work. Tick each item in your head before you mark the lesson complete.</p>
+      <ul class="lesson-list lesson-list-check">{% for item in lesson.checklist %}<li>{{ item }}</li>{% endfor %}</ul>
+    </section>
+    {% endif %}
+
     {% if lesson.video %}<section id="video" class="lesson-video" data-lesson-video data-lesson-id="{{ lesson.id }}" data-video-id="{{ lesson.video.id }}" data-video-url="{{ lesson.video.url }}" data-video-start="{{ lesson.video.start }}" data-video-end="{{ lesson.video.end or '' }}" data-video-completed="{{ 'true' if video_progress and video_progress.completed else 'false' }}" data-resume="{% if video_progress and not video_progress.completed %}{{ video_progress.last_position }}{% else %}{{ lesson.video.start or 0 }}{% endif %}" data-progress-url="{{ url_for('lessons.update_video_progress') }}">
   <div class="lesson-video-head">
     <div>
@@ -137,15 +146,16 @@
             {% if extra.example %}<p class="lesson-plain-example"><strong>Example:</strong> {{ extra.example }}</p>{% endif %}
           </div>
           {% endif %}
-          {% if concept.key_idea %}
-            {% if paragraphs %}
-            <p class="lesson-text lesson-lead-paragraph"><strong>{{ concept.key_idea }}</strong> {{ paragraphs[0] }}</p>
-            {% for paragraph in paragraphs[1:] %}<p class="lesson-text">{{ paragraph }}</p>{% endfor %}
-            {% else %}
-            <p class="lesson-text lesson-lead-paragraph"><strong>{{ concept.key_idea }}</strong></p>
+          {% if paragraphs %}
+            <p class="lesson-text lesson-lead-paragraph">{% if concept.key_idea %}<strong>{{ concept.key_idea }}</strong> {% endif %}{{ paragraphs[0] }}</p>
+            {% if paragraphs|length > 1 %}
+            <details class="lesson-concept-more">
+              <summary>Continue the explanation</summary>
+              {% for paragraph in paragraphs[1:] %}<p class="lesson-text">{{ paragraph }}</p>{% endfor %}
+            </details>
             {% endif %}
-          {% else %}
-            {% for paragraph in paragraphs %}<p class="lesson-text">{{ paragraph }}</p>{% endfor %}
+          {% elif concept.key_idea %}
+            <p class="lesson-text lesson-lead-paragraph"><strong>{{ concept.key_idea }}</strong></p>
           {% endif %}
           {% if concept.bullets %}
           <ul class="lesson-list">{% for item in concept.bullets %}<li>{{ item }}</li>{% endfor %}</ul>
@@ -197,14 +207,6 @@
       <ul class="lesson-list lesson-list-warn">
         {% for item in lesson.common_mistakes %}<li>{{ item }}</li>{% endfor %}
       </ul>
-    </section>
-    {% endif %}
-
-    {% if lesson.checklist %}
-    <section id="checklist" class="lesson-card">
-      <p class="lesson-eyebrow">Before you move on</p>
-      <h2 class="lesson-card-title">Checkpoint checklist</h2>
-      <ul class="lesson-list lesson-list-check">{% for item in lesson.checklist %}<li>{{ item }}</li>{% endfor %}</ul>
     </section>
     {% endif %}
 
@@ -312,6 +314,7 @@
         <p class="lesson-toc-title">On this page</p>
         {% if lesson.extras and lesson.extras.intro %}<a href="#plain-words">In plain words</a>{% endif %}
         <a href="#overview">Lesson at a glance</a>
+        {% if lesson.checklist %}<a href="#checklist">Checkpoint</a>{% endif %}
         {% if lesson.video %}<a href="#video">Video</a>{% endif %}
         {% if lesson.key_terms %}<a href="#key-terms">Key terms</a>{% endif %}
         <a href="#concepts">Core concepts</a>

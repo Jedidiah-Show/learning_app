@@ -459,13 +459,8 @@ html[data-theme="dark"] .lesson-list li { color:#C9D8CC; }
 .lesson-list-check li::before { content:"✓";left:0;top:0;width:auto;height:auto;background:none;color:#2E8F55;font-weight:900; }
 .lesson-list-warn li::before { content:"!";left:2px;top:1px;display:grid;place-items:center;width:16px;height:16px;border-radius:50%;background:#fdecec;color:#c24141;font-size:11px;font-weight:900; }
 .lesson-overview-grid { display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:26px; }
-.lesson-howto { margin-top:22px;padding:18px 20px;border:1px dashed var(--app-border);border-radius:16px;background:var(--app-surface-muted); }
-.lesson-howto-title { color:var(--app-text);font-size:13px;font-weight:800; }
-.lesson-howto-steps { margin:10px 0 0;padding-left:20px;list-style:decimal;color:var(--app-muted);font-size:13px;line-height:1.8; }
-.lesson-howto-steps strong { color:var(--app-text);font-weight:750; }
 .lesson-concepts { display:flex;flex-direction:column;gap:16px; }
 .lesson-section-head { display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 22px;margin-top:10px;padding:0 4px; }
-.lesson-section-note { max-width:34ch;color:var(--app-muted);font-size:12.5px;line-height:1.65; }
 .lesson-concept-head { display:flex;align-items:flex-start;gap:14px; }
 .lesson-concept-number { display:grid;place-items:center;flex:none;width:38px;height:38px;border-radius:12px;background:#EEF8F1;color:#083D2E;font-size:16px;font-weight:800; }
 html[data-theme="dark"] .lesson-concept-number { background:#1E3B2B;color:#B8E0C8; }
@@ -474,6 +469,11 @@ html[data-theme="dark"] .lesson-concept-number { background:#1E3B2B;color:#B8E0C
 .lesson-lead-paragraph strong { color:#083D2E;font-weight:750; }
 html[data-theme="dark"] .lesson-lead-paragraph { background:#1E2F25; }
 html[data-theme="dark"] .lesson-lead-paragraph strong { color:#D7EFE0; }
+.lesson-concept-more { margin-top:12px;padding:12px 15px;border:1px solid var(--app-border);border-radius:12px;background:var(--app-surface-muted); }
+.lesson-concept-more summary { color:#247044;font-size:13.5px;font-weight:750;cursor:pointer; }
+.lesson-concept-more p { margin-top:10px;color:var(--app-muted);font-size:14px;line-height:1.75; }
+.lesson-checkpoint { border-color:#C4E5D3;background:#F7FCF9; }
+html[data-theme="dark"] .lesson-checkpoint { border-color:#2E4A38;background:#18241D; }
 .lesson-plain-card { border-color:#CFE9D8;background:linear-gradient(135deg,#F4FBF6,#FFFFFF); }
 html[data-theme="dark"] .lesson-plain-card { border-color:#2A4A38;background:linear-gradient(135deg,#14261C,#17251D); }
 .lesson-first-win { border-left:4px solid #4F46E5;background:#EEF2FF; }
@@ -558,7 +558,6 @@ html[data-theme="dark"] .lesson-complete-note { background:#163B29;color:#8EE0BD
 .lesson-quiz-question legend { color:var(--app-text);font-size:12.5px;font-weight:750;line-height:1.5; }
 .lesson-quiz-question label { display:flex;gap:8px;margin-top:7px;color:var(--app-muted);font-size:12.5px;line-height:1.5; }
 html.beginner-mode .lesson-deep-dive { display:none; }
-html.beginner-mode .lesson-section-note { display:none; }
 html[data-theme="dark"] .lesson-list-warn li::before { background:#3b252e;color:#FFB1B8; }
 html[data-theme="dark"] .lesson-tasks li.is-done label { border-color:#2C5B45; }
 html[data-theme="dark"] .lesson-code { background:#0d1017;color:#d7f4e5; }

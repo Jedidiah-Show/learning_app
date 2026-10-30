@@ -54,7 +54,7 @@
     <p class="mt-2 text-sm text-slate-600">Study-time calibration: your completed lessons show an observed pace of about {{ recalibration.observed_hours }} hours against an estimated {{ recalibration.estimated_hours }} hours (estimate multiplier {{ recalibration.multiplier }}). Treat the monthly loads below as estimates and recalibrate as you go.</p>
     {% endif %}
   </div>
-  <div class="grid gap-4 xl:grid-cols-2">{% for month in milestones %}<article class="rounded-2xl border bg-white p-5"><div class="flex items-start justify-between gap-3"><div><p class="text-xs font-bold uppercase text-indigo-600">Month {{ month.number }}</p><h4 class="mt-1 text-lg font-bold">{{ month.title }}</h4></div><span class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold {{ 'bg-emerald-50 text-emerald-700' if month.complete else 'bg-slate-100 text-slate-700' }}">{{ 'Complete ✓' if month.complete else month.status }}</span></div><p class="mt-2 text-sm text-slate-600">{{ month.summary }}</p><p class="mt-3 text-sm"><strong>Estimated effort:</strong> {{ month.estimated_hours }} hours (about {{ month.estimated_weekly_hours }} hours/week averaged across the month; reading about {{ month.estimated_weekly_hours_low }} hours/week). Catch-up time: {{ month.review_hours }} hours.</p><p class="mt-2 text-sm"><strong>Key concepts:</strong> {{ month.concepts|join(' · ') }}</p><ol class="mt-3 list-inside list-decimal space-y-1 text-sm text-slate-600">{% for week in month.weeks %}<li>{{ week }}</li>{% endfor %}</ol><p class="mt-3 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-950"><strong>Month {{ month.number }} milestone:</strong> {{ month.milestone }}</p><p class="mt-2 text-xs text-slate-500">Course modules: {{ month.module_titles|join(' · ') }}</p></article>{% endfor %}</div>
+  <div class="grid gap-4 xl:grid-cols-2">{% for month in milestones %}<article class="rounded-2xl border bg-white p-5"><div class="flex items-start justify-between gap-3"><div><p class="text-xs font-bold uppercase text-indigo-600">Month {{ month.number }}</p><h4 class="mt-1 text-lg font-bold">{{ month.title }}</h4></div><span class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold {{ 'bg-emerald-50 text-emerald-700' if month.complete else 'bg-slate-100 text-slate-700' }}">{{ 'Complete ✓' if month.complete else month.status }}</span></div><p class="mt-2 text-sm text-slate-600">{{ month.summary }}</p><p class="mt-3 text-sm"><strong>Estimated effort:</strong> {{ month.estimated_hours }} hours (about {{ month.estimated_weekly_hours }} hours/week averaged across the month; reading about {{ month.estimated_weekly_hours_low }} hours/week). Catch-up time: {{ month.review_hours }} hours.{% if month.calibrated_weekly_hours %} Your observed pace suggests about {{ month.calibrated_weekly_hours }} hours/week for this month.{% endif %}</p><p class="mt-2 text-sm"><strong>Key concepts:</strong> {{ month.concepts|join(' · ') }}</p><ol class="mt-3 list-inside list-decimal space-y-1 text-sm text-slate-600">{% for week in month.weeks %}<li>{{ week }}</li>{% endfor %}</ol><p class="mt-3 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-950"><strong>Month {{ month.number }} milestone:</strong> {{ month.milestone }}</p><p class="mt-2 text-xs text-slate-500">Course modules: {{ month.module_titles|join(' · ') }}</p></article>{% endfor %}</div>
 </section>
 
 <div class="mb-4"><h3 class="text-2xl font-bold">Required module projects</h3><p class="mt-1 text-sm text-slate-600">Complete these in sequence to unlock later lessons. The final module uses the capstone you selected above. Every submission needs a public repository and a public automated-checks page showing a successful build.</p></div>
@@ -220,7 +220,29 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
     const submit = document.createElement('button');
     submit.className = 'mt-2 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white';
     submit.textContent = hasSubmission ? 'Revise and resubmit' : 'Verify checks and get feedback';
-    form.append(text, repository, checks, demo, help, submit);
+    const guide = document.createElement('details');
+    guide.className = 'mt-3 rounded-xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700';
+    guide.open = !hasSubmission;
+    const guideTitle = document.createElement('summary');
+    guideTitle.className = 'cursor-pointer font-semibold text-slate-900';
+    guideTitle.textContent = 'Publish checklist';
+    const steps = document.createElement('ol');
+    steps.className = 'mt-3 list-inside list-decimal space-y-1';
+    [
+        'Create a public repository and push the starter kit or your project code.',
+        'Run the project tests locally, then let the repository CI run them again.',
+        'Open the successful checks run and copy its public URL.',
+        'Paste the repository and checks URLs below, then submit for verification and rubric feedback.',
+    ].forEach((step) => {
+        const item = document.createElement('li');
+        item.textContent = step;
+        steps.append(item);
+    });
+    const draftNote = document.createElement('p');
+    draftNote.className = 'mt-3 text-xs text-slate-600';
+    draftNote.textContent = 'Your draft is saved even when the checks page cannot be verified. Fix the link and submit again without retyping your work.';
+    guide.append(guideTitle, steps, draftNote);
+    form.append(text, repository, checks, demo, guide, help, submit);
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         submit.disabled = true;
@@ -249,6 +271,7 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
             message.className = 'mt-3 text-sm ' + (response.ok ? '' : 'text-rose-700');
             if (!response.ok) {
                 message.textContent = result.error || `Could not submit the project (HTTP ${response.status}).`;
+                if (result.draft_saved) message.textContent += ' Your draft was saved.';
                 form.append(message);
                 return;
             }

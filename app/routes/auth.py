@@ -12,7 +12,7 @@ from app.models import (
 from app.phone import PhoneError, normalize_phone
 from app.rate_limit import client_ip, enforce_rate_limit, identity_hash
 from app.course_data import (
-    PACE_CHOICES, SKILL_LEVELS, TRACKS, recommend_track,
+    PACE_CHOICES, SKILL_LEVELS, TRACKS, pace_choice_for_hours, recommend_track,
 )
 from datetime import datetime, timedelta, timezone
 import hashlib
@@ -438,12 +438,10 @@ def onboarding():
         db.session.add(plan)
     selected_skill = plan.skill_level or ''
     selected_hours = plan.weekly_hours
-    selected_track = plan.track if plan.track in TRACKS else recommend_track(selected_hours)
-    selected_hours_id = ''
-    for pace in PACE_CHOICES:
-        if pace['hours'] == selected_hours:
-            selected_hours_id = pace['id']
-            break
+    selected_track = plan.track if plan.track in TRACKS else 'standard'
+    selected_pace = pace_choice_for_hours(selected_hours)
+    selected_hours_id = selected_pace['id'] if selected_pace else ''
+    recommended = recommend_track(selected_hours) or selected_track
     if request.method == 'POST':
         skill_level = (request.form.get('skill_level') or '').strip()
         weekly_hours = (request.form.get('weekly_hours') or '').strip()
@@ -459,12 +457,15 @@ def onboarding():
             hours = int(weekly_hours.strip())
         if hours is None:
             errors['weekly_hours'] = 'Choose how many hours you can study each week.'
+        recommended = recommend_track(hours) or recommend_track(plan.weekly_hours) or selected_track
+        submitted_pace = pace_choice_for_hours(hours)
         if errors:
             return render_template(
                 'onboarding.html', errors=errors, skills=SKILL_LEVELS, paces=PACE_CHOICES,
-                tracks=TRACKS, selected_skill=skill_level, selected_hours=weekly_hours,
+                tracks=TRACKS, selected_skill=skill_level,
+                selected_hours=submitted_pace['id'] if submitted_pace else weekly_hours,
                 selected_track=track if track in TRACKS else selected_track,
-                recommended_track=selected_track,
+                recommended_track=recommended,
             ), 200
         plan.skill_level = skill_level
         plan.weekly_hours = hours
@@ -478,7 +479,7 @@ def onboarding():
     return render_template(
         'onboarding.html', errors={}, skills=SKILL_LEVELS, paces=PACE_CHOICES,
         tracks=TRACKS, selected_skill=selected_skill, selected_hours=selected_hours_id,
-        selected_track=selected_track, recommended_track=selected_track,
+        selected_track=selected_track, recommended_track=recommended,
     )
 
 @auth_bp.route('/logout', methods=['POST'])

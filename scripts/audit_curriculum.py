@@ -218,7 +218,8 @@ def _validate_placement(errors, course, lesson_ids):
 
 def _validate_tracks(errors):
     try:
-        from app.course_data import TRACKS
+        from app.course_data import TRACKS, partition_module_groups
+        from app.curriculum import all_modules
     except ImportError as error:  # pragma: no cover - environment failure
         errors.append(f'Could not import course blueprint: {error}')
         return
@@ -232,6 +233,10 @@ def _validate_tracks(errors):
     if steady.get('months') != 12:
         errors.append('Steady track must contain twelve months')
     module_ids = [module['id'] for module in _load('dynamoai_curriculum.json').get('modules', [])]
+    module_hours = [module.get('estimated_hours', 0) for module in all_modules()]
+    if len(module_hours) != len(module_ids):
+        errors.append('Course modules do not match the compiled curriculum order')
+        module_hours = []
     for name, track in TRACKS.items():
         months = track.get('milestones') or []
         if len(months) != track.get('months'):
@@ -241,6 +246,16 @@ def _validate_tracks(errors):
         ]
         if sorted(grouped) != sorted(module_ids):
             errors.append(f'{name} track must cover every module exactly once')
+        if module_hours:
+            balanced = [
+                [module_ids[index] for index in group]
+                for group in partition_module_groups(module_hours, track.get('months', 0))
+            ]
+            actual = [month.get('modules') or [] for month in months]
+            if actual != balanced:
+                errors.append(
+                    f'{name} track month groups are not the balanced contiguous partition'
+                )
         for month in months:
             for field in ('number', 'title', 'summary', 'concepts', 'weeks', 'milestone'):
                 if not month.get(field):

@@ -1100,3 +1100,106 @@ class RuachAICourseTests(unittest.TestCase):
             'position_seconds': 10,
         })
         self.assertEqual(missing.status_code, 404)
+
+    def test_placement_diagnostic_waits_for_explicit_skip_confirmation(self):
+        self.register()
+        placement = curriculum()['course']['placement']
+        correct = {
+            question['id']: question['answer']
+            for question in placement['questions']
+        }
+        diagnostic = self.client.post('/api/lessons/placement', json={
+            'answers': correct, 'skip_lesson_ids': [],
+        })
+        self.assertEqual(diagnostic.status_code, 200, diagnostic.get_json())
+        payload = diagnostic.get_json()
+        self.assertTrue(payload['passed'])
+        self.assertEqual(payload['placed_lessons'], [])
+        self.assertEqual(len(payload['topics']), 4)
+        self.assertTrue(all(topic['passed'] for topic in payload['topics']))
+        self.assertEqual(
+            set(payload['recommended_lessons']),
+            set(placement['skippable_lessons']),
+        )
+        with self.app.app_context():
+            self.assertEqual(LessonCompletion.query.count(), 0)
+
+        chosen = placement['skippable_lessons'][:3]
+        confirmed = self.client.post('/api/lessons/placement', json={
+            'answers': correct, 'skip_lesson_ids': chosen,
+        })
+        self.assertEqual(confirmed.status_code, 200, confirmed.get_json())
+        self.assertEqual(confirmed.get_json()['placed_lessons'], chosen)
+        with self.app.app_context():
+            placed = {
+                item.lesson_id for item in LessonCompletion.query.filter_by(
+                    completion_source='placement'
+                )
+            }
+            self.assertEqual(placed, set(chosen))
+
+    def test_onboarding_recommends_a_pace_without_overwriting_the_track(self):
+        self.register()
+        posted = self.client.post('/onboarding', data={
+            'skill_level': 'some_programming',
+            'weekly_hours': '24+',
+            'track': 'standard',
+        })
+        self.assertEqual(posted.status_code, 302)
+        with self.app.app_context():
+            plan = CoursePlan.query.one()
+            self.assertEqual(plan.weekly_hours, 24)
+            self.assertEqual(plan.track, 'standard')
+        page = self.client.get('/onboarding')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn(b'5-month intensive</strong> pace', page.data)
+        self.assertIn(b'value="standard" checked', page.data)
+
+    def test_monthly_plan_uses_balanced_contiguous_groups_and_calibration(self):
+        from app.course_data import TRACKS, partition_module_groups
+        from app.learning import course_progress, monthly_milestone_progress
+
+        self.register()
+        with self.app.app_context():
+            user = User.query.one()
+            progress = course_progress(user)
+            months = monthly_milestone_progress(
+                progress, set(), 'accelerated', calibration_multiplier=1.5
+            )
+            self.assertEqual(len(months), 5)
+            grouped_ids = [module_id for month in months for module_id in month['modules']]
+            self.assertEqual(grouped_ids, [module['id'] for module in all_modules()])
+            self.assertEqual(months[0]['modules'], ['00', '01', '02'])
+            self.assertEqual(months[-1]['modules'], ['10', '11', '12'])
+            for month in months:
+                self.assertGreater(month['estimated_hours'], 0)
+                self.assertGreater(month['estimated_weekly_hours_low'], 0)
+                self.assertAlmostEqual(
+                    month['review_hours'],
+                    round(month['estimated_hours'] * 0.2, 1),
+                )
+                self.assertGreater(
+                    month['calibrated_weekly_hours'],
+                    month['estimated_weekly_hours'],
+                )
+            groups = partition_module_groups(
+                [module['estimated_hours'] for module in all_modules()],
+                TRACKS['accelerated']['months'],
+            )
+            self.assertEqual([len(group) for group in groups], [3, 3, 2, 2, 3])
+
+    def test_publish_checklist_and_trimmed_lesson_page_render(self):
+        self.register()
+        projects = self.client.get('/projects')
+        self.assertEqual(projects.status_code, 200)
+        self.assertIn(b'Publish checklist', projects.data)
+        self.assertIn(b'Your draft is saved even when the checks page cannot be verified', projects.data)
+
+        lesson = self.client.get('/lesson/0.01')
+        self.assertEqual(lesson.status_code, 200)
+        html = lesson.get_data(as_text=True)
+        self.assertNotIn('How to work through this lesson', html)
+        self.assertNotIn('lesson-section-note', html)
+        self.assertIn('lesson-concept-more', html)
+        self.assertIn('Continue the explanation', html)
+        self.assertLess(html.index('id="checklist"'), html.index('id="concepts"'))

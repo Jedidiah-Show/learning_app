@@ -112,6 +112,10 @@ def course_progress(user, completed=None, completed_projects=None):
                 'id': module['id'], 'number': module['number'],
                 'title': module['title'], 'total_lessons': len(module['lessons']),
                 'estimated_hours': module.get('estimated_hours', 0),
+                'study_minutes': sum(
+                    (lesson.get('study_minutes') or 0)
+                    for lesson in module['lessons']
+                ),
                 'completed_lessons': sum(
                     lesson['id'] in completed for lesson in module['lessons']
                 ),
@@ -121,27 +125,47 @@ def course_progress(user, completed=None, completed_projects=None):
     }
 
 
-def monthly_milestone_progress(progress, completed_projects, track='standard'):
-    """Group sequential modules into the selected track's monthly milestones."""
-    from app.course_data import milestones_for
+def monthly_milestone_progress(
+    progress, completed_projects, track='standard', calibration_multiplier=None
+):
+    """Group modules into balanced, contiguous months for the selected track.
 
-    modules = {module['id']: module for module in progress['modules']}
+    Module hours still come from the curated curriculum, but their month
+    boundaries are chosen by a dynamic program rather than hard-coded lists.
+    That keeps the five-month intensive plan and the 9–12 month standard plan
+    balanced when lesson estimates change, without ever splitting a module or
+    reordering the course.
+    """
+    from app.course_data import milestones_for, partition_module_groups
+
+    milestones = milestones_for(track)
+    if not milestones:
+        return []
+    ordered_modules = list(progress['modules'])
+    groups = partition_module_groups(
+        [item.get('estimated_hours', 0) for item in ordered_modules],
+        len(milestones),
+    )
+    multiplier = (
+        calibration_multiplier
+        if isinstance(calibration_multiplier, (int, float))
+        and not isinstance(calibration_multiplier, bool)
+        and calibration_multiplier > 0
+        else None
+    )
+    # Avoid letting one unusually fast or slow lesson produce an absurd target.
+    multiplier = min(3.0, max(0.5, multiplier)) if multiplier else None
+
     result = []
-    for milestone in milestones_for(track):
-        grouped = [modules[module_id] for module_id in milestone['modules']]
+    for milestone, group in zip(milestones, groups):
+        grouped = [ordered_modules[index] for index in group]
         done_lessons = sum(item['completed_lessons'] for item in grouped)
         total_lessons = sum(item['total_lessons'] for item in grouped)
         estimated_hours = round(
             sum(item.get('estimated_hours', 0) for item in grouped), 1
         )
         reading_hours = round(
-            sum(
-                sum(
-                    (lesson.get('study_minutes') or 0) for lesson in item.get('lessons') or []
-                ) / 60
-                for item in grouped
-            ),
-            1,
+            sum(item.get('study_minutes', 0) for item in grouped) / 60, 1
         )
         # Catch-up time is metadata for the month, never an extra month.
         review_hours = round(estimated_hours * 0.2, 1)
@@ -149,10 +173,14 @@ def monthly_milestone_progress(progress, completed_projects, track='standard'):
             item['completed_lessons'] == item['total_lessons']
             and item['id'] in completed_projects for item in grouped
         )
-        complete = done_modules == len(grouped)
+        complete = bool(grouped) and done_modules == len(grouped)
         previous_complete = all(item['complete'] for item in result)
+        calibrated_hours = (
+            round(estimated_hours * multiplier, 1) if multiplier else None
+        )
         result.append({
             **milestone,
+            'modules': [item['id'] for item in grouped],
             'complete': complete,
             'status': 'Complete' if complete else (
                 'In progress' if previous_complete else 'Up next'
@@ -166,6 +194,12 @@ def monthly_milestone_progress(progress, completed_projects, track='standard'):
             # low end is reading-only and the headline figure includes projects.
             'estimated_weekly_hours_low': round(reading_hours / 4.345, 1),
             'review_hours': review_hours,
+            'calibrated_hours': calibrated_hours,
+            'calibrated_weekly_hours': (
+                round(calibrated_hours / 4.345, 1)
+                if calibrated_hours is not None else None
+            ),
+            'calibration_multiplier': multiplier,
             'completed_modules': done_modules,
             'total_modules': len(grouped),
             'percent': round(done_lessons / total_lessons * 100) if total_lessons else 0,
