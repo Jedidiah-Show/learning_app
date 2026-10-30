@@ -1,9 +1,11 @@
 """Module projects based on the bundled course and evaluated with AI."""
 
 import json
+from io import BytesIO
+from zipfile import ZIP_DEFLATED, ZipFile
 from urllib.parse import urlsplit
 
-from flask import Blueprint, current_app, jsonify, render_template
+from flask import Blueprint, current_app, jsonify, render_template, send_file
 from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
 
@@ -76,6 +78,36 @@ def project_page():
         milestones=milestones, required_projects=REQUIRED_PROJECTS,
         course_plan=_plan_payload(plan), course=curriculum(),
         tracks=TRACKS, selected_track=track, track_label=track_label(track),
+        track_months=track_for(track)['months'],
+    )
+
+
+@projects_bp.route('/projects/starter/<module_id>')
+@login_required
+def download_project_starter(module_id):
+    """Download a small, runnable Python/pytest starter for a module project."""
+    module = get_module(module_id)
+    if module is None:
+        return jsonify({'error': 'Unknown module'}), 404
+    slug = ''.join(char.lower() if char.isalnum() else '-' for char in module_id).strip('-')
+    root = f'ruach-module-{slug}'
+    readme = f'''# Module {module.get('number')}: {module['title']}\n\n## Project brief\n\n{module.get('project') or module.get('description')}\n\n## Start locally\n\n1. Install Python 3.11 or newer.\n2. Create and activate a virtual environment.\n3. Install the development dependency with `python -m pip install -e .`.\n4. Run `pytest`.\n5. Replace the starter function with your project, then add tests for each requirement.\n\nKeep credentials out of this repository. Add a README section describing setup, decisions, limitations, and evidence. The course submission still asks for a public repository, passing automated checks, and the project evaluation.\n'''
+    files = {
+        f'{root}/README.md': readme,
+        f'{root}/pyproject.toml': '[build-system]\nrequires = ["setuptools>=68"]\nbuild-backend = "setuptools.build_meta"\n\n[project]\nname = "ruach-module-starter"\nversion = "0.1.0"\nrequires-python = ">=3.11"\ndependencies = []\n\n[project.optional-dependencies]\ndev = ["pytest>=8"]\n\n[tool.pytest.ini_options]\npythonpath = ["src"]\n',
+        f'{root}/.gitignore': '.venv/\n__pycache__/\n.pytest_cache/\n*.py[cod]\n.env\n',
+        f'{root}/src/main.py': '"""Start here: replace this function with your module project."""\n\ndef main() -> str:\n    return "Implement the project described in README.md"\n\n\nif __name__ == "__main__":\n    print(main())\n',
+        f'{root}/tests/test_main.py': 'from main import main\n\n\ndef test_main_returns_a_string():\n    assert isinstance(main(), str)\n',
+        f'{root}/.github/workflows/tests.yml': 'name: tests\non:\n  push:\n  pull_request:\njobs:\n  pytest:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-python@v5\n        with:\n          python-version: "3.11"\n      - run: python -m pip install -e ".[dev]"\n      - run: pytest\n',
+    }
+    archive = BytesIO()
+    with ZipFile(archive, 'w', ZIP_DEFLATED) as bundle:
+        for path, content in files.items():
+            bundle.writestr(path, content)
+    archive.seek(0)
+    return send_file(
+        archive, mimetype='application/zip', as_attachment=True,
+        download_name=f'{root}.zip',
     )
 
 
@@ -99,7 +131,7 @@ def save_course_track():
     track = data.get('track')
     if not isinstance(track, str) or track not in TRACKS:
         return jsonify({
-            'error': 'Choose the standard or accelerated learning plan'
+            'error': 'Choose one of the available learning paces'
         }), 400
     record = _plan(create=True)
     record.track = track

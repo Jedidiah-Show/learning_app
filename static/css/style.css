@@ -476,6 +476,8 @@ html[data-theme="dark"] .lesson-lead-paragraph { background:#1E2F25; }
 html[data-theme="dark"] .lesson-lead-paragraph strong { color:#D7EFE0; }
 .lesson-plain-card { border-color:#CFE9D8;background:linear-gradient(135deg,#F4FBF6,#FFFFFF); }
 html[data-theme="dark"] .lesson-plain-card { border-color:#2A4A38;background:linear-gradient(135deg,#14261C,#17251D); }
+.lesson-first-win { border-left:4px solid #4F46E5;background:#EEF2FF; }
+html[data-theme="dark"] .lesson-first-win { border-left-color:#A5B4FC;background:#20243A; }
 .lesson-plain-intro { margin-top:10px;color:var(--app-text);font-size:16px;line-height:1.8; }
 .lesson-plain { margin-top:16px;padding:15px 17px;border:1px solid #D8ECDF;border-radius:14px;background:#F6FBF7; }
 html[data-theme="dark"] .lesson-plain { border-color:#2A4A38;background:#182A20; }

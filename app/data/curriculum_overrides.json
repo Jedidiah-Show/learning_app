@@ -15,7 +15,7 @@
     },
     "placement": {
       "title": "Experienced learner placement check",
-      "description": "Answer ten questions about the Module 0 and early Module 1 foundations. A score of 8 or more marks those lessons as placed out. Module projects and later lessons are still required.",
+      "description": "This is a short knowledge check for Python, Git, and HTTP basics, not a practical coding assessment. A score of 8 or more places out the listed foundation lessons; module projects still verify that you can apply the skills. If the questions feel unfamiliar, use the beginner route. Module projects and later lessons are still required.",
       "passing_score": 8,
       "skippable_lessons": [
         "0.01",

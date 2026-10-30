@@ -159,12 +159,15 @@ def _validate_tracks(errors):
         return
     accelerated = TRACKS.get('accelerated') or {}
     standard = TRACKS.get('standard') or {}
+    steady = TRACKS.get('steady') or {}
     if accelerated.get('months') != 5:
         errors.append('Accelerated track must contain five months')
     if standard.get('months') != 10:
         errors.append('Standard track must contain ten months')
+    if steady.get('months') != 12:
+        errors.append('Steady track must contain twelve months')
     module_ids = [module['id'] for module in _load('dynamoai_curriculum.json').get('modules', [])]
-    for name, track in (('accelerated', accelerated), ('standard', standard)):
+    for name, track in TRACKS.items():
         months = track.get('milestones') or []
         if len(months) != track.get('months'):
             errors.append(f'{name} track month count does not match its milestones')
@@ -229,6 +232,16 @@ def _validate_code(errors, lessons):
                     errors.append(
                         f"Lesson {lesson['id']} Python snippet does not parse: {error}"
                     )
+
+
+def _validate_beginner_support(errors, lessons, extras):
+    filler = 'slow down, name the idea, and connect it to one concrete action'
+    for lesson in lessons:
+        if not lesson.get('mental_model'):
+            errors.append(f"Lesson {lesson['id']} has no mental model for first-pass teaching")
+        extra = extras.get(lesson['id']) or {}
+        if filler in str(extra.get('intro') or '').lower():
+            errors.append(f"Lesson {lesson['id']} has generic plain-language filler")
 
 
 def _validate_exercises(errors, exercises):
@@ -329,6 +342,7 @@ def audit(strict_reviews=False, run_exercises=True):
     _validate_placement(errors, overrides.get('course') or {}, known_lessons)
     _validate_tracks(errors)
     _validate_code(errors, lessons)
+    _validate_beginner_support(errors, lessons, extras)
     queue = _validate_reviews(errors, overrides, strict_reviews)
     if run_exercises:
         _validate_exercises(errors, exercises)

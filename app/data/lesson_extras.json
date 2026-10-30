@@ -924,7 +924,7 @@
     "intro": "This lesson is about keeping AI instructions in named, versioned templates instead of pasting them into code. Beginners should care because this prevents silent breakage and makes changes easy to trace and undo."
   },
   "0.06": {
-    "intro": "The fastest way to stop feeling lost is to run a program you can see, change, and break. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "The fastest way to stop feeling lost is to run a program you can see, change, and break.",
     "concepts": [
       {
         "title": "A program is a list of instructions",
@@ -952,7 +952,7 @@
     ]
   },
   "0.07": {
-    "intro": "AI APIs return lists of choices and dictionaries of fields. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "AI APIs return lists of choices and dictionaries of fields.",
     "concepts": [
       {
         "title": "Lists keep order",
@@ -980,7 +980,7 @@
     ]
   },
   "0.08": {
-    "intro": "Functions are how you stop copying code and start making decisions testable. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "Functions are how you stop copying code and start making decisions testable.",
     "concepts": [
       {
         "title": "A function is a named contract",
@@ -1008,7 +1008,7 @@
     ]
   },
   "0.09": {
-    "intro": "Most AI work starts with data on disk and configuration from the environment. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "Most AI work starts with data on disk and configuration from the environment.",
     "concepts": [
       {
         "title": "Paths are objects, not strings",
@@ -1036,7 +1036,7 @@
     ]
   },
   "0.10": {
-    "intro": "AI projects change quickly: prompts, evaluation sets, and dependencies all move. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "AI projects change quickly: prompts, evaluation sets, and dependencies all move.",
     "concepts": [
       {
         "title": "A repository is a history of decisions",
@@ -1064,7 +1064,7 @@
     ]
   },
   "0.11": {
-    "intro": "Almost every AI feature is a network client. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "Almost every AI feature is a network client.",
     "concepts": [
       {
         "title": "A request is a typed message",
@@ -1092,7 +1092,7 @@
     ]
   },
   "3.16": {
-    "intro": "Open-weight models can reduce lock-in, keep data in your environment, and change the cost curve, but they add GPU capacity, evaluation, patching, and on-call work. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "Open-weight models can reduce lock-in, keep data in your environment, and change the cost curve, but they add GPU capacity, evaluation, patching, and on-call work.",
     "concepts": [
       {
         "title": "Weights, licences, and control",
@@ -1120,7 +1120,7 @@
     ]
   },
   "3.17": {
-    "intro": "Reasoning models trade latency and cost for better performance on hard tasks. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "Reasoning models trade latency and cost for better performance on hard tasks.",
     "concepts": [
       {
         "title": "What inference-time compute buys",
@@ -1148,7 +1148,7 @@
     ]
   },
   "3.18": {
-    "intro": "Most quality problems are data, retrieval, or prompt problems. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "Most quality problems are data, retrieval, or prompt problems.",
     "concepts": [
       {
         "title": "Start with the cheapest intervention",
@@ -1176,7 +1176,7 @@
     ]
   },
   "6.18": {
-    "intro": "Computer-use agents can click, type, and navigate real interfaces, which makes them powerful and risky. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "Computer-use agents can click, type, and navigate real interfaces, which makes them powerful and risky.",
     "concepts": [
       {
         "title": "Perception and action loop",
@@ -1204,7 +1204,7 @@
     ]
   },
   "7.18": {
-    "intro": "A2A protocols let agents discover and delegate to each other, but interoperability does not remove the need for contracts. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "A2A protocols let agents discover and delegate to each other, but interoperability does not remove the need for contracts.",
     "concepts": [
       {
         "title": "Agent cards and capabilities",
@@ -1232,7 +1232,7 @@
     ]
   },
   "0.05": {
-    "intro": "A broad curriculum fails when it becomes an unordered playlist. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "A broad curriculum fails when it becomes an unordered playlist.",
     "concepts": [
       {
         "title": "The dependency spine Modules 1 and 2 build Python and backend foundations, becau",
@@ -1243,7 +1243,7 @@
     "answers": []
   },
   "1.09": {
-    "intro": "Every model API, tool call, config file, and evaluation report speaks JSON, but Python's json module makes losses easy: tuples become arrays, datetimes fail, NaN is written as invalid JSON, and floats lose decimal digits. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "Every model API, tool call, config file, and evaluation report speaks JSON, but Python's json module makes losses easy: tuples become arrays, datetimes fail, NaN is written as invalid JSON, and floats lose decimal digits.",
     "concepts": [
       {
         "title": "A narrower type system JSON has objects, arrays, strings, numbers, booleans, and",
@@ -1254,7 +1254,7 @@
     "answers": []
   },
   "1.11": {
-    "intro": "The same application must run in development, staging, and production without code edits, and the differences are mostly endpoints and credentials. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "The same application must run in development, staging, and production without code edits, and the differences are mostly endpoints and credentials.",
     "concepts": [
       {
         "title": "Configuration lives outside the code The same image should run in dev, staging",
@@ -1265,7 +1265,7 @@
     "answers": []
   },
   "1.12": {
-    "intro": "Python installs packages into whichever interpreter is active, so a global upgrade for one tutorial can break three services that expected an older Pydantic. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "Python installs packages into whichever interpreter is active, so a global upgrade for one tutorial can break three services that expected an older Pydantic.",
     "concepts": [
       {
         "title": "Isolation is a directory on sys",
@@ -1276,7 +1276,7 @@
     "answers": []
   },
   "1.13": {
-    "intro": "An AI service inherits hundreds of transitive packages from an SDK, an HTTP client, and a test stack. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "An AI service inherits hundreds of transitive packages from an SDK, an HTTP client, and a test stack.",
     "concepts": [
       {
         "title": "Direct, transitive, and locked A direct dependency is a package your code import",
@@ -1287,7 +1287,7 @@
     "answers": []
   },
   "1.14": {
-    "intro": "Model calls spend almost all their time waiting on a network, so a service that handles them one at a time wastes capacity. In plain words: slow down, name the idea, and connect it to one concrete action in the lesson project.",
+    "intro": "Model calls spend almost all their time waiting on a network, so a service that handles them one at a time wastes capacity.",
     "concepts": [
       {
         "title": "One thread, many waiting requests The event loop is a single-threaded scheduler",

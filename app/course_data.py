@@ -1,19 +1,41 @@
-"""Balanced learning-plan tracks and selectable AI engineering capstones.
+"""Learning-plan pacing tracks and selectable AI engineering capstones.
 
-The accelerated track finishes in five months and assumes roughly full-time
-study. The standard track is a ten-month plan inside the recommended 9–12
-month range. Both cover every module and every module project; only the
-milestone grouping changes.
+Tracks describe available study time; beginner/experienced routes describe
+prior knowledge. All tracks cover every lesson and module project.
 """
 
 TRACKS = {
+    'steady': {
+        'id': 'steady',
+        'label': '12-month steady',
+        'range': '12 months',
+        'description': (
+            'A gentler plan at roughly 10 hours per week. Recommended when you '
+            'are new to programming or need more room for practice and review.'
+        ),
+        'months': 12,
+        'milestones': [
+            {'number': 1, 'title': 'Orientation and AI foundations', 'summary': 'Understand the work, set up your workspace, and learn the basic vocabulary.', 'modules': ['00'], 'concepts': ['What AI engineers build', 'Tools and learning habits'], 'weeks': ['Set up your workspace and run a first command.', 'Learn the system map and key vocabulary.', 'Sketch a small AI product.', 'Review and explain the ideas in your own words.'], 'milestone': 'A working workspace and a one-page AI system sketch.'},
+            {'number': 2, 'title': 'Python foundations', 'summary': 'Build confidence with Python data, functions, files, and debugging.', 'modules': ['01'], 'concepts': ['Core Python', 'Files and data', 'Debugging and tests'], 'weeks': ['Practice values and collections.', 'Write functions and read files.', 'Debug small failures and add tests.', 'Complete the Python project.'], 'milestone': 'A tested Python utility in a clean repository.'},
+            {'number': 3, 'title': 'Backend engineering', 'summary': 'Build a small API and learn how applications store and validate data.', 'modules': ['02'], 'concepts': ['HTTP and JSON', 'Validation', 'Persistence'], 'weeks': ['Trace a browser request.', 'Build endpoints and validate input.', 'Store data and handle errors.', 'Complete the backend project.'], 'milestone': 'A tested API with persistent data.'},
+            {'number': 4, 'title': 'LLM fundamentals', 'summary': 'Learn model behavior, choices, context, and evaluation.', 'modules': ['03'], 'concepts': ['Model behavior', 'Tokens and context', 'Evaluation'], 'weeks': ['Call a model through an API.', 'Compare output quality and cost.', 'Practice structured results.', 'Complete the LLM project.'], 'milestone': 'A model-backed tool with measured behavior.'},
+            {'number': 5, 'title': 'LLM application engineering', 'summary': 'Build prompts and application logic that can be tested.', 'modules': ['04'], 'concepts': ['Prompt design', 'Validation', 'Regression checks'], 'weeks': ['Define a task and failure cases.', 'Create examples for evaluation.', 'Build a validated feature.', 'Add regression checks.'], 'milestone': 'An AI feature with repeatable quality checks.'},
+            {'number': 6, 'title': 'Retrieval and RAG', 'summary': 'Find evidence in documents and use it to ground answers.', 'modules': ['05'], 'concepts': ['Embeddings', 'Search', 'Citations'], 'weeks': ['Prepare a small document set.', 'Index and retrieve relevant passages.', 'Generate cited answers.', 'Measure retrieval quality.'], 'milestone': 'A RAG pipeline with citations and evaluation.'},
+            {'number': 7, 'title': 'AI agents', 'summary': 'Give a model tools within explicit limits and compare it with a workflow.', 'modules': ['06'], 'concepts': ['Tool calling', 'Control flow', 'Approvals'], 'weeks': ['Define a narrow tool.', 'Build a deterministic workflow.', 'Compare it with a bounded agent.', 'Add approval and failure handling.'], 'milestone': 'A bounded workflow or agent with tests.'},
+            {'number': 8, 'title': 'Orchestration', 'summary': 'Learn when multiple agents or orchestration add value.', 'modules': ['07'], 'concepts': ['Coordination', 'State', 'Evaluation'], 'weeks': ['Map the task and roles.', 'Build the simplest working flow.', 'Measure coordination overhead.', 'Complete the module project.'], 'milestone': 'An evaluated orchestration design.'},
+            {'number': 9, 'title': 'MCP and tool integration', 'summary': 'Connect tools using explicit contracts and permissions.', 'modules': ['08'], 'concepts': ['MCP', 'Permissions', 'Recovery'], 'weeks': ['Explore client and server roles.', 'Connect a scoped tool.', 'Test permissions and failures.', 'Document the integration.'], 'milestone': 'A tested tool integration with scoped permissions.'},
+            {'number': 10, 'title': 'Production AI engineering', 'summary': 'Make AI services observable, cost-aware, and supportable.', 'modules': ['09'], 'concepts': ['Tracing', 'Budgets', 'Privacy'], 'weeks': ['Add useful logs and traces.', 'Measure latency and cost.', 'Add safeguards and a runbook.', 'Complete the production project.'], 'milestone': 'An observable service with an operations runbook.'},
+            {'number': 11, 'title': 'Deployment and system design', 'summary': 'Package and deploy a service, then explain the design choices.', 'modules': ['10', '11'], 'concepts': ['Containers', 'Releases', 'Architecture trade-offs'], 'weeks': ['Package the service.', 'Add health checks and configuration.', 'Write design and failure notes.', 'Complete both module projects.'], 'milestone': 'A deployable service and a reviewed design.'},
+            {'number': 12, 'title': 'Capstone and portfolio', 'summary': 'Integrate your skills into one defensible, production-minded project.', 'modules': ['12'], 'concepts': ['Scope', 'Evaluation', 'Operations', 'Presentation'], 'weeks': ['Choose a capstone and define success.', 'Build the end-to-end system.', 'Evaluate safety, quality, and operations.', 'Prepare evidence and present your decisions.'], 'milestone': 'A capstone with passing checks and evaluation evidence.'},
+        ],
+    },
     'standard': {
         'id': 'standard',
         'label': '10-month standard',
         'range': '9–12 months',
         'description': (
-            'A sustainable plan at roughly 12 hours per week. Recommended for '
-            'learners who are working or studying alongside the course.'
+            'A balanced plan at roughly 12 hours per week for learners who '
+            'are working or studying alongside the course.'
         ),
         'months': 10,
         'milestones': [

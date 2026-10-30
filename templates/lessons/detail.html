@@ -32,6 +32,14 @@
       <p class="lesson-plain-intro">{{ lesson.extras.intro }}</p>
     </section>
     {% endif %}
+    {% if lesson.id == '0.01' %}
+    <section class="lesson-card lesson-first-win">
+      <p class="lesson-eyebrow">Get a quick win</p>
+      <p class="lesson-text">Before the course overview, check that Python can run a tiny program. Open a terminal and enter:</p>
+      <pre class="lesson-code"><code>python -c "print('Hello, AI engineering!')"</code></pre>
+      <p class="lesson-text">If your computer does not recognize <code>python</code>, try <code>python3</code> or <code>py</code>. Lesson 0.06 will explain how the program works.</p>
+    </section>
+    {% endif %}
     <section id="overview" class="lesson-card lesson-overview">
       <div class="lesson-overview-grid">
         <div>
@@ -198,7 +206,7 @@
     {% endif %}
 
     {% if lesson.checklist %}
-    <section id="checklist" class="lesson-card lesson-deep-dive">
+    <section id="checklist" class="lesson-card">
       <p class="lesson-eyebrow">Before you move on</p>
       <h2 class="lesson-card-title">Checkpoint checklist</h2>
       <ul class="lesson-list lesson-list-check">{% for item in lesson.checklist %}<li>{{ item }}</li>{% endfor %}</ul>
@@ -237,7 +245,7 @@
       <p class="lesson-text lesson-muted">Tick each task as you finish it. Your ticks are saved on this device.</p>
       <ul class="lesson-tasks" data-lesson-tasks data-lesson-id="{{ lesson.id }}">
         {% for item in lesson.tasks %}
-        <li><label><input type="checkbox" data-task-index="{{ loop.index0 }}"><span>{{ item }}</span></label></li>
+        <li class="{% if loop.index > 1 %}lesson-deep-dive{% endif %}"><label><input type="checkbox" data-task-index="{{ loop.index0 }}"><span>{% if loop.index == 1 %}<strong>Start here:</strong> {% endif %}{{ item }}</span></label></li>
         {% endfor %}
       </ul>
     </section>
@@ -314,7 +322,7 @@
         <input type="checkbox" data-beginner-toggle checked>
         <span>
           <strong>Beginner mode</strong>
-          <small>Hides optional deep-dive sections</small>
+          <small>Keeps optional material tucked away; your checkpoint stays visible</small>
         </span>
       </label>
 

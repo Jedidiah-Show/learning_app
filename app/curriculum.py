@@ -205,9 +205,18 @@ def _lesson_extras():
 def _attach_extras(lesson, extras):
     entry = extras.get(lesson.get('id'))
     if not isinstance(entry, dict):
-        lesson['extras'] = None
-        lesson['question_answers'] = []
-        return
+        entry = {}
+    intro = entry.get('intro')
+    if not isinstance(intro, str) or not intro.strip():
+        # Every lesson has a curated subtitle. Use it as a specific first-pass
+        # orientation when no separately authored plain-language layer exists.
+        intro = lesson.get('subtitle') or lesson.get('goal') or ''
+    lesson['extras'] = {
+        'intro': intro,
+        'concepts': entry.get('concepts') if isinstance(
+            entry.get('concepts'), list
+        ) else [],
+    }
     answers = entry.get('answers')
     answers = answers if isinstance(answers, list) else []
     questions = lesson.get('questions') or []
@@ -217,12 +226,6 @@ def _attach_extras(lesson, extras):
         str(answers[index]) if index < len(answers) and answers[index] else ''
         for index in range(len(questions))
     ]
-    lesson['extras'] = {
-        'intro': entry.get('intro') or '',
-        'concepts': entry.get('concepts') if isinstance(
-            entry.get('concepts'), list
-        ) else [],
-    }
 
 
 @lru_cache(maxsize=1)

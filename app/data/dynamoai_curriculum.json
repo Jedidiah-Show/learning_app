@@ -42,8 +42,8 @@
               "content": "Think of building with AI like building a house. A foundation model (like GPT, Claude, or LLaMA) is like a very talented builder - incredibly skilled at many things, but not reliable on its own for your specific needs. AI engineering is about everything around that builder: the blueprint (your app design), the plumbing and electricity (APIs and connections), the safety checks (testing and guardrails), the permits and maintenance (deployment and monitoring), and making sure it all works together reliably for real users. You're not just asking an AI to write something - you're building a complete system that uses AI to solve real problems."
             },
             {
-              "title": "This Course Builds ONE Project, Step by Step",
-              "content": "Instead of jumping between random tutorials, you'll build the same project throughout all 13 modules. You start with the basics (Python, project setup), add a web backend, connect to AI models, add search and memory (RAG), give it tools to take actions (agents), add safety checks and testing, and finally deploy it for the world to use. Each new lesson adds one more piece to this same project. By the end, you'll have built a reviewable AI application whose optional components fit the product brief - not 13 separate toys."
+              "title": "How the Modules Build Toward Your Capstone",
+              "content": "You will complete a focused project in each module, using each one to practice a new skill. Later modules connect those skills in the required capstone you choose. This keeps early projects small while giving you evidence of progress across the course."
             },
             {
               "title": "How to Learn: Build > Watch",
@@ -20703,8 +20703,8 @@
           "content": "Think of building with AI like building a house. A foundation model (like GPT, Claude, or LLaMA) is like a very talented builder - incredibly skilled at many things, but not reliable on its own for your specific needs. AI engineering is about everything around that builder: the blueprint (your app design), the plumbing and electricity (APIs and connections), the safety checks (testing and guardrails), the permits and maintenance (deployment and monitoring), and making sure it all works together reliably for real users. You're not just asking an AI to write something - you're building a complete system that uses AI to solve real problems."
         },
         {
-          "title": "This Course Builds ONE Project, Step by Step",
-          "content": "Instead of jumping between random tutorials, you'll build the same project throughout all 13 modules. You start with the basics (Python, project setup), add a web backend, connect to AI models, add search and memory (RAG), give it tools to take actions (agents), add safety checks and testing, and finally deploy it for the world to use. Each new lesson adds one more piece to this same project. By the end, you'll have built a reviewable AI application whose optional components fit the product brief - not 13 separate toys."
+          "title": "How the Modules Build Toward Your Capstone",
+          "content": "You will complete a focused project in each module, using each one to practice a new skill. Later modules connect those skills in the required capstone you choose. This keeps early projects small while giving you evidence of progress across the course."
         },
         {
           "title": "How to Learn: Build > Watch",
