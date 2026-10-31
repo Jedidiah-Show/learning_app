@@ -1,5 +1,6 @@
 """Administrator portal access control, account management, and audit tests."""
 
+import json
 import os
 import tempfile
 import time
@@ -138,6 +139,40 @@ class AdminPortalTests(unittest.TestCase):
         body = page.get_data(as_text=True)
         self.assertIn('ML Engineering specialization', body)
         self.assertIn('hold the specialization credential', body)
+
+    def test_admin_analytics_reports_ml_pilot_progression(self):
+        from app.ml_pathway import PATHWAY_ID
+        from app.models import (
+            MLSpecializationLessonCompletion, MLSpecializationProject,
+        )
+        enrolled = self._create_account('analytics-pilot')
+        evaluation = json.dumps({
+            'score': 82,
+            'criterion_feedback': [
+                {'criterion': 'Audit boundary kept fixed', 'score': 90},
+                {'criterion': 'Reflection grounded in evidence', 'score': 74},
+            ],
+        })
+        with self.app.app_context():
+            db.session.add(MLSpecializationLessonCompletion(
+                user_id=enrolled, pathway_id=PATHWAY_ID,
+                lesson_id='mle.data.01',
+            ))
+            db.session.add(MLSpecializationProject(
+                user_id=enrolled, pathway_id=PATHWAY_ID,
+                module_id='mle.data-problem-formulation',
+                submission=json.dumps({'repository_url': 'https://example.test/repo'}),
+                evaluation=evaluation, completed=True,
+            ))
+            db.session.commit()
+        self._login_admin()
+        body = self.client.get('/admin/analytics').get_data(as_text=True)
+        self.assertIn('ML Engineering pilot (Modules 1–2)', body)
+        self.assertIn('Frame the prediction problem', body)
+        self.assertIn('1 enrolled learner', body)
+        self.assertIn('Passed', body)
+        self.assertIn('82', body)
+        self.assertIn('Audit boundary kept fixed', body)
 
     def test_learner_cannot_sign_in_to_the_admin_portal(self):
         self._login_learner()

@@ -72,7 +72,12 @@ Common non-pass outcomes to recognize:
 ## 4. Evidence to collect (weekly, and at pilot close)
 
 All of this is already persisted in the `ml_specialization_*` tables and the
-shared `course_project` table; run against the production (Neon) database:
+shared `course_project` table. The `/admin/analytics` page now renders the
+pilot section (enrolments, lesson funnel, attempts with scores, rubric
+criterion averages, and estimated time-to-project), so weekly collection is
+primarily a screenshot/export of that page. The underlying SQL is kept below
+for direct checks against the production (Neon) database when the page and
+the tables seem to disagree:
 
 - Lesson-completion funnel (expect monotone drop-off per position):
 
