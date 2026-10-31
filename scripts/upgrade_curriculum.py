@@ -900,9 +900,10 @@ def main():
         previous_module = module
 
     # The course metadata is generated from the final list.
-    base['course']['total_lessons'] = len(base['lessons'])
+    lesson_count = len(base['lessons'])
+    base['course']['total_lessons'] = lesson_count
     base['course']['description'] = (
-        'A 13-module, 212-lesson AI engineering course covering Python, backend '
+        f'A 13-module, {lesson_count}-lesson AI engineering course covering Python, backend '
         'systems, modern LLM and open-weight models, multimodal inputs, RAG, '
         'agents, agent-to-agent collaboration, computer use, MCP, security, '
         'evaluation, governance, and deployment. Lessons and framework examples '
