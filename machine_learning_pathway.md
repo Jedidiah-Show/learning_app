@@ -129,18 +129,38 @@ owner's Stage B action.
 
 **Deployment record (2026-10-31):** The migration workflow could not run as written: the production startup guard grew a second required variable (`TOKEN_ENCRYPTION_KEY`, app/__init__.py:220) after the workflow was authored, so `flask --app wsgi db current` failed at app import. Fixed with a placeholder env var (commit `72cacd2`; Alembic never touches the Fernet key, which is used per-request in `app/encrypted_types.py`). The guarded workflow then applied `b3f1c7d94a20 → d7e4b1a9c260` to the production Neon database; `/readyz` confirms `migration_current: true` with no missing tables. Note: the `migrate/render` → `main` merge deploys to the live Vercel target (`https://learning-app-psi-black.vercel.app`); the Render service from `MIGRATION.md` was not reachable for verification (`learning-app.onrender.com` completes TLS but returns no response) and its cutover remains pending owner review.
 
+**Stage C + Stage B deployment record (2026-10-31):** PR #4 was merged to
+`main` by rebase after all CI jobs and the Vercel preview passed (branch
+commits `28c8c16`/`95e49d8` landed as `main` commits `668da37`/`f020d94`).
+Both pending migrations were applied to the production Neon database
+**before** the code merged, so deployed code never references missing
+columns. A pre-migration backup was taken first per `MIGRATION.md` §2 Option B
+(`pg_dump --format=custom`, 417 archive entries, sha256
+`3fa9966d7ad14fa43cf71616b7cc65539853b389b2b479444f19b863b7a05add`), stored
+outside the repository. The migrations were then applied from the local
+machine per `MIGRATION.md` §4.1 (the direct unpooled URL was available, so the
+guarded `db-migrate.yml` workflow and its `BACKUP_TAKEN` confirmation were not
+needed): `d7e4b1a9c260 → a5f3b2c8d417 → d6b4c1e93a75`, with `db current` ==
+`db heads` == `d6b4c1e93a75`. Post-checks: `alembic_version` is
+`d6b4c1e93a75`, row counts are unchanged (4 users, 23 lesson completions, 2
+course projects, 0 pilot rows), and `review_item.pathway_id`,
+`idx_review_user_pathway`, `failure_stage`, and `failure_detail` all exist.
+CI on `main` (run `41187617414`, Python 3.12/3.13 + browser IDE) passed with
+the compiled assets byte-identical. Production `/healthz` and `/readyz` on
+`https://learning-app-psi-black.vercel.app` both report `commit: f020d94`
+with `migration_current: true` and no missing tables or columns.
+
 **Dependency note:** Starter kits pin CPU scientific dependencies. The Module 2 versions were checked against [NumPy](https://pypi.org/project/numpy/2.4.6/), [pandas](https://pypi.org/project/pandas/3.1.0/), [scikit-learn](https://pypi.org/project/scikit-learn/1.9.1/), and [SciPy](https://pypi.org/project/scipy/1.17.1/) PyPI metadata on 2026-10-30; these versions support Python 3.11. Newer SciPy 1.18.1 requires Python 3.12, so the Python 3.11 starter pins SciPy 1.17.1.
 
 The Module 4 service starter pins [FastAPI](https://pypi.org/project/fastapi/0.162.0/), [Pydantic](https://pypi.org/project/pydantic/2.14.2/), and [Uvicorn](https://pypi.org/project/uvicorn/0.54.0/), all selected from PyPI release metadata for Python 3.11.
 
-**Next implementation step (updated 2026-10-31):** Stages A and C are
-implemented and verified locally; Stage B's server-side instrumentation is
-in place. The build-side work is finished — what remains for Stage B is the
-pilot itself: apply both pending migrations (`a5f3b2c8d417`, then
-`d6b4c1e93a75`) through the guarded migration workflow, enroll 3–5 learners
-per `stage_b_pilot_runbook.md`, and revise lesson text, thresholds, and
-starter hints from the collected evidence. Stage D stays gated on that
-evidence.
+**Next implementation step (updated 2026-10-31):** Stages A, C, and B's
+server-side instrumentation are implemented, verified, and deployed: both
+pathway migrations (`a5f3b2c8d417`, then `d6b4c1e93a75`) are applied to
+production and `main` runs at `f020d94`. What remains for Stage B is the
+pilot itself: enroll 3–5 learners per `stage_b_pilot_runbook.md` and revise
+lesson text, thresholds, and starter hints from the collected evidence. Stage
+D stays gated on that evidence.
 
 ## Two-pathway goal (recorded 2026-10-31)
 
