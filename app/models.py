@@ -503,6 +503,12 @@ class MLSpecializationProject(db.Model):
     submission = db.Column(db.Text)
     evaluation = db.Column(db.Text)
     completed = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    # Stage B instrumentation: why the latest submission did not pass.
+    # Server-owned taxonomy (see app.routes.ml_specialization), NULL when the
+    # submission passed. Overwritten on each attempt, so the weekly snapshot
+    # caveat in the pilot runbook applies to it too.
+    failure_stage = db.Column(db.String(32))
+    failure_detail = db.Column(db.String(300))
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = db.Column(
         db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
@@ -708,11 +714,15 @@ class ReviewItem(db.Model):
     interval_days = db.Column(db.Integer, nullable=False, default=1)
     repetitions = db.Column(db.Integer, nullable=False, default=0)
     active = db.Column(db.Boolean, nullable=False, default=True)
+    # Nullable on purpose: shared-course review rows predate pathway routing
+    # and stay NULL. Only namespaced pathway items carry a value.
+    pathway_id = db.Column(db.String(80))
     __table_args__ = (
         db.UniqueConstraint(
             'user_id', 'quiz_id', 'question_id', name='unique_review_question'
         ),
         db.Index('idx_review_due', 'user_id', 'active', 'due_at'),
+        db.Index('idx_review_user_pathway', 'user_id', 'pathway_id'),
     )
 
     def get_options(self):
