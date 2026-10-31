@@ -381,7 +381,8 @@ the remaining Stage D items do).**
   card adds a shared-foundation next-step CTA, and an open pathway takes over
   the hero CTA, milestone line, and progress bar. `ai`, `undecided`, and
   unset destinations keep the current order, the curriculum grid is never
-  reordered or split, and a failing `ml_overview` still hides only that
+  reordered or split **(that held for Stage D only — Stage E below scopes the
+  grid by destination)**, and a failing `ml_overview` still hides only that
   section.
 - Introduce a course identifier only where needed (review items, future
   leaderboards) rather than refactoring `app/curriculum.py` into multi-course
@@ -391,6 +392,60 @@ the remaining Stage D items do).**
   AI-course *projects* into a shared-foundation *placement* check, so an
   ML-first learner can prove Python/backend readiness without the LLM-app
   project work.
+
+**Stage E — dynamic shell for the chosen pathway, plus the dual-discipline
+rename. Complete 2026-10-31.** Supersedes Stage D's "the curriculum grid is
+never reordered or split": the owner's stated goal is that the app must stop
+showing AI engineering modules to an ML-pathway learner.
+- ✅ The dashboard grid is scoped by `pathway_destination`.
+  `pathway_dashboard_progress` (app/learning.py) returns, for `ml`, the shared
+  foundation modules 00–02 plus the four `mle.*` modules — **7 modules · 64
+  lessons** — and drops AI-only modules 03–12 from the grid, the header
+  totals, and every next-step pointer. Foundation cards reuse the AI course's
+  own progress entries (only the badge differs), so shared counts can never
+  drift from what the AI course reports; ML cards come from the new
+  `ml_module_progress` (app/ml_pathway.py), which the specialization page now
+  also calls, so the dashboard and the pathway page report identical
+  per-module numbers. `_next_course_action` gained a `modules=` scope, so an
+  ML learner's "Continue your course" card resolves inside modules 00–02 only:
+  a learner who finished the foundation is never pointed at a module 03+ lesson
+  (the pathway card carries that step instead, and the derivation now happens
+  *after* the swap). `ai`, `undecided`, and unset destinations keep all 13
+  modules and the original 13 · 213 totals.
+- ✅ Grid cards are badged *Shared foundation · Module 0–2* versus *ML pathway ·
+  Module 1–4*: the foundation numbers 0–2 and the pathway's 1–4 would otherwise
+  both render as "Module 1"/"Module 2" in the same grid.
+- ✅ The nav shell is dynamic. `current_pathway_destination` (app/__init__.py)
+  feeds `pathway_destination` to every template through the existing context
+  processor, cached on `g` and seeded by the dashboard so the plan is read once
+  per request, and failure-tolerant so a lookup error can never blank the
+  shell. The learner's own pathway sits directly under Dashboard with the
+  other pathway below it as the alternate — ML learners see ML Pathway →
+  Course Lessons, AI/undecided see Course Lessons → ML Pathway, both staying
+  reachable either way — and the brand subtitle names the choice (*ML
+  Engineering*, *AI Engineering*, or *AI & ML Engineering* when undecided).
+- ✅ Renamed **RUACH AI Engineering → RUACH AI & ML Engineering** in all 29
+  files: page titles, footer, meta description, PWA manifest, README, the
+  Gemini tutor prompts, calendar event descriptions, `curriculum.py`'s title
+  override, `OPENROUTER_APP_NAME`, and `_normalize_brand_text`'s legacy map
+  (which now folds the old long name into the new one, so saved preferences
+  still normalize and are not double-substituted). The compact `RUACH`
+  wordmark and the manifest `short_name` are unchanged.
+- ✅ Tests: `tests/test_dynamic_shell.py` (9) covers the scoped grid, the
+  badges, unchanged `ai`/unset layouts, the foundation-complete learner never
+  being pointed at an AI module, nav order and subtitle per destination,
+  alternate-pathway reachability, and the rename (all 9 pass). The full suite
+  is green: **224 passed** (an earlier run hit one transient
+  `sqlite3.OperationalError: unable to open database file` in
+  `test_bundled_course_has_its_declared_modules_and_lessons`; it passes in
+  isolation and did not recur in the clean re-run).
+  `npm run build:css` byte-identical (only pre-existing classes were reused).
+  No migration is needed, so a deploy should leave `/readyz` reporting the
+  unchanged revision `e7c4a91b3f52`.
+- Still showing AI content to ML learners, deliberately out of scope here:
+  `/lessons`, `/progress`, and `/projects` remain the full AI course. The nav
+  sends ML learners to the pathway page first, with `/lessons` (which holds
+  their shared foundation) as the alternate.
 
 **Explicitly deferred:** PyTorch/GPU module (doc's advanced extension), a
 standalone ML course with its own foundation, and leaderboard/credentials

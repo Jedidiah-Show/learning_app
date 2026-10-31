@@ -178,8 +178,9 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertNotIn(b'RuachAI', response.data)
-        self.assertIn(b'RUACH AI Engineering study session', response.data)
-        self.assertIn(b'[RUACH AI Engineering]', response.data)
+        # The brand sits inside HTML attribute values, so '&' renders escaped.
+        self.assertIn(b'RUACH AI &amp; ML Engineering study session', response.data)
+        self.assertIn(b'[RUACH AI &amp; ML Engineering]', response.data)
 
     def test_scheduling_syncs_immediately_when_calendar_is_connected(self):
         class Plan:

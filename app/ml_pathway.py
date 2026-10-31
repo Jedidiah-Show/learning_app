@@ -288,6 +288,41 @@ def ml_pathway_pacing(user_id, weekly_hours=None):
     }
 
 
+def ml_module_progress(user_id, completed=None, projects=None):
+    """Per-module lesson and project progress for the ML pathway.
+
+    Shared by the specialization page and the dashboard's curriculum grid so
+    both always report the same numbers for the same module. Callers that
+    already hold the completion rows may pass them to avoid a second query.
+    """
+    from app.models import MLSpecializationLessonCompletion, MLSpecializationProject
+
+    if completed is None:
+        completed = {
+            row.lesson_id for row in MLSpecializationLessonCompletion.query.filter_by(
+                user_id=user_id, pathway_id=PATHWAY_ID
+            ).all()
+        }
+    if projects is None:
+        projects = {
+            row.module_id: row for row in MLSpecializationProject.query.filter_by(
+                user_id=user_id, pathway_id=PATHWAY_ID
+            ).all()
+        }
+    module_progress = {}
+    for module in machine_learning_pathway()['modules']:
+        module_lessons = [lesson['id'] for lesson in module['lessons']]
+        project = projects.get(module['id'])
+        module_progress[module['id']] = {
+            'completed_lessons': sum(
+                lesson_id in completed for lesson_id in module_lessons
+            ),
+            'total_lessons': len(module_lessons),
+            'project_completed': bool(project and project.completed),
+        }
+    return module_progress
+
+
 def ml_pathway_overview(user_id):
     """Summarise one learner's specialization standing for cross-page cards.
 

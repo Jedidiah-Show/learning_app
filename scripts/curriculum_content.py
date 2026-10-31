@@ -1,4 +1,4 @@
-"""Curated additions for the upgraded RUACH AI Engineering curriculum.
+"""Curated additions for the upgraded RUACH AI & ML Engineering curriculum.
 
 The original PDF importer only knows the source PDF.  This module contains the
 editorial additions that make the course beginner-accessible and current:

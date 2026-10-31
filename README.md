@@ -1,10 +1,10 @@
-# RUACH AI Engineering
+# RUACH AI & ML Engineering
 
 > **Spirit · Connection · Growth**
 >
 > *Rooted in faith. Built for tomorrow.*
 
-A Flask learning app for the RUACH engineering course: 13 modules and 212 bundled lessons mapped to selectable AI engineering plans. Learners can choose a 12-month steady, 10-month standard, or five-month accelerated pace; experience level is guided separately through beginner and experienced routes. The curriculum covers multimodal model inputs, RAG, agent workflows, versioned MCP, security, evaluation, data governance, and deployment. Learners choose one of four project briefs and can justify omitting optional architecture components; the plan is a guide, not a completion guarantee. The app also tracks a separate portfolio project, module work, quizzes, progress, study schedules, and optional Google Calendar sync. Historical subject-based progress and weekly projects remain stored as legacy records and are not mixed into the new course.
+A Flask learning app for the RUACH engineering course: 13 modules and 213 bundled lessons mapped to selectable AI engineering plans. Learners can choose a 12-month steady, 10-month standard, or five-month accelerated pace; experience level is guided separately through beginner and experienced routes. The curriculum covers multimodal model inputs, RAG, agent workflows, versioned MCP, security, evaluation, data governance, and deployment. Learners choose one of four project briefs and can justify omitting optional architecture components; the plan is a guide, not a completion guarantee. The app also tracks a separate portfolio project, module work, quizzes, progress, study schedules, and optional Google Calendar sync. Historical subject-based progress and weekly projects remain stored as legacy records and are not mixed into the new course.
 
 ## Run locally
 
@@ -159,7 +159,7 @@ The service worker caches static same-origin assets only. Authenticated HTML and
 
 For a release content-data check, run `.venv/bin/python scripts/audit_curriculum.py`. It checks the course manifest, module and lesson references, resources and plain-language extras, modern topic coverage, placement rules, selectable learning plans, runnable exercises, Python snippet parsing, artifact scanning, module readiness/rubric metadata, and review dates and primary sources for version-sensitive lessons. Practice TODO markers are intentional learner starter code; they are validated by the per-exercise checks rather than treated as missing implementation.
 
-The catalog currently covers 37 of 212 lessons. Audit it at any time:
+The catalog currently covers 37 of 213 lessons. Audit it at any time:
 
 ```bash
 .venv/bin/python scripts/validate_videos.py

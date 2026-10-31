@@ -1,4 +1,7 @@
-from flask import Flask, flash, jsonify, request, redirect, render_template, url_for, session
+from flask import (
+    Flask, current_app, flash, g, jsonify, request, redirect, render_template,
+    url_for, session,
+)
 from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
@@ -185,6 +188,28 @@ def _normalize_database_url(database_url, production):
     return database_url
 
 
+def current_pathway_destination():
+    """Confirmed pathway destination for the signed-in learner.
+
+    The nav shell renders on every page while the destination changes rarely,
+    so the value is cached on ``g``; the dashboard seeds it because it already
+    holds the plan.  Failure-tolerant by design: a missing plan or a database
+    hiccup must never take the shell down with it.
+    """
+    if hasattr(g, 'pathway_destination'):
+        return g.pathway_destination
+    destination = None
+    if current_user.is_authenticated:
+        try:
+            from app.models import CoursePlan
+            plan = CoursePlan.query.filter_by(user_id=current_user.id).first()
+            destination = plan.pathway_destination if plan else None
+        except Exception:
+            current_app.logger.exception('Could not read pathway destination')
+    g.pathway_destination = destination
+    return destination
+
+
 def create_app(config_override=None):
     flask_options = {
         'template_folder': '../templates',
@@ -313,7 +338,7 @@ def create_app(config_override=None):
         or 'openrouter/auto'
     )
     app.config['OPENROUTER_APP_NAME'] = os.environ.get(
-        'OPENROUTER_APP_NAME', 'RUACH AI Engineering'
+        'OPENROUTER_APP_NAME', 'RUACH AI & ML Engineering'
     )
     app.config['OPENROUTER_SITE_URL'] = os.environ.get('OPENROUTER_SITE_URL')
     app.config['STORAGE_BACKEND'] = (
@@ -641,6 +666,9 @@ def create_app(config_override=None):
         return {
             'config': app.config.get('APP_CONFIG', {}),
             'csrf_token': token,
+            # Every template can now branch on the learner's pathway, which is
+            # what makes the nav shell and the dashboard dynamic.
+            'pathway_destination': current_pathway_destination(),
             'google_calendar_oauth_configured': bool(
                 app.config.get('GOOGLE_CLIENT_ID')
                 and app.config.get('GOOGLE_CLIENT_SECRET')

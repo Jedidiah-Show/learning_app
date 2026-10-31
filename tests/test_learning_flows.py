@@ -100,7 +100,7 @@ class RuachAICourseTests(unittest.TestCase):
         )
         self.assertEqual(
             curriculum()['course']['title'],
-            'RUACH AI Engineering',
+            'RUACH AI & ML Engineering',
         )
 
     def test_registration_starts_the_fixed_course_without_proficiency_setup(self):
@@ -572,7 +572,7 @@ class RuachAICourseTests(unittest.TestCase):
                 'question': 'Tell me about an unrelated topic.',
             })
         self.assertEqual(response.status_code, 200)
-        self.assertIn('RUACH AI Engineering course', response.get_json()['answer'])
+        self.assertIn('RUACH AI & ML Engineering course', response.get_json()['answer'])
         self.assertNotIn('unrelated answer', response.get_json()['answer'])
         self.assertFalse(response.get_json()['in_scope'])
 

@@ -46,8 +46,10 @@ def next_course_action(user, completed=None, completed_projects=None):
     return _next_course_action(completed, completed_projects)
 
 
-def _next_course_action(completed, project_modules):
-    for module in all_modules():
+def _next_course_action(completed, project_modules, modules=None):
+    # ``modules`` lets a pathway scope the pointer to its own curriculum;
+    # defaulting to the full course keeps every existing caller unchanged.
+    for module in (all_modules() if modules is None else modules):
         if any(lesson['id'] not in completed for lesson in module['lessons']):
             lesson = next(item for item in module['lessons'] if item['id'] not in completed)
             return {'type': 'lesson', 'lesson_id': lesson['id']}
@@ -128,6 +130,103 @@ def course_progress(user, completed=None, completed_projects=None):
             }
             for module in all_modules()
         ],
+    }
+
+
+SHARED_FOUNDATION_MODULES = ('00', '01', '02')
+
+
+def pathway_dashboard_progress(user, destination, progress,
+                               completed=None, completed_projects=None):
+    """Re-scope the dashboard's course block onto a confirmed ML destination.
+
+    An ``ml`` learner's course is the shared foundation (modules 00-02) plus
+    the ML pathway's four modules.  Modules 03-12 are the AI continuation and
+    belong to a different course, so they drop out of the curriculum grid, the
+    header totals, and the "next step" pointers; every other destination keeps
+    the full AI curriculum exactly as it is.
+
+    ``progress`` comes from :func:`course_progress` and is left untouched, so a
+    caller can still compare against the shared-course numbers.
+    """
+    if destination != 'ml':
+        return progress
+
+    from app.ml_pathway import machine_learning_pathway, ml_module_progress
+
+    if completed is None:
+        completed = completed_lesson_ids(user)
+    if completed_projects is None:
+        completed_projects = completed_project_modules(user)
+    foundation = [
+        module for module in all_modules()
+        if module['id'] in SHARED_FOUNDATION_MODULES
+    ]
+    foundation_ids = {module['id'] for module in foundation}
+    ml_progress = ml_module_progress(user.id)
+
+    # The foundation entries already carry their own lesson and project
+    # progress in ``progress['modules']``; only the badge is added, so the
+    # shared foundation reports exactly what the AI course reports for it.
+    modules = [
+        {**entry, 'badge': f'Shared foundation · Module {entry["number"]}'}
+        for entry in progress['modules'] if entry['id'] in foundation_ids
+    ]
+    for module in machine_learning_pathway()['modules']:
+        state = ml_progress.get(module['id'], {})
+        modules.append({
+            'id': module['id'], 'number': module['number'],
+            'title': module['title'],
+            'total_lessons': state.get('total_lessons', len(module['lessons'])),
+            'estimated_hours': module.get('estimated_hours', 0),
+            'project_completed': bool(state.get('project_completed')),
+            'outcome': module.get('summary') or module.get('title', ''),
+            'study_minutes': sum(
+                (lesson.get('study_minutes') or 0)
+                for lesson in module['lessons']
+            ),
+            'completed_lessons': state.get('completed_lessons', 0),
+            # Foundation numbers 0-2 and the pathway's 1-4 collide, so the grid
+            # needs to say which course a module belongs to.
+            'badge': f'ML pathway · Module {module["number"]}',
+        })
+
+    foundation_modules = modules[:len(foundation)]
+    pathway_modules = modules[len(foundation):]
+    # Foundation 01 and 02 projects are the pathway's prerequisites, so a
+    # finished foundation implies they are met; no extra query is needed.
+    foundation_complete = all(
+        module['completed_lessons'] == module['total_lessons']
+        and module['project_completed']
+        for module in foundation_modules
+    )
+    pathway_complete = all(
+        module['completed_lessons'] == module['total_lessons']
+        and module['project_completed']
+        for module in pathway_modules
+    )
+    # The shared pointer is scoped to the foundation only: the ML continuation
+    # belongs to the pathway card, and modules 03-12 are never this learner's
+    # next step.
+    action = _next_course_action(
+        completed, completed_projects, modules=foundation
+    )
+    return {
+        **progress,
+        'total_lessons': sum(module['total_lessons'] for module in modules),
+        'completed_lessons': sum(
+            module['completed_lessons'] for module in modules
+        ),
+        'total_projects': len(modules),
+        'completed_projects': sum(
+            1 for module in modules if module['project_completed']
+        ),
+        'course_complete': foundation_complete and pathway_complete,
+        'next_lesson_id': (
+            action['lesson_id'] if action and action['type'] == 'lesson' else None
+        ),
+        'next_action': action,
+        'modules': modules,
     }
 
 

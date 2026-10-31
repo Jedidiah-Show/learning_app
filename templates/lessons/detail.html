@@ -290,7 +290,7 @@
       <div id="answer" class="tutor-chat" role="log" aria-live="polite" aria-relevant="additions text">
         <article class="tutor-message tutor-message-assistant">
           <span class="tutor-message-author">Tutor</span>
-          <p>Hi, I’m Ruach-AI, your tutor for the RUACH AI Engineering course. What would you like to understand better in this lesson?</p>
+          <p>Hi, I’m Ruach-AI, your tutor for the RUACH AI & ML Engineering course. What would you like to understand better in this lesson?</p>
         </article>
       </div>
       <form id="ask-form" class="lesson-ask-form tutor-composer">
@@ -458,7 +458,7 @@ document.getElementById('ask-reset').addEventListener('click', () => {
   tutorHistory = [];
   try { localStorage.removeItem(tutorStorageKey); } catch (error) {}
   tutorChat.replaceChildren();
-  addTutorMessage('assistant', 'Hi, I’m Ruach-AI, your tutor for the RUACH AI Engineering course. What would you like to understand better in this lesson?');
+  addTutorMessage('assistant', 'Hi, I’m Ruach-AI, your tutor for the RUACH AI & ML Engineering course. What would you like to understand better in this lesson?');
   tutorQuestion.focus();
 });
 

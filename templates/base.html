@@ -5,11 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
     <meta name="theme-color" content="#083D2E">
-    <meta name="description" content="RUACH AI Engineering — rooted in faith. Built for tomorrow.">
+    <meta name="description" content="RUACH AI & ML Engineering — rooted in faith. Built for tomorrow.">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="mobile-web-app-capable" content="yes">
-    <title>{% block title %}RUACH AI Engineering{% endblock %}</title>
+    <title>{% block title %}RUACH AI & ML Engineering{% endblock %}</title>
     <link rel="manifest" href="{{ url_for('static', filename='manifest/site.webmanifest') }}">
     <link rel="icon" type="image/png" sizes="32x32" href="{{ url_for('static', filename='img/favicon-32.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ url_for('static', filename='img/apple-touch-icon.png') }}">
@@ -44,11 +44,11 @@
     <header class="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0 z-50 shadow-sm {% if current_user.is_authenticated %}lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:flex-col lg:border-r lg:border-b-0{% endif %}">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 {% if current_user.is_authenticated %}lg:max-w-none lg:h-full lg:flex lg:flex-col lg:px-4 lg:py-4{% endif %}">
             <div class="flex min-h-16 items-center justify-between gap-2 sm:gap-3 {% if current_user.is_authenticated %}lg:flex-col lg:items-stretch lg:min-h-0 lg:gap-4{% endif %}">
-                <a href="{{ url_for('main.index') if current_user.is_authenticated else url_for('auth.login') }}" class="app-brand flex items-center space-x-2 sm:space-x-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 flex-shrink-0 {% if current_user.is_authenticated %}lg:px-2{% endif %}" aria-label="RUACH AI Engineering home">
+                <a href="{{ url_for('main.index') if current_user.is_authenticated else url_for('auth.login') }}" class="app-brand flex items-center space-x-2 sm:space-x-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 flex-shrink-0 {% if current_user.is_authenticated %}lg:px-2{% endif %}" aria-label="RUACH AI & ML Engineering home">
                     <span class="brand-mark"><img src="{{ url_for('static', filename='img/ruachai.png') }}" alt="" width="40" height="40" loading="eager"></span>
                     <div class="brand-copy">
                         <h1 class="brand-wordmark">RUACH</h1>
-                        {% if current_user.is_authenticated %}<p class="brand-subtitle hidden sm:block lg:block">AI Engineering</p>{% else %}<p class="brand-subtitle hidden sm:block">Spirit · Connection · Growth</p>{% endif %}
+                        {% if current_user.is_authenticated %}<p class="brand-subtitle hidden sm:block lg:block">{% if pathway_destination == 'ml' %}ML Engineering{% elif pathway_destination == 'ai' %}AI Engineering{% else %}AI & ML Engineering{% endif %}</p>{% else %}<p class="brand-subtitle hidden sm:block">Spirit · Connection · Growth</p>{% endif %}
                     </div>
                 </a>
                 {% if current_user.is_authenticated %}
@@ -70,12 +70,25 @@
                     <a aria-label="Dashboard" title="Dashboard" href="{{ url_for('main.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.index' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🏠</span><span class="nav-label">Dashboard</span>
                     </a>
+                    {# The learner's own pathway sits directly under Dashboard and
+                       the other pathway follows as the alternate, so an ML learner
+                       opens the ML Pathway first and an AI or undecided learner
+                       opens Course Lessons first. #}
+                    {% if pathway_destination == 'ml' %}
+                    <a aria-label="ML pathway" title="ML pathway" href="{{ url_for('main.machine_learning_specialization') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.machine_learning_specialization' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">ML Pathway</span>
+                    </a>
                     <a aria-label="Course lessons" title="Course lessons" href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.lessons' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">📖</span><span class="nav-label">Course Lessons</span>
                     </a>
-                    <a aria-label="Machine learning specialization" title="Machine learning specialization" href="{{ url_for('main.machine_learning_specialization') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.machine_learning_specialization' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">ML Specialization</span>
+                    {% else %}
+                    <a aria-label="Course lessons" title="Course lessons" href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.lessons' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">📖</span><span class="nav-label">Course Lessons</span>
                     </a>
+                    <a aria-label="ML pathway" title="ML pathway" href="{{ url_for('main.machine_learning_specialization') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.machine_learning_specialization' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">ML Pathway</span>
+                    </a>
+                    {% endif %}
                     <a aria-label="Schedule" title="Schedule" href="{{ url_for('main.schedule') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.schedule' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">📅</span><span class="nav-label">Schedule</span>
                     </a>
@@ -159,7 +172,7 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 py-4 mt-8 app-footer {% if current_user.is_authenticated %}lg:ml-64{% endif %}">
         <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
-            RUACH AI Engineering <span class="text-slate-300">·</span> Rooted in faith. Built for tomorrow.
+            RUACH AI & ML Engineering <span class="text-slate-300">·</span> Rooted in faith. Built for tomorrow.
         </div>
     </footer>
     
