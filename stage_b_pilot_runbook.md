@@ -22,8 +22,12 @@ specialization lessons and projects.
    completion recorded (card counter advances) → project page for
    `mle.data-problem-formulation` loads with the starter download.
 3. Download both pilot starter ZIPs (`…/projects/<module_id>/starter`) and
-   verify each archive contains its test files and pinned
-   `requirements.txt` (kits ship stubbed for learners; the stubs must exist).
+   verify each archive contains its `tests/`, `src/` stubs, `data/`, and the
+   pinned `pyproject.toml` dependencies (kits ship stubbed for learners; the
+   stubs must exist). Verified structurally on 2026-10-31 from the shipped
+   tree: Module 1 `test_audit.py` + stubbed `src/audit.py`; Module 2
+   `test_model.py` + stubbed `src/model.py`; pins match
+   `requirements-dev.txt`.
 4. Open `/admin` and confirm the specialization stats card renders.
 5. Confirm `GEMINI_API_KEY`-backed review is healthy: rubric evaluation runs
    inside project submission (`app/routes/ml_specialization.py:443`); a 503
