@@ -252,13 +252,21 @@ def submit_quiz():
 @login_required
 def review_queue():
     from datetime import datetime, timezone
+    from app.ml_pathway import PATHWAY_ID as ML_PATHWAY_ID
+    from app.ml_pathway import machine_learning_pathway
     now = datetime.now(timezone.utc)
+    ml_title = machine_learning_pathway()['title']
     items = ReviewItem.query.filter_by(
         user_id=current_user.id, active=True
     ).filter(ReviewItem.due_at <= now).order_by(ReviewItem.due_at).limit(50).all()
     return jsonify({'due_count': len(items), 'items': [
         {'id': item.id, 'question': item.question,
-         'options': item.get_options(), 'subject_id': item.subject_id}
+         'options': item.get_options(), 'subject_id': item.subject_id,
+         'pathway_id': item.pathway_id,
+         # Course items carry no pathway, so only ML items get a label.
+         'pathway_title': (
+             ml_title if item.pathway_id == ML_PATHWAY_ID else None
+         )}
         for item in items
     ]})
 

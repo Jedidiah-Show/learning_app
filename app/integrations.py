@@ -42,6 +42,11 @@ REQUIRED_COLUMNS = {
         'streak', 'longest_streak', 'last_study_date',
     ),
     'course_project': ('repository_url', 'demo_url'),
+    # The review center selects whole rows, so an unapplied pathway migration
+    # would 500 there instead of failing readiness first.
+    'review_item': ('pathway_id',),
+    # Read by the dashboard pathway card and the admin pilot analytics.
+    'ml_specialization_project': ('failure_stage', 'failure_detail'),
 }
 
 

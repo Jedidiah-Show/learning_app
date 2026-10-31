@@ -37,6 +37,13 @@ def machine_learning_pathway():
             raise ValueError('Machine learning modules must have unique integer numbers')
         module_ids.add(module_id)
         module_numbers.add(number)
+        estimated_hours = module.get('estimated_hours')
+        if (
+            not isinstance(estimated_hours, (int, float))
+            or isinstance(estimated_hours, bool)
+            or estimated_hours <= 0
+        ):
+            raise ValueError(f'{module_id} must declare a positive estimated_hours')
         lessons = module.get('lessons')
         if not isinstance(lessons, list) or not lessons:
             raise ValueError(f'{module_id} must define at least one planned lesson')
@@ -46,6 +53,13 @@ def machine_learning_pathway():
                 raise ValueError('Machine learning lesson IDs must be unique and namespaced')
             lesson_ids.add(lesson_id)
             if lesson.get('status') == 'ready':
+                study_minutes = lesson.get('study_minutes')
+                if (
+                    not isinstance(study_minutes, (int, float))
+                    or isinstance(study_minutes, bool)
+                    or study_minutes <= 0
+                ):
+                    raise ValueError(f'{lesson_id} is ready but has no study estimate')
                 sections = lesson.get('sections')
                 quiz = lesson.get('quiz')
                 if (
@@ -94,6 +108,184 @@ def get_machine_learning_lesson(lesson_id):
         (lesson for lesson in machine_learning_lessons() if lesson['id'] == lesson_id),
         None,
     )
+
+
+def shared_prerequisites_met(user_id):
+    """The shared Python and backend module projects gate the ML pathway."""
+    from app.models import CourseProject
+
+    completed = {
+        row.module_id for row in CourseProject.query.filter(
+            CourseProject.user_id == user_id,
+            CourseProject.module_id.in_(['01', '02']),
+            CourseProject.completed.is_(True),
+        ).all()
+    }
+    return {'01', '02'}.issubset(completed)
+
+
+def machine_learning_lesson_is_open(user_id, lesson_id):
+    """Whether one pathway lesson may be read or acted on for this learner.
+
+    Mirrors the sequential rules of the specialization route: shared
+    prerequisites, then every earlier published lesson, with each earlier
+    module's project completed before the next module opens. The same check
+    backs lesson pages, bookmarks, and notes so the peripheral features cannot
+    reach a lesson the catalog still shows as locked.
+    """
+    from app.models import MLSpecializationLessonCompletion, MLSpecializationProject
+
+    lesson = get_machine_learning_lesson(lesson_id)
+    if not lesson or lesson.get('status') != 'ready' or not shared_prerequisites_met(user_id):
+        return False
+    pathway = machine_learning_pathway()
+    prior_modules = [
+        module for module in pathway['modules']
+        if module['number'] < lesson['module_number']
+        and all(item.get('status') == 'ready' for item in module['lessons'])
+    ]
+    prior_projects = {
+        row.module_id for row in MLSpecializationProject.query.filter_by(
+            user_id=user_id, pathway_id=PATHWAY_ID, completed=True
+        ).all()
+    }
+    if any(module['id'] not in prior_projects for module in prior_modules):
+        return False
+    completed = {
+        row.lesson_id for row in MLSpecializationLessonCompletion.query.filter_by(
+            user_id=user_id, pathway_id=PATHWAY_ID
+        ).all()
+    }
+    ready_lessons = [
+        item for item in machine_learning_lessons() if item.get('status') == 'ready'
+    ]
+    position = next(
+        index for index, item in enumerate(ready_lessons) if item['id'] == lesson_id
+    )
+    return all(item['id'] in completed for item in ready_lessons[:position])
+
+
+def record_pathway_review(user_id, lesson):
+    """Schedule a missed pathway knowledge check into spaced review.
+
+    The specialization keeps its own quiz format (one fixed check per lesson),
+    so its review items are namespaced by pathway instead of by the shared
+    ``Quiz``/``QuizResult`` tables. Correct answers reset the interval, which
+    matches the shared course behaviour in ``app.routes.quizzes``.
+    """
+    from datetime import datetime, timezone
+    import json as _json
+    from app import db
+    from app.models import ReviewItem
+
+    quiz = lesson['quiz']
+    quiz_id = f'{PATHWAY_ID}:{lesson["id"]}'
+    now = datetime.now(timezone.utc)
+    item = ReviewItem.query.filter_by(
+        user_id=user_id, quiz_id=quiz_id, question_id=lesson['id']
+    ).first()
+    if item is None:
+        item = ReviewItem(
+            user_id=user_id, quiz_id=quiz_id, question_id=lesson['id'],
+            subject_id=PATHWAY_ID, question=quiz['question'],
+            options=_json.dumps(quiz['choices'], ensure_ascii=False),
+            correct_index=quiz['answer'], explanation=quiz['explanation'],
+            due_at=now, interval_days=1, repetitions=0, active=True,
+            pathway_id=PATHWAY_ID,
+        )
+        db.session.add(item)
+    else:
+        item.question = quiz['question']
+        item.options = _json.dumps(quiz['choices'], ensure_ascii=False)
+        item.correct_index = quiz['answer']
+        item.explanation = quiz['explanation']
+        item.due_at = now
+        item.interval_days = 1
+        item.repetitions = 0
+        item.active = True
+        item.pathway_id = PATHWAY_ID
+    db.session.commit()
+    return item
+
+
+def ml_pathway_pacing(user_id, weekly_hours=None):
+    """Derive an ML-scoped plan from the learner's available weekly hours.
+
+    The pathway deliberately reuses the onboarding answer (``CoursePlan.weekly_hours``)
+    instead of asking again, but never merges into the AI course plan: the
+    returned milestones are ML-module scoped and are only rendered on pathway
+    surfaces. Modules stay contiguous and in authored order, and no ML module
+    is ever dropped or reordered to make the schedule fit.
+    """
+    import math
+    from app.models import (
+        CoursePlan, MLSpecializationLessonCompletion, MLSpecializationProject,
+    )
+
+    if weekly_hours is None:
+        plan = CoursePlan.query.filter_by(user_id=user_id).first()
+        weekly_hours = plan.weekly_hours if plan and plan.weekly_hours else None
+    if (
+        not isinstance(weekly_hours, int) or isinstance(weekly_hours, bool)
+        or weekly_hours <= 0
+    ):
+        weekly_hours = 6
+    pathway = machine_learning_pathway()
+    completed = {
+        row.lesson_id for row in MLSpecializationLessonCompletion.query.filter_by(
+            user_id=user_id, pathway_id=PATHWAY_ID
+        ).all()
+    }
+    completed_projects = {
+        row.module_id for row in MLSpecializationProject.query.filter_by(
+            user_id=user_id, pathway_id=PATHWAY_ID, completed=True
+        ).all()
+    }
+    modules = []
+    total_hours = 0.0
+    for module in pathway['modules']:
+        hours = float(module.get('estimated_hours') or 0)
+        total_hours += hours
+        lessons = module['lessons']
+        done_lessons = sum(lesson['id'] in completed for lesson in lessons)
+        total_lessons = len(lessons)
+        project_done = module['id'] in completed_projects
+        modules.append({
+            'id': module['id'], 'number': module['number'],
+            'title': module['title'], 'estimated_hours': round(hours, 1),
+            'reading_hours': round(
+                sum(lesson.get('study_minutes') or 0 for lesson in lessons) / 60, 1
+            ),
+            'project_hours': round(hours - sum(
+                (lesson.get('study_minutes') or 0) for lesson in lessons
+            ) / 60, 1),
+            'completed_lessons': done_lessons, 'total_lessons': total_lessons,
+            'project_completed': project_done,
+            'complete': bool(total_lessons and done_lessons == total_lessons and project_done),
+            'percent': round(done_lessons / total_lessons * 100) if total_lessons else 0,
+        })
+    weeks = math.ceil(total_hours / weekly_hours) if total_hours else 0
+    months = max(1, math.ceil(weeks / 4.345)) if weeks else 0
+    seen_complete = True
+    for index, item in enumerate(modules):
+        if item['complete']:
+            item['status'] = 'Complete'
+        elif seen_complete:
+            item['status'] = 'In progress'
+            seen_complete = False
+        else:
+            item['status'] = 'Up next'
+    return {
+        'pathway_id': PATHWAY_ID,
+        'weekly_hours': weekly_hours,
+        'total_hours': round(total_hours, 1),
+        'estimated_weeks': weeks,
+        'estimated_months': months,
+        # Catch-up time is metadata, never an extra month (same rule as the
+        # shared course milestones).
+        'review_hours': round(total_hours * 0.2, 1),
+        'modules': modules,
+    }
 
 
 def ml_pathway_overview(user_id):

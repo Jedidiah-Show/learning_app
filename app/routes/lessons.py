@@ -448,11 +448,9 @@ def practice_workspace(lesson_id, exercise_id):
 @lessons_bp.route('/<lesson_id>/bookmark', methods=['POST'])
 @login_required
 def toggle_bookmark(lesson_id):
-    lesson = get_lesson(lesson_id)
-    if not lesson:
-        return jsonify({'error': 'Lesson not found'}), 404
-    if not lesson_is_available(current_user, lesson_id):
-        return jsonify({'error': 'Lesson is locked'}), 403
+    error = _lesson_peripheral_error(lesson_id)
+    if error:
+        return jsonify({'error': error[1]}), error[0]
     from app.models import LessonBookmark
     bookmark = LessonBookmark.query.filter_by(user_id=current_user.id, lesson_id=lesson_id).first()
     if bookmark:
@@ -465,14 +463,34 @@ def toggle_bookmark(lesson_id):
     return jsonify({'bookmarked': True})
 
 
+def _lesson_peripheral_error(lesson_id):
+    """Shared guard for lesson bookmarks and notes across both pathways.
+
+    Course lessons use the normal sequential unlock check. Namespaced
+    ``mle.*`` lessons are resolved through the pathway's own gate so a locked
+    specialization lesson cannot be bookmarked or annotated out of order.
+    Returns ``None`` when access is allowed, else a ``(status, message)`` pair.
+    """
+    if lesson_id.startswith('mle.'):
+        from app.ml_pathway import machine_learning_lesson_is_open
+        # Also False for unknown or unpublished IDs, which reads as 404 here.
+        if not machine_learning_lesson_is_open(current_user.id, lesson_id):
+            return (404, 'Lesson not found')
+        return None
+    lesson = get_lesson(lesson_id)
+    if not lesson:
+        return (404, 'Lesson not found')
+    if not lesson_is_available(current_user, lesson_id):
+        return (403, 'Lesson is locked')
+    return None
+
+
 @lessons_bp.route('/<lesson_id>/note', methods=['GET', 'POST'])
 @login_required
 def lesson_note(lesson_id):
-    lesson = get_lesson(lesson_id)
-    if not lesson:
-        return jsonify({'error': 'Lesson not found'}), 404
-    if not lesson_is_available(current_user, lesson_id):
-        return jsonify({'error': 'Lesson is locked'}), 403
+    error = _lesson_peripheral_error(lesson_id)
+    if error:
+        return jsonify({'error': error[1]}), error[0]
     from app.models import LessonNote
     note = LessonNote.query.filter_by(user_id=current_user.id, lesson_id=lesson_id).first()
     if request.method == 'GET':

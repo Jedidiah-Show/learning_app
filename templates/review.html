@@ -30,6 +30,7 @@ function showNext() {
   }
   const item = queue[position];
   root.append(h('p', 'text-sm font-semibold text-indigo-700', `Question ${position + 1} of ${queue.length}`));
+  if (item.pathway_title) root.append(h('p', 'mt-1 text-xs font-semibold uppercase tracking-wide text-violet-700', `${item.pathway_title} pathway`));
   root.append(h('h2', 'mt-3 text-lg font-bold', item.question));
   const form = document.createElement('form');
   form.className = 'mt-4 space-y-3';

@@ -11,10 +11,10 @@ from zipfile import ZipFile
 
 from app import create_app, db
 from app.curriculum import all_lessons
-from app.ml_pathway import PATHWAY_ID, machine_learning_pathway
+from app.ml_pathway import PATHWAY_ID, machine_learning_pathway, ml_pathway_pacing
 from app.models import (
-    CourseProject, LessonCompletion, MLSpecializationLessonCompletion,
-    MLSpecializationProject, User,
+    CoursePlan, CourseProject, LessonCompletion, MLSpecializationLessonCompletion,
+    MLSpecializationProject, ReviewItem, User,
 )
 from app.routes.ml_specialization import _dataset_sha256, _report_matches
 
@@ -52,17 +52,18 @@ class MLSpecializationFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.client.post('/onboarding', data={'action': 'skip'})
 
-    def _complete_quiz(self, lesson):
+    def _complete_quiz(self, lesson, answer=None):
         page = self.client.get(
             f"/specializations/machine-learning/lessons/{lesson['id']}"
         )
         self.assertEqual(page.status_code, 200, page.get_data(as_text=True))
         csrf = re.search(rb'name="csrf_token" value="([^"]+)"', page.data)
         self.assertIsNotNone(csrf)
+        if answer is None:
+            answer = lesson['quiz']['answer']
         return self.client.post(
             f"/specializations/machine-learning/lessons/{lesson['id']}",
-            data={'csrf_token': csrf.group(1).decode(),
-                  'answer': str(lesson['quiz']['answer'])},
+            data={'csrf_token': csrf.group(1).decode(), 'answer': str(answer)},
         )
 
     def _complete_shared_prerequisites(self):
@@ -264,6 +265,133 @@ class MLSpecializationFlowTests(unittest.TestCase):
             ).one()
             self.assertTrue(project.completed)
 
+    def test_failed_submissions_record_a_classified_failure_stage(self):
+        from app.gemini import GeminiError
+        from app.project_verification import VerificationError
+
+        self._complete_shared_prerequisites()
+        module = machine_learning_pathway()['modules'][0]
+        for lesson in module['lessons']:
+            self.assertEqual(self._complete_quiz(lesson).status_code, 302)
+        url = f"/specializations/machine-learning/projects/{module['id']}/submit"
+        page = self.client.get(
+            f"/specializations/machine-learning/projects/{module['id']}"
+        )
+        csrf = self._csrf_token(page)
+        report = {
+            'row_count': 12, 'required_columns_present': True,
+            'unique_order_ids': 12, 'missing_order_total_count': 1,
+            'nonpositive_order_total_count': 1, 'returned_count': 4,
+            'development_rows': 8, 'evaluation_rows': 4,
+            'split_strategy': 'time_ordered',
+            'leakage_features': ['refund_reason'],
+        }
+        reflection = (
+            'I audited the source data, preserved the time boundary, '
+            'and excluded post-outcome refund information from features. '
+            'The split follows the documented contract exactly.'
+        )
+        rubric = module['project_rubric']
+
+        def submit(payload):
+            return self.client.post(url, headers={'X-CSRF-Token': csrf}, json={
+                'repository_url': 'https://github.com/learner/ml-audit',
+                'checks_url': 'https://github.com/learner/ml-audit/actions/runs/1',
+                'reflection': reflection, 'report': payload,
+            })
+
+        def recorded():
+            with self.app.app_context():
+                user = User.query.filter_by(username='mllearner').one()
+                record = MLSpecializationProject.query.filter_by(
+                    user_id=user.id, pathway_id=PATHWAY_ID, module_id=module['id'],
+                ).one()
+                return {
+                    'stage': record.failure_stage,
+                    'detail': record.failure_detail,
+                    'completed': record.completed,
+                }
+
+        def evaluation(score):
+            return {
+                'score': score,
+                'summary': 'The evidence satisfies the project requirements.',
+                'strengths': ['The data checks are clear.'],
+                'gaps': [],
+                'next_steps': ['Keep the audit repeatable.'],
+                'criterion_feedback': [{
+                    'criterion': item['criterion'],
+                    'score': max(0, min(100, score)),
+                    'evidence': 'The report and reflection explain this choice.',
+                    'gap': '',
+                } for item in rubric],
+            }
+
+        # 1. Report does not match the server-owned contract.
+        broken = dict(report, row_count=999)
+        response = submit(broken)
+        self.assertEqual(response.status_code, 422)
+        self.assertTrue(response.get_json()['draft_saved'])
+        state = recorded()
+        self.assertEqual(state['stage'], 'report_contract')
+        self.assertIn('fixed dataset checks', state['detail'])
+        self.assertFalse(state['completed'])
+
+        # 2. Public CI cannot be verified.
+        with patch(
+            'app.routes.ml_specialization.verify_checks',
+            side_effect=VerificationError('The checks page reports a failed build'),
+        ):
+            response = submit(report)
+        self.assertEqual(response.status_code, 422)
+        state = recorded()
+        self.assertEqual(state['stage'], 'ci_verification')
+        self.assertEqual(state['detail'], 'The checks page reports a failed build')
+
+        # 3. Automated review is down; the draft stays saved.
+        with patch(
+            'app.routes.ml_specialization.verify_checks',
+            return_value={'verified': True, 'checks_status': 200},
+        ), patch('app.gemini.generate_json', side_effect=GeminiError('quota reached')):
+            response = submit(report)
+        self.assertEqual(response.status_code, 503)
+        self.assertTrue(response.get_json()['draft_saved'])
+        self.assertEqual(recorded()['stage'], 'review_unavailable')
+
+        # 4. Review returned a structurally invalid result.
+        with patch(
+            'app.routes.ml_specialization.verify_checks',
+            return_value={'verified': True, 'checks_status': 200},
+        ), patch('app.gemini.generate_json', return_value={'score': 90}):
+            response = submit(report)
+        self.assertEqual(response.status_code, 503)
+        self.assertEqual(recorded()['stage'], 'review_invalid')
+
+        # 5. Review completed but below the pass thresholds.
+        with patch(
+            'app.routes.ml_specialization.verify_checks',
+            return_value={'verified': True, 'checks_status': 200},
+        ), patch('app.gemini.generate_json', return_value=evaluation(40)):
+            response = submit(report)
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.get_json()['completed'])
+        state = recorded()
+        self.assertEqual(state['stage'], 'rubric_below_threshold')
+        self.assertFalse(state['completed'])
+
+        # 6. A pass clears the failure state entirely.
+        with patch(
+            'app.routes.ml_specialization.verify_checks',
+            return_value={'verified': True, 'checks_status': 200},
+        ), patch('app.gemini.generate_json', return_value=evaluation(85)):
+            response = submit(report)
+        self.assertEqual(response.status_code, 200, response.get_json())
+        self.assertTrue(response.get_json()['completed'])
+        state = recorded()
+        self.assertIsNone(state['stage'])
+        self.assertIsNone(state['detail'])
+        self.assertTrue(state['completed'])
+
     def test_eligible_learner_can_issue_and_publicly_verify_credential(self):
         pathway = machine_learning_pathway()
         with self.app.app_context():
@@ -299,6 +427,153 @@ class MLSpecializationFlowTests(unittest.TestCase):
         parsed = urlsplit(verify_url)
         tampered = self.client.get(parsed.path + '?sig=invalid')
         self.assertIn(b'could not be verified', tampered.data)
+
+    def test_missed_pathway_check_feeds_the_spaced_review_queue(self):
+        self._complete_shared_prerequisites()
+        lesson = machine_learning_pathway()['modules'][0]['lessons'][0]
+        wrong = (lesson['quiz']['answer'] + 1) % len(lesson['quiz']['choices'])
+
+        response = self._complete_quiz(lesson, answer=wrong)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('review queue', response.get_data(as_text=True))
+
+        with self.app.app_context():
+            user = User.query.filter_by(username='mllearner').one()
+            item = ReviewItem.query.filter_by(user_id=user.id).one()
+            self.assertEqual(item.pathway_id, PATHWAY_ID)
+            self.assertEqual(item.quiz_id, f'{PATHWAY_ID}:{lesson["id"]}')
+            self.assertEqual(item.question, lesson['quiz']['question'])
+            # A miss never completes the lesson.
+            self.assertEqual(MLSpecializationLessonCompletion.query.count(), 0)
+
+        queue = self.client.get('/api/quizzes/review').get_json()
+        self.assertEqual(queue['due_count'], 1)
+        self.assertEqual(queue['items'][0]['pathway_id'], PATHWAY_ID)
+        self.assertEqual(
+            queue['items'][0]['pathway_title'], machine_learning_pathway()['title']
+        )
+
+        # A correct review answer advances the interval, not the pathway.
+        answered = self.client.post(
+            f"/api/quizzes/review/{queue['items'][0]['id']}",
+            json={'answer': lesson['quiz']['answer']},
+        )
+        self.assertTrue(answered.get_json()['correct'])
+        with self.app.app_context():
+            user = User.query.filter_by(username='mllearner').one()
+            item = ReviewItem.query.filter_by(user_id=user.id).one()
+            self.assertEqual(item.repetitions, 1)
+            self.assertTrue(item.active)
+        self.assertEqual(self._complete_quiz(lesson).status_code, 302)
+        self.assertEqual(self.client.get('/api/quizzes/review').get_json()['due_count'], 0)
+
+    def test_pathway_pacing_follows_weekly_hours_and_module_progress(self):
+        self._complete_shared_prerequisites()
+        with self.app.app_context():
+            user = User.query.filter_by(username='mllearner').one()
+            db.session.add(CoursePlan(user_id=user.id, skill_level='new', weekly_hours=6))
+            db.session.commit()
+            user_id = user.id
+
+            plan = ml_pathway_pacing(user_id)
+            self.assertEqual(plan['pathway_id'], PATHWAY_ID)
+            self.assertEqual(plan['weekly_hours'], 6)
+            self.assertEqual(len(plan['modules']), 4)
+            self.assertGreater(plan['total_hours'], 0)
+            self.assertEqual(
+                plan['estimated_weeks'],
+                -(-plan['total_hours'] // plan['weekly_hours']),
+            )
+            # The plan is derived from authored order, never reordered.
+            self.assertEqual(
+                [item['number'] for item in plan['modules']], [1, 2, 3, 4]
+            )
+            self.assertEqual(plan['modules'][0]['status'], 'In progress')
+            self.assertEqual(plan['modules'][1]['status'], 'Up next')
+
+            fast = ml_pathway_pacing(user_id, weekly_hours=24)
+            self.assertLess(fast['estimated_weeks'], plan['estimated_weeks'])
+
+            # Shared onboarding hours drive the plan when no override exists.
+            self.assertEqual(ml_pathway_pacing(user_id, weekly_hours=None)['weekly_hours'], 6)
+
+            first_module = machine_learning_pathway()['modules'][0]
+            for lesson in first_module['lessons']:
+                db.session.add(MLSpecializationLessonCompletion(
+                    user_id=user_id, pathway_id=PATHWAY_ID, lesson_id=lesson['id'],
+                ))
+            db.session.add(MLSpecializationProject(
+                user_id=user_id, pathway_id=PATHWAY_ID,
+                module_id=first_module['id'], completed=True,
+            ))
+            db.session.commit()
+
+            progressed = ml_pathway_pacing(user_id)
+            self.assertEqual(progressed['modules'][0]['status'], 'Complete')
+            self.assertEqual(progressed['modules'][0]['percent'], 100)
+            self.assertEqual(progressed['modules'][1]['status'], 'In progress')
+
+        catalog = self.client.get('/specializations/machine-learning')
+        self.assertIn('Your pathway plan', catalog.get_data(as_text=True))
+        self.assertIn('6 hours a week', catalog.get_data(as_text=True))
+
+    def test_lessons_page_promotes_the_second_pathway(self):
+        locked = self.client.get('/lessons')
+        self.assertEqual(locked.status_code, 200)
+        page = locked.get_data(as_text=True)
+        self.assertIn('Machine Learning Engineering', page)
+        self.assertIn('Preview the ML pathway', page)
+
+        self._complete_shared_prerequisites()
+        opened = self.client.get('/lessons').get_data(as_text=True)
+        self.assertIn('Continue:', opened)
+
+    def test_bookmarks_and_notes_reach_pathway_lessons_with_the_same_gate(self):
+        lessons = machine_learning_pathway()['modules'][0]['lessons']
+        first_id = lessons[0]['id']
+        # Before the shared prerequisites, pathway bookmarks read as absent.
+        denied = self.client.post(f'/api/lessons/{first_id}/bookmark')
+        self.assertEqual(denied.status_code, 404)
+
+        self._complete_shared_prerequisites()
+        marked = self.client.post(f'/api/lessons/{first_id}/bookmark')
+        self.assertEqual(marked.status_code, 200)
+        self.assertTrue(marked.get_json()['bookmarked'])
+
+        saved = self.client.post(
+            f'/api/lessons/{first_id}/note',
+            json={'content': 'Prediction unit first, metric second.'},
+        )
+        self.assertEqual(saved.status_code, 200)
+        self.assertEqual(
+            self.client.get(f'/api/lessons/{first_id}/note').get_json()['note'],
+            'Prediction unit first, metric second.',
+        )
+
+        # The next lesson is still locked, so it cannot be annotated yet.
+        self.assertEqual(
+            self.client.post(f'/api/lessons/{lessons[1]["id"]}/bookmark').status_code,
+            404,
+        )
+        for lesson in lessons:
+            self.assertEqual(self._complete_quiz(lesson).status_code, 302)
+        self.assertEqual(
+            self.client.post(f'/api/lessons/{lessons[1]["id"]}/bookmark').status_code,
+            200,
+        )
+
+        page = self.client.get(
+            f'/specializations/machine-learning/lessons/{first_id}'
+        ).get_data(as_text=True)
+        self.assertIn('🔖 Bookmarked', page)
+        self.assertIn('Prediction unit first, metric second.', page)
+
+        # Completing lessons through the normal quiz flow never queues a review.
+        with self.app.app_context():
+            user = User.query.filter_by(username='mllearner').one()
+            self.assertEqual(
+                ReviewItem.query.filter_by(user_id=user.id).count(), 0
+            )
 
 
 if __name__ == '__main__':

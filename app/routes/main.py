@@ -13,7 +13,8 @@ from app import db
 from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
 from app.ml_pathway import machine_learning_pathway
 from app.ml_pathway import get_machine_learning_lesson, machine_learning_lessons
-from app.ml_pathway import ml_pathway_overview
+from app.ml_pathway import machine_learning_lesson_is_open, ml_pathway_overview
+from app.ml_pathway import ml_pathway_pacing, record_pathway_review
 from app.learning import (
     course_progress, lesson_is_available, monthly_milestone_progress, user_track,
 )
@@ -233,6 +234,13 @@ def lessons():
         current_module_id = current.get('module_id') if current else None
     elif progress.get('next_action', {}).get('type') == 'project':
         current_module_id = progress['next_action'].get('module_id')
+    # Same containment rule as the dashboard: a specialization failure must
+    # never take down a course page, so the strip hides when data is absent.
+    try:
+        ml_overview = ml_pathway_overview(current_user.id)
+    except Exception:
+        current_app.logger.exception('ML pathway overview failed on lessons page')
+        ml_overview = None
     return render_template('lessons.html', config=get_effective_config_for_user(current_user),
                            user=current_user, course=curriculum(), modules=all_modules(),
                            completed_ids=completed_ids,
@@ -241,6 +249,7 @@ def lessons():
                            },
                            next_lesson_id=progress['next_lesson_id'],
                            current_module_id=current_module_id,
+                           ml_overview=ml_overview,
                            skill_level=(plan.skill_level if plan else '') or '')
 
 
@@ -311,6 +320,7 @@ def machine_learning_specialization():
         pathway=pathway, completed_ids=completed, prerequisites_met=prerequisites_met,
         module_progress=module_progress, project_unlocked=project_unlocked,
         next_lesson_id=next_lesson_id,
+        pacing=ml_pathway_pacing(current_user.id),
     )
 
 
@@ -321,33 +331,15 @@ def machine_learning_lesson(lesson_id):
     lesson = get_machine_learning_lesson(lesson_id)
     if not lesson or lesson.get('status') != 'ready':
         abort(404)
+    # One gate for the whole pathway: shared prerequisites, prior module
+    # projects, and every earlier published lesson in order.
+    if not machine_learning_lesson_is_open(current_user.id, lesson_id):
+        abort(403)
+
     completions = MLSpecializationLessonCompletion.query.filter_by(
         user_id=current_user.id, pathway_id=pathway['id']
     ).all()
     completed = {item.lesson_id for item in completions}
-    module_complete = CourseProject.query.filter(
-        CourseProject.user_id == current_user.id,
-        CourseProject.module_id.in_(['01', '02']),
-        CourseProject.completed.is_(True),
-    ).all()
-    if not {'01', '02'}.issubset({project.module_id for project in module_complete}):
-        abort(403)
-    prior_modules = [
-        module for module in machine_learning_pathway()['modules']
-        if module['number'] < lesson['module_number']
-        and all(item.get('status') == 'ready' for item in module['lessons'])
-    ]
-    prior_project_ids = {
-        item.module_id for item in MLSpecializationProject.query.filter_by(
-            user_id=current_user.id, pathway_id=pathway['id'], completed=True
-        ).all()
-    }
-    if any(module['id'] not in prior_project_ids for module in prior_modules):
-        abort(403)
-    ready_lessons = [item for item in machine_learning_lessons() if item['status'] == 'ready']
-    lesson_position = next(i for i, item in enumerate(ready_lessons) if item['id'] == lesson_id)
-    if any(item['id'] not in completed for item in ready_lessons[:lesson_position]):
-        abort(403)
 
     if request.method == 'POST':
         try:
@@ -358,7 +350,10 @@ def machine_learning_lesson(lesson_id):
             user_id=current_user.id, pathway_id=pathway['id'], lesson_id=lesson_id
         ).first()
         if selected != lesson['quiz']['answer']:
-            flash('That answer needs another look. Review the lesson and try again.', 'error')
+            # A miss here is the pathway equivalent of a failed course quiz
+            # question: it returns through the spaced-review queue.
+            record_pathway_review(current_user.id, lesson)
+            flash('That answer needs another look. It has been added to your review queue.', 'error')
         else:
             if not existing:
                 db.session.add(MLSpecializationLessonCompletion(
@@ -369,9 +364,18 @@ def machine_learning_lesson(lesson_id):
             return redirect(url_for('main.machine_learning_specialization'))
 
     existing = lesson_id in completed
+    from app.models import LessonBookmark, LessonNote
+    bookmark = LessonBookmark.query.filter_by(
+        user_id=current_user.id, lesson_id=lesson_id
+    ).first()
+    note = LessonNote.query.filter_by(
+        user_id=current_user.id, lesson_id=lesson_id
+    ).first()
     return render_template(
         'specializations/machine_learning_lesson.html',
         lesson=lesson, completed=existing,
+        bookmarked=bookmark is not None,
+        lesson_note=note.content if note else '',
     )
 
 
