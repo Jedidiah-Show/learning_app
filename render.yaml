@@ -96,7 +96,7 @@ services:
       - key: OPENROUTER_PRO_MODEL
         value: openrouter/auto
       - key: OPENROUTER_APP_NAME
-        value: RUACH AI Engineering
+        value: RUACH AI & ML Engineering
       - key: OPENROUTER_SITE_URL
         sync: false
       - key: OPENROUTER_JSON_MODE

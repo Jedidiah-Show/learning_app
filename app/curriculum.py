@@ -243,10 +243,10 @@ def curriculum():
         lesson_overrides = overrides.get('lessons') or {}
         for lesson in data.get('lessons', []):
             lesson.update(lesson_overrides.get(lesson.get('id'), {}))
-    data['course']['title'] = 'RUACH AI Engineering'
+    data['course']['title'] = 'RUACH AI & ML Engineering'
     lesson_count = len(data.get('lessons') or [])
     data['course']['description'] = (
-        f'The RUACH AI Engineering course: 13 modules and {lesson_count} lessons, '
+        f'The RUACH AI & ML Engineering course: 13 modules and {lesson_count} lessons, '
         'from Python and backend engineering through multimodal, retrieval, '
         'agent, security, evaluation, governance, and production AI systems.'
     )

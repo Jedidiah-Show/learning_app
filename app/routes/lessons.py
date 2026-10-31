@@ -725,7 +725,7 @@ def ask_lesson_question():
     if TUTOR_GREETING_RE.fullmatch(question.strip()):
         return jsonify({
             'answer': (
-                'Hi, I’m Ruach-AI, your tutor for the RUACH AI Engineering course. '
+                'Hi, I’m Ruach-AI, your tutor for the RUACH AI & ML Engineering course. '
                 'What would you like to understand better in this lesson?'
             ),
             'in_scope': True,
@@ -777,7 +777,7 @@ def ask_lesson_question():
     if not isinstance(result, dict) or result.get('in_scope') is not True:
         return jsonify({
             'answer': (
-                'I can help with this lesson and topics in the RUACH AI Engineering '
+                'I can help with this lesson and topics in the RUACH AI & ML Engineering '
                 'course. Ask me about one of those and we can work through it together.'
             ),
             'in_scope': False,

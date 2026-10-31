@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from functools import lru_cache
 from urllib.parse import urlsplit
 
-from flask import (Blueprint, Response, abort, current_app, flash, jsonify,
+from flask import (Blueprint, Response, abort, current_app, flash, g, jsonify,
                    redirect, render_template, request, url_for)
 from flask_login import current_user, login_required
 from sqlalchemy.exc import SQLAlchemyError
@@ -14,9 +14,12 @@ from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
 from app.ml_pathway import machine_learning_pathway
 from app.ml_pathway import get_machine_learning_lesson, machine_learning_lessons
 from app.ml_pathway import machine_learning_lesson_is_open, ml_pathway_overview
+from app.ml_pathway import ml_module_progress
 from app.ml_pathway import ml_pathway_pacing, record_pathway_review
 from app.learning import (
-    course_progress, lesson_is_available, monthly_milestone_progress, user_track,
+    completed_lesson_ids, completed_project_modules, course_progress,
+    lesson_is_available, monthly_milestone_progress,
+    pathway_dashboard_progress, user_track,
 )
 from app.course_data import SETUP_CHECKS, TRACKS, track_label
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
@@ -141,10 +144,15 @@ def search():
 @login_required
 def index():
     try:
-        progress = course_progress(current_user)
+        # Read each completion set once and share it with every consumer below;
+        # the dashboard previously re-ran the same queries several times over.
+        completed_ids = completed_lesson_ids(current_user)
+        completed_project_ids = completed_project_modules(current_user)
+        progress = course_progress(
+            current_user, completed=completed_ids,
+            completed_projects=completed_project_ids,
+        )
         config = get_effective_config_for_user(current_user)
-        next_lesson = get_lesson(progress['next_lesson_id']) if progress['next_lesson_id'] else None
-        next_project = progress['next_action'] if progress['next_action'] and progress['next_action']['type'] == 'project' else None
         streak = getattr(current_user, 'streak', 0) or 0
         longest_streak = getattr(current_user, 'longest_streak', 0) or 0
         setup_checks = SETUP_CHECKS
@@ -157,6 +165,20 @@ def index():
         # Stage D: the confirmed pathway destination decides which section the
         # dashboard leads with; unset keeps today's shared-foundation layout.
         pathway_destination = plan.pathway_destination if plan else None
+        # Seed the per-request cache the nav shell reads, so rendering the
+        # dashboard does not fetch the same plan a second time.
+        g.pathway_destination = pathway_destination
+        # An ML destination's curriculum is the shared foundation plus the ML
+        # pathway; the AI-only modules 03-12 are a different course and must
+        # not appear in its grid, totals, or next-step pointers.
+        progress = pathway_dashboard_progress(
+            current_user, pathway_destination, progress,
+            completed=completed_ids, completed_projects=completed_project_ids,
+        )
+        # Derived after the swap above: an ML learner's "continue" pointers must
+        # come from their own curriculum, never from a module 03-12 lesson.
+        next_lesson = get_lesson(progress['next_lesson_id']) if progress['next_lesson_id'] else None
+        next_project = progress['next_action'] if progress['next_action'] and progress['next_action']['type'] == 'project' else None
         next_module_id = None
         if progress.get('next_action'):
             action = progress['next_action']
@@ -300,7 +322,9 @@ def machine_learning_specialization():
             if lesson['id'] not in completed:
                 next_lesson_id = lesson['id']
                 break
-    module_progress = {}
+    module_progress = ml_module_progress(
+        current_user.id, completed=completed, projects=projects
+    )
     project_unlocked = {}
     for module in pathway['modules']:
         module_lessons = [lesson['id'] for lesson in module['lessons']]
@@ -315,11 +339,6 @@ def machine_learning_specialization():
             and set(module_lessons).issubset(completed)
             and all(item['id'] in ml_project_ids for item in prior_modules)
         )
-        module_progress[module['id']] = {
-            'completed_lessons': sum(lesson_id in completed for lesson_id in module_lessons),
-            'total_lessons': len(module_lessons),
-            'project_completed': bool(projects.get(module['id']) and projects[module['id']].completed),
-        }
     return render_template(
         'specializations/machine_learning.html',
         pathway=pathway, completed_ids=completed, prerequisites_met=prerequisites_met,
