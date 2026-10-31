@@ -2,7 +2,7 @@
 
 A Machine Learning Engineering specialization is feasible, and it’s the better first step. A fully standalone course is possible too, but it requires a larger change to how the app represents courses and learner progress.
 
-The current 13-module, 212-lesson course is primarily about building and operating LLM applications: Python and backend work, RAG, agents, evaluation, security, and deployment. It has useful foundations for ML Engineering, and it includes model adaptation and fine-tuning decisions, but it does not teach learners to build and operate a conventional ML training pipeline. See the course outline (app/data/dynamoai_curriculum.json:6) and its fine-tuning lesson (app/data/dynamoai_curriculum.json:6590).
+The current 13-module, 213-lesson course is primarily about building and operating LLM applications: Python and backend work, RAG, agents, evaluation, security, and deployment. It has useful foundations for ML Engineering, and it includes model adaptation and fine-tuning decisions, but it does not teach learners to build and operate a conventional ML training pipeline. See the course outline (app/data/dynamoai_curriculum.json:6) and its fine-tuning lesson (app/data/dynamoai_curriculum.json:6590).
 
 ## Main bottlenecks
 
@@ -235,10 +235,34 @@ Post-deploy `/readyz`: `commit: ab983e6`, `revision: e7c4a91b3f52`,
 `head_revision: e7c4a91b3f52`, `migration_current: true`, no missing columns
 or tables, `status: ok`. `/healthz`: `commit: ab983e6`, `status: ok`.
 
+**Stage E deployment record (2026-10-31):** No schema change, so no migration
+was applied. PR #11 (branch `dynamic-pathway-shell`, branch commit `618df70`)
+passed all CI before merge — `test (Python 3.12)` 2m30s, `test (Python 3.13)`
+2m2s, `browser-ide` 43s, and a completed Vercel preview — and was merged by
+rebase at 16:26:35Z as `main` commit `422ea14`, linear on `8fac855`.
+
+Production `/readyz` reported `commit: 8fac855` before the deploy and
+`commit: 422ea14` after, while `revision` and `head_revision` stayed
+`e7c4a91b3f52` with `migration_current: true`, no missing columns or tables,
+`status: ok`, `version: 1.0.0`. The revision is unchanged exactly as expected
+for a release with no schema change, so migration-before-code ordering was not
+needed this time.
+
+The deployed surface carries the rename: `GET /login` returns
+`<title>Sign in · RUACH AI & ML Engineering</title>` with the old long name
+absent from the page, and `/static/manifest/site.webmanifest` reports
+`name: RUACH AI & ML Engineering` with `short_name: RUACH` unchanged.
+`OPENROUTER_APP_NAME` is set by no local env file, so the code default
+applies; the Vercel project settings are the only place that could still
+override it (no Vercel CLI is available here to check), and its sole use is
+the outbound `X-Title` header in `app/openrouter.py:287`, never
+learner-facing UI.
+
 **Next implementation step (updated 2026-10-31):** Stages A, C, B's
-server-side instrumentation, and Stage D item 1 are implemented, verified, and
-deployed: all pathway migrations (`a5f3b2c8d417`, `d6b4c1e93a75`, then
-`e7c4a91b3f52`) are applied to production and `main` runs at `ab983e6`. What
+server-side instrumentation, Stage D item 1, and Stage E (the pathway-scoped
+dashboard and nav plus the dual-discipline rename) are implemented, verified,
+and deployed: all pathway migrations (`a5f3b2c8d417`, `d6b4c1e93a75`, then
+`e7c4a91b3f52`) are applied to production and `main` runs at `422ea14`. What
 remains for Stage B is the pilot itself: enroll 3–5 learners per
 `stage_b_pilot_runbook.md` and revise lesson text, thresholds, and starter
 hints from the collected evidence. The rest of Stage D (course identifiers
@@ -440,8 +464,8 @@ showing AI engineering modules to an ML-pathway learner.
   `test_bundled_course_has_its_declared_modules_and_lessons`; it passes in
   isolation and did not recur in the clean re-run).
   `npm run build:css` byte-identical (only pre-existing classes were reused).
-  No migration is needed, so a deploy should leave `/readyz` reporting the
-  unchanged revision `e7c4a91b3f52`.
+  No migration was needed; post-deploy `/readyz` confirms the unchanged
+  revision `e7c4a91b3f52` (see the **Stage E deployment record** above).
 - Still showing AI content to ML learners, deliberately out of scope here:
   `/lessons`, `/progress`, and `/projects` remain the full AI course. The nav
   sends ML learners to the pathway page first, with `/lessons` (which holds
