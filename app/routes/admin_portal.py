@@ -9,6 +9,7 @@ admin access on their own; an administrator must explicitly authenticate at
 
 from datetime import datetime, timedelta, timezone
 from functools import wraps
+import json
 
 from flask import (
     Blueprint, abort, current_app, flash, jsonify, redirect, render_template,
@@ -26,6 +27,7 @@ from app.learning import course_progress
 from app.models import (
     AdminAuditLog, CourseProject, Credential, LessonCompletion,
     MLSpecializationCredential, MLSpecializationLessonCompletion,
+    MLSpecializationProject,
     PasswordResetToken, QuizResult, StudySession, SupportRequest, User,
 )
 from app.phone import PhoneError, normalize_phone
@@ -789,6 +791,139 @@ def revoke_credential(public_id):
     ))
 
 
+def _ml_pilot_snapshot():
+    """Aggregate the Stage B pilot (Modules 1–2) for the analytics page.
+
+    Read-only over the namespaced specialization tables; the runbook's
+    caveats apply (project ``updated_at`` is overwritten by resubmissions,
+    so time-to-project is an estimate unless snapshotted weekly).
+    """
+    from app.ml_pathway import PATHWAY_ID, machine_learning_lessons
+
+    pilot_lessons = [
+        lesson for lesson in machine_learning_lessons()
+        if lesson.get('status') == 'ready' and lesson['module_number'] <= 2
+    ]
+    modules = []
+    for lesson in pilot_lessons:
+        if not any(entry['id'] == lesson['module_id'] for entry in modules):
+            modules.append({
+                'id': lesson['module_id'], 'title': lesson['module_title'],
+            })
+    module_ids = [entry['id'] for entry in modules]
+
+    completions = db.session.query(
+        MLSpecializationLessonCompletion.user_id,
+        MLSpecializationLessonCompletion.lesson_id,
+        MLSpecializationLessonCompletion.completed_at,
+    ).join(User, User.id == MLSpecializationLessonCompletion.user_id).filter(
+        MLSpecializationLessonCompletion.pathway_id == PATHWAY_ID,
+        User.is_active.is_(True),
+        User.is_admin.is_(False),
+    ).all()
+    per_lesson = {}
+    per_learner = {}
+    for user_id, lesson_id, completed_at in completions:
+        entry = per_lesson.setdefault(lesson_id, {'count': set(), 'first': None, 'last': None})
+        entry['count'].add(user_id)
+        if entry['first'] is None or completed_at < entry['first']:
+            entry['first'] = completed_at
+        if entry['last'] is None or completed_at > entry['last']:
+            entry['last'] = completed_at
+        per_learner.setdefault(user_id, {})[lesson_id] = completed_at
+
+    funnel = []
+    for position, lesson in enumerate(pilot_lessons, start=1):
+        entry = per_lesson.get(lesson['id'], {'count': set(), 'first': None, 'last': None})
+        funnel.append({
+            'position': position, 'title': lesson['title'],
+            'module_number': lesson['module_number'],
+            'completions': len(entry['count']),
+            'first': entry['first'], 'last': entry['last'],
+        })
+
+    attempts = db.session.query(
+        MLSpecializationProject, User,
+    ).join(User, User.id == MLSpecializationProject.user_id).filter(
+        MLSpecializationProject.pathway_id == PATHWAY_ID,
+        MLSpecializationProject.module_id.in_(module_ids),
+        User.is_active.is_(True),
+        User.is_admin.is_(False),
+    ).order_by(
+        MLSpecializationProject.module_id, MLSpecializationProject.updated_at
+    ).all()
+    attempt_rows = []
+    criteria_scores = {}
+    passes = {}
+    for record, learner in attempts:
+        evaluation = None
+        if record.evaluation:
+            try:
+                evaluation = json.loads(record.evaluation)
+            except ValueError:
+                evaluation = None
+        score = None
+        if isinstance(evaluation, dict) and isinstance(evaluation.get('score'), (int, float)):
+            score = evaluation['score']
+        if isinstance(evaluation, dict):
+            for item in evaluation.get('criterion_feedback') or []:
+                if isinstance(item, dict) and isinstance(item.get('score'), (int, float)):
+                    criteria_scores.setdefault(
+                        str(item.get('criterion', 'Unnamed criterion')), []
+                    ).append(item['score'])
+        label = learner.username or learner.email or f'User #{learner.id}'
+        if record.completed:
+            key = (record.user_id, record.module_id)
+            if key not in passes or record.updated_at < passes[key]:
+                passes[key] = record.updated_at
+        attempt_rows.append({
+            'learner': label, 'module_id': record.module_id,
+            'completed': record.completed, 'score': score,
+            'updated_at': record.updated_at,
+        })
+
+    times = []
+    for (user_id, module_id), passed_at in passes.items():
+        stamps = [
+            completed_at for lesson_id, completed_at
+            in per_learner.get(user_id, {}).items()
+            if any(lesson['id'] == lesson_id and lesson['module_id'] == module_id
+                   for lesson in pilot_lessons)
+        ]
+        if not stamps:
+            continue
+        days = round((passed_at - max(stamps)).total_seconds() / 86400, 1)
+        if days >= 0:
+            times.append({
+                'user_id': user_id, 'module_id': module_id, 'days': days,
+            })
+
+    criteria = sorted((
+        {'criterion': name, 'average': round(sum(scores) / len(scores), 1),
+         'n': len(scores)}
+        for name, scores in criteria_scores.items()
+    ), key=lambda row: row['average'])
+
+    credentials = db.session.query(
+        func.count(MLSpecializationCredential.id)
+    ).filter(
+        MLSpecializationCredential.pathway_id == PATHWAY_ID,
+        MLSpecializationCredential.revoked_at.is_(None),
+    ).scalar() or 0
+
+    return {
+        'modules': modules,
+        'enrolled': len(per_learner),
+        'funnel': funnel,
+        'attempts': attempt_rows,
+        'criteria': criteria,
+        'times': times,
+        'credentials': credentials,
+        'passed': {module_id: len({user for user, mid in passes if mid == module_id})
+                   for module_id in module_ids},
+    }
+
+
 @admin_portal_bp.route('/analytics')
 @admin_required
 def analytics():
@@ -880,6 +1015,7 @@ def analytics():
         total_users=User.query.count(),
         active_accounts=User.query.filter(User.is_active.is_(True)).count(),
         since=since.date(),
+        ml_pilot=_ml_pilot_snapshot(),
     )
 
 

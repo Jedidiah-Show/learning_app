@@ -41,6 +41,41 @@
     <div class="mt-4 overflow-x-auto"><table class="w-full min-w-[620px] text-left text-sm"><thead><tr class="border-b text-slate-500"><th class="py-2">Module</th><th class="py-2">Started</th><th class="py-2">Lessons complete</th><th class="py-2">Project complete</th></tr></thead><tbody>{% for row in module_funnel %}<tr class="border-b last:border-0"><td class="py-2 pr-3">{{ row.number }} · {{ row.title }}</td><td class="py-2">{{ row.started }}</td><td class="py-2">{{ row.finished }}</td><td class="py-2">{{ row.projects }}</td></tr>{% endfor %}</tbody></table></div>
 </section>
 
+<section class="mt-6 rounded-xl border border-violet-200 bg-white p-6 shadow-sm">
+    <h2 class="text-base font-semibold text-slate-900">ML Engineering pilot (Modules 1–2)</h2>
+    <p class="mt-1 text-sm text-slate-500">{{ ml_pilot.enrolled }} enrolled learner{{ '' if ml_pilot.enrolled == 1 else 's' }} · project passes: {% for module in ml_pilot.modules %}{{ module.title }} {{ ml_pilot.passed[module.id] }}{% if not loop.last %} · {% endif %}{% endfor %} · {{ ml_pilot.credentials }} credential{{ '' if ml_pilot.credentials == 1 else 's' }} issued (expected 0 until the full pathway opens). Time-to-project is estimated from the last module lesson to the first passing submission; resubmissions overwrite project timestamps, so snapshot this page weekly during the pilot.</p>
+    <div class="mt-4 grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <div>
+            <h3 class="text-sm font-semibold text-slate-700">Lesson-completion funnel</h3>
+            <div class="mt-2 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b text-slate-500"><th class="py-2">#</th><th class="py-2">Lesson</th><th class="py-2">Completions</th><th class="py-2">Last</th></tr></thead><tbody>{% for row in ml_pilot.funnel %}<tr class="border-b last:border-0"><td class="py-2 text-slate-400">{{ row.position }}</td><td class="py-2 pr-3">M{{ row.module_number }} · {{ row.title }}</td><td class="py-2">{{ row.completions }}</td><td class="py-2 text-xs text-slate-500">{{ row.last.strftime('%Y-%m-%d') if row.last else '—' }}</td></tr>{% endfor %}</tbody></table></div>
+        </div>
+        <div>
+            <h3 class="text-sm font-semibold text-slate-700">Project attempts</h3>
+            {% if ml_pilot.attempts %}
+            <div class="mt-2 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b text-slate-500"><th class="py-2">Learner</th><th class="py-2">Module</th><th class="py-2">Score</th><th class="py-2">Outcome</th></tr></thead><tbody>{% for row in ml_pilot.attempts %}<tr class="border-b last:border-0"><td class="py-2 pr-3">{{ row.learner }}</td><td class="py-2 pr-3 text-xs">{{ row.module_id.replace('mle.', '') }}</td><td class="py-2">{{ row.score if row.score is not none else '—' }}</td><td class="py-2">{% if row.completed %}<span class="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-semibold text-emerald-800">Passed</span>{% else %}<span class="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800">Draft / not passed</span>{% endif %}</td></tr>{% endfor %}</tbody></table></div>
+            {% else %}
+            <p class="mt-2 rounded-lg bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">No pilot project submissions yet.</p>
+            {% endif %}
+        </div>
+        <div>
+            <h3 class="text-sm font-semibold text-slate-700">Rubric criterion averages</h3>
+            {% if ml_pilot.criteria %}
+            <div class="mt-2 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b text-slate-500"><th class="py-2">Criterion (weakest first)</th><th class="py-2">Average</th><th class="py-2">n</th></tr></thead><tbody>{% for row in ml_pilot.criteria %}<tr class="border-b last:border-0"><td class="py-2 pr-3">{{ row.criterion }}</td><td class="py-2">{{ row.average }}</td><td class="py-2 text-slate-500">{{ row.n }}</td></tr>{% endfor %}</tbody></table></div>
+            {% else %}
+            <p class="mt-2 rounded-lg bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">No reviews recorded yet.</p>
+            {% endif %}
+        </div>
+        <div>
+            <h3 class="text-sm font-semibold text-slate-700">Time to project pass</h3>
+            {% if ml_pilot.times %}
+            <div class="mt-2 overflow-x-auto"><table class="w-full text-left text-sm"><thead><tr class="border-b text-slate-500"><th class="py-2">Learner</th><th class="py-2">Module</th><th class="py-2">Days</th></tr></thead><tbody>{% for row in ml_pilot.times %}<tr class="border-b last:border-0"><td class="py-2 pr-3">#{{ row.user_id }}</td><td class="py-2 pr-3 text-xs">{{ row.module_id.replace('mle.', '') }}</td><td class="py-2">{{ row.days }}</td></tr>{% endfor %}</tbody></table></div>
+            {% else %}
+            <p class="mt-2 rounded-lg bg-slate-50 px-4 py-8 text-center text-sm text-slate-500">No completed pilot projects yet.</p>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
 {% set max_completion = (completions|map(attribute='count')|max) if completions else 0 %}
 <section class="mt-6 rounded-xl border border-slate-200 bg-white p-6 shadow-sm">
     <h2 class="text-base font-semibold text-slate-900">Lesson completions per day</h2>
