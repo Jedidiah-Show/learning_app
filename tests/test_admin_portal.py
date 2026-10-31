@@ -174,6 +174,48 @@ class AdminPortalTests(unittest.TestCase):
         self.assertIn('82', body)
         self.assertIn('Audit boundary kept fixed', body)
 
+    def test_admin_analytics_reports_submission_failure_reasons(self):
+        from app.ml_pathway import PATHWAY_ID
+        from app.models import MLSpecializationProject
+
+        enrolled = self._create_account('analytics-failures')
+        second = self._create_account('analytics-failures-2')
+        with self.app.app_context():
+            db.session.add(MLSpecializationProject(
+                user_id=enrolled, pathway_id=PATHWAY_ID,
+                module_id='mle.data-problem-formulation',
+                submission=json.dumps({'repository_url': 'https://example.test/repo'}),
+                failure_stage='report_contract',
+                failure_detail='The submitted report does not meet the fixed dataset checks.',
+            ))
+            db.session.add(MLSpecializationProject(
+                user_id=second, pathway_id=PATHWAY_ID,
+                module_id='mle.data-problem-formulation',
+                submission=json.dumps({'repository_url': 'https://example.test/repo2'}),
+                failure_stage='report_contract',
+            ))
+            # A record from before failure tracking still renders honestly.
+            db.session.add(MLSpecializationProject(
+                user_id=enrolled, pathway_id=PATHWAY_ID,
+                module_id='mle.classical-ml',
+                submission=json.dumps({'repository_url': 'https://example.test/repo3'}),
+            ))
+            db.session.commit()
+        self._login_admin()
+        body = self.client.get('/admin/analytics').get_data(as_text=True)
+        self.assertIn('Submission failure reasons', body)
+        self.assertIn('Report does not match the fixed dataset contract', body)
+        # Two learners-worth of report-contract failures in one row.
+        self.assertIn('<td class="py-2 text-right">2</td>', body)
+        self.assertIn('Recorded before failure tracking', body)
+
+        with self.app.app_context():
+            from app.routes.admin_portal import _ml_pilot_snapshot
+            snapshot = _ml_pilot_snapshot()
+        stages = {row['stage']: row['count'] for row in snapshot['failures']}
+        self.assertEqual(stages['report_contract'], 2)
+        self.assertEqual(stages['unclassified'], 1)
+
     def test_learner_cannot_sign_in_to_the_admin_portal(self):
         self._login_learner()
         response = self._login_admin('learner')
