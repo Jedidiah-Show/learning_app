@@ -154,6 +154,9 @@ def index():
         onboarding_complete = bool(
             plan and plan.skill_level and plan.weekly_hours
         )
+        # Stage D: the confirmed pathway destination decides which section the
+        # dashboard leads with; unset keeps today's shared-foundation layout.
+        pathway_destination = plan.pathway_destination if plan else None
         next_module_id = None
         if progress.get('next_action'):
             action = progress['next_action']
@@ -196,7 +199,8 @@ def index():
                                onboarding_complete=onboarding_complete,
                                next_module_id=next_module_id,
                                due_reviews=due_reviews,
-                               ml_overview=ml_overview)
+                               ml_overview=ml_overview,
+                               pathway_destination=pathway_destination)
     except Exception:
         current_app.logger.exception('Dashboard error')
         # The template dereferences progress even in the error branch, so the
@@ -214,6 +218,7 @@ def index():
                                streak=0, longest_streak=0,
                                onboarding_complete=True, next_module_id=None,
                                due_reviews=0, ml_overview=None,
+                               pathway_destination=None,
                                progress_error=True), 503
 
 

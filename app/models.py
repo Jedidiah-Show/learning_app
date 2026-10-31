@@ -566,6 +566,12 @@ class CoursePlan(db.Model):
     skill_level = db.Column(db.String(32))
     weekly_hours = db.Column(db.Integer)
     setup_checks = db.Column(db.Text)
+    # Stage D pathway destination: the fit assessment proposes ('ai', 'ml', or
+    # 'undecided') and the learner explicitly confirms or overrides it. Both
+    # are stored so the dashboard can lead with the confirmed choice while the
+    # proposal stays available for later analysis. NULL means never assessed.
+    pathway_proposal = db.Column(db.String(16))
+    pathway_destination = db.Column(db.String(16))
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = db.Column(
         db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
