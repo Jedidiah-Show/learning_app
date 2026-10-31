@@ -75,6 +75,8 @@ Add a PyTorch and GPU module later as an advanced extension. That keeps the init
 - [x] Stage C: Extend bookmarks and notes to `mle.*` lessons behind the pathway's own sequential gate, and reuse that gate in the lesson route.
 - [x] Stage C: Add a second-pathway strip to the course lessons page so the specialization is discoverable beyond the navbar and dashboard card.
 - [x] Stage B: Record why each pilot submission failed (`failure_stage`/`failure_detail` on `ml_specialization_project`, migration `d6b4c1e93a75`) and render the failure-reason breakdown on `/admin/analytics`, replacing manual Vercel-log classification.
+- [x] Stage D item 1: Add a deterministic pathway-fit assessment as step 2 of onboarding (`app/pathway_fit.py`: five weighted scenarios, `PROPOSAL_MIN_LEAD = 3`, near-tie proposes `undecided`). It needs no external service and suits `skill_level: 'new'` because it asks about goals and working preferences rather than testing knowledge. The proposal is stored on `CoursePlan.pathway_proposal`; only the learner's explicit confirmation stores `CoursePlan.pathway_destination` (`ai`/`ml`/`undecided`), and both columns ship in migration `e7c4a91b3f52` and `REQUIRED_COLUMNS`.
+- [x] Stage D item 1: Make the dashboard lead with the chosen pathway's milestones and next actions. When `pathway_destination == 'ml'` the pathway section is promoted above the shared next-action cards with a *Your pathway* eyebrow (the captured section renders exactly once), a locked card adds a shared-foundation next step, and an open pathway takes over the hero CTA, milestone line, and progress bar. `ai`, `undecided`, and unset destinations keep today's order; the shared curriculum grid is never reordered or split, and a failing pathway overview still hides only that section.
 - [ ] Stage B: Enrol 3–5 learners and run the Modules 1–2 pilot per `stage_b_pilot_runbook.md`; revise lessons, thresholds, and starter hints from the collected evidence.
 - [ ] Verify the complete deployed learner flow and execute each starter CI after its learner TODO implementation is complete.
 - [ ] Pilot modules 1 and 2, then revise scope using learner completion and project evidence.
@@ -127,6 +129,40 @@ database. Lesson text, thresholds, and starter hints still cannot be
 revised from evidence — that step requires enrolled learners and remains the
 owner's Stage B action.
 
+**Stage D item 1 verification record (2026-10-31):** Full local suite passes
+(215 passed, 2 warnings, Python 3.13); the 19 new tests are in
+`tests/test_pathway_fit.py`. The rebuilt `static/css/tailwind.css` is
+byte-identical to a fresh `npm run build:css` — every class the new dashboard
+and step-2 markup uses was already in the compiled bundle.
+Scoring is unit-tested without app, database, or network: clear preferences
+propose their own pathway (10–0), five moderate answers propose `undecided`
+(5–5), a 2-point lead stays `undecided` while a 4-point lead proposes (the
+weights are even per side, so `PROPOSAL_MIN_LEAD = 3` reads as a
+two-question margin), and validation reports each missing or unknown answer
+while `score_pathway_fit` raises `PathwayFitError` instead of guessing.
+Flow coverage walks the real routes: step 1 persists knowledge and hours but
+leaves `/projects` gated; `GET /onboarding/pathway` before step 1 redirects
+back; answers store a proposal without a destination; confirm stores the
+destination and opens the gate; the learner can override the proposal
+(`ml` proposal, `ai` choice); confirm without a proposal writes nothing; an
+unknown destination returns the closed-option error; partial answers show
+per-question messages and store no proposal; skipping step 2 completes
+onboarding with the destination unset. Dashboard coverage asserts the `ml`
+destination leads (section above the shared cards, rendered exactly once,
+locked state still pointing at the shared foundation), an unlocked `ml`
+destination takes the hero CTA and milestone line, `ai` and unset destinations
+keep the current order, and a failing `ml_overview` keeps the failure
+contained to that section. The pre-existing two-step registration test was
+extended to answer step 2, and `tests/test_ml_specialization.py`'s dashboard
+card test still passes unchanged for the unset-destination layout. Migration
+`e7c4a91b3f52` was applied, downgraded to `d6b4c1e93a75`, and re-applied on a
+disposable SQLite database, with both `course_plan` columns present at head,
+absent after downgrade, and restored after re-upgrade. `flask db check`
+reports the same pre-existing SQLite FK-comparison noise on a clean `main`
+worktree as it does on this branch, and mentions no `course_plan` diff — the
+new columns match the model exactly. Applying the migration to production
+before this merges remains the pending deployment step.
+
 **Deployment record (2026-10-31):** The migration workflow could not run as written: the production startup guard grew a second required variable (`TOKEN_ENCRYPTION_KEY`, app/__init__.py:220) after the workflow was authored, so `flask --app wsgi db current` failed at app import. Fixed with a placeholder env var (commit `72cacd2`; Alembic never touches the Fernet key, which is used per-request in `app/encrypted_types.py`). The guarded workflow then applied `b3f1c7d94a20 → d7e4b1a9c260` to the production Neon database; `/readyz` confirms `migration_current: true` with no missing tables. Note: the `migrate/render` → `main` merge deploys to the live Vercel target (`https://learning-app-psi-black.vercel.app`); the Render service from `MIGRATION.md` was not reachable for verification (`learning-app.onrender.com` completes TLS but returns no response) and its cutover remains pending owner review.
 
 **Stage C + Stage B deployment record (2026-10-31):** PR #4 was merged to
@@ -157,10 +193,15 @@ The Module 4 service starter pins [FastAPI](https://pypi.org/project/fastapi/0.1
 **Next implementation step (updated 2026-10-31):** Stages A, C, and B's
 server-side instrumentation are implemented, verified, and deployed: both
 pathway migrations (`a5f3b2c8d417`, then `d6b4c1e93a75`) are applied to
-production and `main` runs at `f020d94`. What remains for Stage B is the
-pilot itself: enroll 3–5 learners per `stage_b_pilot_runbook.md` and revise
-lesson text, thresholds, and starter hints from the collected evidence. Stage
-D stays gated on that evidence.
+production and `main` runs at `f087413`. Stage D item 1 — the two-step
+onboarding fit check and the dashboard lead switch — is implemented and
+verified locally; its migration (`e7c4a91b3f52`) must be applied to
+production **before** the PR merges (migration before code, per
+`MIGRATION.md` §4.1, so `REQUIRED_COLUMNS` never 503s the dashboard). What
+remains for Stage B is the pilot itself: enroll 3–5 learners per
+`stage_b_pilot_runbook.md` and revise lesson text, thresholds, and starter
+hints from the collected evidence. The rest of Stage D (course identifiers
+where needed, and the placement-check re-gate) stays gated on that evidence.
 
 ## Two-pathway goal (recorded 2026-10-31)
 
@@ -274,11 +315,33 @@ Stage B: it needs no learner evidence and every item is testable locally).**
   do not feed the AI course's study-time or milestone numbers.
 
 **Stage D — true pathway selection (the "separate with shared foundations"
-end-state).**
-- Onboarding grows a destination question: AI Engineering, ML Engineering, or
+end-state). Item 1 complete 2026-10-31 (pulled ahead of the Stage B learner
+pilot: it is a schema-and-flow change that needs no learner evidence, while
+the remaining Stage D items do).**
+- ✅ Onboarding grows a destination question: AI Engineering, ML Engineering, or
   undecided. Both destinations share modules 0–2 + 1.00; the choice changes
   which pathway's milestones and next-actions the dashboard leads with — it
   must not reorder or split the shared curriculum.
+  Onboarding is now two steps: the existing setup questions (step 1) redirect
+  to a five-scenario pathway fit check (step 2) at
+  `auth.onboarding_pathway`, which is exempted from the post-setup gate. Step
+  1 alone no longer clears `_onboarding_done`, so the gate stays shut until
+  step 2 confirms or skips — the assessment cannot be navigated past. Step 2
+  scores `app/pathway_fit.py`, stores `CoursePlan.pathway_proposal`, and shows
+  the proposal with accept/override radios; only an explicit confirm writes
+  `CoursePlan.pathway_destination` (`ai`/`ml`/`undecided`), so the proposal and
+  the choice stay separately analysable. Both columns ship in migration
+  `e7c4a91b3f52` and in `REQUIRED_COLUMNS`, so an unapplied migration fails
+  `/readyz` rather than 500ing the dashboard. Skipping either step completes
+  onboarding with an unset destination, which keeps today's layout.
+  The dashboard promotes the pathway section above the shared next-action
+  cards when the destination is `ml` (eyebrow *Your pathway*; the section is
+  captured once and rendered in exactly one of the two positions), a locked
+  card adds a shared-foundation next-step CTA, and an open pathway takes over
+  the hero CTA, milestone line, and progress bar. `ai`, `undecided`, and
+  unset destinations keep the current order, the curriculum grid is never
+  reordered or split, and a failing `ml_overview` still hides only that
+  section.
 - Introduce a course identifier only where needed (review items, future
   leaderboards) rather than refactoring `app/curriculum.py` into multi-course
   form; the namespaced-ID design makes a global `course_id` unnecessary for

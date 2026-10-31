@@ -254,6 +254,22 @@ class RuachAICourseTests(unittest.TestCase):
             'skill_level': 'new', 'weekly_hours': '10-12', 'track': 'standard',
         }, follow_redirects=False)
         self.assertEqual(completed.status_code, 302)
+        # Step 1 only collects the setup answers; the pathway fit check is
+        # step 2, so the destination gate stays closed until it is answered.
+        self.assertIn('/onboarding/pathway', completed.headers['Location'])
+        self.assertEqual(
+            self.client.get('/projects', follow_redirects=False).status_code, 302
+        )
+        answered = self.client.post('/onboarding/pathway', data={
+            'fit.outcome': 'trained-model', 'fit.weekend': 'train-evaluate',
+            'fit.curiosity': 'how-knows', 'fit.pride': 'data-insight',
+            'fit.workday': 'experiments',
+        }, follow_redirects=False)
+        self.assertEqual(answered.status_code, 200)
+        confirmed = self.client.post('/onboarding/pathway', data={
+            'action': 'confirm', 'pathway_destination': 'ml',
+        }, follow_redirects=False)
+        self.assertEqual(confirmed.status_code, 302)
         self.assertEqual(self.client.get('/projects').status_code, 200)
 
     def test_registration_commit_conflict_never_authenticates_the_requester(self):
