@@ -18,10 +18,12 @@ migrate = Migrate()
 
 # Routes the first-run onboarding gate must never redirect: a learner can always
 # reach their own account, security, support, and credential pages before they
-# have answered the two setup questions. Everything else is gated once.
+# have finished first-run setup (the two questions plus the pathway fit check).
+# Everything else is gated once.
 _NEVER_GATED_ENDPOINTS = frozenset({
     'static', 'main.healthz', 'main.readyz',
-    'auth.onboarding', 'auth.login', 'auth.logout', 'auth.register',
+    'auth.onboarding', 'auth.onboarding_pathway', 'auth.login', 'auth.logout',
+    'auth.register',
     'auth.profile', 'auth.profile_photo', 'auth.update_account',
     'auth.delete_account', 'auth.reset_account', 'auth.forgot_password',
     'auth.reset_password', 'auth.verify_phone', 'auth.resend_phone_verification',
@@ -467,11 +469,12 @@ def create_app(config_override=None):
 
     @app.before_request
     def gate_post_setup():
-        # First-run onboarding: every new learner sees the two setup questions
-        # once before they start learning. Account, security, support, and
-        # credential routes stay reachable so a learner can always manage their
-        # own account (change a password, delete it, verify a phone) even before
-        # they have answered; completing or skipping the flow clears the gate.
+        # First-run onboarding: every new learner sees the setup questions
+        # and the pathway fit check once before they start learning. Account,
+        # security, support, and credential routes stay reachable so a learner
+        # can always manage their own account (change a password, delete it,
+        # verify a phone) even before they have answered; completing or
+        # skipping either step clears the gate.
         if (
             current_user.is_authenticated
             and request.endpoint not in _NEVER_GATED_ENDPOINTS

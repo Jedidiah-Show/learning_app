@@ -14,6 +14,10 @@ from app.rate_limit import client_ip, enforce_rate_limit, identity_hash
 from app.course_data import (
     PACE_CHOICES, SKILL_LEVELS, TRACKS, pace_choice_for_hours, recommend_track,
 )
+from app.pathway_fit import (
+    PATHWAY_DESTINATIONS, PATHWAY_FIT_QUESTIONS,
+    score_pathway_fit, validate_pathway_fit_answers,
+)
 from datetime import datetime, timedelta, timezone
 import hashlib
 import os
@@ -488,15 +492,100 @@ def onboarding():
         if track and track in TRACKS:
             plan.track = track
         db.session.commit()
-        session['_onboarding_done'] = True
-        session.pop('_post_setup_next', None)
-        next_page = request.form.get('next') or ''
-        return redirect(next_page) if safe_local_redirect(next_page) else redirect(url_for('main.index'))
+        # Step 1 of 2: the setup gate stays closed until the learner has seen
+        # the pathway fit proposal (or skipped it), so the assessment is part
+        # of onboarding itself rather than a nudge that can be missed.
+        return redirect(url_for('auth.onboarding_pathway'))
     return render_template(
         'onboarding.html', errors={}, skills=SKILL_LEVELS, paces=PACE_CHOICES,
         tracks=TRACKS, selected_skill=selected_skill, selected_hours=selected_hours_id,
         selected_track=selected_track, recommended_track=recommended,
     )
+
+def _fit_render(plan, *, result=None, errors=None, answers=None):
+    return render_template(
+        'onboarding_pathway.html',
+        questions=PATHWAY_FIT_QUESTIONS, destinations=PATHWAY_DESTINATIONS,
+        result=result, errors=errors or {}, answers=answers or {},
+    )
+
+
+@auth_bp.route('/onboarding/pathway', methods=['GET', 'POST'])
+@login_required
+def onboarding_pathway():
+    """Second onboarding step: the pathway fit assessment.
+
+    Five deterministic scenario questions score toward AI Engineering or
+    Machine Learning Engineering; a near-tie proposes ``undecided``. Like the
+    pace recommendation, the assessment **proposes** — only the learner's
+    explicit confirmation writes ``CoursePlan.pathway_destination``, and the
+    proposal is stored separately so later analysis can compare what was
+    suggested with what was chosen. Skipping keeps the destination unset and
+    the dashboard in its default (shared-foundation-first) layout.
+    """
+    plan = CoursePlan.query.filter_by(user_id=current_user.id).first()
+    if plan is None:
+        plan = CoursePlan(user_id=current_user.id, track='standard')
+        db.session.add(plan)
+    # The fit check is step 2 of 2: knowledge and available hours come first,
+    # so a learner who jumps straight here is sent back to the setup questions.
+    if not (plan.skill_level and plan.weekly_hours):
+        return redirect(url_for('auth.onboarding'))
+    if request.method == 'POST':
+        action = request.form.get('action')
+        if action == 'skip':
+            session['_onboarding_done'] = True
+            session.pop('_post_setup_next', None)
+            flash(
+                'Pathway check skipped. Your dashboard keeps the shared '
+                'foundation in the lead until you choose a pathway.', 'info',
+            )
+            next_page = request.form.get('next') or ''
+            return (
+                redirect(next_page)
+                if safe_local_redirect(next_page)
+                else redirect(url_for('main.index'))
+            )
+        if action == 'confirm':
+            # Nothing is written unless a proposal exists and the learner
+            # picks a destination from the closed set of options.
+            if not plan.pathway_proposal:
+                return redirect(url_for('auth.onboarding_pathway'))
+            destination = (request.form.get('pathway_destination') or '').strip()
+            if destination not in PATHWAY_DESTINATIONS:
+                return _fit_render(
+                    plan, result={'proposal': plan.pathway_proposal},
+                    errors={
+                        'pathway_destination':
+                            'Choose where your dashboard should lead.',
+                    },
+                ), 200
+            plan.pathway_destination = destination
+            db.session.commit()
+            session['_onboarding_done'] = True
+            session.pop('_post_setup_next', None)
+            next_page = request.form.get('next') or ''
+            return (
+                redirect(next_page)
+                if safe_local_redirect(next_page)
+                else redirect(url_for('main.index'))
+            )
+        answers = {
+            question['id']: request.form.get(question['id'])
+            for question in PATHWAY_FIT_QUESTIONS
+        }
+        errors = validate_pathway_fit_answers(answers)
+        if errors:
+            errors.setdefault(
+                'form', 'Answer all five questions to see your proposal.'
+            )
+            return _fit_render(plan, errors=errors, answers=answers), 200
+        result = score_pathway_fit(answers)
+        plan.pathway_proposal = result['proposal']
+        db.session.commit()
+        return _fit_render(plan, result=result, answers=answers), 200
+    return _fit_render(plan)
+
 
 @auth_bp.route('/logout', methods=['POST'])
 @login_required
