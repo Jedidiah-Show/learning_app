@@ -28,8 +28,10 @@ jobs:
       APP_ENV: production
       DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}
       # The migration process does not create sessions or encrypt user tokens.
-      # This placeholder satisfies the production startup guard.
+      # These placeholders satisfy the production startup guards only; the
+      # Fernet key is touched per-request in encrypted_types, never by Alembic.
       SECRET_KEY: ci-migration-only-not-used-for-sessions
+      TOKEN_ENCRYPTION_KEY: ci-migration-only-not-used-for-tokens
     steps:
       - name: Require backup confirmation
         env:
