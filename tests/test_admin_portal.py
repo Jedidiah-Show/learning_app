@@ -116,6 +116,29 @@ class AdminPortalTests(unittest.TestCase):
         for path in ('/admin', '/admin/users', '/admin/analytics', '/admin/audit'):
             self.assertEqual(self.client.get(path).status_code, 403, path)
 
+    def test_admin_dashboard_reports_ml_pathway_status(self):
+        from app.ml_pathway import PATHWAY_ID
+        from app.models import (
+            MLSpecializationCredential, MLSpecializationLessonCompletion,
+        )
+        enrolled = self._create_account('ml-pilot')
+        with self.app.app_context():
+            db.session.add(MLSpecializationLessonCompletion(
+                user_id=enrolled, pathway_id=PATHWAY_ID,
+                lesson_id='mle.data.01',
+            ))
+            db.session.add(MLSpecializationCredential(
+                user_id=enrolled, pathway_id=PATHWAY_ID,
+                public_id='admin-test-credential', recipient_name='ML Pilot',
+            ))
+            db.session.commit()
+        self._login_admin()
+        page = self.client.get('/admin')
+        self.assertEqual(page.status_code, 200)
+        body = page.get_data(as_text=True)
+        self.assertIn('ML Engineering specialization', body)
+        self.assertIn('hold the specialization credential', body)
+
     def test_learner_cannot_sign_in_to_the_admin_portal(self):
         self._login_learner()
         response = self._login_admin('learner')

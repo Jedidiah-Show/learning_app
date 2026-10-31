@@ -80,6 +80,26 @@ class MLSpecializationFlowTests(unittest.TestCase):
         self.assertIsNotNone(token)
         return token.group(1).decode()
 
+    def test_dashboard_card_tracks_the_pathway_without_opening_lessons(self):
+        locked = self.client.get('/')
+        self.assertEqual(locked.status_code, 200)
+        self.assertIn('Machine Learning Engineering specialization', locked.get_data(as_text=True))
+        self.assertIn('Opens after your Module 01 and Module 02 course projects', locked.get_data(as_text=True))
+
+        self._complete_shared_prerequisites()
+        pathway = machine_learning_pathway()
+        first = [
+            lesson for module in pathway['modules'] for lesson in module['lessons']
+            if lesson.get('status') == 'ready'
+        ][0]
+        opened = self.client.get('/')
+        self.assertIn('Continue: ' + first['title'], opened.get_data(as_text=True))
+        self.assertIn('0 of 14 lessons · 0 of 4 projects complete', opened.get_data(as_text=True))
+
+        self._complete_quiz(first)
+        advanced = self.client.get('/').get_data(as_text=True)
+        self.assertIn('1 of 14 lessons', advanced)
+
     def test_pathway_content_is_namespaced_and_not_in_shared_curriculum(self):
         pathway = machine_learning_pathway()
         pathway_ids = {

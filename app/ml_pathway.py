@@ -94,3 +94,60 @@ def get_machine_learning_lesson(lesson_id):
         (lesson for lesson in machine_learning_lessons() if lesson['id'] == lesson_id),
         None,
     )
+
+
+def ml_pathway_overview(user_id):
+    """Summarise one learner's specialization standing for cross-page cards.
+
+    Deliberately read-only and independent of the shared course progress so
+    the dashboard can show the pathway without touching pacing or milestones.
+    """
+    from app.models import (
+        CourseProject, MLSpecializationLessonCompletion, MLSpecializationProject,
+    )
+
+    pathway = machine_learning_pathway()
+    prerequisites_met = CourseProject.query.filter(
+        CourseProject.user_id == user_id,
+        CourseProject.module_id.in_(['01', '02']),
+        CourseProject.completed.is_(True),
+    ).count() >= 2
+    completed = {
+        row.lesson_id for row in MLSpecializationLessonCompletion.query.filter_by(
+            user_id=user_id, pathway_id=PATHWAY_ID
+        ).all()
+    }
+    ready_lessons = [
+        lesson for lesson in machine_learning_lessons() if lesson.get('status') == 'ready'
+    ]
+    project_modules = {
+        row.module_id for row in MLSpecializationProject.query.filter_by(
+            user_id=user_id, pathway_id=PATHWAY_ID, completed=True
+        ).all()
+    }
+    ready_modules = [
+        module for module in pathway['modules']
+        if all(lesson.get('status') == 'ready' for lesson in module['lessons'])
+    ]
+    if prerequisites_met:
+        next_lesson = next(
+            (lesson for lesson in ready_lessons if lesson['id'] not in completed),
+            None,
+        )
+    else:
+        next_lesson = None
+    return {
+        'title': pathway['title'],
+        'prerequisites_met': prerequisites_met,
+        'completed_lessons': sum(lesson['id'] in completed for lesson in ready_lessons),
+        'total_lessons': len(ready_lessons),
+        'projects_completed': len(project_modules),
+        'total_projects': len(ready_modules),
+        'complete': bool(
+            prerequisites_met
+            and all(lesson['id'] in completed for lesson in ready_lessons)
+            and all(module['id'] in project_modules for module in ready_modules)
+        ),
+        'next_lesson_id': next_lesson['id'] if next_lesson else None,
+        'next_lesson_title': next_lesson['title'] if next_lesson else None,
+    }
