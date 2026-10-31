@@ -799,6 +799,7 @@ def _ml_pilot_snapshot():
     so time-to-project is an estimate unless snapshotted weekly).
     """
     from app.ml_pathway import PATHWAY_ID, machine_learning_lessons
+    from app.routes.ml_specialization import FAILURE_STAGES
 
     pilot_lessons = [
         lesson for lesson in machine_learning_lessons()
@@ -880,6 +881,8 @@ def _ml_pilot_snapshot():
             'learner': label, 'module_id': record.module_id,
             'completed': record.completed, 'score': score,
             'updated_at': record.updated_at,
+            'failure_stage': record.failure_stage,
+            'failure_detail': record.failure_detail,
         })
 
     times = []
@@ -904,6 +907,26 @@ def _ml_pilot_snapshot():
         for name, scores in criteria_scores.items()
     ), key=lambda row: row['average'])
 
+    # Non-passing latest attempts grouped by the recorded stage. Stages are
+    # drawn from the server-owned taxonomy, so an unexpected value is a bug in
+    # this route rather than data to render; it is shown under "unclassified".
+    failure_counts = {}
+    for row in attempt_rows:
+        if row['completed']:
+            continue
+        stage = row['failure_stage'] or 'unclassified'
+        failure_counts[stage] = failure_counts.get(stage, 0) + 1
+    failures = [
+        {
+            'stage': stage,
+            'label': FAILURE_STAGES.get(stage, 'Recorded before failure tracking'),
+            'count': count,
+        }
+        for stage, count in sorted(
+            failure_counts.items(), key=lambda item: (-item[1], item[0])
+        )
+    ]
+
     credentials = db.session.query(
         func.count(MLSpecializationCredential.id)
     ).filter(
@@ -918,6 +941,7 @@ def _ml_pilot_snapshot():
         'attempts': attempt_rows,
         'criteria': criteria,
         'times': times,
+        'failures': failures,
         'credentials': credentials,
         'passed': {module_id: len({user for user, mid in passes if mid == module_id})
                    for module_id in module_ids},

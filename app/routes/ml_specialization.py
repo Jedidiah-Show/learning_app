@@ -33,6 +33,29 @@ STARTER_PATH = (
     Path(__file__).parents[2] / 'starter_kits' / 'machine_learning' / 'module_1'
 )
 
+# Stage B instrumentation: the server-owned failure taxonomy stored on each
+# project record. Only stages produced by this route may appear in data, and
+# the labels are what the admin analytics page renders.
+FAILURE_STAGES = {
+    'report_contract': 'Report does not match the fixed dataset contract',
+    'ci_verification': 'Public automated checks could not be verified',
+    'review_unavailable': 'Automated review unavailable (submission saved)',
+    'review_invalid': 'Automated review returned an invalid result',
+    'rubric_below_threshold': 'Review completed but below the pass threshold',
+}
+
+
+def _attempt_outcome(record, stage, detail=None):
+    """Persist why this attempt did not pass, for pilot analysis.
+
+    Every non-pass branch writes exactly one stage; passing writes ``None``.
+    The detail is always a message this app generated, never learner or
+    external free text, and is truncated to the column length.
+    """
+    record.failure_stage = stage
+    record.failure_detail = (detail or FAILURE_STAGES.get(stage) or '')[:300] or None
+    db.session.commit()
+
 
 def _module(module_id):
     return next(
@@ -415,9 +438,17 @@ def submit_project(module_id):
     record.submission = json.dumps(draft, ensure_ascii=False)
     record.completed = False
     record.evaluation = None
+    # This attempt's outcome is unknown until a branch below decides it.
+    record.failure_stage = None
+    record.failure_detail = None
     db.session.commit()
 
     if not _report_matches(module_id, report):
+        _attempt_outcome(
+            record, 'report_contract',
+            'The submitted report does not meet the fixed dataset checks and metric thresholds. '
+            'Review the starter tests and keep the evaluation boundary unchanged.',
+        )
         return jsonify({
             'error': 'The submitted report does not meet the fixed dataset checks and metric thresholds. Review the starter tests and keep the evaluation boundary unchanged.',
             'draft_saved': True,
@@ -425,6 +456,7 @@ def submit_project(module_id):
     try:
         verification = verify_checks(repository_url, checks_url)
     except VerificationError as error:
+        _attempt_outcome(record, 'ci_verification', str(error))
         return jsonify({'error': str(error), 'draft_saved': True}), 422
 
     rubric = module.get('project_rubric') or []
@@ -448,11 +480,19 @@ def submit_project(module_id):
         )
     except GeminiError as error:
         current_app.logger.warning('ML specialization project evaluation failed: %s', error)
+        _attempt_outcome(
+            record, 'review_unavailable',
+            'Automated review is temporarily unavailable. Your draft and verified checks are saved; retry when review is available.',
+        )
         return jsonify({
             'error': 'Automated review is temporarily unavailable. Your draft and verified checks are saved; retry when review is available.',
             'draft_saved': True, 'checks_verified': True,
         }), 503
     if not _evaluation_valid(evaluation, rubric):
+        _attempt_outcome(
+            record, 'review_invalid',
+            'The project review returned an invalid result. Your draft is saved; please retry.',
+        )
         return jsonify({
             'error': 'The project review returned an invalid result. Your draft is saved; please retry.',
             'draft_saved': True,
@@ -464,7 +504,10 @@ def submit_project(module_id):
         evaluation['score'] >= 70
         and all(item['score'] >= 50 for item in evaluation['criterion_feedback'])
     )
-    db.session.commit()
+    # A completed rubric below threshold is a failure too, with its own stage.
+    _attempt_outcome(
+        record, None if record.completed else 'rubric_below_threshold',
+    )
     return jsonify({'completed': record.completed, 'evaluation': evaluation})
 
 

@@ -60,7 +60,9 @@ specialization lessons and projects.
 5. Module 1 project completion unlocks Module 2 lessons; Module 2 project
    completion ends the pilot scope.
 
-Common non-pass outcomes to recognize:
+Common non-pass outcomes to recognize (each is stored on the project record
+as `failure_stage` since `d6b4c1e93a75`, so you can group them from the
+analytics page or the SQL in section 4):
 
 - `422` with `draft_saved: true` and the fixed-dataset message: report does
   not match server-owned expectations — almost always a modified evaluation
@@ -77,9 +79,10 @@ Common non-pass outcomes to recognize:
 
 All of this is already persisted in the `ml_specialization_*` tables and the
 shared `course_project` table. The `/admin/analytics` page now renders the
-pilot section (enrolments, lesson funnel, attempts with scores, rubric
-criterion averages, and estimated time-to-project), so weekly collection is
-primarily a screenshot/export of that page. The underlying SQL is kept below
+pilot section (enrolments, lesson funnel, attempts with scores and recorded
+failure stages, a failure-reason breakdown, rubric criterion averages, and
+estimated time-to-project), so weekly collection is primarily a screenshot/
+export of that page. The underlying SQL is kept below
 for direct checks against the production (Neon) database when the page and
 the tables seem to disagree:
 
@@ -100,6 +103,7 @@ the tables seem to disagree:
   SELECT p.module_id, p.user_id, u.email,
          (p.completed) AS completed,
          (p.evaluation::jsonb ->> 'score')::int AS score,
+         p.failure_stage, p.failure_detail,
          p.created_at, p.updated_at
   FROM ml_specialization_project p JOIN "user" u ON u.id = p.user_id
   WHERE p.pathway_id = 'machine-learning-engineering'
@@ -107,9 +111,15 @@ the tables seem to disagree:
   ```
 
   Records with `completed = false` and non-null `submission` are failed
-  attempts; classify each as report-contract 422, CI-verification 422, or
-  rubric-below-threshold by the stored evaluation/error and Vercel function
-  logs from the submit window.
+  attempts. Since 2026-10-31 (`d6b4c1e93a75`) each one carries
+  `failure_stage` — `report_contract`, `ci_verification`,
+  `review_unavailable`, `review_invalid`, `rubric_below_threshold`, or NULL
+  for a pass — recorded by the server at submit time, so the 422/503
+  classification no longer requires Vercel logs. `failure_detail` holds the
+  exact message the learner saw (app-generated text only). Rows written
+  before that migration show NULL and appear on the analytics page as
+  *Recorded before failure tracking*. Like `updated_at`, these columns hold
+  the **latest** attempt only: snapshot weekly.
 - Per-criterion rubric weak points: expand `evaluation::jsonb ->
   'criterion_feedback'` and note any criterion with scores clustered below 60.
 - Time-to-project: for each learner and module, `MIN` of the last pilot

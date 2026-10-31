@@ -70,6 +70,12 @@ Add a PyTorch and GPU module later as an advanced extension. That keeps the init
 - [x] Stage A: Add a dashboard card for the specialization (`ml_pathway_overview` in `app/ml_pathway.py`, rendered in `templates/dashboard.html`); locked until shared projects 01–02 pass, then shows lesson/project counts, a next-lesson action, and pathway/credential links. A dashboard error path hides the card instead of blanking the page.
 - [x] Stage A: Add hand-completed reference implementations for all four starter contracts under `tests/ml_reference`, exercised by `tests/test_ml_starter_references.py` against each kit's own tests and the server-owned report contract. CI installs `requirements-dev.txt` (CPU scientific stack, app never imports it); shipped kits stay stubbed for learners.
 - [x] Stage A: Add an admin-visible ML pathway status card (distinct learners with at least one specialization lesson, and valid credential holders) to the existing admin dashboard aggregates.
+- [x] Stage C: Add ML-scoped pacing (`ml_pathway_pacing`) driven by the shared `CoursePlan.weekly_hours`, with per-module and per-lesson time estimates in the manifest and a pathway-only plan panel on the catalog page.
+- [x] Stage C: Make `ReviewItem` pathway-aware (nullable `pathway_id`, migration `a5f3b2c8d417`) and schedule missed pathway knowledge checks into the shared spaced-review queue with pathway attribution.
+- [x] Stage C: Extend bookmarks and notes to `mle.*` lessons behind the pathway's own sequential gate, and reuse that gate in the lesson route.
+- [x] Stage C: Add a second-pathway strip to the course lessons page so the specialization is discoverable beyond the navbar and dashboard card.
+- [x] Stage B: Record why each pilot submission failed (`failure_stage`/`failure_detail` on `ml_specialization_project`, migration `d6b4c1e93a75`) and render the failure-reason breakdown on `/admin/analytics`, replacing manual Vercel-log classification.
+- [ ] Stage B: Enrol 3–5 learners and run the Modules 1–2 pilot per `stage_b_pilot_runbook.md`; revise lessons, thresholds, and starter hints from the collected evidence.
 - [ ] Verify the complete deployed learner flow and execute each starter CI after its learner TODO implementation is complete.
 - [ ] Pilot modules 1 and 2, then revise scope using learner completion and project evidence.
 
@@ -81,17 +87,60 @@ Add a PyTorch and GPU module later as an advanced extension. That keeps the init
 
 **Stage A deployment record (2026-10-31):** PR #2 merged to `main` by rebase after all CI jobs and the Vercel preview passed (branch commits `d98b8b7`/`c4b085b` landed as `main` commits `6b7e41a`/`2662ba3`). Production `/readyz` on `https://learning-app-psi-black.vercel.app` reports `commit: 2662ba3` with `migration_current: true`. No schema change was required for Stage A. Stage B pilot procedures live in `stage_b_pilot_runbook.md`.
 
+**Stage C verification record (2026-10-31):** Full local suite passes (190
+passed, 1 warning, Python 3.13), including the browser and starter-reference
+suites. New coverage in `tests/test_ml_specialization.py`: a missed pathway
+check queues a namespaced `ReviewItem` with the right question and pathway
+attribution and advances the interval on a correct review answer; pacing
+follows weekly hours (6 vs 24 hours per week), preserves authored module
+order, and advances a module to Complete after its lessons and project; the
+lessons page promotes the pathway in both locked and open states; bookmarks
+and notes work on an open pathway lesson, read as 404 on a locked one, and
+appear on the rendered lesson page. Migration `a5f3b2c8d417` was applied,
+downgraded to `d7e4b1a9c260`, and re-applied on a disposable SQLite database;
+a legacy review row inserted through the old schema keeps `pathway_id = NULL`.
+`review_item.pathway_id` was added to `REQUIRED_COLUMNS` in
+`app/integrations.py` so an unapplied migration fails `/readyz` instead of
+500ing the review center. An end-to-end smoke walk (register → onboarding →
+dashboard → lessons → catalog → lesson miss → review queue) passed against
+the migrated database.
+
+**Stage B instrumentation record (2026-10-31):** Full local suite passes
+(196 passed, 2 warnings). `submit_project` now writes exactly one outcome
+per attempt: `report_contract` and `ci_verification` on the two 422 branches,
+`review_unavailable` and `review_invalid` on the two 503 branches,
+`rubric_below_threshold` when a valid review falls short, and NULL when the
+submission passes; the draft-first commit clears the previous attempt's
+stage so a retry never reports a stale reason. `failure_detail` stores only
+messages this app generated, truncated to the column length.
+`_ml_pilot_snapshot` groups non-passing latest attempts by stage (unknown
+values fall back to *Recorded before failure tracking*) and the analytics
+page shows the breakdown next to the attempt table, with the stage as a chip
+and the exact learner-facing message in its tooltip. Coverage:
+`test_failed_submissions_record_a_classified_failure_stage` walks all six
+outcomes through the real submission route with `verify_checks` and
+`generate_json` mocked, and
+`test_admin_analytics_reports_submission_failure_reasons` asserts both the
+rendered table and the aggregation counts. Migration `d6b4c1e93a75` was
+applied, downgraded to `a5f3b2c8d417`, and re-applied on a disposable SQLite
+database. Lesson text, thresholds, and starter hints still cannot be
+revised from evidence — that step requires enrolled learners and remains the
+owner's Stage B action.
+
 **Deployment record (2026-10-31):** The migration workflow could not run as written: the production startup guard grew a second required variable (`TOKEN_ENCRYPTION_KEY`, app/__init__.py:220) after the workflow was authored, so `flask --app wsgi db current` failed at app import. Fixed with a placeholder env var (commit `72cacd2`; Alembic never touches the Fernet key, which is used per-request in `app/encrypted_types.py`). The guarded workflow then applied `b3f1c7d94a20 → d7e4b1a9c260` to the production Neon database; `/readyz` confirms `migration_current: true` with no missing tables. Note: the `migrate/render` → `main` merge deploys to the live Vercel target (`https://learning-app-psi-black.vercel.app`); the Render service from `MIGRATION.md` was not reachable for verification (`learning-app.onrender.com` completes TLS but returns no response) and its cutover remains pending owner review.
 
 **Dependency note:** Starter kits pin CPU scientific dependencies. The Module 2 versions were checked against [NumPy](https://pypi.org/project/numpy/2.4.6/), [pandas](https://pypi.org/project/pandas/3.1.0/), [scikit-learn](https://pypi.org/project/scikit-learn/1.9.1/), and [SciPy](https://pypi.org/project/scipy/1.17.1/) PyPI metadata on 2026-10-30; these versions support Python 3.11. Newer SciPy 1.18.1 requires Python 3.12, so the Python 3.11 starter pins SciPy 1.17.1.
 
 The Module 4 service starter pins [FastAPI](https://pypi.org/project/fastapi/0.162.0/), [Pydantic](https://pypi.org/project/pydantic/2.14.2/), and [Uvicorn](https://pypi.org/project/uvicorn/0.54.0/), all selected from PyPI release metadata for Python 3.11.
 
-**Next implementation step (updated 2026-10-31):** Stage A is implemented and
-under test locally. Deploy it, then begin Stage B: a live pilot of Modules 1
-and 2 with 3–5 learners using real public CI runs and rubric review. Revise
-the lessons and project thresholds from learner evidence before calling the
-pathway production-ready.
+**Next implementation step (updated 2026-10-31):** Stages A and C are
+implemented and verified locally; Stage B's server-side instrumentation is
+in place. The build-side work is finished — what remains for Stage B is the
+pilot itself: apply both pending migrations (`a5f3b2c8d417`, then
+`d6b4c1e93a75`) through the guarded migration workflow, enroll 3–5 learners
+per `stage_b_pilot_runbook.md`, and revise lesson text, thresholds, and
+starter hints from the collected evidence. Stage D stays gated on that
+evidence.
 
 ## Two-pathway goal (recorded 2026-10-31)
 
@@ -114,27 +163,38 @@ part of the AI course, and vice versa.
   It deliberately does not touch `app.curriculum`, `TRACKS`, or monthly
   milestones (app/ml_pathway.py:1).
 - **Isolation is validated:** namespaced IDs enforced at load; report
-  contracts are server-owned; 183 tests green including 7 specialization
+  contracts are server-owned; 196 tests green including 13 specialization
   tests.
 
 ### Known gaps against the two-pathway goal
 
-1. **Discoverability:** the only entry point is the navbar. The dashboard and
-   lessons page render zero references to the specialization, so a learner
-   finishing shared project 02 gets no prompt that the ML path has opened.
-2. **No ML pacing:** weekly hours, monthly milestones, catch-up, and streaks
-   are AI-course-only. A learner doing both pathways sees one plan and an
-   untracked second workload.
-3. **No ML peripheral features:** spaced-review (`ReviewItem`), bookmarks,
-   notes, and quizzes return nothing for `mle.*` lessons
-   (app/routes/lessons.py, app/routes/progress.py are course-scoped).
+*(Items 1–3 were closed by Stage A and Stage C on 2026-10-31; retained for
+the record.)*
+
+1. ~~**Discoverability:** the only entry point is the navbar.~~ Resolved:
+   the dashboard card (Stage A) and a lessons-page pathway strip (Stage C)
+   both prompt the learner; a specialization failure hides the card instead
+   of blanking the page.
+2. ~~**No ML pacing:** weekly hours, monthly milestones, catch-up, and streaks
+   are AI-course-only.~~ Resolved: `ml_pathway_pacing` derives an ML-module
+   plan from the same `CoursePlan.weekly_hours` and renders per pathway on the
+   catalog page. It deliberately does not touch `TRACKS` or the AI milestones,
+   and no streak/leaderboard merging was attempted.
+3. ~~**No ML peripheral features:** spaced-review (`ReviewItem`), bookmarks,
+   notes, and quizzes return nothing for `mle.*` lessons.~~ Resolved for
+   review, bookmarks, and notes: `ReviewItem.pathway_id` is namespaced and a
+   missed pathway knowledge check enters the same queue with a pathway label;
+   the shared bookmark/note API resolves `mle.*` lessons through the pathway's
+   own sequential gate. `/quizzes` stays course-scoped by design — the
+   pathway uses one fixed knowledge check per lesson rather than the shared
+   quiz bank.
 4. **One-way dependency:** ML requires AI-course projects, but the reverse
    does not exist, and there is no third entry door — a learner who wants ML
    first must still walk the AI course's first two modules, which is correct
-   today but is a decision to state, not assume.
+   today but is a decision to state, not assume. *(Stage D revisits this.)*
 5. **Pilot evidence is empty:** modules 3–4 are authored but unvalidated; the
    doc's own rule is to revise from learner completion and project results
-   before extending further.
+   before extending further. *(Stage B owns this.)*
 
 ### Staged next steps
 
@@ -154,17 +214,44 @@ detail stays on the pathway catalog page until pilot evidence justifies more.
 **Stage B — pilot modules 1–2 with real learners.**
 - 3–5 learners from shared-project-02 completion through Module 2 project.
 - Instrument: lesson-completion funnel, 422 report-contract failure reasons,
-  rubric scores, time-to-project. The tables already record everything
-  needed; only aggregation queries are new.
+  rubric scores, time-to-project. ✅ Instrumentation complete 2026-10-31:
+  the funnel, rubric averages, and time-to-project were already aggregated on
+  `/admin/analytics`; the failure reasons were **not** — they existed only in
+  Vercel logs. `ml_specialization_project.failure_stage`/`failure_detail`
+  (migration `d6b4c1e93a75`) now record every non-pass branch of submission
+  (report contract, CI verification, review unavailable, review invalid,
+  rubric below threshold) and clear on pass, and the analytics page renders a
+  failure-reason breakdown beside the attempt table. Rows predating the
+  migration display as *Recorded before failure tracking*.
 - Revise lesson text, thresholds, and starter hints from the evidence.
-  Gate: do not market modules 3–4 until 1–2 show completion.
+  **Owner action once learners are enrolled; not yet possible.**
+- Gate: do not market modules 3–4 until 1–2 show completion.
 
-**Stage C — pacing and review parity.**
-- Extend `recommend_track`/milestone logic to an ML-scoped variant driven by
-  the same `CoursePlan.weekly_hours`, presented per pathway rather than mixed
-  into the AI plan.
-- Make `ReviewItem` pathway-aware (nullable `pathway_id`, additive migration)
-  so `mle.*` lessons feed spaced repetition.
+**Stage C — pacing and review parity. Complete 2026-10-31 (pulled ahead of
+Stage B: it needs no learner evidence and every item is testable locally).**
+- ✅ `ml_pathway_pacing` (app/ml_pathway.py) derives an ML-scoped plan from
+  the same `CoursePlan.weekly_hours`: total/weekly hours, weeks-to-complete,
+  catch-up hours, and one status per module in authored order. Rendered on
+  `/specializations/machine-learning` under "Your pathway plan" and labelled
+  as pathway-only so it never reads as the AI plan. The manifest now carries
+  `estimated_hours` per module and `study_minutes` per published lesson, and
+  the loader rejects a pathway that omits them.
+- ✅ `ReviewItem.pathway_id` is nullable (migration `a5f3b2c8d417`,
+  additive, downgrade verified) and `idx_review_user_pathway` was added. A
+  missed pathway knowledge check schedules a namespaced review item
+  (`quiz_id = machine-learning-engineering:<lesson_id>`) through the same
+  interval ladder as course quizzes; the `/api/quizzes/review` payload
+  carries `pathway_id`/`pathway_title`, and the review center labels the
+  pathway. Existing course rows stay NULL.
+- ✅ Bookmarks and notes accept `mle.*` lesson IDs through the pathway's own
+  sequential gate (`machine_learning_lesson_is_open`), which the lesson route
+  now also uses instead of its inline checks, and the pathway lesson page
+  renders the same bookmark/note controls as course lessons. A locked or
+  unpublished pathway lesson reads as 404, matching the course behaviour.
+- ✅ The course lessons page shows a second-pathway strip (locked, open, or
+  credential states) with the same containment rule as the dashboard card.
+- ⛔ Deferred: streaks and leaderboards stay single-pathway; ML review items
+  do not feed the AI course's study-time or milestone numbers.
 
 **Stage D — true pathway selection (the "separate with shared foundations"
 end-state).**
