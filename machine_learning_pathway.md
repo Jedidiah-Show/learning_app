@@ -160,8 +160,9 @@ disposable SQLite database, with both `course_plan` columns present at head,
 absent after downgrade, and restored after re-upgrade. `flask db check`
 reports the same pre-existing SQLite FK-comparison noise on a clean `main`
 worktree as it does on this branch, and mentions no `course_plan` diff — the
-new columns match the model exactly. Applying the migration to production
-before this merges remains the pending deployment step.
+new columns match the model exactly. The production deployment that applied
+`e7c4a91b3f52` and merged this to `main` is recorded in the Stage D deployment
+record below.
 
 **Deployment record (2026-10-31):** The migration workflow could not run as written: the production startup guard grew a second required variable (`TOKEN_ENCRYPTION_KEY`, app/__init__.py:220) after the workflow was authored, so `flask --app wsgi db current` failed at app import. Fixed with a placeholder env var (commit `72cacd2`; Alembic never touches the Fernet key, which is used per-request in `app/encrypted_types.py`). The guarded workflow then applied `b3f1c7d94a20 → d7e4b1a9c260` to the production Neon database; `/readyz` confirms `migration_current: true` with no missing tables. Note: the `migrate/render` → `main` merge deploys to the live Vercel target (`https://learning-app-psi-black.vercel.app`); the Render service from `MIGRATION.md` was not reachable for verification (`learning-app.onrender.com` completes TLS but returns no response) and its cutover remains pending owner review.
 
@@ -190,14 +191,54 @@ with `migration_current: true` and no missing tables or columns.
 
 The Module 4 service starter pins [FastAPI](https://pypi.org/project/fastapi/0.162.0/), [Pydantic](https://pypi.org/project/pydantic/2.14.2/), and [Uvicorn](https://pypi.org/project/uvicorn/0.54.0/), all selected from PyPI release metadata for Python 3.11.
 
-**Next implementation step (updated 2026-10-31):** Stages A, C, and B's
-server-side instrumentation are implemented, verified, and deployed: both
-pathway migrations (`a5f3b2c8d417`, then `d6b4c1e93a75`) are applied to
-production and `main` runs at `f087413`. Stage D item 1 — the two-step
-onboarding fit check and the dashboard lead switch — is implemented and
-verified locally; its migration (`e7c4a91b3f52`) must be applied to
-production **before** the PR merges (migration before code, per
-`MIGRATION.md` §4.1, so `REQUIRED_COLUMNS` never 503s the dashboard). What
+**Stage D deployment record (2026-10-31):** Migration `e7c4a91b3f52`
+(`down_revision d6b4c1e93a75`, adding the nullable `course_plan.pathway_proposal`
+and `course_plan.pathway_destination`) was applied to the production Neon
+database **before** the code merged, so deployed code never references missing
+columns. A pre-migration backup was taken first per `MIGRATION.md` §2 Option B
+from the direct (non-pooled) URL — the endpoint
+`ep-withered-term-b7ahjim4` carries no `-pooler` label and `sslmode=require`
+(`pg_dump --format=custom`, 354,252 bytes, 403 archive entries, sha256
+`a841778041f5dc3fc07e5e27f78c03422ccab676e6108a5421bd6b628ea4231e`), stored
+outside the repository at `/tmp/opencode/ruach-pre-stageD-20261031T135725Z.dump`
+and re-verified by checksum after the migration. The migration was then applied
+from the local machine per `MIGRATION.md` §4.1 at ~13:59Z with
+`APP_ENV=production`, the real `SECRET_KEY`, and the same `TOKEN_ENCRYPTION_KEY`
+placeholder used in the earlier deployment (commit `72cacd2`; Alembic never
+touches the Fernet key). `db current` == `db heads` == `e7c4a91b3f52`, and
+`db check` reported **"No new upgrade operations detected"** against the real
+Postgres database — the FK-comparison noise seen earlier was SQLite-only.
+
+Post-checks: `alembic_version` is `e7c4a91b3f52`; row counts are unchanged
+(1 user, 23 lesson completions, 2 course plans, 0 review rows, 0 pilot rows);
+both columns exist as nullable `varchar(16)`.
+
+The guarded `Database migration (manual)` workflow (run `41208255157`,
+dispatched from `pathway-fit-check` with `confirm_backup=BACKUP_TAKEN`) was run
+afterwards at 14:02Z as an independent confirmation and was a **no-op**: its
+first "Check current revision" step already printed `e7c4a91b3f52 (head)` and
+the log contains no `Running upgrade` line. The workflow did not apply the
+migration; it verified one was already applied.
+
+Stage D item 1 then merged as PR #8 (branch `pathway-fit-check`, head
+`93bb34b`) by rebase — CI green on Python 3.12/3.13 + browser IDE, compiled
+assets byte-identical — landing on `main` as `ab983e6` at 14:03:57Z. The
+migration-before-code ordering held, so the intermediate `/readyz` window
+between migration and merge reported `revision: e7c4a91b3f52` with
+`head_revision: d6b4c1e93a75` and `missing_columns: []` — degraded but never
+500ing, exactly the state `REQUIRED_COLUMNS` is designed to produce rather than
+a dashboard failure. The Stage D content originated on PR #7 (which also
+carried the palette retune); that work was split so the palette shipped
+independently via PR #9 and PR #7 was closed as superseded.
+
+Post-deploy `/readyz`: `commit: ab983e6`, `revision: e7c4a91b3f52`,
+`head_revision: e7c4a91b3f52`, `migration_current: true`, no missing columns
+or tables, `status: ok`. `/healthz`: `commit: ab983e6`, `status: ok`.
+
+**Next implementation step (updated 2026-10-31):** Stages A, C, B's
+server-side instrumentation, and Stage D item 1 are implemented, verified, and
+deployed: all pathway migrations (`a5f3b2c8d417`, `d6b4c1e93a75`, then
+`e7c4a91b3f52`) are applied to production and `main` runs at `ab983e6`. What
 remains for Stage B is the pilot itself: enroll 3–5 learners per
 `stage_b_pilot_runbook.md` and revise lesson text, thresholds, and starter
 hints from the collected evidence. The rest of Stage D (course identifiers
