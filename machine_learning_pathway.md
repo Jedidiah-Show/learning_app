@@ -66,6 +66,7 @@ Add a PyTorch and GPU module later as an advanced extension. That keeps the init
 - [x] Add application tests for namespaced content isolation, prerequisite and sequential lesson gates, all four starter downloads, report contracts, a reviewed project submission, and credential issue/public verification.
 - [x] Apply the migration upgrade, downgrade, and re-upgrade against a disposable SQLite database.
 - [x] Update the existing course-flow test helper to explicitly skip the first-run onboarding gate, allowing course behavior tests to exercise course pages after registration.
+- [x] Deploy: merge to `main` (commits `77932ac`, `79ee57d`, `5c0ed4c`, `72cacd2`), pass CI on both Python 3.12 and 3.13, and apply `d7e4b1a9c260` to the production database via the guarded migration workflow on 2026-10-31. `/readyz` reports `head_revision: d7e4b1a9c260`, `migration_current: true`.
 - [ ] Verify the complete deployed learner flow and execute each starter CI after its learner TODO implementation is complete.
 - [ ] Pilot modules 1 and 2, then revise scope using learner completion and project evidence.
 
@@ -73,10 +74,99 @@ Add a PyTorch and GPU module later as an advanced extension. That keeps the init
 
 **Verification record (2026-10-30):** `tests/test_learning_flows.py`, `tests/test_ml_specialization.py`, and `tests/test_project_verification.py` pass together (61 passed). `tests/test_curriculum_audit.py` and `tests/test_community_leaderboard.py` also pass (19 passed), checking the shared curriculum shape and separate progress surfaces. The course test registration helper now skips the first-run onboarding gate, matching the setup used by other course-adjacent tests. Specialization route tests cover local lesson, project, credential, ZIP, and database behavior; outbound CI verification and AI rubric review are mocked, so they do not establish a live external-service pass. The new migration upgraded, downgraded to its parent, and upgraded again on a disposable SQLite database. The four starter repositories deliberately include unimplemented learner exercises, so their CI checks have not been treated as passing implementation checks.
 
-**Deployment note:** Apply `flask --app wsgi db upgrade` before deploying the specialization routes. The new migration creates only the three `ml_specialization_*` tables and has a reversible downgrade.
+**Deployment record (2026-10-31):** The migration workflow could not run as written: the production startup guard grew a second required variable (`TOKEN_ENCRYPTION_KEY`, app/__init__.py:220) after the workflow was authored, so `flask --app wsgi db current` failed at app import. Fixed with a placeholder env var (commit `72cacd2`; Alembic never touches the Fernet key, which is used per-request in `app/encrypted_types.py`). The guarded workflow then applied `b3f1c7d94a20 → d7e4b1a9c260` to the production Neon database; `/readyz` confirms `migration_current: true` with no missing tables. Note: the `migrate/render` → `main` merge deploys to the live Vercel target (`https://learning-app-psi-black.vercel.app`); the Render service from `MIGRATION.md` was not reachable for verification (`learning-app.onrender.com` completes TLS but returns no response) and its cutover remains pending owner review.
 
 **Dependency note:** Starter kits pin CPU scientific dependencies. The Module 2 versions were checked against [NumPy](https://pypi.org/project/numpy/2.4.6/), [pandas](https://pypi.org/project/pandas/3.1.0/), [scikit-learn](https://pypi.org/project/scikit-learn/1.9.1/), and [SciPy](https://pypi.org/project/scipy/1.17.1/) PyPI metadata on 2026-10-30; these versions support Python 3.11. Newer SciPy 1.18.1 requires Python 3.12, so the Python 3.11 starter pins SciPy 1.17.1.
 
 The Module 4 service starter pins [FastAPI](https://pypi.org/project/fastapi/0.162.0/), [Pydantic](https://pypi.org/project/pydantic/2.14.2/), and [Uvicorn](https://pypi.org/project/uvicorn/0.54.0/), all selected from PyPI release metadata for Python 3.11.
 
 **Next implementation step:** Complete a live pilot of Modules 1 and 2 using real public CI runs and rubric review. Revise the lessons and project thresholds from learner evidence before calling the pathway production-ready.
+
+## Two-pathway goal (recorded 2026-10-31)
+
+**Goal:** Operate **AI Engineering** and **ML Engineering** as two separate
+pathways that share one foundation. A learner picks a destination; the shared
+foundation (Python, backend, git, data, and the quantitative primer, lesson
+1.00) serves both; each pathway then owns its catalog, progress records,
+pacing, projects, and credential. The ML pathway must never silently become
+part of the AI course, and vice versa.
+
+### Current architecture (as deployed)
+
+- **Shared foundation = the AI Engineering course itself.** Modules 0–2
+  (setup, Python, backend) double as the ML prerequisite: completed shared
+  project gates `01` and `02` open the ML catalog (app/routes/main.py:239,
+  app/routes/ml_specialization.py:87).
+- **ML is an optional specialization, not yet a co-equal pathway.** Own
+  manifest (`app/data/machine_learning_pathway.json`, 4 modules / 14 ready
+  lessons), own tables (`ml_specialization_*`), own routes, own credential.
+  It deliberately does not touch `app.curriculum`, `TRACKS`, or monthly
+  milestones (app/ml_pathway.py:1).
+- **Isolation is validated:** namespaced IDs enforced at load; report
+  contracts are server-owned; 183 tests green including 7 specialization
+  tests.
+
+### Known gaps against the two-pathway goal
+
+1. **Discoverability:** the only entry point is the navbar. The dashboard and
+   lessons page render zero references to the specialization, so a learner
+   finishing shared project 02 gets no prompt that the ML path has opened.
+2. **No ML pacing:** weekly hours, monthly milestones, catch-up, and streaks
+   are AI-course-only. A learner doing both pathways sees one plan and an
+   untracked second workload.
+3. **No ML peripheral features:** spaced-review (`ReviewItem`), bookmarks,
+   notes, and quizzes return nothing for `mle.*` lessons
+   (app/routes/lessons.py, app/routes/progress.py are course-scoped).
+4. **One-way dependency:** ML requires AI-course projects, but the reverse
+   does not exist, and there is no third entry door — a learner who wants ML
+   first must still walk the AI course's first two modules, which is correct
+   today but is a decision to state, not assume.
+5. **Pilot evidence is empty:** modules 3–4 are authored but unvalidated; the
+   doc's own rule is to revise from learner completion and project results
+   before extending further.
+
+### Staged next steps
+
+**Stage A — foundation hardening (before pilot).**
+- Add a dashboard card for the specialization: locked until shared projects
+  01–02 pass, then showing per-module lesson/project progress and a link.
+- Re-run each starter kit's fixed contract against a hand-completed reference
+  implementation in CI (module 1's audit contract was verified manually on
+  2026-10-31 and matched server-side expectations field-for-field); keep the
+  shipped kits stubbed for learners.
+- Add an admin-visible pathway status (enrolled/completed counts) reusing the
+  existing admin portal aggregates.
+
+**Stage B — pilot modules 1–2 with real learners.**
+- 3–5 learners from shared-project-02 completion through Module 2 project.
+- Instrument: lesson-completion funnel, 422 report-contract failure reasons,
+  rubric scores, time-to-project. The tables already record everything
+  needed; only aggregation queries are new.
+- Revise lesson text, thresholds, and starter hints from the evidence.
+  Gate: do not market modules 3–4 until 1–2 show completion.
+
+**Stage C — pacing and review parity.**
+- Extend `recommend_track`/milestone logic to an ML-scoped variant driven by
+  the same `CoursePlan.weekly_hours`, presented per pathway rather than mixed
+  into the AI plan.
+- Make `ReviewItem` pathway-aware (nullable `pathway_id`, additive migration)
+  so `mle.*` lessons feed spaced repetition.
+
+**Stage D — true pathway selection (the "separate with shared foundations"
+end-state).**
+- Onboarding grows a destination question: AI Engineering, ML Engineering, or
+  undecided. Both destinations share modules 0–2 + 1.00; the choice changes
+  which pathway's milestones and next-actions the dashboard leads with — it
+  must not reorder or split the shared curriculum.
+- Introduce a course identifier only where needed (review items, future
+  leaderboards) rather than refactoring `app/curriculum.py` into multi-course
+  form; the namespaced-ID design makes a global `course_id` unnecessary for
+  lessons, projects, and credentials.
+- Only after Stage B evidence: consider detaching the ML prerequisite from
+  AI-course *projects* into a shared-foundation *placement* check, so an
+  ML-first learner can prove Python/backend readiness without the LLM-app
+  project work.
+
+**Explicitly deferred:** PyTorch/GPU module (doc's advanced extension), a
+standalone ML course with its own foundation, and leaderboard/credentials
+integration beyond the existing signed credential page.
