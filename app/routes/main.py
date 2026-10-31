@@ -13,6 +13,7 @@ from app import db
 from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
 from app.ml_pathway import machine_learning_pathway
 from app.ml_pathway import get_machine_learning_lesson, machine_learning_lessons
+from app.ml_pathway import ml_pathway_overview
 from app.learning import (
     course_progress, lesson_is_available, monthly_milestone_progress, user_track,
 )
@@ -178,6 +179,13 @@ def index():
                 )
             else:
                 module_states[module['id']] = 'locked'
+        # A failure in the optional pathway summary must not blank the whole
+        # dashboard; the course card simply hides when the data is absent.
+        try:
+            ml_overview = ml_pathway_overview(current_user.id)
+        except Exception:
+            current_app.logger.exception('ML pathway overview failed')
+            ml_overview = None
         return render_template('dashboard.html', config=config, user=current_user,
                                course=curriculum(),
                                progress=progress, next_lesson=next_lesson,
@@ -186,7 +194,8 @@ def index():
                                setup_states=setup_states, setup_done=setup_done,
                                onboarding_complete=onboarding_complete,
                                next_module_id=next_module_id,
-                               due_reviews=due_reviews)
+                               due_reviews=due_reviews,
+                               ml_overview=ml_overview)
     except Exception:
         current_app.logger.exception('Dashboard error')
         # The template dereferences progress even in the error branch, so the
@@ -203,7 +212,8 @@ def index():
                                next_lesson=None, next_project=None,
                                streak=0, longest_streak=0,
                                onboarding_complete=True, next_module_id=None,
-                               due_reviews=0, progress_error=True), 503
+                               due_reviews=0, ml_overview=None,
+                               progress_error=True), 503
 
 
 @main_bp.route('/lessons')

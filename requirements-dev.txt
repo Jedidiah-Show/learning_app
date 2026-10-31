@@ -1,0 +1,13 @@
+# Test-only dependencies: the CPU scientific stack that the ML specialization
+# starter kits pin. The web app never imports these; CI installs this file so
+# tests/test_ml_starter_references.py can execute the reference solutions
+# against the shipped project contracts. Versions match the starter kits.
+numpy==2.4.6
+pandas==3.1.0
+scipy==1.17.1
+scikit-learn==1.9.1
+joblib
+fastapi==0.162.0
+pydantic==2.14.2
+uvicorn==0.54.0
+httpx

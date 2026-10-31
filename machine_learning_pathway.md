@@ -67,6 +67,9 @@ Add a PyTorch and GPU module later as an advanced extension. That keeps the init
 - [x] Apply the migration upgrade, downgrade, and re-upgrade against a disposable SQLite database.
 - [x] Update the existing course-flow test helper to explicitly skip the first-run onboarding gate, allowing course behavior tests to exercise course pages after registration.
 - [x] Deploy: merge to `main` (commits `77932ac`, `79ee57d`, `5c0ed4c`, `72cacd2`), pass CI on both Python 3.12 and 3.13, and apply `d7e4b1a9c260` to the production database via the guarded migration workflow on 2026-10-31. `/readyz` reports `head_revision: d7e4b1a9c260`, `migration_current: true`.
+- [x] Stage A: Add a dashboard card for the specialization (`ml_pathway_overview` in `app/ml_pathway.py`, rendered in `templates/dashboard.html`); locked until shared projects 01–02 pass, then shows lesson/project counts, a next-lesson action, and pathway/credential links. A dashboard error path hides the card instead of blanking the page.
+- [x] Stage A: Add hand-completed reference implementations for all four starter contracts under `tests/ml_reference`, exercised by `tests/test_ml_starter_references.py` against each kit's own tests and the server-owned report contract. CI installs `requirements-dev.txt` (CPU scientific stack, app never imports it); shipped kits stay stubbed for learners.
+- [x] Stage A: Add an admin-visible ML pathway status card (distinct learners with at least one specialization lesson, and valid credential holders) to the existing admin dashboard aggregates.
 - [ ] Verify the complete deployed learner flow and execute each starter CI after its learner TODO implementation is complete.
 - [ ] Pilot modules 1 and 2, then revise scope using learner completion and project evidence.
 
@@ -74,13 +77,19 @@ Add a PyTorch and GPU module later as an advanced extension. That keeps the init
 
 **Verification record (2026-10-30):** `tests/test_learning_flows.py`, `tests/test_ml_specialization.py`, and `tests/test_project_verification.py` pass together (61 passed). `tests/test_curriculum_audit.py` and `tests/test_community_leaderboard.py` also pass (19 passed), checking the shared curriculum shape and separate progress surfaces. The course test registration helper now skips the first-run onboarding gate, matching the setup used by other course-adjacent tests. Specialization route tests cover local lesson, project, credential, ZIP, and database behavior; outbound CI verification and AI rubric review are mocked, so they do not establish a live external-service pass. The new migration upgraded, downgraded to its parent, and upgraded again on a disposable SQLite database. The four starter repositories deliberately include unimplemented learner exercises, so their CI checks have not been treated as passing implementation checks.
 
+**Stage A verification record (2026-10-31):** Full local suite passes (189 passed, 2 warnings). `tests/test_ml_starter_references.py` runs each shipped kit's own tests and the server-owned report contract against hand-completed references in `tests/ml_reference` (all four modules green, ~25s); the public kits remain stubbed. The dashboard card test asserts the locked state before shared projects 01–02, the open state with correct counts after, and progression after one lesson. Admin coverage asserts the specialization card renders for admins and not for learners. CI wiring installs `requirements-dev.txt` alongside the app requirements on both Python 3.12 and 3.13; the rebuilt `static/css/tailwind.css` is byte-identical to a fresh `npm run build:css`.
+
 **Deployment record (2026-10-31):** The migration workflow could not run as written: the production startup guard grew a second required variable (`TOKEN_ENCRYPTION_KEY`, app/__init__.py:220) after the workflow was authored, so `flask --app wsgi db current` failed at app import. Fixed with a placeholder env var (commit `72cacd2`; Alembic never touches the Fernet key, which is used per-request in `app/encrypted_types.py`). The guarded workflow then applied `b3f1c7d94a20 → d7e4b1a9c260` to the production Neon database; `/readyz` confirms `migration_current: true` with no missing tables. Note: the `migrate/render` → `main` merge deploys to the live Vercel target (`https://learning-app-psi-black.vercel.app`); the Render service from `MIGRATION.md` was not reachable for verification (`learning-app.onrender.com` completes TLS but returns no response) and its cutover remains pending owner review.
 
 **Dependency note:** Starter kits pin CPU scientific dependencies. The Module 2 versions were checked against [NumPy](https://pypi.org/project/numpy/2.4.6/), [pandas](https://pypi.org/project/pandas/3.1.0/), [scikit-learn](https://pypi.org/project/scikit-learn/1.9.1/), and [SciPy](https://pypi.org/project/scipy/1.17.1/) PyPI metadata on 2026-10-30; these versions support Python 3.11. Newer SciPy 1.18.1 requires Python 3.12, so the Python 3.11 starter pins SciPy 1.17.1.
 
 The Module 4 service starter pins [FastAPI](https://pypi.org/project/fastapi/0.162.0/), [Pydantic](https://pypi.org/project/pydantic/2.14.2/), and [Uvicorn](https://pypi.org/project/uvicorn/0.54.0/), all selected from PyPI release metadata for Python 3.11.
 
-**Next implementation step:** Complete a live pilot of Modules 1 and 2 using real public CI runs and rubric review. Revise the lessons and project thresholds from learner evidence before calling the pathway production-ready.
+**Next implementation step (updated 2026-10-31):** Stage A is implemented and
+under test locally. Deploy it, then begin Stage B: a live pilot of Modules 1
+and 2 with 3–5 learners using real public CI runs and rubric review. Revise
+the lessons and project thresholds from learner evidence before calling the
+pathway production-ready.
 
 ## Two-pathway goal (recorded 2026-10-31)
 
@@ -127,7 +136,10 @@ part of the AI course, and vice versa.
 
 ### Staged next steps
 
-**Stage A — foundation hardening (before pilot).**
+**Stage A — foundation hardening (before pilot). Complete 2026-10-31;
+see the Stage A items in Progress above.** The dashboard card reports
+aggregate pathway progress rather than a per-module breakdown; per-module
+detail stays on the pathway catalog page until pilot evidence justifies more.
 - Add a dashboard card for the specialization: locked until shared projects
   01–02 pass, then showing per-module lesson/project progress and a link.
 - Re-run each starter kit's fixed contract against a hand-completed reference

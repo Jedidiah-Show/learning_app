@@ -15,7 +15,7 @@ from flask import (
     request, session, url_for,
 )
 from flask_login import current_user, login_user, logout_user
-from sqlalchemy import func, or_
+from sqlalchemy import distinct, func, or_
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -25,6 +25,7 @@ from app.integrations import database_status
 from app.learning import course_progress
 from app.models import (
     AdminAuditLog, CourseProject, Credential, LessonCompletion,
+    MLSpecializationCredential, MLSpecializationLessonCompletion,
     PasswordResetToken, QuizResult, StudySession, SupportRequest, User,
 )
 from app.phone import PhoneError, normalize_phone
@@ -259,6 +260,12 @@ def dashboard():
     recent_audit = AdminAuditLog.query.order_by(
         AdminAuditLog.created_at.desc()
     ).limit(8).all()
+    ml_enrolled = db.session.query(
+        func.count(distinct(MLSpecializationLessonCompletion.user_id))
+    ).scalar() or 0
+    ml_completed = db.session.query(
+        func.count(distinct(MLSpecializationCredential.user_id))
+    ).filter(MLSpecializationCredential.revoked_at.is_(None)).scalar() or 0
     return render_template(
         'admin/dashboard.html',
         total_users=total_users,
@@ -271,6 +278,8 @@ def dashboard():
         total_projects=total_projects,
         total_lessons=len(lessons),
         total_modules=len(modules),
+        ml_enrolled=ml_enrolled,
+        ml_completed=ml_completed,
         recent_completions=recent_completions,
         recent_audit=recent_audit,
         database=database_status(),
