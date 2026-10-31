@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ruach-v3';
+const CACHE_NAME = 'ruach-v4';
 const ASSETS = [
   '/static/css/tailwind.css',
   '/static/css/style.css',

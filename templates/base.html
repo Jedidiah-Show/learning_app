@@ -52,15 +52,10 @@
                     </div>
                 </a>
                 {% if current_user.is_authenticated %}
-                <div class="flex items-center gap-2">
-                    <a href="{{ url_for('main.search') }}" class="hidden sm:flex items-center gap-1 rounded-lg px-2 py-1 text-slate-600 hover:text-brand-700 hover:bg-slate-100" aria-label="Search" title="Search">
-                        <span>🔍</span>
-                    </a>
-                    <button type="button" class="app-nav-toggle flex-shrink-0 lg:hidden" data-toggle-nav aria-label="Toggle navigation" aria-controls="app-navigation" aria-pressed="false">
-                        <span aria-hidden="true">☰</span>
-                        <span data-nav-toggle-label>Menu</span>
-                    </button>
-                </div>
+                <button type="button" class="app-nav-toggle flex-shrink-0 lg:hidden" data-toggle-nav aria-label="Toggle navigation" aria-controls="app-navigation" aria-pressed="false">
+                    <span aria-hidden="true">☰</span>
+                    <span data-nav-toggle-label>Menu</span>
+                </button>
                 {% endif %}
                 {% if not current_user.is_authenticated %}
                 <div class="app-user-menu flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
