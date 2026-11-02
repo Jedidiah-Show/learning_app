@@ -19,7 +19,6 @@ from flask_login import current_user, login_required
 from app import db
 from app import google_calendar as gcal
 from app.learning import day_is_available, next_unlocked_day
-from app.curriculum import all_lessons, all_modules, lesson_ordinal
 from app.models import CalendarEvent
 from app.request_data import get_json_object
 from app.user_preferences import (
@@ -105,10 +104,23 @@ def _user_connected(user):
     return bool(user.google_access_token or user.google_refresh_token)
 
 
-def _parse_day_number(data, config):
+def _parse_day_number(user, data, config):
+    """Resolve a lesson or day number against the learner's own catalog.
+
+    Pathway lesson IDs have no ordinal in the AI curriculum, so both branches
+    resolve through the scoped catalog: an ML learner's day numbers cover the
+    shared foundation and their pathway, never an AI-only module 03-12 lesson.
+    """
+    from app.pathway_scope import destination_for, lesson_by_id, pathway_lessons
+
+    destination = destination_for(user)
+    scoped = pathway_lessons(destination)
     lesson_id = data.get('lesson_id')
     if isinstance(lesson_id, str):
-        return lesson_ordinal(lesson_id)
+        lesson = lesson_by_id(destination, lesson_id)
+        if lesson is None:
+            return None
+        return lesson['_ordinal']
     value = data.get('day_number', 1)
     if isinstance(value, bool):
         return None
@@ -118,7 +130,7 @@ def _parse_day_number(data, config):
         return None
     if isinstance(value, float) and not value.is_integer():
         return None
-    if day_number < 1 or day_number > len(all_lessons()):
+    if day_number < 1 or day_number > len(scoped):
         return None
     return day_number
 
@@ -199,15 +211,19 @@ class _DesiredEvent:
         self.time_zone = time_zone
 
 
-def _desired_state(event, block, calendar_config, subjects, start_date):
-    """Return the state a calendar row should have for the current schedule."""
+def _desired_state(event, block, calendar_config, lessons, start_date):
+    """Return the state a calendar row should have for the current schedule.
+
+    ``lessons`` is the learner's scoped catalog, so a day number describes the
+    lesson that learner actually studies — a pathway lesson for an ML learner,
+    not the AI curriculum's lesson at that index.
+    """
     zone = gcal.resolve_timezone(event.time_zone)
     if start_date is not None and event.day_number:
         local_date = start_date + timedelta(days=event.day_number - 1)
     else:
         local_date = gcal.stored_utc(event.start_time).astimezone(zone).date()
     start_time, end_time = _block_times(local_date, block, zone)
-    lessons = all_lessons()
     lesson = lessons[event.day_number - 1] if event.day_number and event.day_number <= len(lessons) else None
     title = (f"{calendar_config['event_prefix']} {block['name'].title()} Session - "
              f"Lesson {event.day_number}")
@@ -268,7 +284,7 @@ def _plan_events(
     events,
     blocks,
     calendar_config,
-    subjects,
+    lessons,
     start_date=None,
     include_unsynced=False,
     force_update=False,
@@ -277,6 +293,7 @@ def _plan_events(
 
     The local rows are updated in place so pending work survives a failure,
     and the outstanding remote operations are recorded on the returned plan.
+    ``lessons`` is the learner's scoped catalog, used to describe each day.
     """
     plan = _CalendarPlan()
     block_by_name = {block['name']: block for block in blocks}
@@ -295,7 +312,7 @@ def _plan_events(
             event.sync_pending = True
             plan.changed = True
         desired = _desired_state(
-            event, block, calendar_config, subjects, start_date
+            event, block, calendar_config, lessons, start_date
         )
         if (
             event.title != desired.title
@@ -308,7 +325,7 @@ def _plan_events(
             event.start_time = desired.start_time
             event.end_time = desired.end_time
             plan.changed = True
-        lesson = all_lessons()[event.day_number - 1] if event.day_number and event.day_number <= len(all_lessons()) else None
+        lesson = lessons[event.day_number - 1] if event.day_number and event.day_number <= len(lessons) else None
         subject_ids = json.dumps([lesson['module_id']] if lesson else [])
         if event.subject_ids != subject_ids:
             event.subject_ids = subject_ids
@@ -447,17 +464,24 @@ def _apply_plan(service, plan):
     return failures
 
 
+def _scoped_lessons(user):
+    """The learner's own lesson catalog: the AI course, or foundation + ML."""
+    from app.pathway_scope import destination_for, pathway_lessons
+
+    return pathway_lessons(destination_for(user))
+
+
 def _sync_events(user, events, config):
     """Push the given calendar rows to Google and return the plan."""
     calendar_config = gcal.calendar_settings(config)
-    subjects = all_modules()
+    lessons = _scoped_lessons(user)
     blocks = get_effective_schedule_for_user(user)
     plan = _plan_events(
         user,
         events,
         blocks,
         calendar_config,
-        subjects,
+        lessons,
         _configured_start_date(config),
         include_unsynced=True,
     )
@@ -599,7 +623,7 @@ def reconcile_calendar_schedule(user, blocks, force_update=False):
     """
     config = get_effective_config_for_user(user)
     calendar_config = gcal.calendar_settings(config)
-    subjects = all_modules()
+    lessons = _scoped_lessons(user)
     events = CalendarEvent.query.filter_by(
         user_id=user.id,
     ).order_by(CalendarEvent.start_time).all()
@@ -608,7 +632,7 @@ def reconcile_calendar_schedule(user, blocks, force_update=False):
         events,
         blocks,
         calendar_config,
-        subjects,
+        lessons,
         _configured_start_date(config),
         force_update=force_update,
     )
@@ -638,14 +662,15 @@ def schedule_study_sessions():
         return jsonify({'error': 'Request body must be a JSON object'}), 400
     user = current_user
     config = get_effective_config_for_user(user)
-    day_number = _parse_day_number(data, config)
+    day_number = _parse_day_number(user, data, config)
     if day_number is None:
         return jsonify({'error': 'lesson_id must identify a course lesson'}), 400
     if not day_is_available(user, config, day_number):
         return jsonify({'error': 'Day is locked', 'next_unlocked_day': next_unlocked_day(user, config)}), 403
 
     zone = _requested_timezone(data)
-    subjects = all_modules()
+    lessons = _scoped_lessons(user)
+    day_lesson = lessons[day_number - 1]
     blocks = get_effective_schedule_for_user(user)
     calendar_config = gcal.calendar_settings(config)
     start_date = _configured_start_date(config) or datetime.now(zone).date()
@@ -668,13 +693,13 @@ def schedule_study_sessions():
                 f"{block['name'].title()} Session - Lesson {day_number}"
             ),
             description=(
-                (f"Module {all_lessons()[day_number - 1]['_module']['number']}: "
-                 f"{all_lessons()[day_number - 1]['_module']['title']} · "
-                 f"{all_lessons()[day_number - 1]['title']}")
+                (f"Module {day_lesson['_module']['number']}: "
+                 f"{day_lesson['_module']['title']} · "
+                 f"{day_lesson['title']}")
             ),
             start_time=start_time,
             end_time=end_time,
-            subject_ids=json.dumps([all_lessons()[day_number - 1]['module_id']]),
+            subject_ids=json.dumps([day_lesson['module_id']]),
             day_number=day_number,
             block_name=block['name'],
             time_zone=gcal.timezone_key(zone),
@@ -830,7 +855,7 @@ def sync_to_google():
     data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'status': 'error', 'message': 'Request body must be a JSON object'}), 400
-    day_number = _parse_day_number(data, app_config)
+    day_number = _parse_day_number(user, data, app_config)
     if day_number is None:
         return jsonify({'status': 'error', 'message': 'lesson_id must identify a course lesson'}), 400
     if not day_is_available(user, app_config, day_number):

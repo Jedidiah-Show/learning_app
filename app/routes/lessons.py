@@ -12,7 +12,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.course_data import SETUP_CHECKS
-from app.curriculum import all_modules, curriculum, get_lesson, lesson_context
+from app.curriculum import curriculum, get_lesson, lesson_context
 from app.learning import lesson_is_available, next_course_action, next_unlocked_lesson
 from app.models import (
     CoursePlan, LessonCompletion, PracticeUsageDaily, PracticeWorkspace, StudySession,
@@ -370,9 +370,12 @@ def setup_checks():
 @lessons_bp.route('/daily/<int:ordinal>', methods=['GET'])
 @login_required
 def get_daily_lessons(ordinal):
-    from app.curriculum import all_lessons
     from app.learning import completed_lesson_ids, completed_project_modules
-    lessons = all_lessons()
+    from app.pathway_scope import destination_for, pathway_lessons
+    # Scoped to the learner's own catalog: an ML learner's day numbers cover
+    # the shared foundation and their pathway, never an AI-only module 03-12
+    # lesson. Entries already carry ``_module`` and ``_ordinal``.
+    lessons = pathway_lessons(destination_for(current_user))
     if ordinal < 1 or ordinal > len(lessons):
         return jsonify({'error': 'Lesson number not found'}), 404
     lesson = lessons[ordinal - 1]
@@ -738,7 +741,13 @@ def ask_lesson_question():
     tutor_context = {
         key: lesson[key] for key in tutor_context_keys if lesson.get(key)
     }
-    course_modules = [module.get('title', '') for module in all_modules()]
+    # The tutor's syllabus follows the learner's pathway, so an ML learner is
+    # never steered toward an AI-only module they cannot open.
+    from app.pathway_scope import destination_for, pathway_modules
+    course_modules = [
+        module.get('title', '')
+        for module in pathway_modules(destination_for(current_user))
+    ]
     prompt = (
         'You are Ruach-AI, a patient tutor in an ongoing conversation. Answer the current question '
         'only if it is about the supplied lesson or a topic explicitly covered by the '

@@ -11,10 +11,10 @@
   <p class="text-xs font-bold uppercase tracking-wider text-violet-700">Your proposal</p>
   {% if result.proposal == 'undecided' %}
   <h3 class="mt-2 text-xl font-bold text-slate-900">Your answers fit both pathways</h3>
-  <p class="mt-2 text-sm text-slate-700">You scored {{ result.ai_score }} toward AI Engineering and {{ result.ml_score }} toward Machine Learning Engineering — too close to call. Pick the one your dashboard should lead with; you can change it later.</p>
+  <p class="mt-2 text-sm text-slate-700">You scored {{ result.ai_score }} toward AI Engineering and {{ result.ml_score }} toward Machine Learning Engineering — too close to call. Pick the one your dashboard should lead with. This choice is permanent after you confirm; once you have finished the shared foundation you may request a single change, which an admin reviews.</p>
   {% else %}
   <h3 class="mt-2 text-xl font-bold text-slate-900">We propose: {{ destinations[result.proposal] }}</h3>
-  <p class="mt-2 text-sm text-slate-700">You scored {{ result.ai_score }} toward AI Engineering and {{ result.ml_score }} toward Machine Learning Engineering. Follow the proposal or choose a different destination — nothing is written until you confirm.</p>
+  <p class="mt-2 text-sm text-slate-700">You scored {{ result.ai_score }} toward AI Engineering and {{ result.ml_score }} toward Machine Learning Engineering. Follow the proposal or choose a different destination — nothing is written until you confirm. This choice is permanent after you confirm; once you have finished the shared foundation you may request a single change, which an admin reviews.</p>
   {% endif %}
   <form method="post" action="{{ url_for('auth.onboarding_pathway') }}" class="mt-4">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">

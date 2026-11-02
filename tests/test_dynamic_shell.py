@@ -116,7 +116,7 @@ class DashboardCurriculumGridTests(DynamicShellTestCase):
         self._set_destination('ml')
         html = self._page()
 
-        self.assertIn('7 modules · 64 lessons', html)
+        self.assertIn('9 modules · 68 lessons', html)
         for title in FOUNDATION_TITLES + ML_TITLES:
             self.assertIn(title, html)
         for title in AI_ONLY_TITLES:
@@ -168,7 +168,7 @@ class DashboardCurriculumGridTests(DynamicShellTestCase):
 
         html = self._page()
 
-        self.assertIn('7 modules · 64 lessons', html)
+        self.assertIn('9 modules · 68 lessons', html)
         for title in AI_ONLY_TITLES:
             self.assertNotIn(title, html)
         # The foundation pointer is spent, so no generic "continue" card is left
@@ -186,8 +186,8 @@ class PathwayAwareNavTests(DynamicShellTestCase):
         # route, is what is being exercised.
         nav = self._nav(self._page('/lessons'))
 
-        order = re.findall(r'>(?:Course Lessons|ML Pathway)<', nav)
-        self.assertEqual(order, ['>ML Pathway<', '>Course Lessons<'])
+        order = re.findall(r'>(?:AI Pathway|ML Pathway)<', nav)
+        self.assertEqual(order, ['>ML Pathway<', '>AI Pathway<'])
         self.assertLess(
             nav.find('/specializations/machine-learning'),
             nav.find('href="/lessons"'),
@@ -203,8 +203,10 @@ class PathwayAwareNavTests(DynamicShellTestCase):
                 self._set_destination(destination)
                 nav = self._nav(self._page())
 
-                order = re.findall(r'>(?:Course Lessons|ML Pathway)<', nav)
-                self.assertEqual(order, ['>Course Lessons<', '>ML Pathway<'])
+                # Both pathways are named explicitly in either order, so the
+                # alternate is never a vague "Course Lessons" label.
+                order = re.findall(r'>(?:AI Pathway|ML Pathway)<', nav)
+                self.assertEqual(order, ['>AI Pathway<', '>ML Pathway<'])
                 self.assertEqual(self._subtitle(self._page()), subtitle)
 
     def test_the_other_pathway_stays_reachable_as_the_alternate(self):

@@ -18,7 +18,7 @@ from app.learning import (
 from app.course_data import (
     PROJECT_BY_ID, REQUIRED_PROJECTS, TRACKS, track_for, track_label,
 )
-from app.models import CoursePlan, CourseProject
+from app.models import CoursePlan, CourseProject, MLSpecializationProject
 from app.project_verification import VerificationError, verify_checks
 from app.request_data import get_json_object
 
@@ -221,23 +221,46 @@ def _required_project_brief(project):
 @projects_bp.route('/projects')
 @login_required
 def project_page():
+    from app.pathway_scope import (
+        destination_for, is_ml, pathway_modules, pathway_pace,
+    )
+    destination = destination_for(current_user)
     completed = completed_project_modules(current_user)
-    progress = course_progress(current_user, completed_projects=completed)
+    if is_ml(destination):
+        from app.pathway_scope import ml_completion_state
+        completed |= ml_completion_state(current_user.id)[1]
+    # The module grid follows the pathway: an ML learner's projects are the
+    # shared foundation plus their four pathway projects, never modules 03-12.
+    progress = course_progress(
+        current_user, completed_projects=completed, destination=destination
+    )
     track = user_track(current_user)
     recalibration = progress.get('recalibration') or {}
-    milestones = monthly_milestone_progress(
-        progress, completed, track,
-        calibration_multiplier=(
-            recalibration.get('multiplier') if recalibration.get('calibrated') else None
-        ),
+    # Pace is pathway-derived for ML: neither the AI tracks nor the monthly
+    # milestones describe a course that spans the foundation and the pathway.
+    pace = pathway_pace(current_user.id, destination)
+    milestones = (
+        [] if pace else monthly_milestone_progress(
+            progress, completed, track,
+            calibration_multiplier=(
+                recalibration.get('multiplier')
+                if recalibration.get('calibrated') else None
+            ),
+        )
     )
     plan = _plan()
     return render_template(
-        'projects.html', modules=all_modules(), completed_modules=completed,
-        milestones=milestones, required_projects=REQUIRED_PROJECTS,
+        'projects.html', modules=pathway_modules(destination),
+        completed_modules=completed,
+        milestones=milestones, pace=pace,
+        # The four required capstones belong to the AI continuation, so a
+        # learner on the ML pathway is never asked to choose one.
+        required_projects=() if is_ml(destination) else REQUIRED_PROJECTS,
         course_plan=_plan_payload(plan), course=curriculum(),
-        tracks=TRACKS, selected_track=track, track_label=track_label(track),
+        tracks={} if is_ml(destination) else TRACKS,
+        selected_track=track, track_label=track_label(track),
         track_months=track_for(track)['months'], recalibration=recalibration,
+        pathway_destination=destination,
     )
 
 
@@ -610,10 +633,18 @@ def submit_module_project(module_id):
 @projects_bp.route('/portfolio')
 @login_required
 def portfolio_page():
+    from app.pathway_scope import (
+        destination_for, is_ml, pathway_modules,
+    )
+    destination = destination_for(current_user)
     records = CourseProject.query.filter_by(user_id=current_user.id).order_by(
         CourseProject.updated_at.desc()
     ).all()
-    modules_by_id = {module['id']: module for module in all_modules()}
+    # Scoped to the learner's own course, so a module 03-12 record never
+    # appears in an ML learner's portfolio.
+    modules_by_id = {
+        module['id']: module for module in pathway_modules(destination)
+    }
     projects = [{
         'module': modules_by_id.get(item.module_id),
         'project': item.get_project(),
@@ -624,6 +655,40 @@ def portfolio_page():
         'completed': item.completed,
         'evaluation': item.get_evaluation(),
     } for item in records if item.submission and item.module_id in modules_by_id]
+    # Pathway projects are graded on their own routes, so they are listed with
+    # the shared ones to keep one portfolio for the whole course.
+    if is_ml(destination):
+        import json as _json
+
+        scoped_modules = {
+            module['id']: module for module in pathway_modules(destination)
+        }
+        for item in MLSpecializationProject.query.filter_by(
+            user_id=current_user.id, completed=True
+        ).order_by(MLSpecializationProject.updated_at.desc()).all():
+            module = scoped_modules.get(item.module_id)
+            if not module:
+                continue
+            # Their submission and evaluation are JSON text, not columns.
+            try:
+                submission = (
+                    _json.loads(item.submission) if item.submission else {}
+                )
+            except (TypeError, ValueError):
+                submission = {}
+            projects.append({
+                'module': module,
+                'project': {
+                    'title': module['title'],
+                    'brief': module.get('project') or module.get('description', ''),
+                },
+                'repository_url': submission.get('repository_url'),
+                'demo_url': submission.get('demo_url'),
+                'checks_url': submission.get('checks_url'),
+                'checks_verified': submission.get('checks_verified'),
+                'completed': item.completed,
+                'evaluation': None,
+            })
     plan = _plan()
     return render_template(
         'portfolio.html', user=current_user, projects=projects,

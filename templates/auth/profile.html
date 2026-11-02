@@ -84,6 +84,62 @@
         </div>
     </div>
 
+    {# The pathway is a hard lock after onboarding: this card only displays the
+       confirmed destination and, once the shared foundation is complete, offers
+       the single change request an admin must resolve. #}
+    <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+        <h3 class="text-lg font-bold text-slate-800 mb-1">Learning pathway</h3>
+        <p class="text-xs text-slate-500 mb-4">Confirmed during onboarding · permanent</p>
+
+        <div class="flex items-center justify-between gap-4 rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3">
+            <div>
+                <p class="text-xs font-bold uppercase tracking-wider text-indigo-600">Your pathway</p>
+                <p class="mt-1 text-lg font-bold text-slate-900">{{ pathway_label }}</p>
+            </div>
+            <span class="rounded-full bg-white px-3 py-1 text-xs font-semibold text-indigo-700 border border-indigo-200">Locked</span>
+        </div>
+
+        {% if pathway_change_request %}
+        <div class="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm">
+            <p class="font-semibold text-amber-800">Change request {{ pathway_change_request.status }}</p>
+            <p class="mt-1 text-amber-900">
+                You asked to move to
+                <strong>{{ 'Machine Learning Engineering' if pathway_change_request.requested_destination == 'ml' else 'AI Engineering' }}</strong>.
+                {% if pathway_change_request.status == 'pending' %}
+                An admin is reviewing it; your current pathway stays in place until it is resolved.
+                {% elif pathway_change_request.status == 'approved' %}
+                Your pathway was changed. Refresh your dashboard to see the new course.
+                {% else %}
+                Your request was not approved, so your pathway stays as confirmed.
+                {% endif %}
+            </p>
+            {% if pathway_change_request.resolution_note %}
+            <p class="mt-2 text-sm text-amber-900">
+                <span class="font-semibold">Note from the review:</span>
+                <span class="whitespace-pre-wrap break-words">{{ pathway_change_request.resolution_note }}</span>
+            </p>
+            {% endif %}
+        </div>
+        {% elif can_request_pathway_change %}
+        <form method="POST" action="{{ url_for('auth.request_pathway_change') }}" class="mt-4 space-y-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <p class="text-sm text-slate-600">You have finished the shared foundation, so you may request <strong>one</strong> pathway change. An admin reviews it before anything changes.</p>
+            <div class="flex flex-wrap gap-4 text-sm">
+                <label class="flex items-center gap-2">
+                    <input type="radio" name="requested_destination" value="{{ 'ml' if pathway_destination == 'ai' else 'ai' }}" checked>
+                    <span>Move to {{ 'Machine Learning Engineering' if pathway_destination == 'ai' else 'AI Engineering' }}</span>
+                </label>
+            </div>
+            <textarea name="reason" rows="2" maxlength="2000" placeholder="Why do you want to change pathway? (optional)" class="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm"></textarea>
+            <button type="submit" class="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-semibold hover:bg-indigo-700">Request pathway change</button>
+        </form>
+        {% elif pathway_destination in ('ai', 'ml') %}
+        <p class="mt-4 text-sm text-slate-500">You may request a single pathway change once you finish the shared foundation (modules 0-2). You have completed {{ foundation.completed_lessons }} of {{ foundation.total_lessons }} foundation lessons and {{ foundation.completed_projects }} of {{ foundation.total_projects }} foundation projects.</p>
+        {% else %}
+        <p class="mt-4 text-sm text-slate-500">Your pathway is not confirmed yet. Take the pathway fit check during onboarding to set it.</p>
+        {% endif %}
+    </div>
+
     <div class="bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
         <h3 class="text-lg font-bold text-slate-800 mb-4">Update Account</h3>
         <form method="POST" action="{{ url_for('auth.update_account') }}" enctype="multipart/form-data" class="space-y-4">

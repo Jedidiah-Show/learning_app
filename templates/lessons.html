@@ -1,14 +1,24 @@
 {% extends "base.html" %}
-{% block title %}Course Lessons · RUACH{% endblock %}
+{% block title %}{{ header.title if header else 'Course Lessons' }} · RUACH{% endblock %}
 {% block content %}
 <header class="mb-7">
-  <p class="text-xs font-bold uppercase tracking-widest text-gold-700">Complete curriculum</p>
-  <h2 class="mt-2 text-3xl font-bold text-slate-900">RUACH AI & ML Engineering</h2>
-  <p class="mt-2 max-w-3xl text-slate-600">A focused path from foundations to production systems. Start with the beginner route if programming is new to you; it explains what to expect and where to get support. Your pace is chosen separately on the Projects page. Lessons unlock in order, and each module project helps you apply what you learned.</p>
+  <p class="text-xs font-bold uppercase tracking-widest text-gold-700">{{ header.kicker }}</p>
+  <h2 class="mt-2 text-3xl font-bold text-slate-900">{{ header.title }}</h2>
+  <p class="mt-2 max-w-3xl text-slate-600">{{ header.blurb }}</p>
+  {% if pathway_destination == 'ml' %}
+  {# The nav names this page "AI Pathway", but for an ML learner it lists the
+     whole course — say so plainly, and point at the pathway home. #}
+  <div class="mt-4 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
+    You are on the <strong>ML Pathway</strong>. This page lists your shared
+    foundation and your ML pathway lessons together; the AI Engineering
+    continuation belongs to the AI Pathway.
+    <a class="ml-1 font-semibold underline" href="{{ url_for('main.machine_learning_specialization') }}">Open your ML Pathway →</a>
+  </div>
+  {% endif %}
   <div class="mt-4 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-900">
     <strong>Starting assumption:</strong> {{ course.course.starting_assumption }}
   </div>
-  <p class="mt-3 text-sm text-slate-600">Planning estimate: about {{ course.course.estimated_hours }} hours including module projects. {{ course.course.time_estimate_note }}</p>
+  <p class="mt-3 text-sm text-slate-600">Planning estimate: about {{ header.estimated_hours }} hours across {{ header.module_count }} modules and {{ header.lesson_count }} lessons, including module projects. {{ course.course.time_estimate_note }}</p>
   <p class="mt-2 text-xs text-slate-500">{{ course.course.content_maintenance_policy }}</p>
   {% set placement = course.course.placement %}
   <details class="mt-4 rounded-xl border border-slate-200 bg-white p-4" id="placement-check">
@@ -77,7 +87,7 @@
 {% for module in modules %}
   <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
     <div class="border-b border-slate-100 bg-slate-50 px-5 py-4">
-      <p class="text-xs font-bold uppercase text-indigo-600">Module {{ module.number }}</p>
+      <p class="text-xs font-bold uppercase text-indigo-600">{% if module.badge %}{{ module.badge }}{% else %}Module {{ module.number }}{% endif %}</p>
       <h3 class="text-lg font-bold text-slate-900">{{ module.title }}</h3>
       <p class="mt-1 text-sm text-slate-600">{{ module.description }}</p>
       <div class="mt-3 grid gap-2 text-sm text-slate-600 md:grid-cols-2">
@@ -99,16 +109,16 @@
           {% if lesson.maintenance %}<p class="mt-1 text-xs {% if lesson.maintenance.review_status == 'reviewed' %}text-emerald-700{% else %}text-amber-700{% endif %}">{% if lesson.maintenance.review_status == 'reviewed' %}Version-sensitive · reviewed {{ lesson.maintenance.reviewed_on }}{% else %}Version-sensitive · review due{% endif %}</p>{% endif %}
         </div>
         {% if lesson.id in completed_ids %}
-          <a class="shrink-0 text-sm font-semibold text-emerald-700" href="{{ url_for('main.lesson_detail', lesson_id=lesson.id) }}">{% if completion_sources.get(lesson.id) == 'placement' %}Placed out ✓{% else %}Completed ✓{% endif %}</a>
+          <a class="shrink-0 text-sm font-semibold text-emerald-700" href="{{ url_for('main.machine_learning_lesson', lesson_id=lesson.id) if lesson.source == 'ml' else url_for('main.lesson_detail', lesson_id=lesson.id) }}">{% if completion_sources.get(lesson.id) == 'placement' %}Placed out ✓{% else %}Completed ✓{% endif %}</a>
         {% elif lesson.id == next_lesson_id %}
-          <a class="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white" href="{{ url_for('main.lesson_detail', lesson_id=lesson.id) }}">Start →</a>
+          <a class="shrink-0 rounded-lg bg-indigo-600 px-3 py-1.5 text-sm font-semibold text-white" href="{{ url_for('main.machine_learning_lesson', lesson_id=lesson.id) if lesson.source == 'ml' else url_for('main.lesson_detail', lesson_id=lesson.id) }}">Start →</a>
         {% else %}
           <span class="shrink-0 text-sm text-slate-400" title="Complete earlier lessons and any required module project to unlock this lesson" aria-label="Locked. Complete earlier lessons and any required module project to unlock this lesson">Locked</span>
         {% endif %}
       </li>
     {% endfor %}
     </ol>
-    <div class="border-t border-slate-100 px-5 py-3"><a class="text-sm font-semibold text-indigo-700" href="{{ url_for('projects.project_page') }}#module-{{ module.id }}">Module project →</a></div>
+    <div class="border-t border-slate-100 px-5 py-3">{% if module.source == 'ml' %}<a class="text-sm font-semibold text-indigo-700" href="{{ url_for('main.machine_learning_specialization') }}#projects">Module project →</a>{% else %}<a class="text-sm font-semibold text-indigo-700" href="{{ url_for('projects.project_page') }}#module-{{ module.id }}">Module project →</a>{% endif %}</div>
   </section>
 {% endfor %}
 </div>

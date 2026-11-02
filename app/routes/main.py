@@ -49,6 +49,32 @@ def _lesson_search_index():
     return indexed
 
 
+@lru_cache(maxsize=1)
+def _pathway_search_index():
+    """Index the ML manifest separately: it ships as its own file.
+
+    Entries are read out of ``pathway_lessons`` so they arrive already carrying
+    their scoped ordinal and module, exactly like the AI rows beside them.
+    """
+    from app.pathway_scope import pathway_lessons
+
+    indexed = []
+    for lesson in pathway_lessons('ml'):
+        if lesson.get('source') != 'ml':
+            continue
+        sections = ' '.join(
+            ' '.join([section.get('heading', ''), ' '.join(section.get('body') or [])])
+            for section in lesson.get('sections') or []
+        )
+        text = ' '.join([
+            lesson.get('title', ''), lesson.get('goal', ''),
+            lesson.get('task', ''), sections,
+        ])
+        indexed.append((lesson, text, text.lower()))
+    return indexed
+
+
+
 @main_bp.route('/uploads/<path:filename>')
 @login_required
 def uploaded_file(filename):
@@ -113,13 +139,21 @@ def readyz():
 @main_bp.route('/search')
 @login_required
 def search():
+    from app.pathway_scope import destination_for, is_ml, pathway_modules
     query = request.args.get('q', '').strip().lower()[:100]
     module_filter = request.args.get('module', '').strip()
+    destination = destination_for(current_user)
+    # Both the module filter and the index follow the pathway: an ML learner
+    # searches the foundation plus their pathway, never the AI continuation.
+    modules = pathway_modules(destination)
+    index = list(_lesson_search_index())
+    if is_ml(destination):
+        index.extend(_pathway_search_index())
     if not query:
         return render_template('search.html', query='', results=[],
-                               modules=all_modules(), module_filter=module_filter)
+                               modules=modules, module_filter=module_filter)
     results = []
-    for lesson, text, searchable in _lesson_search_index():
+    for lesson, text, searchable in index:
         if module_filter and lesson.get('module_id') != module_filter:
             continue
         if query in searchable:
@@ -128,16 +162,17 @@ def search():
             results.append({
                 'id': lesson['id'],
                 'title': lesson['title'],
-                'module': lesson.get('_module', {}).get('title'),
-                'module_number': lesson.get('_module', {}).get('number'),
+                'module': lesson.get('_module', {}).get('title') or lesson.get('module_title'),
+                'module_number': lesson.get('_module', {}).get('number') or lesson.get('module_number'),
                 'ordinal': lesson.get('_ordinal'),
                 'module_id': lesson.get('module_id'),
+                'source': lesson.get('source'),
                 'snippet': ('…' if match_at > 65 else '') + snippet_text + ('…' if match_at + len(query) + 100 < len(text) else ''),
             })
         if len(results) >= 50:
             break
     return render_template('search.html', query=query, results=results,
-                           modules=all_modules(), module_filter=module_filter)
+                           modules=modules, module_filter=module_filter)
 
 
 @main_bp.route('/')
@@ -247,37 +282,52 @@ def index():
 @main_bp.route('/lessons')
 @login_required
 def lessons():
-    from app.learning import completed_lesson_ids
-    from app.models import CoursePlan
+    from app.pathway_scope import (
+        destination_for, is_ml, pathway_header, pathway_modules,
+    )
     completions = LessonCompletion.query.filter_by(
         user_id=current_user.id, completed=True
     ).all()
     completed_ids = {item.lesson_id for item in completions}
-    progress = course_progress(current_user, completed=completed_ids)
     plan = CoursePlan.query.filter_by(user_id=current_user.id).first()
+    # The destination decides which modules this page lists at all: an ML
+    # learner's catalog is the shared foundation plus their pathway, never the
+    # AI continuation, and progress is scoped to match so the totals, the
+    # "start here" pointer, and the rows agree.
+    destination = destination_for(current_user)
+    if is_ml(destination):
+        from app.pathway_scope import ml_completion_state
+        completed_ids |= ml_completion_state(current_user.id)[0]
+    modules = pathway_modules(destination)
+    progress = course_progress(
+        current_user, completed=completed_ids, destination=destination
+    )
     current_module_id = None
     if progress.get('next_lesson_id'):
         current = get_lesson(progress['next_lesson_id'])
         current_module_id = current.get('module_id') if current else None
     elif progress.get('next_action', {}).get('type') == 'project':
         current_module_id = progress['next_action'].get('module_id')
-    # Same containment rule as the dashboard: a specialization failure must
-    # never take down a course page, so the strip hides when data is absent.
+    # The "second pathway" strip is for learners who are not on the pathway;
+    # an ML learner instead gets a card pointing at their own pathway home.
     try:
-        ml_overview = ml_pathway_overview(current_user.id)
+        ml_overview = None if is_ml(destination) else ml_pathway_overview(current_user.id)
     except Exception:
         current_app.logger.exception('ML pathway overview failed on lessons page')
         ml_overview = None
     return render_template('lessons.html', config=get_effective_config_for_user(current_user),
-                           user=current_user, course=curriculum(), modules=all_modules(),
+                           user=current_user, course=curriculum(), modules=modules,
                            completed_ids=completed_ids,
                            completion_sources={
                                item.lesson_id: item.completion_source for item in completions
                            },
                            next_lesson_id=progress['next_lesson_id'],
                            current_module_id=current_module_id,
+                           header=pathway_header(destination),
                            ml_overview=ml_overview,
+                           pathway_destination=destination,
                            skill_level=(plan.skill_level if plan else '') or '')
+
 
 
 @main_bp.route('/specializations/machine-learning')
@@ -406,6 +456,7 @@ def machine_learning_lesson(lesson_id):
 @main_bp.route('/quizzes')
 @login_required
 def quizzes():
+    from app.pathway_scope import destination_for, pathway_modules
     existing = {
         quiz.quiz_id: quiz
         for quiz in Quiz.query.filter(
@@ -420,7 +471,8 @@ def quizzes():
         last_scores.setdefault(result.quiz_id, result.score)
     return render_template(
         'quizzes.html', config=get_effective_config_for_user(current_user),
-        user=current_user, modules=all_modules(), existing_quizzes=existing,
+        user=current_user, modules=pathway_modules(destination_for(current_user)),
+        existing_quizzes=existing,
         last_scores=last_scores,
     )
 
@@ -428,7 +480,11 @@ def quizzes():
 @main_bp.route('/schedule')
 @login_required
 def schedule():
-    progress = course_progress(current_user)
+    from app.pathway_scope import (
+        destination_for, lesson_by_id, pathway_modules,
+    )
+    destination = destination_for(current_user)
+    progress = course_progress(current_user, destination=destination)
     upcoming_events = CalendarEvent.query.filter(
         CalendarEvent.user_id == current_user.id,
         CalendarEvent.start_time >= datetime.now(timezone.utc),
@@ -440,12 +496,15 @@ def schedule():
         'start_local': stored_utc(event.start_time).astimezone(resolve_timezone(event.time_zone)),
         'end_local': stored_utc(event.end_time).astimezone(resolve_timezone(event.time_zone)),
     } for event in upcoming_events]
+    # Resolved through the scoped catalog so an ML learner's next step can be a
+    # pathway lesson, which has no ordinal in the AI curriculum.
+    next_lesson = lesson_by_id(destination, progress['next_lesson_id'])
     return render_template('schedule.html', config=get_effective_config_for_user(current_user),
-                           user=current_user, modules=all_modules(), progress=progress,
+                           user=current_user, modules=pathway_modules(destination),
+                           progress=progress,
                            upcoming_events=upcoming_events, scheduled_events=scheduled_events,
                            next_action=progress['next_action'],
-                           next_lesson=get_lesson(progress['next_lesson_id'])
-                           if progress['next_lesson_id'] else None)
+                           next_lesson=next_lesson)
 
 
 @main_bp.route('/progress')
@@ -453,6 +512,9 @@ def schedule():
 def progress():
     from datetime import datetime, timedelta, timezone
     from app.routes.lessons import _learner_today
+    from app.pathway_scope import (
+        destination_for, is_ml, pathway_lessons, pathway_pace,
+    )
     config = get_effective_config_for_user(current_user)
     completions = LessonCompletion.query.filter_by(
         user_id=current_user.id, completed=True
@@ -493,19 +555,40 @@ def progress():
         user_id=current_user.id, completed=True
     ).all()
     completed_project_ids = {item.module_id for item in projects}
+    # The destination decides what this page counts: an ML learner's course is
+    # the shared foundation plus their pathway, so the denominators, the module
+    # grid, and the lesson titles beside recent activity all come from the
+    # scoped catalog rather than the full AI course.
+    destination = destination_for(current_user)
+    if is_ml(destination):
+        from app.pathway_scope import ml_completion_state
+        ml_lessons, ml_projects = ml_completion_state(current_user.id)
+        completed |= ml_lessons
+        completed_project_ids |= ml_projects
     progress_data = course_progress(
-        current_user, completed=completed, completed_projects=completed_project_ids
+        current_user, completed=completed,
+        completed_projects=completed_project_ids, destination=destination
     )
     track = user_track(current_user)
     from app.leaderboard import leaderboard_data
     leaderboard_info = leaderboard_data(current_user)
-    lesson_map = {lesson['id']: lesson for lesson in all_lessons()}
+    lesson_map = {
+        lesson['id']: lesson for lesson in pathway_lessons(destination)
+    }
+    # A confirmed ML destination replaces the AI course's 12/10/5-month plan:
+    # its course spans two manifests, so pace is derived from weekly hours over
+    # the whole pathway instead of monthly milestones over modules 00-12.
+    pace = pathway_pace(current_user.id, destination)
+    milestones = (
+        [] if pace else monthly_milestone_progress(
+            progress_data, completed_project_ids, track
+        )
+    )
     return render_template('progress.html', config=config,
                            user=current_user, progress=progress_data,
                            analytics=analytics,
-                           milestones=monthly_milestone_progress(
-                               progress_data, completed_project_ids, track
-                           ),
+                           milestones=milestones,
+                           pace=pace,
                            tracks=TRACKS, selected_track=track,
                            track_label=track_label(track),
                            leaderboard=leaderboard_info,
@@ -515,6 +598,7 @@ def progress():
                                item.lesson_id: lesson_map.get(item.lesson_id)
                                for item in recent_completions
                            },
+                           pathway_destination=destination,
                            completed_project_ids=completed_project_ids)
 
 
@@ -584,6 +668,9 @@ def lesson_detail(lesson_id):
         abort(404)
     from app.learning import completed_lesson_ids, completed_project_modules
     from app.practice import practice_exercises_for_lesson
+    from app.pathway_scope import (
+        destination_for, is_ml, lesson_by_id, pathway_lessons,
+    )
     from app.models import VideoProgress, LessonBookmark, LessonNote
     completed = completed_lesson_ids(current_user)
     completed_projects = completed_project_modules(current_user)
@@ -591,6 +678,12 @@ def lesson_detail(lesson_id):
         current_user, lesson_id, completed=completed, completed_projects=completed_projects
     ):
         abort(403)
+    destination = destination_for(current_user)
+    if is_ml(destination):
+        from app.pathway_scope import ml_completion_state
+        ml_lessons, ml_projects = ml_completion_state(current_user.id)
+        completed |= ml_lessons
+        completed_projects |= ml_projects
     video_progress = None
     if lesson.get('video'):
         video_progress = VideoProgress.query.filter_by(
@@ -598,12 +691,24 @@ def lesson_detail(lesson_id):
         ).first()
         if video_progress and video_progress.video_id != lesson['video']['id']:
             video_progress = None
-    lessons = all_lessons()
-    ordinal = lesson['_ordinal'] - 1
-    previous_lesson = lessons[ordinal - 1] if ordinal > 0 else None
-    next_lesson = lessons[ordinal + 1] if ordinal + 1 < len(lessons) else None
+    # Prev/next walk the scoped catalog, so the learner after the last
+    # foundation lesson is offered the pathway's first lesson rather than a
+    # module 03 lesson they cannot open.
+    scoped = pathway_lessons(destination)
+    position = next(
+        (index for index, item in enumerate(scoped) if item['id'] == lesson_id),
+        None,
+    )
+    previous_lesson = (
+        scoped[position - 1] if position and position > 0 else None
+    )
+    next_lesson = (
+        scoped[position + 1]
+        if position is not None and position + 1 < len(scoped) else None
+    )
     progress = course_progress(
-        current_user, completed=completed, completed_projects=completed_projects
+        current_user, completed=completed, completed_projects=completed_projects,
+        destination=destination
     )
     try:
         bookmarked = LessonBookmark.query.filter_by(
@@ -635,12 +740,12 @@ def lesson_detail(lesson_id):
                            next_lesson=next_lesson,
                            next_lesson_available=(
                                next_lesson is not None
-                               and lesson_is_available(
-                                   current_user, next_lesson['id'],
-                                   completed=completed, completed_projects=completed_projects,
+                               and (
+                                   next_lesson['id'] in completed
+                                   or next_lesson['id'] == progress['next_lesson_id']
                                )
                            ),
-                           total_lessons=len(lessons),
+                           total_lessons=len(scoped),
                            bookmarked=bookmarked,
                            lesson_note=note.content if note else '',
                            config=get_effective_config_for_user(current_user), user=current_user)

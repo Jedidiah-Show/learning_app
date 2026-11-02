@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 230" role="img" aria-label="Ruach">
+  <title>Ruach</title>
+  <defs>
+    <linearGradient id="ruach-ink" gradientUnits="userSpaceOnUse" x1="30" y1="175" x2="570" y2="60">
+      <stop offset="0" style="stop-color: #083D2E"/>
+      <stop offset="0.45" style="stop-color: #1B6A5B"/>
+      <stop offset="1" style="stop-color: #2FA38A"/>
+    </linearGradient>
+  </defs>
+  <style>
+    .s { fill: url(#ruach-ink); }
+    .h { fill: none; stroke: url(#ruach-ink); stroke-linecap: round; }
+  </style>
+  <!-- entry hairline into r -->
+  <path class="h" stroke-width="5" d="M 30 150 C 45 148, 55 126, 62 112"/>
+  <!-- r -->
+  <path class="s" d="M 64 108 C 54 128, 64 150, 74 168 C 84 150, 76 126, 64 108 Z"/>
+  <path class="h" stroke-width="6" d="M 70 128 C 82 112, 96 106, 110 108"/>
+  <path class="h" stroke-width="5" d="M 110 108 C 116 110, 120 114, 124 118"/>
+  <!-- u -->
+  <path class="s" d="M 126 110 C 116 132, 128 156, 140 168 C 150 156, 140 130, 126 110 Z"/>
+  <path class="h" stroke-width="5" d="M 140 168 C 152 176, 164 168, 168 150"/>
+  <path class="s" d="M 170 110 C 160 130, 170 150, 178 166 C 188 150, 180 128, 170 110 Z"/>
+  <path class="h" stroke-width="5" d="M 178 166 C 186 172, 194 166, 198 156"/>
+  <!-- a -->
+  <path class="s" d="M 250 112 C 222 100, 202 120, 203 141 C 204 162, 224 175, 245 166 L 243 156 C 227 162, 215 153, 214 141 C 213 127, 227 115, 246 121 Z"/>
+  <path class="s" d="M 250 108 C 242 128, 248 150, 256 168 C 266 150, 260 126, 250 108 Z"/>
+  <path class="h" stroke-width="5" d="M 256 168 C 266 172, 276 164, 281 152"/>
+  <!-- c -->
+  <path class="s" d="M 338 118 C 326 100, 300 98, 288 116 C 277 134, 285 159, 305 167 C 317 172, 329 168, 335 160 C 327 164, 315 164, 307 158 C 295 148, 291 130, 299 120 C 309 109, 328 110, 338 118 Z"/>
+  <!-- h: entry, ascender loop, stem, hump, second stem -->
+  <path class="h" stroke-width="5" d="M 335 160 C 350 148, 358 100, 366 62"/>
+  <path class="s" d="M 366 55 C 355 82, 364 130, 372 168 C 383 130, 377 80, 366 55 Z"/>
+  <path class="h" stroke-width="6" d="M 371 132 C 380 108, 398 102, 407 112"/>
+  <path class="s" d="M 407 112 C 398 132, 404 152, 412 168 C 422 150, 416 128, 407 112 Z"/>
+  <!-- exit swash: the breath rising off the h -->
+  <path class="s" d="M 412 168 C 462 172, 520 132, 566 66 C 559 60, 551 63, 546 70 C 508 124, 460 158, 413 160 Z"/>
+</svg>

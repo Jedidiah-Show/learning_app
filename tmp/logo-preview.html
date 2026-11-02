@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>RUACH wordmark — design preview</title>
+<style>
+  body { margin:0; font-family:Inter,system-ui,sans-serif; color:#1B2B30; }
+  .panel { padding:48px 40px; display:flex; flex-direction:column; gap:28px; align-items:flex-start; }
+  .panel h2 { font-size:12px; letter-spacing:.14em; text-transform:uppercase; margin:0; opacity:.6; }
+  .light { background:#F3F8F8; --logo-ink:#083D2E; --logo-wind:#2FA38A; }
+  .light h2 { color:#1B2B30; }
+  .paper { background:#FAFDFC; border-bottom:1px solid #D5E3E2; --logo-ink:#1B6A5B; --logo-wind:#2FA38A; }
+  .dark { background:#0B1D21; --logo-ink:#EAF6F3; --logo-wind:#7FD9C8; }
+  .dark h2 { color:#EAF6F3; }
+  .sizes { display:flex; align-items:flex-end; gap:36px; }
+  svg, img.embed { height:56px; width:auto; }
+  .sizes .xl svg { height:96px; }
+  .sizes .sm svg { height:28px; }
+  .head { display:flex; align-items:center; gap:12px; }
+  .head .txt { font-weight:800; letter-spacing:.02em; }
+  .note { padding:16px 40px; font-size:13px; background:#EAF3F1; color:#42565C; }
+  code { background:#e2ded3; padding:1px 5px; border-radius:4px; }
+</style>
+</head>
+<body>
+<div class="panel light">
+  <h2>Primary — light theme (deep evergreen ink, teal breath)</h2>
+  <div class="sizes"><span class="xl slot"></span><span class="slot"></span><span class="sm slot"></span></div>
+</div>
+<div class="panel paper">
+  <h2>Alternate ink — cards &amp; paper surfaces</h2>
+  <div class="sizes xl"><span class="slot"></span></div>
+</div>
+<div class="panel dark">
+  <h2>Dark theme — mist ink, pale wind</h2>
+  <div class="sizes"><span class="xl slot"></span><span class="slot"></span><span class="sm slot"></span></div>
+  <div class="head">
+    <span class="sm slot"></span>
+    <span class="txt" style="color:#EAF6F3">AI&nbsp;ENGINEERING</span>
+  </div>
+</div>
+<p class="note">
+  Colours come from <code>--logo-ink</code> / <code>--logo-wind</code>; the SVG carries
+  fallbacks (<code>#083D2E</code> / <code>#2FA38A</code>) so it also looks right as a plain
+  <code>&lt;img&gt;</code>. Host pages must inline the SVG (fetch-and-insert or a Jinja
+  include) for the variables and the reduced-motion-guarded wind animation to apply.
+  If panels are empty, open this file over HTTP (e.g. <code>python -m http.server</code>
+  in the project root, then <code>http://localhost:8000/tmp/logo-preview.html</code>) —
+  <code>fetch()</code> is blocked on <code>file://</code>.
+</p>
+<script>
+fetch('../static/img/ruach-wordmark.svg')
+  .then(r => r.text())
+  .then(markup => {
+    document.querySelectorAll('.slot').forEach(el => { el.innerHTML = markup; });
+  })
+  .catch(() => {
+    document.querySelectorAll('.slot').forEach(el => {
+      el.outerHTML = '<img class="embed" src="../static/img/ruach-wordmark.svg" alt="RUACH">';
+    });
+  });
+</script>
+</body>
+</html>

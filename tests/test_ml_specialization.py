@@ -95,11 +95,11 @@ class MLSpecializationFlowTests(unittest.TestCase):
         ][0]
         opened = self.client.get('/')
         self.assertIn('Continue: ' + first['title'], opened.get_data(as_text=True))
-        self.assertIn('0 of 14 lessons · 0 of 4 projects complete', opened.get_data(as_text=True))
+        self.assertIn('0 of 18 lessons · 0 of 6 projects complete', opened.get_data(as_text=True))
 
         self._complete_quiz(first)
         advanced = self.client.get('/').get_data(as_text=True)
-        self.assertIn('1 of 14 lessons', advanced)
+        self.assertIn('1 of 18 lessons', advanced)
 
     def test_pathway_content_is_namespaced_and_not_in_shared_curriculum(self):
         pathway = machine_learning_pathway()
@@ -478,7 +478,7 @@ class MLSpecializationFlowTests(unittest.TestCase):
             plan = ml_pathway_pacing(user_id)
             self.assertEqual(plan['pathway_id'], PATHWAY_ID)
             self.assertEqual(plan['weekly_hours'], 6)
-            self.assertEqual(len(plan['modules']), 4)
+            self.assertEqual(len(plan['modules']), 6)
             self.assertGreater(plan['total_hours'], 0)
             self.assertEqual(
                 plan['estimated_weeks'],
@@ -486,7 +486,7 @@ class MLSpecializationFlowTests(unittest.TestCase):
             )
             # The plan is derived from authored order, never reordered.
             self.assertEqual(
-                [item['number'] for item in plan['modules']], [1, 2, 3, 4]
+                [item['number'] for item in plan['modules']], [1, 2, 3, 4, 5, 6]
             )
             self.assertEqual(plan['modules'][0]['status'], 'In progress')
             self.assertEqual(plan['modules'][1]['status'], 'Up next')

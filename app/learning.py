@@ -1,7 +1,34 @@
-"""Sequential lesson and module-project unlock rules."""
+"""Sequential lesson and module-project unlock rules.
 
-from app.curriculum import all_lessons, all_modules
+The unlock rules are pathway-aware: a learner who confirmed ``ml`` studies the
+shared foundation plus the ML pathway, so their pointer, availability checks,
+and progress totals never reach an AI-only module 03-12 lesson.  ``ai``,
+``undecided``, and unset destinations keep the full AI Engineering course.
+"""
+
+from app.curriculum import all_modules
 from app.models import CourseProject, LessonCompletion
+
+
+def _scope(user, destination):
+    """Resolve this learner's destination once for a bundle of queries."""
+    from app.pathway_scope import destination_for
+
+    return destination_for(user) if destination is None else destination
+
+
+def _merged_completions(user, destination, completed, project_modules):
+    """AI completions plus this pathway's completions.
+
+    Module and lesson IDs are namespaced (``00``-``12`` vs ``mle.*``), so the
+    union is safe and lets one pointer walk the foundation into the pathway.
+    """
+    from app.pathway_scope import is_ml, ml_completion_state
+
+    if not is_ml(destination):
+        return set(completed), set(project_modules)
+    ml_lessons, ml_projects = ml_completion_state(user.id)
+    return set(completed) | ml_lessons, set(project_modules) | ml_projects
 
 
 def completed_lesson_ids(user):
@@ -10,6 +37,7 @@ def completed_lesson_ids(user):
             LessonCompletion.lesson_id
         ).filter_by(user_id=user.id, completed=True).all()
     }
+
 
 
 def completed_project_modules(user):
@@ -31,19 +59,32 @@ def user_track(user):
     return 'standard'
 
 
-def next_unlocked_lesson(user, completed=None, completed_projects=None):
+def next_unlocked_lesson(user, completed=None, completed_projects=None,
+                         destination=None):
     action = next_course_action(
-        user, completed=completed, completed_projects=completed_projects
+        user, completed=completed, completed_projects=completed_projects,
+        destination=destination,
     )
     return action['lesson_id'] if action and action['type'] == 'lesson' else None
 
 
-def next_course_action(user, completed=None, completed_projects=None):
+def next_course_action(user, completed=None, completed_projects=None,
+                       destination=None):
+    destination = _scope(user, destination)
     if completed is None:
         completed = completed_lesson_ids(user)
     if completed_projects is None:
         completed_projects = completed_project_modules(user)
-    return _next_course_action(completed, completed_projects)
+    completed, completed_projects = _merged_completions(
+        user, destination, completed, completed_projects
+    )
+    from app.pathway_scope import pathway_modules
+    # Scoped to the learner's own modules: for an ML destination the pointer
+    # walks the foundation straight into the pathway and stops there.
+    return _next_course_action(
+        completed, completed_projects, modules=pathway_modules(destination)
+    )
+
 
 
 def _next_course_action(completed, project_modules, modules=None):
@@ -61,19 +102,43 @@ def _next_course_action(completed, project_modules, modules=None):
 
 
 def lesson_is_available(user, lesson_id, completed=None, completed_projects=None):
+    """Whether one catalog lesson may be opened by this learner.
+
+    Two rules apply together: the lesson must belong to the learner's pathway
+    (an ML learner can never open a module 03-12 lesson, and an AI learner is
+    never handed a ``mle.*`` lesson), and the sequential unlock rules must have
+    reached it.  Pathway lessons are reached by the same pointer, which is why
+    one scoped walk serves both catalogs.
+    """
     from app.curriculum import get_lesson
-    lesson = get_lesson(lesson_id)
-    if not lesson:
+    from app.ml_pathway import get_machine_learning_lesson
+    from app.pathway_scope import FOUNDATION_MODULE_IDS, is_ml
+
+    destination = _scope(user, None)
+    ai_lesson = get_lesson(lesson_id)
+    ml_lesson = get_machine_learning_lesson(lesson_id)
+    if ai_lesson is None and ml_lesson is None:
         return False
+    if is_ml(destination):
+        if ai_lesson is not None and ai_lesson['module_id'] not in FOUNDATION_MODULE_IDS:
+            return False
+    elif ml_lesson is not None:
+        return False
+
     if completed is None:
         completed = completed_lesson_ids(user)
     if completed_projects is None:
         completed_projects = completed_project_modules(user)
+    completed, completed_projects = _merged_completions(
+        user, destination, completed, completed_projects
+    )
     if lesson_id in completed:
         return True
     return lesson_id == next_unlocked_lesson(
-        user, completed=completed, completed_projects=completed_projects
+        user, completed=completed, completed_projects=completed_projects,
+        destination=destination,
     )
+
 
 
 def module_project_is_available(user, module_id, completed=None):
@@ -86,17 +151,37 @@ def module_project_is_available(user, module_id, completed=None):
     return all(lesson['id'] in completed for lesson in module['lessons'])
 
 
-def course_progress(user, completed=None, completed_projects=None):
+def course_progress(user, completed=None, completed_projects=None,
+                    destination=None):
+    """Progress over the learner's own course, not a fixed catalog.
+
+    Defaults to the confirmed pathway, so every caller — the dashboard, the
+    lesson catalog, the projects page, the admin portal — reports the same
+    denominators without re-deriving the scope.  Callers that need the AI
+    course as authored (credential eligibility) pass ``destination='ai'``.
+    """
+    from app.pathway_scope import (
+        destination_for, is_ml, module_entry, pathway_modules,
+    )
+
+    destination = _scope(user, destination) if destination is None else destination
     if completed is None:
         completed = completed_lesson_ids(user)
     if completed_projects is None:
         completed_projects = completed_project_modules(user)
-    lessons = all_lessons()
-    modules = all_modules()
+    completed, completed_projects = _merged_completions(
+        user, destination, completed, completed_projects
+    )
+    modules = pathway_modules(destination)
+    lessons = [lesson for module in modules for lesson in module['lessons']]
     # Reuse these sets for all progress fields. Re-querying through
     # next_course_action() and next_unlocked_lesson() made dashboard renders
     # issue the same two completion queries three times.
-    action = _next_course_action(completed, completed_projects)
+    action = _next_course_action(completed, completed_projects, modules=modules)
+    ai_lessons = [
+        lesson for module in modules if module.get('source') != 'ml'
+        for lesson in module['lessons']
+    ]
     return {
         'total_lessons': len(lessons),
         'completed_lessons': sum(lesson['id'] in completed for lesson in lessons),
@@ -108,29 +193,13 @@ def course_progress(user, completed=None, completed_projects=None):
             all(lesson['id'] in completed for lesson in lessons)
             and all(module['id'] in completed_projects for module in modules)
         ),
-        'recalibration': study_recalibration(user, completed, completed_projects),
+        'recalibration': study_recalibration(user, completed, lessons=ai_lessons),
         'modules': [
-            {
-                'id': module['id'], 'number': module['number'],
-                'title': module['title'], 'total_lessons': len(module['lessons']),
-                'estimated_hours': module.get('estimated_hours', 0),
-                'project_completed': module['id'] in completed_projects,
-                'outcome': (
-                    (module.get('outcomes') or [])[0]
-                    if module.get('outcomes')
-                    else module.get('project') or module.get('description', '')
-                ),
-                'study_minutes': sum(
-                    (lesson.get('study_minutes') or 0)
-                    for lesson in module['lessons']
-                ),
-                'completed_lessons': sum(
-                    lesson['id'] in completed for lesson in module['lessons']
-                ),
-            }
-            for module in all_modules()
+            module_entry(module, completed, completed_projects)
+            for module in modules
         ],
     }
+
 
 
 SHARED_FOUNDATION_MODULES = ('00', '01', '02')
@@ -312,13 +381,15 @@ def monthly_milestone_progress(
     return result
 
 
-def study_recalibration(user, completed=None, completed_projects=None):
+def study_recalibration(user, completed=None, completed_projects=None,
+                        lessons=None):
     """Compare observed study minutes against estimates for this learner.
 
     The comparison is user-scoped: it uses the learner's own
     ``LessonCompletion.time_spent_minutes`` against the curated
     ``_study_minutes`` estimates. It only reports; the learner decides what to
-    do with the observed multiplier.
+    do with the observed multiplier. ``lessons`` narrows the estimate to the
+    courses that record study time — pathway lessons live in their own tables.
     """
     from app.curriculum import all_lessons
     from app.models import LessonCompletion
@@ -328,7 +399,7 @@ def study_recalibration(user, completed=None, completed_projects=None):
     estimated_minutes = 0.0
     observed_minutes = 0.0
     counted = set()
-    for lesson in all_lessons():
+    for lesson in all_lessons() if lessons is None else lessons:
         lesson_id = lesson.get('id')
         if lesson_id in counted or lesson_id not in completed:
             continue
@@ -354,17 +425,26 @@ def study_recalibration(user, completed=None, completed_projects=None):
 
 def next_unlocked_day(user, config=None):
     """Compatibility ordinal for calendar records created before the refactor."""
+    from app.pathway_scope import pathway_lessons
+
     lesson_id = next_unlocked_lesson(user)
+    lessons = pathway_lessons(_scope(user, None))
     if lesson_id is None:
-        return len(all_lessons()) + 1
-    from app.curriculum import lesson_ordinal
-    return lesson_ordinal(lesson_id)
+        return len(lessons) + 1
+    for index, lesson in enumerate(lessons, start=1):
+        if lesson['id'] == lesson_id:
+            return index
+    return len(lessons) + 1
 
 
 def day_is_available(user, config, day_number):
     if not isinstance(day_number, int) or isinstance(day_number, bool):
         return False
-    lessons = all_lessons()
+    from app.pathway_scope import pathway_lessons
+
+    # Scoped to the learner's pathway: an ML learner's calendar never reaches
+    # a day that maps onto an AI-only module 03-12 lesson.
+    lessons = pathway_lessons(_scope(user, None))
     if day_number < 1 or day_number > len(lessons):
         return False
     return lesson_is_available(user, lessons[day_number - 1]['id'])

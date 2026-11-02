@@ -1,0 +1,47 @@
+{% extends "admin/base.html" %}
+{% block title %}Request #{{ report.id }} · Pathway requests{% endblock %}
+{% macro label(destination) %}{% if destination in ('ai', 'ml') %}{{ pathway_label(destination) }}{% else %}No pathway on record{% endif %}{% endmacro %}
+{% block content %}
+<p><a class="text-sm font-semibold text-brand-800 hover:underline" href="{{ url_for('admin_portal.pathway_change_requests') }}">← Back to pathway requests</a></p>
+<div class="mt-4 grid gap-5 lg:grid-cols-[minmax(0,1fr)_18rem]">
+  <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
+    <div class="flex flex-wrap items-center gap-2"><span class="rounded-full {% if report.status == 'pending' %}bg-amber-50 text-amber-800{% elif report.status == 'approved' %}bg-emerald-50 text-emerald-800{% else %}bg-slate-100 text-slate-700{% endif %} px-2.5 py-1 text-xs font-bold uppercase tracking-wide">{{ report.status }}</span><span class="text-xs text-slate-500">Request #{{ report.id }}</span></div>
+    <h1 class="mt-3 font-display text-2xl font-extrabold">{{ label(current_destination) }} → {{ label(report.requested_destination) }}</h1>
+    <p class="mt-2 text-xs text-slate-500">From {{ report.requester.username or report.requester.email or 'Learner' }} · {{ report.created_at.strftime('%b %-d, %Y at %H:%M UTC') }}</p>
+    {% if report.reason %}<div class="mt-6 whitespace-pre-wrap break-words rounded-xl bg-slate-50 p-4 text-sm leading-7 text-slate-800">{{ report.reason }}</div>{% else %}<p class="mt-6 text-sm italic text-slate-500">The learner gave no reason.</p>{% endif %}
+    {% if report.resolved_at %}
+    <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+      <p class="text-xs font-bold uppercase tracking-wide text-slate-700">Resolved {{ report.resolved_at.strftime('%b %-d, %Y at %H:%M UTC') }} by {{ report.resolver.username if report.resolver else 'an administrator' }}</p>
+      <p class="mt-2 text-sm text-slate-700">Resulting pathway: <strong>{{ label(report.resolved_destination) }}</strong>{% if report.status == 'declined' %} (unchanged){% endif %}</p>
+      {% if report.resolution_note %}<div class="mt-2 whitespace-pre-wrap break-words text-sm leading-7 text-slate-800">{{ report.resolution_note }}</div>{% endif %}
+    </div>
+    {% endif %}
+  </article>
+  <aside class="h-fit space-y-5">
+    {% if report.is_pending %}
+    <form method="post" class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="font-bold">Resolve this request</h2>
+      <p class="mt-1 text-xs text-slate-500">A learner gets one request ever, so this decision is final. The note is shown on the learner's profile.</p>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <label for="pathway-note" class="mt-3 block text-xs font-semibold text-slate-600">Note for the learner</label>
+      <textarea id="pathway-note" name="note" rows="4" maxlength="2000" class="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm leading-6 focus:border-emerald-600 focus:outline-none focus:ring-2 focus:ring-emerald-600/20" placeholder="Why the decision was made, and what they should do next."></textarea>
+      <div class="mt-3 grid gap-2">
+        <button name="action" value="approve" class="w-full rounded-lg bg-emerald-800 px-4 py-2.5 text-sm font-bold text-white hover:bg-emerald-900">Approve · move to {{ label(report.requested_destination) }}</button>
+        <button name="action" value="decline" class="w-full rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-50">Decline · keep {{ label(current_destination) }}</button>
+      </div>
+    </form>
+    {% else %}
+    <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <h2 class="font-bold">Already {{ report.status }}</h2>
+      <p class="mt-1 text-xs text-slate-500">This was the learner's one-time request, so it cannot be reopened or changed here. Correct it on the learner's course plan if a mistake must be undone.</p>
+    </div>
+    {% endif %}
+    <dl class="rounded-2xl border border-slate-200 bg-white p-5 text-sm shadow-sm">
+      <dt class="text-xs font-bold uppercase tracking-wide text-slate-500">Learner</dt>
+      <dd class="mt-1"><a class="font-semibold text-brand-800 hover:underline" href="{{ url_for('admin_portal.user_detail', user_id=report.user_id) }}">{{ report.requester.username or report.requester.email or report.user_id }}</a></dd>
+      <dt class="mt-4 text-xs font-bold uppercase tracking-wide text-slate-500">Current pathway</dt>
+      <dd class="mt-1">{{ label(current_destination) }}</dd>
+    </dl>
+  </aside>
+</div>
+{% endblock %}

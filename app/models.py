@@ -578,6 +578,48 @@ class CoursePlan(db.Model):
     )
 
 
+class PathwayChangeRequest(db.Model):
+    """A learner's single request to change a confirmed pathway.
+
+    The destination is a hard lock after onboarding, so the only learner-facing
+    route back out is one request, available once the shared foundation (modules
+    00-02) is complete, and only an admin may resolve it. The row records both
+    the requested and the resulting destination so the audit trail survives the
+    change itself.
+    """
+    __tablename__ = 'pathway_change_request'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False,
+        unique=True,
+    )
+    requested_destination = db.Column(db.String(16), nullable=False)
+    reason = db.Column(db.Text)
+    status = db.Column(
+        db.String(16), nullable=False, default='pending', server_default='pending'
+    )
+    resolved_by = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True
+    )
+    resolved_destination = db.Column(db.String(16))
+    resolution_note = db.Column(db.Text)
+    created_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, nullable=False, index=True
+    )
+    resolved_at = db.Column(db.DateTime(timezone=True))
+    __table_args__ = (
+        db.Index('idx_pathway_change_request_user', 'user_id'),
+        db.Index('idx_pathway_change_request_status', 'status'),
+    )
+
+    requester = db.relationship('User', foreign_keys=[user_id])
+    resolver = db.relationship('User', foreign_keys=[resolved_by])
+
+    @property
+    def is_pending(self):
+        return self.status == 'pending'
+
+
 class Credential(db.Model):
     """Publicly verifiable record of completed course requirements."""
     __tablename__ = 'credential'

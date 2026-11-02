@@ -474,3 +474,59 @@ showing AI engineering modules to an ML-pathway learner.
 **Explicitly deferred:** PyTorch/GPU module (doc's advanced extension), a
 standalone ML course with its own foundation, and leaderboard/credentials
 integration beyond the existing signed credential page.
+
+**Stage E verification record (2026-11-01):** Full dynamic-app phase is now
+complete. The entire app derives from the learner's chosen `pathway_destination`:
+- Modules, lessons, projects, pacing track, nav, profile, and admin all follow
+  the scoped path: `ai`/`undecided`/`NULL` keep the full 13-module/213-lesson
+  AI course; `ml` narrows to shared foundation 00–02 plus 4 ML modules
+  (mle.1–mle.4, 14 lessons). ML learners never enter `app.curriculum`,
+  `TRACKS`, or the AI course's milestones; AI-only modules (03–12) are
+  unreachable from the ML nav or `/lessons` primary flow (shown on `/lessons`
+  only as the alternate pathway under a clarifying violet banner).
+- Core routing changes: `/lessons` scoped via `pathway_lessons('ml')` with ML
+  completions union; `/progress` uses `pathway_lesson_count` and ML completions
+  union; `/project` scoped modules + unified pace vs. monthly milestones; the
+  `/lesson/<id>` detail page has source-aware prev/next; calendar events are
+  described by the learner's own lesson list. `/search` returns source-aware
+  hrefs; `/schedule` resolves day numbers through the scoped catalog; `/daily`
+  maps ordinals through `pathway_lessons`; credentials remain pinned to the
+  full AI course; `/profile` displays the immutable pathway and one-shot change
+  request form; admin users-list shows a pathway column and per-learner
+  denominators.
+- Backend: new `pathway_change_request` table + migration `a9d4e2c7b518`
+  (down_revision: `e7c4a91b3f52`); `REQUIRED_TABLES` entry added to
+  `app/integrations.py`; `destination_for`, `is_ml`, `pathway_modules`,
+  `pathway_lessons`, `pathway_pace`, `pathway_header`, `foundation_completion_state`
+  and `foundation_modules` all in `app/pathway_scope.py`; `course_progress(..., destination=...)`
+  defaults to the learner's pathway; callers needing the full AI course pass
+  `destination='ai'`.
+- Resolution side: `GET /admin/pathway-requests` and `POST
+  /admin/pathway-requests/<id>` (`admin_portal.pathway_change_requests`,
+  `admin_portal.pathway_change_request_detail`) approve or decline a request.
+  Approving writes `CoursePlan.pathway_destination`; declining leaves it and
+  records it in `resolved_destination` as the value that stayed in force. Both
+  stamp `resolved_by`/`resolved_at`/`resolution_note` and write an
+  `AdminAuditLog` row (`pathway.change_approved` / `pathway.change_declined`),
+  and the note is rendered on the learner's profile — it is the only feedback
+  channel the learner gets. Resolution is terminal: a request is the learner's
+  one and only, so a second POST is refused instead of re-resolving.
+- ML curriculum expansion/enrichment — gated on completing this dynamic-app
+  phase. The foundation 00–02 + 4 ML modules are now production-ready; Modules
+  3–4 and further enrichment may resume after this baseline is validated.
+- Tests: full suite passing across learning flows, dynamic shell, calendar,
+  projects, credentials, community leaderboard, integrations, and the new
+  pathway-change cases in `tests/test_admin_portal.py` (gating, one-shot,
+  approve, decline, terminal re-post, learner-blocked-from-resolving, admin
+  pathway denominator). `test_dynamic_shell.py` nav expectations updated
+  (`Course Lessons` → `AI Pathway` / `ML Pathway`). Prior Stage A/B/C/D
+  verification records remain valid; Stage D's migration `e7c4a91b3f52` is
+  applied to production, and Stage E is verified locally but **not yet
+  deployed** — see the deployment record below, which is written only once
+  `/readyz` confirms it.
+
+**Stage E — not yet deployed (2026-11-01):** Production `/readyz` still reports
+`commit: 3988240` with `revision` and `head_revision` both `e7c4a91b3f52`, so
+migration `a9d4e2c7b518` has not been applied. `pathway_change_request` is in
+`REQUIRED_TABLES`, so the code must not reach `main` before the migration does;
+merge order is migration first, then deploy.

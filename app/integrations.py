@@ -31,6 +31,7 @@ REQUIRED_TABLES = (
     'admin_audit_log',
     'lesson_bookmark',
     'lesson_note',
+    'pathway_change_request',
 )
 
 # Columns that newer application code reads on every request. A missing column

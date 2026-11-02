@@ -9,7 +9,10 @@ import unittest
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import create_app, db
-from app.models import AdminAuditLog, LessonCompletion, SupportRequest, User
+from app.models import (
+    AdminAuditLog, CoursePlan, CourseProject, LessonCompletion,
+    PathwayChangeRequest, SupportRequest, User,
+)
 
 
 class AdminPortalTests(unittest.TestCase):
@@ -107,14 +110,16 @@ class AdminPortalTests(unittest.TestCase):
         self.assertIn('Admin Portal', response.get_data(as_text=True))
 
     def test_admin_pages_require_a_dedicated_admin_session(self):
-        for path in ('/admin', '/admin/users', '/admin/analytics', '/admin/audit'):
+        for path in ('/admin', '/admin/users', '/admin/analytics', '/admin/audit',
+                     '/admin/pathway-requests'):
             response = self.client.get(path)
             self.assertEqual(response.status_code, 302, path)
             self.assertIn('/admin/login', response.headers['Location'], path)
 
     def test_learner_cannot_open_admin_pages(self):
         self._login_learner()
-        for path in ('/admin', '/admin/users', '/admin/analytics', '/admin/audit'):
+        for path in ('/admin', '/admin/users', '/admin/analytics', '/admin/audit',
+                     '/admin/pathway-requests'):
             self.assertEqual(self.client.get(path).status_code, 403, path)
 
     def test_admin_dashboard_reports_ml_pathway_status(self):
@@ -281,6 +286,160 @@ class AdminPortalTests(unittest.TestCase):
         learner_page = learner_client.get('/support')
         self.assertEqual(learner_page.status_code, 200)
         self.assertIn('In Review', learner_page.get_data(as_text=True))
+
+    # -------------------------------------------------- pathway change requests
+    def _confirm_learner_pathway(self, destination='ai'):
+        with self.app.app_context():
+            plan = CoursePlan.query.filter_by(user_id=self.learner_id).first()
+            if plan is None:
+                plan = CoursePlan(user_id=self.learner_id, track='standard')
+                db.session.add(plan)
+            plan.pathway_destination = destination
+            db.session.commit()
+
+    def _complete_foundation(self):
+        """Finish every foundation lesson and project, unlocking the request."""
+        from app.pathway_scope import foundation_modules
+
+        with self.app.app_context():
+            day = 0
+            for module in foundation_modules():
+                for lesson in module.get('lessons') or []:
+                    day += 1
+                    db.session.add(LessonCompletion(
+                        user_id=self.learner_id, lesson_id=lesson['id'],
+                        subject_id=module['id'], day_number=day, completed=True,
+                    ))
+                db.session.add(CourseProject(
+                    user_id=self.learner_id, module_id=module['id'],
+                    project='{}', completed=True,
+                ))
+            db.session.commit()
+
+    def _open_pathway_request(self, requested='ml', reason='Prefer classical ML'):
+        self._login_learner()
+        self.client.post('/account/pathway-change-request', data={
+            'requested_destination': requested, 'reason': reason,
+        })
+        with self.app.app_context():
+            return PathwayChangeRequest.query.one().id
+
+    def test_pathway_change_requires_foundation_and_can_be_opened_once(self):
+        self._confirm_learner_pathway('ai')
+        self._login_learner()
+        self.client.post('/account/pathway-change-request', data={
+            'requested_destination': 'ml', 'reason': 'too early',
+        })
+        with self.app.app_context():
+            self.assertEqual(PathwayChangeRequest.query.count(), 0)
+
+        self._complete_foundation()
+        self.client.post('/account/pathway-change-request', data={
+            'requested_destination': 'ml', 'reason': 'Prefer classical ML',
+        })
+        with self.app.app_context():
+            report = PathwayChangeRequest.query.one()
+            self.assertEqual(report.status, 'pending')
+            self.assertEqual(report.requested_destination, 'ml')
+
+        # A second request from the same learner is refused, not queued.
+        self.client.post('/account/pathway-change-request', data={
+            'requested_destination': 'ml',
+        })
+        with self.app.app_context():
+            self.assertEqual(PathwayChangeRequest.query.count(), 1)
+
+    def test_admin_approval_moves_the_learner_and_is_audited(self):
+        self._confirm_learner_pathway('ai')
+        self._complete_foundation()
+        report_id = self._open_pathway_request()
+
+        self._login_admin()
+        inbox = self.client.get('/admin/pathway-requests')
+        self.assertEqual(inbox.status_code, 200)
+        self.assertIn('Prefer classical ML', inbox.get_data(as_text=True))
+
+        resolved = self.client.post(
+            f'/admin/pathway-requests/{report_id}',
+            data={'action': 'approve', 'note': 'Move the project 03 work over.'},
+        )
+        self.assertEqual(resolved.status_code, 302)
+        with self.app.app_context():
+            report = db.session.get(PathwayChangeRequest, report_id)
+            self.assertEqual(report.status, 'approved')
+            self.assertEqual(report.resolved_destination, 'ml')
+            self.assertEqual(report.resolved_by, self.admin_id)
+            self.assertIsNotNone(report.resolved_at)
+            plan = CoursePlan.query.filter_by(user_id=self.learner_id).one()
+            self.assertEqual(plan.pathway_destination, 'ml')
+        self.assertIsNotNone(self._audit(
+            'pathway.change_approved', target_user_id=self.learner_id
+        ))
+
+        # The note is the only word the learner gets back.
+        learner_client = self.app.test_client()
+        self._login_learner(client=learner_client)
+        profile = learner_client.get('/profile')
+        self.assertEqual(profile.status_code, 200)
+        self.assertIn(
+            'Move the project 03 work over.', profile.get_data(as_text=True)
+        )
+
+    def test_admin_decline_keeps_the_pathway_and_cannot_be_reopened(self):
+        self._confirm_learner_pathway('ml')
+        self._complete_foundation()
+        report_id = self._open_pathway_request(requested='ai')
+
+        self._login_admin()
+        self.client.post(
+            f'/admin/pathway-requests/{report_id}',
+            data={'action': 'decline', 'note': 'Finish the ML projects first.'},
+        )
+        with self.app.app_context():
+            report = db.session.get(PathwayChangeRequest, report_id)
+            self.assertEqual(report.status, 'declined')
+            self.assertEqual(report.resolved_destination, 'ml')
+            plan = CoursePlan.query.filter_by(user_id=self.learner_id).one()
+            self.assertEqual(plan.pathway_destination, 'ml')
+        self.assertIsNotNone(self._audit(
+            'pathway.change_declined', target_user_id=self.learner_id
+        ))
+
+        # Terminal: a later approval attempt is refused and the pathway holds.
+        reopened = self.client.post(
+            f'/admin/pathway-requests/{report_id}', data={'action': 'approve'}
+        )
+        self.assertEqual(reopened.status_code, 302)
+        with self.app.app_context():
+            report = db.session.get(PathwayChangeRequest, report_id)
+            self.assertEqual(report.status, 'declined')
+            plan = CoursePlan.query.filter_by(user_id=self.learner_id).one()
+            self.assertEqual(plan.pathway_destination, 'ml')
+
+    def test_a_learner_cannot_resolve_a_pathway_request(self):
+        self._confirm_learner_pathway('ai')
+        self._complete_foundation()
+        report_id = self._open_pathway_request()
+
+        self._login_learner()
+        self.assertEqual(
+            self.client.post(
+                f'/admin/pathway-requests/{report_id}',
+                data={'action': 'approve'},
+            ).status_code,
+            403,
+        )
+        with self.app.app_context():
+            report = db.session.get(PathwayChangeRequest, report_id)
+            self.assertEqual(report.status, 'pending')
+            plan = CoursePlan.query.filter_by(user_id=self.learner_id).one()
+            self.assertEqual(plan.pathway_destination, 'ai')
+
+    def test_admin_sees_the_learners_own_pathway_denominator(self):
+        self._confirm_learner_pathway('ml')
+        self._login_admin()
+        html = self.client.get('/admin/users').get_data(as_text=True)
+        self.assertIn('ML', html)
 
     def test_admin_session_expires(self):
         self._login_admin()

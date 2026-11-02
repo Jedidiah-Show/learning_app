@@ -7,7 +7,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.exc import IntegrityError
 from app import db
 from app.models import (
-    CoursePlan, PasswordResetToken, PhoneVerificationCode, User, UserProfilePhoto,
+    CoursePlan, PasswordResetToken, PathwayChangeRequest, PhoneVerificationCode,
+    User, UserProfilePhoto,
 )
 from app.phone import PhoneError, normalize_phone
 from app.rate_limit import client_ip, enforce_rate_limit, identity_hash
@@ -600,13 +601,85 @@ def logout():
 @login_required
 def profile():
     from app.sms import password_reset_sms_configured
+    from app.pathway_scope import (
+        destination_for, foundation_completion_state, pathway_label,
+    )
 
+    # The destination is a hard lock, so this page only reads it: the card
+    # shows the confirmed pathway and, once the shared foundation is finished,
+    # offers the single change request an admin must resolve.
+    destination = destination_for(current_user)
+    foundation = foundation_completion_state(current_user.id)
+    request_row = PathwayChangeRequest.query.filter_by(
+        user_id=current_user.id
+    ).first()
     return render_template(
         'auth/profile.html', user=current_user,
         phone_verification_available=(
             bool(current_user.phone) and password_reset_sms_configured()
         ),
+        pathway_destination=destination,
+        pathway_label=pathway_label(destination),
+        foundation=foundation,
+        pathway_change_request=request_row,
+        can_request_pathway_change=(
+            destination in ('ai', 'ml')
+            and foundation['complete']
+            and request_row is None
+        ),
     )
+
+
+@auth_bp.route('/account/pathway-change-request', methods=['POST'])
+@login_required
+def request_pathway_change():
+    """Record the learner's single pathway-change request.
+
+    The destination is permanent after onboarding; the one way back out is a
+    request, opened only once the shared foundation is complete, that an admin
+    reviews. The one-shot rule is enforced here (and by the table's unique
+    constraint) rather than only in the template.
+    """
+    from app.pathway_scope import (
+        destination_for, foundation_completion_state, is_ml,
+    )
+
+    destination = destination_for(current_user)
+    if destination not in ('ai', 'ml'):
+        flash('Confirm a pathway during onboarding before requesting a change.', 'error')
+        return redirect(url_for('auth.profile'))
+    if PathwayChangeRequest.query.filter_by(user_id=current_user.id).first():
+        flash('You have already used your one-time pathway change request.', 'error')
+        return redirect(url_for('auth.profile'))
+    foundation = foundation_completion_state(current_user.id)
+    if not foundation['complete']:
+        flash(
+            'Finish the shared foundation (modules 0-2) before requesting a '
+            'pathway change.', 'error'
+        )
+        return redirect(url_for('auth.profile'))
+    requested = (request.form.get('requested_destination') or '').strip()
+    if requested not in ('ai', 'ml') or is_ml(requested) == is_ml(destination):
+        flash('Choose the other pathway to request a change.', 'error')
+        return redirect(url_for('auth.profile'))
+    reason = (request.form.get('reason') or '').strip()[:2000]
+    row = PathwayChangeRequest(
+        user_id=current_user.id,
+        requested_destination=requested,
+        reason=reason or None,
+    )
+    db.session.add(row)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        flash('You have already used your one-time pathway change request.', 'error')
+        return redirect(url_for('auth.profile'))
+    flash(
+        'Your pathway change request was sent. An admin will review it; your '
+        'current pathway stays in place until then.', 'info'
+    )
+    return redirect(url_for('auth.profile'))
 
 
 @auth_bp.route('/account/verify-phone', methods=['POST'])

@@ -361,11 +361,13 @@
 </div>
 
 <nav class="lesson-navigation" aria-label="Lesson navigation">
-  {% if previous_lesson %}<a href="{{ url_for('main.lesson_detail', lesson_id=previous_lesson.id) }}">← Previous lesson</a>{% else %}<button type="button" disabled>← Previous lesson</button>{% endif %}
+  {% set prev_url = url_for('main.machine_learning_lesson', lesson_id=previous_lesson.id) if previous_lesson.source == 'ml' else url_for('main.lesson_detail', lesson_id=previous_lesson.id) %}
+  {% set next_url = url_for('main.machine_learning_lesson', lesson_id=next_lesson.id) if next_lesson and next_lesson.source == 'ml' else url_for('main.lesson_detail', lesson_id=next_lesson.id) if next_lesson else '' %}
+  {% if previous_lesson %}<a href="{{ prev_url }}">← Previous lesson</a>{% else %}<button type="button" disabled>← Previous lesson</button>{% endif %}
   {% if next_lesson %}
-    {% if next_lesson_available %}<a id="next-lesson-button" href="{{ url_for('main.lesson_detail', lesson_id=next_lesson.id) }}">Next lesson →</a>
+    {% if next_lesson_available %}<a id="next-lesson-button" href="{{ next_url }}">Next lesson →</a>
     {% elif completed and next_action and next_action.type == 'project' %}<a id="next-lesson-button" href="{{ projects_url }}#module-{{ next_action.module_id }}">Open Module {{ next_action.module_number }} project →</a>
-    {% else %}<button id="next-lesson-button" type="button" disabled data-next-lesson-id="{{ next_lesson.id }}" data-next-lesson-url="{{ url_for('main.lesson_detail', lesson_id=next_lesson.id) }}">Next lesson locked 🔒</button>{% endif %}
+    {% else %}<button id="next-lesson-button" type="button" disabled data-next-lesson-id="{{ next_lesson.id }}" data-next-lesson-url="{{ next_url }}">Next lesson locked 🔒</button>{% endif %}
   {% elif next_action and next_action.type == 'project' %}<a id="next-lesson-button" href="{{ projects_url }}#module-{{ next_action.module_id }}">Open Module {{ next_action.module_number }} project →</a>
   {% else %}<button id="next-lesson-button" type="button" disabled>Course complete ✓</button>{% endif %}
   {% if next_action and next_action.type == 'project' %}<a class="lesson-starter-link" href="{{ url_for('projects.download_project_starter', module_id=next_action.module_id) }}">Get the starter kit →</a>
@@ -641,7 +643,11 @@ if (completeButton) completeButton.addEventListener('click', async () => {
       return;
     } else if (data.next_lesson_id) {
       status.textContent = 'Lesson complete. Loading your next lesson…';
-      window.location.href = `/lesson/${data.next_lesson_id}`;
+      // Pathway lessons live under their own route, not /lesson/<id>.
+      const nextPath = String(data.next_lesson_id).startsWith('mle.')
+        ? `/specializations/machine-learning/lessons/${data.next_lesson_id}`
+        : `/lesson/${data.next_lesson_id}`;
+      window.location.href = nextPath;
       return;
     } else if (nextButton) {
       status.textContent = 'Lesson complete. You have finished the course.';

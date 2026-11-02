@@ -25,10 +25,11 @@ from app.curriculum import all_lessons, all_modules
 from app.integrations import database_status
 from app.learning import course_progress
 from app.models import (
-    AdminAuditLog, CourseProject, Credential, LessonCompletion,
+    AdminAuditLog, CoursePlan, CourseProject, Credential, LessonCompletion,
     MLSpecializationCredential, MLSpecializationLessonCompletion,
     MLSpecializationProject,
-    PasswordResetToken, QuizResult, StudySession, SupportRequest, User,
+    PasswordResetToken, PathwayChangeRequest, QuizResult, StudySession,
+    SupportRequest, User,
 )
 from app.phone import PhoneError, normalize_phone
 from app.rate_limit import client_ip, enforce_rate_limit, identity_hash
@@ -327,6 +328,8 @@ def users():
 
     user_ids = [account.id for account in pagination.items]
     progress_by_user = {}
+    pathway_by_user = {}
+    total_by_user = {}
     if user_ids:
         progress_by_user = dict(
             db.session.query(
@@ -337,12 +340,29 @@ def users():
                 LessonCompletion.user_id.in_(user_ids),
             ).group_by(LessonCompletion.user_id).all()
         )
+        # The denominator follows each learner's own course: an ML learner is
+        # measured against the foundation plus their pathway, never the full
+        # AI course, and the pathway column shows which course that is.
+        from app.pathway_scope import destination_for, pathway_lesson_count
+
+        plans = CoursePlan.query.filter(
+            CoursePlan.user_id.in_(user_ids)
+        ).all()
+        destination_by_id = {plan.user_id: plan.pathway_destination for plan in plans}
+        for account in pagination.items:
+            destination = destination_by_id.get(account.id)
+            pathway_by_user[account.id] = destination
+            total_by_user[account.id] = pathway_lesson_count(
+                destination_for(account)
+            )
 
     return render_template(
         'admin/users.html',
         users=pagination.items,
         pagination=pagination,
         progress_by_user=progress_by_user,
+        pathway_by_user=pathway_by_user,
+        total_by_user=total_by_user,
         total_lessons=len(all_lessons()),
         search=search,
         role=role,
@@ -1143,3 +1163,115 @@ def support_request_detail(request_id):
                 'admin_portal.support_request_detail', request_id=report.id
             ))
     return render_template('admin/support_detail.html', report=report)
+
+
+@admin_portal_bp.route('/pathway-requests')
+@admin_required
+def pathway_change_requests():
+    from app.pathway_scope import pathway_label
+
+    status = (request.args.get('status') or '').strip()
+    allowed_statuses = {'pending', 'approved', 'declined'}
+    query = PathwayChangeRequest.query.order_by(
+        PathwayChangeRequest.created_at.desc()
+    )
+    if status in allowed_statuses:
+        query = query.filter_by(status=status)
+    page = max(1, request.args.get('page', 1, type=int) or 1)
+    pagination = query.paginate(page=page, per_page=PAGE_SIZE, error_out=False)
+    destination_by_user = {
+        plan.user_id: plan.pathway_destination
+        for plan in CoursePlan.query.filter(
+            CoursePlan.user_id.in_(
+                [report.user_id for report in pagination.items] or [-1]
+            )
+        ).all()
+    }
+    return render_template(
+        'admin/pathway_requests.html', requests=pagination.items,
+        pagination=pagination, status=status,
+        current_destination=destination_by_user.get,
+        pathway_label=pathway_label,
+    )
+
+
+@admin_portal_bp.route('/pathway-requests/<int:request_id>', methods=['GET', 'POST'])
+@admin_required
+def pathway_change_request_detail(request_id):
+    """Resolve a learner's one-time pathway change request.
+
+    The request is the learner's only route out of a confirmed pathway and the
+    table allows one row per learner, so resolution is terminal: once approved
+    or declined it cannot be reopened, and a second POST is refused rather than
+    silently re-resolved. Approving writes the destination that the rest of the
+    app already reads from ``CoursePlan.pathway_destination``; declining leaves
+    it untouched. Both record who decided, when, and the note the learner sees.
+    """
+    from app.pathway_scope import pathway_label
+
+    report = db.get_or_404(PathwayChangeRequest, request_id)
+    plan = CoursePlan.query.filter_by(user_id=report.user_id).first()
+    current_destination = plan.pathway_destination if plan else None
+
+    if request.method == 'POST':
+        action = (request.form.get('action') or '').strip()
+        note = (request.form.get('note') or '').strip()[:2000]
+        if not report.is_pending:
+            flash('This request has already been resolved.', 'error')
+            return redirect(url_for(
+                'admin_portal.pathway_change_request_detail', request_id=report.id
+            ))
+        if action not in ('approve', 'decline'):
+            flash('Choose either approve or decline.', 'error')
+        elif action == 'approve' and (
+            plan is None or report.requested_destination not in ('ai', 'ml')
+        ):
+            flash(
+                'This learner no longer has a pathway on record, so there is '
+                'nothing to change. Decline the request instead.', 'error'
+            )
+        else:
+            report.resolved_by = current_user.id
+            report.resolved_at = _utcnow()
+            report.resolution_note = note or None
+            if action == 'approve':
+                plan.pathway_destination = report.requested_destination
+                plan.updated_at = _utcnow()
+                report.status = 'approved'
+                report.resolved_destination = report.requested_destination
+                _record_admin_action(
+                    'pathway.change_approved', target_user_id=report.user_id,
+                    detail=(
+                        f'Request #{report.id}: pathway '
+                        f'{current_destination or "none"} -> '
+                        f'{report.requested_destination}.'
+                        + (f' Note: {note}' if note else '')
+                    ),
+                )
+                db.session.commit()
+                flash(
+                    f'Approved. The learner is now on the '
+                    f'{pathway_label(report.requested_destination)} pathway.',
+                    'success',
+                )
+            else:
+                report.status = 'declined'
+                report.resolved_destination = current_destination
+                _record_admin_action(
+                    'pathway.change_declined', target_user_id=report.user_id,
+                    detail=(
+                        f'Request #{report.id} declined; pathway stays '
+                        f'{current_destination or "none"}.'
+                        + (f' Note: {note}' if note else '')
+                    ),
+                )
+                db.session.commit()
+                flash('Declined. The learner keeps their confirmed pathway.', 'success')
+            return redirect(url_for(
+                'admin_portal.pathway_change_request_detail', request_id=report.id
+            ))
+
+    return render_template(
+        'admin/pathway_request_detail.html', report=report,
+        current_destination=current_destination, pathway_label=pathway_label,
+    )
