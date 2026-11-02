@@ -7,7 +7,7 @@ module what to show instead of reaching straight for ``app.curriculum``, which
 only ever holds the AI Engineering course.
 
 A destination of ``ml`` narrows the course to the shared foundation (modules
-00-02) plus the ML pathway's four namespaced modules; ``ai``, ``undecided``,
+00-02) plus the ML pathway's six namespaced modules; ``ai``, ``undecided``,
 and unset keep the full AI Engineering course exactly as authored.  The ML
 manifest stays outside ``app.curriculum`` (see ``app.ml_pathway``), so ML
 modules are normalised here into the same shape the shared templates render.
@@ -363,11 +363,13 @@ def pathway_header(destination):
             'title': 'RUACH ML Engineering',
             'blurb': (
                 'The shared foundation — AI Engineering Foundations, Python, '
-                'and Backend Engineering — then the four ML pathway modules in '
-                'production tabular machine learning. The AI Engineering '
-                'continuation belongs to the AI Pathway and is not part of '
-                'your course. Lessons unlock in order, and each module project '
-                'helps you apply what you learned.'
+                'and Backend Engineering — then the six ML pathway modules: '
+                'production tabular machine learning from data and problem '
+                'formulation through classical ML, reproducible training, '
+                'serving, Advanced PyTorch, and Capstone Integration. The AI '
+                'Engineering continuation belongs to the AI Pathway and is not '
+                'part of your course. Lessons unlock in order, and each module '
+                'project helps you apply what you learned.'
             ),
             'module_count': len(modules),
             'lesson_count': len(lessons),

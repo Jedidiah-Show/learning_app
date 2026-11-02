@@ -210,7 +210,7 @@ def pathway_dashboard_progress(user, destination, progress,
     """Re-scope the dashboard's course block onto a confirmed ML destination.
 
     An ``ml`` learner's course is the shared foundation (modules 00-02) plus
-    the ML pathway's four modules.  Modules 03-12 are the AI continuation and
+    the ML pathway's six modules.  Modules 03-12 are the AI continuation and
     belong to a different course, so they drop out of the curriculum grid, the
     header totals, and the "next step" pointers; every other destination keeps
     the full AI curriculum exactly as it is.

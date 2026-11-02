@@ -118,6 +118,8 @@ class MLSpecializationFlowTests(unittest.TestCase):
             ('mle.classical-ml', 'ruach-ml-classical-baseline'),
             ('mle.reproducible-training', 'ruach-ml-reproducible-training'),
             ('mle.production-ml', 'ruach-ml-production-service'),
+            ('mle.pytorch-advanced', 'ruach-ml-pytorch-advanced'),
+            ('mle.capstone-integration', 'ruach-ml-capstone-integration'),
         ):
             response = self.client.get(
                 f'/specializations/machine-learning/projects/{module_id}/starter'
@@ -169,6 +171,44 @@ class MLSpecializationFlowTests(unittest.TestCase):
             'rollback_active_version': '1.0.0', 'rollback_triggered': True,
         }
         self.assertTrue(_report_matches('mle.production-ml', production))
+
+        pytorch = {
+            'train_rows': 24, 'evaluation_rows': 12,
+            'dataset_sha256': _dataset_sha256(5),
+            'feature_columns': ['support_tickets', 'tenure_months'],
+            'baseline_accuracy': 8 / 12,
+            'model_family': 'pytorch_mlp',
+            'experiment_tracking': True,
+            'beats_baseline': True,
+            'evaluation_set_used_for_fitting': False,
+            'data_split': 'fixed_holdout',
+            'accuracy': .95, 'precision': .90, 'recall': .90, 'f1': .90,
+        }
+        self.assertTrue(_report_matches('mle.pytorch-advanced', pytorch))
+        pytorch['accuracy'] = .89
+        self.assertFalse(_report_matches('mle.pytorch-advanced', pytorch))
+
+        capstone = {
+            'train_rows': 24, 'evaluation_rows': 12,
+            'dataset_sha256': _dataset_sha256(6),
+            'feature_columns': ['support_tickets', 'tenure_months'],
+            'baseline_accuracy': 8 / 12,
+            'stages': [
+                'data_audit', 'classical_baseline', 'reproducible_training',
+                'production_service', 'pytorch_model', 'integration_test',
+            ],
+            'monitoring_signals': [
+                'error_rate', 'latency', 'input_drift', 'prediction_drift',
+            ],
+            'canary_rollback_defined': True,
+            'evaluation_set_used_for_fitting': False,
+            'data_split': 'fixed_holdout',
+            'classical_accuracy': .95, 'pytorch_accuracy': .90,
+            'selected_model': 'pytorch_mlp',
+        }
+        self.assertTrue(_report_matches('mle.capstone-integration', capstone))
+        capstone['pytorch_accuracy'] = .79
+        self.assertFalse(_report_matches('mle.capstone-integration', capstone))
 
     def test_prerequisites_and_sequential_quizzes_gate_progress_separately(self):
         catalog = self.client.get('/specializations/machine-learning')

@@ -65,6 +65,16 @@ def _module(module_id):
     )
 
 
+def _project_module_ids():
+    """Published pathway modules — those with every lesson ready."""
+    return {
+        module['id'] for module in machine_learning_pathway()['modules']
+        if module['lessons'] and all(
+            lesson.get('status') == 'ready' for lesson in module['lessons']
+        )
+    }
+
+
 def _record(module_id, create=False):
     record = MLSpecializationProject.query.filter_by(
         user_id=current_user.id, pathway_id=PATHWAY_ID, module_id=module_id
@@ -255,6 +265,85 @@ def _report_matches(module_id, report):
             if not isinstance(actual, (int, float)) or isinstance(actual, bool) or not math.isfinite(actual) or not minimum <= actual <= 1:
                 return False
         return True
+    if module_id == 'mle.pytorch-advanced':
+        if not isinstance(report, dict):
+            return False
+        expected = {
+            'train_rows': 24,
+            'evaluation_rows': 12,
+            'dataset_sha256': _dataset_sha256(5),
+            'feature_columns': ['support_tickets', 'tenure_months'],
+            'baseline_accuracy': 8 / 12,
+            'model_family': 'pytorch_mlp',
+            'experiment_tracking': True,
+            'beats_baseline': True,
+            'evaluation_set_used_for_fitting': False,
+            'data_split': 'fixed_holdout',
+            'accuracy': None,
+            'precision': None,
+            'recall': None,
+            'f1': None,
+        }
+        if set(report) != set(expected):
+            return False
+        for key, value in expected.items():
+            if key in {'accuracy', 'precision', 'recall', 'f1'}:
+                continue
+            actual = report.get(key)
+            if key == 'baseline_accuracy':
+                if not isinstance(actual, (int, float)) or isinstance(actual, bool) or not math.isfinite(actual) or abs(actual - value) > 1e-9:
+                    return False
+            elif type(actual) is not type(value) or actual != value:
+                return False
+        for key, minimum in (
+            ('accuracy', .90), ('precision', .80),
+            ('recall', .80), ('f1', .80),
+        ):
+            actual = report.get(key)
+            if not isinstance(actual, (int, float)) or isinstance(actual, bool) or not math.isfinite(actual) or not minimum <= actual <= 1:
+                return False
+        return True
+    if module_id == 'mle.capstone-integration':
+        if not isinstance(report, dict):
+            return False
+        expected = {
+            'train_rows': 24,
+            'evaluation_rows': 12,
+            'dataset_sha256': _dataset_sha256(6),
+            'feature_columns': ['support_tickets', 'tenure_months'],
+            'baseline_accuracy': 8 / 12,
+            'stages': [
+                'data_audit', 'classical_baseline', 'reproducible_training',
+                'production_service', 'pytorch_model', 'integration_test',
+            ],
+            'monitoring_signals': [
+                'error_rate', 'latency', 'input_drift', 'prediction_drift',
+            ],
+            'canary_rollback_defined': True,
+            'evaluation_set_used_for_fitting': False,
+            'data_split': 'fixed_holdout',
+            'classical_accuracy': None,
+            'pytorch_accuracy': None,
+            'selected_model': None,
+        }
+        if set(report) != set(expected):
+            return False
+        for key, value in expected.items():
+            if key in {'classical_accuracy', 'pytorch_accuracy', 'selected_model'}:
+                continue
+            actual = report.get(key)
+            if key == 'baseline_accuracy':
+                if not isinstance(actual, (int, float)) or isinstance(actual, bool) or not math.isfinite(actual) or abs(actual - value) > 1e-9:
+                    return False
+            elif type(actual) is not type(value) or actual != value:
+                return False
+        for key, minimum in (('classical_accuracy', .90), ('pytorch_accuracy', .80)):
+            actual = report.get(key)
+            if not isinstance(actual, (int, float)) or isinstance(actual, bool) or not math.isfinite(actual) or not minimum <= actual <= 1:
+                return False
+        if report.get('selected_model') not in {'classical_baseline', 'pytorch_mlp'}:
+            return False
+        return True
     if module_id != 'mle.data-problem-formulation':
         return False
     expected = _expected_data_audit_report()
@@ -339,10 +428,7 @@ def _credential_signature(public_id):
 @login_required
 def project(module_id):
     module = _module(module_id)
-    if module is None or module_id not in {
-        'mle.data-problem-formulation', 'mle.classical-ml',
-        'mle.reproducible-training', 'mle.production-ml',
-    }:
+    if module is None or module_id not in _project_module_ids():
         abort(404)
     if not _prerequisites_met():
         abort(403)
@@ -377,9 +463,11 @@ def project_starter(module_id):
         'mle.classical-ml': STARTER_PATH.parent / 'module_2',
         'mle.reproducible-training': STARTER_PATH.parent / 'module_3',
         'mle.production-ml': STARTER_PATH.parent / 'module_4',
+        'mle.pytorch-advanced': STARTER_PATH.parent / 'module_5',
+        'mle.capstone-integration': STARTER_PATH.parent / 'module_6',
     }
     starter_path = starter_paths.get(module_id)
-    if module is None or starter_path is None:
+    if module is None or starter_path is None or not starter_path.is_dir():
         abort(404)
     archive = BytesIO()
     with ZipFile(archive, 'w', ZIP_DEFLATED) as bundle:
@@ -388,6 +476,8 @@ def project_starter(module_id):
             'mle.classical-ml': 'ruach-ml-classical-baseline',
             'mle.reproducible-training': 'ruach-ml-reproducible-training',
             'mle.production-ml': 'ruach-ml-production-service',
+            'mle.pytorch-advanced': 'ruach-ml-pytorch-advanced',
+            'mle.capstone-integration': 'ruach-ml-capstone-integration',
         }
         root_name = root_names[module_id]
         for path in starter_path.rglob('*'):
@@ -407,10 +497,7 @@ def project_starter(module_id):
 def submit_project(module_id):
     module = _module(module_id)
     data = get_json_object()
-    if module is None or module_id not in {
-        'mle.data-problem-formulation', 'mle.classical-ml',
-        'mle.reproducible-training', 'mle.production-ml',
-    }:
+    if module is None or module_id not in _project_module_ids():
         return jsonify({'error': 'Unknown or unavailable ML project'}), 404
     if not _prerequisites_met() or not _previous_projects_complete(module) or not _module_lessons_complete(module):
         return jsonify({'error': 'Complete the prerequisites and module lessons first'}), 409

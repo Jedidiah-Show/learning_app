@@ -1,7 +1,7 @@
 """The dashboard grid, nav shell, and app name follow the chosen pathway.
 
 A learner who confirms ``pathway_destination = 'ml'`` studies the shared
-foundation (modules 00-02) and the ML pathway's four modules.  Modules 03-12
+foundation (modules 00-02) and the ML pathway's six modules.  Modules 03-12
 are the AI continuation and belong to a different course, so they must never
 appear in that learner's curriculum grid, header totals, or next-step pointers.
 The nav follows the same rule: the learner's own pathway sits directly under

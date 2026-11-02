@@ -230,7 +230,7 @@ def project_page():
         from app.pathway_scope import ml_completion_state
         completed |= ml_completion_state(current_user.id)[1]
     # The module grid follows the pathway: an ML learner's projects are the
-    # shared foundation plus their four pathway projects, never modules 03-12.
+    # shared foundation plus their six pathway projects, never modules 03-12.
     progress = course_progress(
         current_user, completed_projects=completed, destination=destination
     )
