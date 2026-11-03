@@ -4,7 +4,10 @@ import unittest
 
 from app import create_app, db
 from app.models import CommunityPost, CommunityReply, CoursePlan, CourseProject
-from app.models import LessonCompletion, User
+from app.models import (
+    LessonCompletion, MLSpecializationLessonCompletion,
+    MLSpecializationProject, User,
+)
 
 
 class CommunityAndLeaderboardTests(unittest.TestCase):
@@ -97,6 +100,40 @@ class CommunityAndLeaderboardTests(unittest.TestCase):
         self.assertEqual(board['rank'], 2)
         self.assertEqual(board['lesson_points'], 10)
         self.assertEqual(board['project_points'], 50)
+
+    def test_ml_viewer_progress_and_leaderboard_count_pathway_points(self):
+        self.register(self.client, 'alpha')
+        with self.app.app_context():
+            alpha = User.query.filter_by(username='alpha').one()
+            plan = CoursePlan.query.filter_by(user_id=alpha.id).first()
+            if plan is None:
+                plan = CoursePlan(user_id=alpha.id, track='standard')
+                db.session.add(plan)
+            plan.pathway_destination = 'ml'
+            plan.leaderboard_opt_in = True
+            db.session.add(MLSpecializationLessonCompletion(
+                user_id=alpha.id, pathway_id='machine-learning-engineering',
+                lesson_id='mle.data.01',
+            ))
+            db.session.add(MLSpecializationProject(
+                user_id=alpha.id, pathway_id='machine-learning-engineering',
+                module_id='mle.data-problem-formulation', submission='{}',
+                completed=True,
+            ))
+            db.session.commit()
+
+        progress = self.client.get('/progress')
+        self.assertEqual(progress.status_code, 200)
+
+        board = self.client.get('/api/leaderboard').get_json()
+        self.assertTrue(board['opted_in'])
+        entry = board['entries'][0]
+        self.assertEqual(entry['username'], 'alpha')
+        self.assertEqual(entry['ml_lessons'], 1)
+        self.assertEqual(entry['ml_projects'], 1)
+        self.assertEqual(entry['points'], 30)
+        self.assertEqual(board['ml_lesson_points'], 5)
+        self.assertEqual(board['ml_project_points'], 25)
 
     def test_learners_can_create_reply_and_remove_their_own_discussion(self):
         self.register(self.client, 'author')

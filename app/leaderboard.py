@@ -3,7 +3,10 @@
 from sqlalchemy import func
 
 from app import db
-from app.models import CoursePlan, CourseProject, LessonCompletion, User
+from app.models import (
+    CoursePlan, CourseProject, LessonCompletion,
+    MLSpecializationLessonCompletion, MLSpecializationProject, User,
+)
 from app.pathway_scope import destination_for
 
 
@@ -68,6 +71,10 @@ def leaderboard_data(viewer, limit=20):
             ml_project_total.label('ml_projects'),
             func.lower(func.coalesce(User.username, 'Learner')).label('sort_name'),
         ).join(CoursePlan, CoursePlan.user_id == User.id).outerjoin(
+            lesson_counts, lesson_counts.c.user_id == User.id
+        ).outerjoin(
+            project_counts, project_counts.c.user_id == User.id
+        ).outerjoin(
             ml_lesson_counts, ml_lesson_counts.c.user_id == User.id
         ).outerjoin(
             ml_project_counts, ml_project_counts.c.user_id == User.id
