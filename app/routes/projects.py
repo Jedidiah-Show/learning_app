@@ -491,6 +491,8 @@ def submit_module_project(module_id):
         return value
     repository_url = data.get('repository_url')
     checks_url = data.get('checks_url')
+    commit_sha = data.get('commit_sha') if isinstance(data.get('commit_sha'), str) else None
+    branch = data.get('branch') if isinstance(data.get('branch'), str) else None
     if not isinstance(repository_url, str) or not repository_url.strip():
         return jsonify({'error': 'A public repository URL is required'}), 400
     if not isinstance(checks_url, str) or not checks_url.strip():
@@ -515,7 +517,7 @@ def submit_module_project(module_id):
     record.demo_url = demo_url
     db.session.commit()
     try:
-        verification = verify_checks(repository_url, checks_url)
+        verification = verify_checks(repository_url, checks_url, commit_sha=commit_sha, branch=branch)
     except VerificationError as error:
         return jsonify({'error': str(error), 'draft_saved': True}), 422
     project_payload = record.get_project()

@@ -541,7 +541,9 @@ def submit_project(module_id):
             'draft_saved': True,
         }), 422
     try:
-        verification = verify_checks(repository_url, checks_url)
+        commit_sha = data.get('commit_sha') if isinstance(data.get('commit_sha'), str) else None
+        branch = data.get('branch') if isinstance(data.get('branch'), str) else None
+        verification = verify_checks(repository_url, checks_url, commit_sha=commit_sha, branch=branch)
     except VerificationError as error:
         _attempt_outcome(record, 'ci_verification', str(error))
         return jsonify({'error': str(error), 'draft_saved': True}), 422
