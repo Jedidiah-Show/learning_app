@@ -249,12 +249,13 @@
     <section id="tasks" class="lesson-card">
       <p class="lesson-eyebrow">Practice</p>
       <h2 class="lesson-card-title">Your tasks</h2>
-      <p class="lesson-text lesson-muted">Tick each task as you finish it. Your ticks are saved on this device.</p>
+      <p class="lesson-text lesson-muted">Tick each task as you finish it. Your progress is saved to your account and follows you across devices.</p>
       <ul class="lesson-tasks" data-lesson-tasks data-lesson-id="{{ lesson.id }}">
         {% for item in lesson.tasks %}
-        <li class="{% if loop.index > 1 %}lesson-deep-dive{% endif %}"><label><input type="checkbox" data-task-index="{{ loop.index0 }}"><span>{% if loop.index == 1 %}<strong>Start here:</strong> {% endif %}{{ item }}</span></label></li>
+        <li class="{% if loop.index > 1 %}lesson-deep-dive{% endif %}"><label><input type="checkbox" data-task-index="{{ loop.index0 }}" disabled><span>{% if loop.index == 1 %}<strong>Start here:</strong> {% endif %}{{ item }}</span></label></li>
         {% endfor %}
       </ul>
+      <p data-task-progress-status class="text-sm text-slate-600" role="status" aria-live="polite">Loading saved task progress…</p>
     </section>
     {% endif %}
 
@@ -283,10 +284,11 @@
       <div class="tutor-chat-heading">
         <div>
           <h2 class="lesson-card-title">Talk it through</h2>
-          <p class="lesson-text lesson-muted">Ask a follow-up whenever you need. The tutor keeps the recent conversation in mind.</p>
+          <p class="lesson-text lesson-muted">Ask a follow-up whenever you need. Your recent conversation is saved to your account and can be cleared with New chat.</p>
         </div>
-        <button type="button" id="ask-reset" class="btn-secondary tutor-new-chat">New chat</button>
+        <button type="button" id="ask-reset" class="btn-secondary tutor-new-chat" disabled>New chat</button>
       </div>
+      <p id="tutor-history-status" class="text-sm text-slate-600" role="status" aria-live="polite">Loading saved conversation…</p>
       <p class="mt-2 text-xs text-slate-500">AI-generated feedback — verify important details against the lesson.</p>
       <div id="answer" class="tutor-chat" role="log" aria-live="polite" aria-relevant="additions text">
         <article class="tutor-message tutor-message-assistant">
@@ -307,7 +309,7 @@
         <textarea id="question" rows="2" maxlength="2000" placeholder="Ask a question or follow up…"></textarea>
         <div class="tutor-composer-footer">
           <span>Enter to send · Shift+Enter for a new line</span>
-          <button id="ask-send" type="submit" class="btn-primary">Send <span aria-hidden="true">↗</span></button>
+          <button id="ask-send" type="submit" class="btn-primary" disabled>Send <span aria-hidden="true">↗</span></button>
         </div>
       </form>
     </section>
@@ -389,19 +391,63 @@ const csrf = document.querySelector('meta[name="csrf-token"]').content;
 const readJson = async (response) => { try { return await response.json(); } catch (error) { return {}; } };
 const needsSignIn = (response) => response.redirected || response.status === 401;
 
+const taskList = document.querySelector('[data-lesson-tasks]');
+if (taskList) {
+  const taskStatus = document.querySelector('[data-task-progress-status]');
+  const taskBoxes = [...taskList.querySelectorAll('input[type="checkbox"]')];
+  const taskUrl = `/api/lessons/tasks/${encodeURIComponent(lessonId)}`;
+  const setTaskStatus = (message, isError = false) => {
+    taskStatus.textContent = message;
+    taskStatus.classList.toggle('text-red-700', isError);
+    taskStatus.classList.toggle('text-slate-600', !isError);
+  };
+  fetch(taskUrl)
+    .then(async (response) => {
+      const data = await readJson(response);
+      if (!response.ok) throw new Error(data.error || 'Could not load saved task progress.');
+      const completed = new Set(data.completed_task_indices);
+      taskBoxes.forEach((box) => {
+        box.checked = completed.has(Number(box.dataset.taskIndex));
+        box.closest('li')?.classList.toggle('is-done', box.checked);
+        box.disabled = false;
+        box.addEventListener('change', async () => {
+          const desired = box.checked;
+          const taskIndex = box.dataset.taskIndex;
+          box.disabled = true;
+          setTaskStatus('Saving task progress…');
+          try {
+            const save = await fetch(`${taskUrl}/${encodeURIComponent(taskIndex)}`, {
+              method: 'PUT',
+              headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+              body: JSON.stringify({completed: desired}),
+            });
+            const result = await readJson(save);
+            if (!save.ok) throw new Error(result.error || 'Could not save this task.');
+            setTaskStatus('Task progress saved to your account.');
+          } catch (error) {
+            box.checked = !desired;
+            box.closest('li')?.classList.toggle('is-done', box.checked);
+            setTaskStatus(error.message || 'Could not save this task. Try again.', true);
+          } finally {
+            box.disabled = false;
+          }
+        });
+      });
+      setTaskStatus('Saved task progress loaded.');
+    })
+    .catch((error) => {
+      setTaskStatus(`${error.message} Refresh the page before changing tasks.`, true);
+    });
+}
+
 const tutorChat = document.getElementById('answer');
 const tutorQuestion = document.getElementById('question');
 const tutorSend = document.getElementById('ask-send');
+const tutorReset = document.getElementById('ask-reset');
+const tutorHistoryStatus = document.getElementById('tutor-history-status');
 const tutorMode = document.getElementById('tutor-mode');
 const tutorDepth = document.getElementById('tutor-depth');
-const tutorStorageKey = `ruachai-tutor-{{ current_user.id }}-${lessonId}`;
 let tutorHistory = [];
-try {
-  const saved = JSON.parse(localStorage.getItem(tutorStorageKey) || '[]');
-  if (Array.isArray(saved)) tutorHistory = saved.filter((item) =>
-    item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string'
-  ).slice(-8);
-} catch (error) { tutorHistory = []; }
 const addTutorMessage = (role, text, state = '') => {
   const message = document.createElement('article');
   message.className = `tutor-message tutor-message-${role}${state ? ` ${state}` : ''}`;
@@ -419,22 +465,28 @@ const renderTutorHistory = () => {
   if (tutorHistory.length) {
     tutorChat.replaceChildren();
     tutorHistory.forEach((item) => addTutorMessage(item.role, item.content));
+  } else {
+    tutorChat.replaceChildren();
+    addTutorMessage('assistant', 'Hi, I’m Ruach-AI, your tutor for the RUACH AI & ML Engineering course. What would you like to understand better in this lesson?');
   }
 };
-renderTutorHistory();
-// Try to sync from server for cross-device persistence
 fetch(`/api/lessons/tutor/history/${encodeURIComponent(lessonId)}`)
-  .then(r => r.ok ? r.json() : null)
-  .then(data => {
-    if (data && Array.isArray(data.history) && data.history.length && tutorHistory.length === 0) {
-      tutorHistory = data.history.filter((item) =>
-        item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string'
-      ).slice(-8);
-      try { localStorage.setItem(tutorStorageKey, JSON.stringify(tutorHistory)); } catch (error) {}
-      renderTutorHistory();
-    }
+  .then(async (response) => {
+    const data = await readJson(response);
+    if (!response.ok) throw new Error(data.error || 'Conversation history could not be loaded.');
+    tutorHistory = Array.isArray(data.history) ? data.history : [];
+    renderTutorHistory();
+    tutorHistoryStatus.textContent = 'Conversation synced to your account.';
   })
-  .catch(() => {});
+  .catch((error) => {
+    tutorHistoryStatus.textContent = `${error.message} Your conversation may not sync until refreshed.`;
+    tutorHistoryStatus.classList.add('text-red-700');
+    renderTutorHistory();
+  })
+  .finally(() => {
+    tutorSend.disabled = false;
+    tutorReset.disabled = false;
+  });
 document.getElementById('ask-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const question = tutorQuestion.value.trim();
@@ -447,7 +499,7 @@ document.getElementById('ask-form').addEventListener('submit', async (event) => 
     const response = await fetch('/api/lessons/ask', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
-      body: JSON.stringify({lesson_id: lessonId, question, mode: tutorMode.value, depth: tutorDepth.value, history: tutorHistory.slice(-8)}),
+      body: JSON.stringify({lesson_id: lessonId, question, mode: tutorMode.value, depth: tutorDepth.value}),
     });
     const data = await readJson(response);
     pending.remove();
@@ -463,7 +515,7 @@ document.getElementById('ask-form').addEventListener('submit', async (event) => 
     addTutorMessage('assistant', answer);
     tutorHistory.push({role: 'user', content: question}, {role: 'assistant', content: answer});
     tutorHistory = tutorHistory.slice(-8);
-    try { localStorage.setItem(tutorStorageKey, JSON.stringify(tutorHistory)); } catch (error) {}
+    tutorHistoryStatus.textContent = 'Conversation synced to your account.';
   } catch (error) {
     pending.remove();
     addTutorMessage('assistant', 'Could not reach the tutor. Check your connection and try again.', 'is-error');
@@ -478,12 +530,26 @@ tutorQuestion.addEventListener('keydown', (event) => {
     document.getElementById('ask-form').requestSubmit();
   }
 });
-document.getElementById('ask-reset').addEventListener('click', () => {
-  tutorHistory = [];
-  try { localStorage.removeItem(tutorStorageKey); } catch (error) {}
-  tutorChat.replaceChildren();
-  addTutorMessage('assistant', 'Hi, I’m Ruach-AI, your tutor for the RUACH AI & ML Engineering course. What would you like to understand better in this lesson?');
-  tutorQuestion.focus();
+tutorReset.addEventListener('click', async () => {
+  tutorReset.disabled = true;
+  tutorHistoryStatus.textContent = 'Clearing saved conversation…';
+  try {
+    const response = await fetch(
+      `/api/lessons/tutor/history/${encodeURIComponent(lessonId)}`,
+      {method: 'DELETE', headers: {'X-CSRF-Token': csrf}},
+    );
+    const data = await readJson(response);
+    if (!response.ok) throw new Error(data.error || 'Could not clear the saved conversation.');
+    tutorHistory = [];
+    renderTutorHistory();
+    tutorHistoryStatus.textContent = 'Saved conversation cleared.';
+    tutorQuestion.focus();
+  } catch (error) {
+    tutorHistoryStatus.textContent = error.message || 'Could not clear the saved conversation.';
+    tutorHistoryStatus.classList.add('text-red-700');
+  } finally {
+    tutorReset.disabled = false;
+  }
 });
 
 document.getElementById('quiz-button').addEventListener('click', async () => {

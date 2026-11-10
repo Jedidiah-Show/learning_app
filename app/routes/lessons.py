@@ -15,8 +15,8 @@ from app.course_data import SETUP_CHECKS
 from app.curriculum import curriculum, get_lesson, lesson_context
 from app.learning import lesson_is_available, next_course_action, next_unlocked_lesson
 from app.models import (
-    CoursePlan, LessonCompletion, PracticeUsageDaily, PracticeWorkspace, StudySession,
-    VideoProgress,
+    CoursePlan, LessonCompletion, LessonTaskProgress, PracticeUsageDaily,
+    PracticeWorkspace, StudySession, VideoProgress,
 )
 from app.models import TutorConversation
 from app.practice import get_practice_exercise
@@ -135,6 +135,68 @@ def _next_course_payload():
         ),
         'next_action': action,
     }
+
+
+@lessons_bp.route('/tasks/<lesson_id>', methods=['GET'])
+@login_required
+def get_lesson_task_progress(lesson_id):
+    lesson = get_lesson(lesson_id)
+    if not lesson:
+        return jsonify({'error': 'Lesson not found'}), 404
+    if not lesson_is_available(current_user, lesson_id):
+        return jsonify({'error': 'Lesson is locked'}), 403
+    completed = [
+        row.task_index for row in LessonTaskProgress.query.filter_by(
+            user_id=current_user.id,
+            lesson_id=lesson_id,
+            completed=True,
+        ).order_by(LessonTaskProgress.task_index).all()
+    ]
+    return jsonify({
+        'lesson_id': lesson_id,
+        'task_count': len(lesson.get('tasks') or []),
+        'completed_task_indices': completed,
+    })
+
+
+@lessons_bp.route('/tasks/<lesson_id>/<int:task_index>', methods=['PUT'])
+@login_required
+def update_lesson_task_progress(lesson_id, task_index):
+    lesson = get_lesson(lesson_id)
+    if not lesson:
+        return jsonify({'error': 'Lesson not found'}), 404
+    if not lesson_is_available(current_user, lesson_id):
+        return jsonify({'error': 'Lesson is locked'}), 403
+    tasks = lesson.get('tasks') or []
+    if task_index < 0 or task_index >= len(tasks):
+        return jsonify({'error': 'Task not found'}), 404
+    data = get_json_object()
+    if not isinstance(data, dict) or type(data.get('completed')) is not bool:
+        return jsonify({'error': 'Completion state must be a boolean'}), 400
+
+    progress = LessonTaskProgress.query.filter_by(
+        user_id=current_user.id,
+        lesson_id=lesson_id,
+        task_index=task_index,
+    ).first()
+    if data['completed']:
+        if progress is None:
+            db.session.add(LessonTaskProgress(
+                user_id=current_user.id,
+                lesson_id=lesson_id,
+                task_index=task_index,
+            ))
+        else:
+            progress.completed = True
+            progress.updated_at = datetime.now(timezone.utc)
+    elif progress is not None:
+        db.session.delete(progress)
+    db.session.commit()
+    return jsonify({
+        'lesson_id': lesson_id,
+        'task_index': task_index,
+        'completed': data['completed'],
+    })
 
 
 @lessons_bp.route('/placement', methods=['GET', 'POST'])
@@ -691,7 +753,7 @@ def update_video_progress():
     })
 
 
-@lessons_bp.route('/tutor/history/<lesson_id>', methods=['GET'])
+@lessons_bp.route('/tutor/history/<lesson_id>', methods=['GET', 'DELETE'])
 @login_required
 def get_tutor_history(lesson_id):
     lesson = get_lesson(lesson_id) if isinstance(lesson_id, str) else None
@@ -699,10 +761,16 @@ def get_tutor_history(lesson_id):
         return jsonify({'error': 'Lesson not found'}), 404
     if not lesson_is_available(current_user, lesson_id):
         return jsonify({'error': 'Lesson is locked'}), 403
-    from app.models import TutorConversation
+    if request.method == 'DELETE':
+        TutorConversation.query.filter_by(
+            user_id=current_user.id, lesson_id=lesson_id
+        ).delete(synchronize_session=False)
+        db.session.commit()
+        return jsonify({'history': [], 'cleared': True})
     messages = TutorConversation.query.filter_by(
         user_id=current_user.id, lesson_id=lesson_id
-    ).order_by(TutorConversation.created_at.asc()).limit(50).all()
+    ).order_by(TutorConversation.id.desc()).limit(8).all()
+    messages.reverse()
     history = [{'role': m.role, 'content': m.content} for m in messages]
     return jsonify({'history': history})
 
@@ -727,24 +795,17 @@ def ask_lesson_question():
         return jsonify({'error': 'Choose a valid tutor style'}), 400
     if not isinstance(response_depth, str) or response_depth not in {'brief', 'standard', 'detailed'}:
         return jsonify({'error': 'Choose a valid response depth'}), 400
-    history = data.get('history', [])
-    if not isinstance(history, list) or len(history) > 8:
-        return jsonify({'error': 'Conversation history is invalid'}), 400
+    recent_messages = TutorConversation.query.filter_by(
+        user_id=current_user.id, lesson_id=lesson_id
+    ).order_by(TutorConversation.id.desc()).limit(8).all()
     conversation = []
     conversation_size = 0
-    for message in history:
-        if not isinstance(message, dict):
-            return jsonify({'error': 'Conversation history is invalid'}), 400
-        role, content = message.get('role'), message.get('content')
-        if role not in {'user', 'assistant'} or not isinstance(content, str):
-            return jsonify({'error': 'Conversation history is invalid'}), 400
-        content = content.strip()
-        if not content or len(content) > 2000:
-            return jsonify({'error': 'Conversation history is invalid'}), 400
+    for message in reversed(recent_messages):
+        content = message.content[-2000:]
+        if conversation_size + len(content) > 8000:
+            break
+        conversation.append({'role': message.role, 'content': content})
         conversation_size += len(content)
-        if conversation_size > 8000:
-            return jsonify({'error': 'Conversation history is too long'}), 400
-        conversation.append({'role': role, 'content': content})
 
     # Persist user message to database
     tutoring_msg = TutorConversation(
@@ -821,11 +882,19 @@ def ask_lesson_question():
             error, 'Clarification is temporarily unavailable. Please retry.'
         )
     if not isinstance(result, dict) or result.get('in_scope') is not True:
+        redirect_answer = (
+            'I can help with this lesson and topics in the RUACH AI & ML Engineering '
+            'course. Ask me about one of those and we can work through it together.'
+        )
+        db.session.add(TutorConversation(
+            user_id=current_user.id,
+            lesson_id=lesson_id,
+            role='assistant',
+            content=redirect_answer,
+        ))
+        db.session.commit()
         return jsonify({
-            'answer': (
-                'I can help with this lesson and topics in the RUACH AI & ML Engineering '
-                'course. Ask me about one of those and we can work through it together.'
-            ),
+            'answer': redirect_answer,
             'in_scope': False,
         })
     answer = result.get('answer')
@@ -846,3 +915,37 @@ def ask_lesson_question():
 def get_effective_model():
     from app.user_preferences import get_effective_config_for_user
     return get_effective_config_for_user(current_user).get('ai', {}).get('model_tier', 'flash')
+
+
+@lessons_bp.route('/practice/exercises', methods=['GET'])
+@login_required
+def list_practice_exercises():
+    from app.practice import all_practice_exercises
+    from app.exercise_filters import filter_exercises, get_available_filters
+    exercises = list(all_practice_exercises().values())
+    difficulty = request.args.get('difficulty')
+    skills = request.args.getlist('skill') or request.args.get('skills')
+    if isinstance(skills, str):
+        skills = [s.strip() for s in skills.split(',') if s.strip()]
+    lesson_id = request.args.get('lesson_id')
+    filtered = filter_exercises(exercises, difficulty=difficulty, skills=skills, lesson_id=lesson_id)
+    return jsonify({
+        'exercises': filtered,
+        'filters': get_available_filters(exercises)
+    })
+
+
+@lessons_bp.route('/tasks/<lesson_id>', methods=['GET', 'POST'])
+@login_required
+def lesson_tasks(lesson_id):
+    lesson = get_lesson(lesson_id) if isinstance(lesson_id, str) else None
+    if not lesson:
+        return jsonify({'error': 'Lesson not found'}), 404
+    if not lesson_is_available(current_user, lesson_id):
+        return jsonify({'error': 'Lesson is locked'}), 403
+    if request.method == 'GET':
+        # For now, tasks are stored client-side; return empty structure for compatibility
+        return jsonify({'tasks': []})
+    data = get_json_object() or {}
+    tasks = data.get('tasks', [])
+    return jsonify({'status': 'saved', 'tasks': tasks})

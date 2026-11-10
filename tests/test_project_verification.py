@@ -1,13 +1,15 @@
 """Project evidence verification without contacting the network."""
 
 import json
+import os
 import unittest
 from urllib.request import Request
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from app.project_verification import (
     _GitHubAPIRedirectHandler,
     VerificationError,
+    _github_api_fetch,
     verify_checks,
 )
 
@@ -147,6 +149,22 @@ class ProjectVerificationTests(unittest.TestCase):
                 self.assertIsNone(handler.redirect_request(
                     request, None, 302, 'Found', {}, target
                 ))
+
+    def test_api_fetch_sends_configured_token_as_bearer(self):
+        response = MagicMock()
+        response.status = 200
+        response.read.return_value = b'{}'
+        response.geturl.return_value = 'https://api.github.com/repos/learner/project'
+        with patch.dict(os.environ, {'GITHUB_TOKEN': 'safe-test-token'}), patch(
+            'app.project_verification.build_opener'
+        ) as build_opener:
+            build_opener.return_value.open.return_value.__enter__.return_value = response
+            _github_api_fetch('https://api.github.com/repos/learner/project')
+
+        request = build_opener.return_value.open.call_args.args[0]
+        self.assertEqual(
+            request.get_header('Authorization'), 'Bearer safe-test-token'
+        )
 
 
 if __name__ == '__main__':

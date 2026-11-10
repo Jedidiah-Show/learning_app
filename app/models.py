@@ -140,6 +140,29 @@ class LessonCompletion(db.Model):
         db.Index('idx_lessoncomp_user_subject_day', 'user_id', 'subject_id', 'day_number'),
     )
 
+
+class LessonTaskProgress(db.Model):
+    """A learner's completion state for one task in a lesson."""
+    __tablename__ = 'lesson_task_progress'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    lesson_id = db.Column(db.String(100), nullable=False)
+    task_index = db.Column(db.Integer, nullable=False)
+    completed = db.Column(db.Boolean, nullable=False, default=True, server_default=db.true())
+    updated_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+    __table_args__ = (
+        db.UniqueConstraint(
+            'user_id', 'lesson_id', 'task_index',
+            name='unique_user_lesson_task_progress',
+        ),
+        db.Index('idx_lesson_task_progress_user_lesson', 'user_id', 'lesson_id'),
+    )
+
+
 class VideoProgress(db.Model):
     """Furthest watch position a learner has reported for a lesson video."""
     __tablename__ = 'video_progress'

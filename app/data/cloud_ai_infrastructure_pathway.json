@@ -1,0 +1,192 @@
+{
+  "id": "cloud-ai-infrastructure",
+  "title": "Cloud & AI Infrastructure",
+  "subtitle": "Build and operate infrastructure for AI systems",
+  "description": "Linux, networking, cloud, IaC, containers, Kubernetes, CI/CD, observability, and GPU/AI infrastructure.",
+  "modules": [
+    {
+      "id": "cai.00",
+      "number": 0,
+      "title": "Linux & Systems Fundamentals",
+      "badge": "Module 0",
+      "estimated_hours": 12,
+      "lessons": [
+        {
+          "id": "cai.00.01",
+          "title": "Linux CLI Essentials",
+          "goal": "Navigate and manage Linux systems.",
+          "status": "ready",
+          "study_minutes": 90,
+          "sections": [
+            {
+              "heading": "Overview",
+              "body": [
+                "Learn shell commands, files, permissions."
+              ]
+            },
+            {
+              "heading": "Practice",
+              "body": [
+                "Work with processes and logs."
+              ]
+            }
+          ],
+          "quiz": {
+            "question": "Which command shows running processes?",
+            "choices": [
+              "ps",
+              "ls",
+              "cat",
+              "echo"
+            ],
+            "answer": 0,
+            "explanation": "ps displays processes."
+          }
+        }
+      ],
+      "project": {
+        "title": "Harden a Linux VM",
+        "summary": "Set up users, SSH, firewall, and logging."
+      }
+    },
+    {
+      "id": "cai.01",
+      "number": 1,
+      "title": "Networking & TLS",
+      "badge": "Module 1",
+      "estimated_hours": 10,
+      "lessons": [
+        {
+          "id": "cai.01.01",
+          "title": "DNS, HTTP, and TLS",
+          "goal": "Understand networking for cloud services.",
+          "status": "ready",
+          "study_minutes": 90,
+          "sections": [
+            {
+              "heading": "Overview",
+              "body": [
+                "Learn DNS resolution, HTTP/HTTPS, TLS certificates."
+              ]
+            },
+            {
+              "heading": "Practice",
+              "body": [
+                "Inspect certificates and trace requests."
+              ]
+            }
+          ],
+          "quiz": {
+            "question": "TLS provides which of the following?",
+            "choices": [
+              "Encryption in transit",
+              "File compression",
+              "Syntax highlighting",
+              "Caching"
+            ],
+            "answer": 0,
+            "explanation": "TLS encrypts traffic in transit."
+          }
+        }
+      ],
+      "project": {
+        "title": "Secure a Web Service",
+        "summary": "Configure HTTPS, security headers, and firewall rules."
+      }
+    },
+    {
+      "id": "cai.02",
+      "number": 2,
+      "title": "Containers & Kubernetes",
+      "badge": "Module 2",
+      "estimated_hours": 15,
+      "lessons": [
+        {
+          "id": "cai.02.01",
+          "title": "Docker & Container Security",
+          "goal": "Build and secure containers.",
+          "status": "ready",
+          "study_minutes": 120,
+          "sections": [
+            {
+              "heading": "Overview",
+              "body": [
+                "Container fundamentals and best practices."
+              ]
+            },
+            {
+              "heading": "Practice",
+              "body": [
+                "Write secure Dockerfiles."
+              ]
+            }
+          ],
+          "quiz": {
+            "question": "Best practice for containers is to run as?",
+            "choices": [
+              "root user",
+              "non-root user",
+              "admin user",
+              "any user"
+            ],
+            "answer": 1,
+            "explanation": "Run as non-root for security."
+          }
+        }
+      ],
+      "project": {
+        "title": "Deploy with Kubernetes",
+        "summary": "Deploy a containerized AI service to K8s."
+      }
+    },
+    {
+      "id": "cai.03",
+      "number": 3,
+      "title": "IaC, CI/CD & Observability",
+      "badge": "Module 3",
+      "estimated_hours": 12,
+      "lessons": [
+        {
+          "id": "cai.03.01",
+          "title": "Terraform & GitOps",
+          "goal": "Automate infrastructure as code.",
+          "status": "ready",
+          "study_minutes": 90,
+          "sections": [
+            {
+              "heading": "Overview",
+              "body": [
+                "IaC principles and Terraform basics."
+              ]
+            },
+            {
+              "heading": "Practice",
+              "body": [
+                "Provision cloud resources."
+              ]
+            }
+          ],
+          "quiz": {
+            "question": "IaC helps with?",
+            "choices": [
+              "Reproducibility",
+              "Randomness",
+              "Guesswork",
+              "Manual steps"
+            ],
+            "answer": 0,
+            "explanation": "Infrastructure as Code ensures reproducibility."
+          }
+        }
+      ],
+      "project": {
+        "title": "CI/CD Pipeline for AI Apps",
+        "summary": "Build automated deployment pipeline with monitoring."
+      }
+    }
+  ],
+  "credential": {
+    "title": "Cloud & AI Infrastructure Practitioner",
+    "description": "Demonstrates ability to deploy and operate AI infrastructure."
+  }
+}

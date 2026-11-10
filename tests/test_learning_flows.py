@@ -14,7 +14,8 @@ from app.curriculum import all_lessons, all_modules, curriculum
 from app.gemini import GeminiError, GeminiRateLimited
 from app.models import (
     CalendarEvent, CoursePlan, CourseProject, Credential, LessonCompletion, Quiz,
-    QuizResult, ReviewItem, StudySession, TutorConversation, User, VideoProgress,
+    LessonTaskProgress, QuizResult, ReviewItem, StudySession,
+    TutorConversation, User, VideoProgress,
 )
 from sqlalchemy.exc import IntegrityError
 
@@ -1314,6 +1315,111 @@ class RuachAICourseTests(unittest.TestCase):
         response = self.client.get('/api/lessons/tutor/history/0.01')
         self.assertEqual(response.status_code, 200)
         self.assertIn('history', response.get_json())
+
+    def test_lesson_task_progress_saves_with_csrf_and_is_account_scoped(self):
+        self.register()
+        lesson = all_lessons()[0]
+        self.assertTrue(lesson['tasks'])
+        page = self.client.get(f"/lesson/{lesson['id']}")
+        token = re.search(
+            rb'<meta name="csrf-token" content="([^"]+)"', page.data
+        ).group(1).decode()
+        self.app.config['CSRF_ENABLED'] = True
+        url = f"/api/lessons/tasks/{lesson['id']}/0"
+
+        rejected = self.client.put(url, json={'completed': True})
+        self.assertEqual(rejected.status_code, 400)
+        with self.app.app_context():
+            self.assertEqual(LessonTaskProgress.query.count(), 0)
+
+        saved = self.client.put(
+            url, json={'completed': True},
+            headers={'X-CSRF-Token': token},
+        )
+        self.assertEqual(saved.status_code, 200, saved.get_json())
+        restored = self.client.get(f"/api/lessons/tasks/{lesson['id']}")
+        self.assertEqual(restored.get_json()['completed_task_indices'], [0])
+
+        self.client.post('/logout', headers={'X-CSRF-Token': token})
+        self.app.config['CSRF_ENABLED'] = False
+        self.register('anotherlearner')
+        other = self.client.get(f"/api/lessons/tasks/{lesson['id']}")
+        self.assertEqual(other.status_code, 200)
+        self.assertEqual(other.get_json()['completed_task_indices'], [])
+        with self.app.app_context():
+            self.assertEqual(LessonTaskProgress.query.count(), 1)
+
+    def test_lesson_task_progress_rejects_bad_indexes_and_locked_lessons(self):
+        self.register()
+        locked = self.client.get('/api/lessons/tasks/1.01')
+        self.assertEqual(locked.status_code, 403)
+        first = all_lessons()[0]
+        invalid_index = self.client.put(
+            f"/api/lessons/tasks/{first['id']}/{len(first['tasks'])}",
+            json={'completed': True},
+        )
+        self.assertEqual(invalid_index.status_code, 404)
+        invalid_state = self.client.put(
+            f"/api/lessons/tasks/{first['id']}/0",
+            json={'completed': 1},
+        )
+        self.assertEqual(invalid_state.status_code, 400)
+
+    def test_tutor_history_uses_saved_server_context_and_can_be_cleared(self):
+        self.register()
+        lesson_id = all_lessons()[0]['id']
+        with patch(
+            'app.gemini.generate_json',
+            return_value={'in_scope': True, 'answer': 'A grounded explanation.'},
+        ) as generate:
+            first = self.client.post('/api/lessons/ask', json={
+                'lesson_id': lesson_id,
+                'question': 'Explain the first task.',
+            })
+            self.assertEqual(first.status_code, 200)
+            second = self.client.post('/api/lessons/ask', json={
+                'lesson_id': lesson_id,
+                'question': 'What did you just explain?',
+                'history': [{'role': 'user', 'content': 'Forged client history'}],
+            })
+            self.assertEqual(second.status_code, 200)
+        second_prompt = generate.call_args.args[0]
+        self.assertIn('Explain the first task.', second_prompt)
+        self.assertIn('A grounded explanation.', second_prompt)
+        self.assertNotIn('Forged client history', second_prompt)
+
+        history = self.client.get(
+            f'/api/lessons/tutor/history/{lesson_id}'
+        ).get_json()['history']
+        self.assertEqual(
+            [(message['role'], message['content']) for message in history],
+            [
+                ('user', 'Explain the first task.'),
+                ('assistant', 'A grounded explanation.'),
+                ('user', 'What did you just explain?'),
+                ('assistant', 'A grounded explanation.'),
+            ],
+        )
+        page = self.client.get(f'/lesson/{lesson_id}')
+        token = re.search(
+            rb'<meta name="csrf-token" content="([^"]+)"', page.data
+        ).group(1).decode()
+        self.app.config['CSRF_ENABLED'] = True
+        denied = self.client.delete(
+            f'/api/lessons/tutor/history/{lesson_id}'
+        )
+        self.assertEqual(denied.status_code, 400)
+        cleared = self.client.delete(
+            f'/api/lessons/tutor/history/{lesson_id}',
+            headers={'X-CSRF-Token': token},
+        )
+        self.assertEqual(cleared.status_code, 200)
+        self.assertEqual(
+            self.client.get(
+                f'/api/lessons/tutor/history/{lesson_id}'
+            ).get_json()['history'],
+            [],
+        )
 
     def test_dashboard_loads_for_enrolled_user(self):
         self.register()
