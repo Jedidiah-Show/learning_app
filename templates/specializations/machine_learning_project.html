@@ -24,6 +24,8 @@
     <form id="ml-project-form" class="mt-5 space-y-4">
       <label class="block text-sm font-semibold">Public repository URL<input required type="url" name="repository_url" maxlength="500" value="{{ submission.get('repository_url', '') }}" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal"></label>
       <label class="block text-sm font-semibold">Successful public CI run URL<input required type="url" name="checks_url" maxlength="500" value="{{ submission.get('checks_url', '') }}" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal"></label>
+      <label class="block text-sm font-semibold">Full 40-character commit SHA tested by CI<input required pattern="[0-9a-fA-F]{40}" maxlength="40" name="commit_sha" value="{{ submission.get('commit_sha', '') }}" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-mono text-sm font-normal"></label>
+      <label class="block text-sm font-semibold">Branch tested by CI (optional)<input maxlength="255" name="branch" value="{{ submission.get('branch', '') }}" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal"></label>
       <label class="block text-sm font-semibold">Project report JSON<textarea required name="report" rows="12" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-mono text-xs font-normal">{{ submission.get('report', {})|tojson(indent=2) }}</textarea></label>
       <details class="rounded-lg bg-slate-50 p-3 text-sm">
         <summary class="cursor-pointer font-semibold">Required report fields</summary>
@@ -64,6 +66,7 @@
         method: 'POST', headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
         body: JSON.stringify({
           repository_url: fields.get('repository_url'), checks_url: fields.get('checks_url'),
+          commit_sha: fields.get('commit_sha'), branch: fields.get('branch'),
           reflection: fields.get('reflection'), report,
         }),
       });

@@ -1,140 +1,145 @@
 """Project evidence verification without contacting the network."""
 
+import json
 import unittest
-from urllib.error import URLError
 from urllib.request import Request
+from unittest.mock import patch
 
 from app.project_verification import (
     VerificationError,
     _SupportedHostRedirectHandler,
     verify_checks,
 )
-from unittest.mock import patch
+
+
+COMMIT = 'a' * 40
+REPOSITORY = 'https://github.com/learner/project'
+CHECKS = 'https://github.com/learner/project/actions/runs/123'
 
 
 class ProjectVerificationTests(unittest.TestCase):
-    def test_public_passing_checks_on_a_supported_host_are_verified(self):
-        seen = []
+    def api_payload(self, **overrides):
+        payload = {
+            'status': 'completed',
+            'conclusion': 'success',
+            'head_sha': COMMIT,
+            'head_branch': 'main',
+            'repository': {'full_name': 'learner/project'},
+        }
+        payload.update(overrides)
+        return json.dumps(payload)
 
-        def fetcher(url):
-            seen.append(url)
-            return 200, '<h1>All checks passed</h1>'
-
-        result = verify_checks(
-            'https://github.com/learner/project',
-            'https://github.com/learner/project/actions/runs/1',
-            fetcher=fetcher,
-        )
-        self.assertTrue(result['verified'])
-        self.assertEqual(result['checks_host'], 'github.com')
-        self.assertEqual(seen[0], 'https://github.com/learner/project/actions/runs/1')
-
-    def test_checks_must_use_https_and_a_supported_public_host(self):
-        for url in (
-            'http://github.com/learner/project/actions/runs/1',
-            'https://github.com:8080/learner/project/actions/runs/1',
-            'https://example.test/checks/1',
-            'https://github.com.evil.test/checks/1',
-        ):
-            with self.subTest(url=url):
-                with self.assertRaises(VerificationError):
-                    verify_checks(
-                        'https://github.com/learner/project', url,
-                        fetcher=lambda _: (200, 'success'),
-                    )
-
-    def test_failed_or_empty_checks_are_rejected(self):
-        for status, body in (
-            (500, 'success'),
-            (200, 'Build failed'),
-            (200, 'Build succeeded, but a required check failed'),
-            (200, '<html></html>'),
-        ):
-            with self.subTest(status=status, body=body):
-                with self.assertRaises(VerificationError):
-                    verify_checks(
-                        'https://github.com/learner/project',
-                        'https://github.com/learner/project/actions/runs/1',
-                        fetcher=lambda _, status=status, body=body: (status, body),
-                    )
-
-    def test_redirect_to_unsupported_host_is_rejected(self):
-        with self.assertRaisesRegex(VerificationError, 'redirected to an unsupported host'):
-            verify_checks(
-                'https://github.com/learner/project',
-                'https://github.com/learner/project/actions/runs/1',
-                fetcher=lambda _: (
-                    200,
-                    'All checks passed',
-                    'https://127.0.0.1/admin',
-                ),
+    def verify_api(self, payload=None, status=200, **kwargs):
+        with patch('app.project_verification._github_api_fetch') as fetch:
+            fetch.return_value = (status, payload or self.api_payload(), 'https://api.github.com/')
+            return verify_checks(
+                REPOSITORY, CHECKS, commit_sha=COMMIT, **kwargs
             )
 
-    def test_http_redirect_handler_blocks_unsupported_targets(self):
+    def test_api_verification_binds_repository_commit_and_run(self):
+        result = self.verify_api(branch='main')
+        self.assertTrue(result['verified'])
+        self.assertEqual(result['verification_method'], 'github_api')
+        self.assertEqual(result['commit_sha'], COMMIT)
+        self.assertEqual(result['branch'], 'main')
+
+    def test_api_verification_rejects_missing_or_mismatched_repository_identity(self):
+        for repository in (None, {'full_name': 'someone/else'}):
+            with self.subTest(repository=repository), patch(
+                'app.project_verification._github_api_fetch',
+                return_value=(200, self.api_payload(repository=repository), 'https://api.github.com/'),
+            ):
+                with self.assertRaises(VerificationError):
+                    verify_checks(REPOSITORY, CHECKS, commit_sha=COMMIT)
+
+    def test_api_verification_rejects_different_run_repository(self):
+        with self.assertRaisesRegex(VerificationError, 'submitted repository'):
+            verify_checks(
+                REPOSITORY,
+                'https://github.com/other/project/actions/runs/123',
+                commit_sha=COMMIT,
+            )
+
+    def test_api_verification_requires_exact_commit_and_optional_branch(self):
+        for payload, branch in (
+            (self.api_payload(head_sha='b' * 40), None),
+            (self.api_payload(head_sha=None), None),
+            (self.api_payload(head_branch='release'), 'main'),
+        ):
+            with self.subTest(payload=payload, branch=branch), patch(
+                'app.project_verification._github_api_fetch',
+                return_value=(200, payload, 'https://api.github.com/'),
+            ):
+                with self.assertRaises(VerificationError):
+                    verify_checks(
+                        REPOSITORY, CHECKS, commit_sha=COMMIT, branch=branch
+                    )
+
+    def test_full_commit_sha_is_required_and_cannot_be_fabricated(self):
+        for sha in (None, 'abc123', 'z' * 40):
+            with self.subTest(sha=sha):
+                with self.assertRaisesRegex(VerificationError, 'commit SHA'):
+                    verify_checks(REPOSITORY, CHECKS, commit_sha=sha)
+
+    def test_pending_failed_and_malformed_api_runs_are_not_verified(self):
+        for payload in (
+            self.api_payload(status='in_progress', conclusion=None),
+            self.api_payload(conclusion='failure'),
+            'not-json',
+        ):
+            with self.subTest(payload=payload), patch(
+                'app.project_verification._github_api_fetch',
+                return_value=(200, payload, 'https://api.github.com/'),
+            ):
+                with self.assertRaises(VerificationError):
+                    verify_checks(REPOSITORY, CHECKS, commit_sha=COMMIT)
+
+    def test_api_outage_fails_closed_without_scraping_checks_page(self):
+        with patch(
+            'app.project_verification._github_api_fetch',
+            side_effect=OSError('offline'),
+        ), patch('app.project_verification._default_fetcher') as page_fetcher:
+            with self.assertRaisesRegex(VerificationError, 'unavailable'):
+                verify_checks(REPOSITORY, CHECKS, commit_sha=COMMIT)
+        page_fetcher.assert_not_called()
+
+    def test_other_ci_providers_are_unavailable_not_page_scraped(self):
+        with patch('app.project_verification._default_fetcher') as page_fetcher:
+            with self.assertRaisesRegex(VerificationError, 'only GitHub Actions'):
+                verify_checks(
+                    REPOSITORY,
+                    'https://gitlab.com/learner/project/pipelines/1',
+                    commit_sha=COMMIT,
+                )
+        page_fetcher.assert_not_called()
+
+    def test_malformed_github_actions_url_is_rejected(self):
+        with self.assertRaises(VerificationError):
+            verify_checks(
+                REPOSITORY,
+                'https://github.com/learner/project/actions/runs',
+                commit_sha=COMMIT,
+            )
+
+    def test_repository_url_must_be_https_and_github(self):
+        for repository in (
+            'http://github.com/learner/project',
+            'https://github.com.evil.test/learner/project',
+            'https://gitlab.com/learner/project',
+        ):
+            with self.subTest(repository=repository):
+                with self.assertRaises(VerificationError):
+                    verify_checks(repository, CHECKS, commit_sha=COMMIT)
+
+    def test_redirect_handler_rejects_unsupported_and_internal_targets(self):
         handler = _SupportedHostRedirectHandler()
-        request = Request('https://github.com/learner/project/actions/runs/1')
+        request = Request(CHECKS)
+        for target in ('https://127.0.0.1/admin', 'https://github.com:8080/admin'):
+            with self.subTest(target=target):
+                self.assertIsNone(
+                    handler.redirect_request(request, None, 302, 'Found', {}, target)
+                )
 
-        self.assertIsNone(handler.redirect_request(
-            request, None, 302, 'Found', {}, 'https://127.0.0.1/admin'
-        ))
-        self.assertIsNone(handler.redirect_request(
-            request, None, 302, 'Found', {}, 'https://github.com:8080/admin'
-        ))
 
-    def test_redirect_within_supported_hosts_can_be_verified(self):
-        result = verify_checks(
-            'https://github.com/learner/project',
-            'https://github.com/learner/project/actions/runs/1',
-            fetcher=lambda _: (
-                200,
-                'All checks passed',
-                'https://gitlab.com/learner/project/pipelines/1',
-            ),
-        )
-        self.assertTrue(result['verified'])
-
-    def test_unreachable_checks_never_complete_a_project(self):
-        def fetcher(_):
-            raise URLError('connection refused')
-
-        with self.assertRaises(VerificationError):
-            verify_checks(
-                'https://github.com/learner/project',
-                'https://github.com/learner/project/actions/runs/1',
-                fetcher=fetcher,
-            )
-
-    def test_github_api_verification_with_fetcher_fallback_allows_page_scrape_in_tests(self):
-        seen = []
-
-        def fetcher(url):
-            seen.append(url)
-            return 200, '<div class="workflow-run">All checks passed</div>'
-
-        result = verify_checks(
-            'https://github.com/learner/project',
-            'https://github.com/learner/project/actions/runs/12345',
-            fetcher=fetcher,
-        )
-        self.assertTrue(result['verified'])
-        self.assertIn(result.get('verification_method'), ('page_scrape', 'github_api'))
-
-    def test_verify_checks_rejects_ambiguous_failure_indicators(self):
-        with self.assertRaises(VerificationError):
-            verify_checks(
-                'https://github.com/learner/project',
-                'https://github.com/learner/project/actions/runs/99',
-                fetcher=lambda _: (200, 'All checks passed but build failed'),
-            )
-
-    def test_github_api_verification_success_path(self):
-        api_response = '{"status":"completed","conclusion":"success","head_sha":"abc123","head_branch":"main","repository":{"full_name":"learner/project"}}'
-        with patch('app.project_verification._github_api_fetch') as mock_fetch:
-            mock_fetch.return_value = (200, api_response, 'https://api.github.com/repos/learner/project/actions/runs/123')
-            result = verify_checks(
-                'https://github.com/learner/project',
-                'https://github.com/learner/project/actions/runs/123',
-            )
-        self.assertTrue(result['verified'])
-        self.assertEqual(result.get('verification_method'), 'github_api')
-        self.assertEqual(result.get('commit_sha'), 'abc123')
+if __name__ == '__main__':
+    unittest.main()

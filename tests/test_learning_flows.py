@@ -1259,3 +1259,10 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertIn('lesson-concept-more', html)
         self.assertIn('Continue the explanation', html)
         self.assertLess(html.index('id="checklist"'), html.index('id="concepts"'))
+
+
+    def test_tutor_history_endpoint_exists(self):
+        self.register()
+        response = self.client.get('/api/lessons/tutor/history/0.01')
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('history', response.get_json())

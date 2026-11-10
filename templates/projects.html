@@ -228,13 +228,24 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
     checks.type = 'url'; checks.required = true; checks.setAttribute('aria-label', 'Public automated checks URL'); checks.placeholder = 'Public passing CI/checks run URL (HTTPS, required)';
     checks.value = savedChecks || ''; checks.maxLength = 500;
     checks.className = 'mt-3 w-full rounded-xl border p-3';
+    const commit = document.createElement('input');
+    commit.type = 'text'; commit.required = true; commit.maxLength = 40;
+    commit.pattern = '[0-9a-fA-F]{40}';
+    commit.setAttribute('aria-label', 'Full commit SHA tested by CI');
+    commit.placeholder = 'Full 40-character commit SHA tested by CI';
+    commit.className = 'mt-3 w-full rounded-xl border p-3';
+    const branch = document.createElement('input');
+    branch.type = 'text'; branch.maxLength = 255;
+    branch.setAttribute('aria-label', 'Branch tested by CI (optional)');
+    branch.placeholder = 'Branch tested by CI (optional)';
+    branch.className = 'mt-3 w-full rounded-xl border p-3';
     const demo = document.createElement('input');
     demo.type = 'url'; demo.setAttribute('aria-label', 'Live demo URL (optional)'); demo.placeholder = 'Live demo URL (optional, HTTPS)';
     demo.value = savedDemo || ''; demo.maxLength = 500;
     demo.className = 'mt-3 w-full rounded-xl border p-3';
     const help = document.createElement('p');
     help.className = 'mt-2 text-xs text-slate-500';
-    help.textContent = 'Use a public GitHub Actions, GitLab pipeline, Bitbucket, Azure DevOps, CircleCI, Travis, or Buildkite page that shows a successful run. Completion requires passing checks and a passing rubric evaluation.';
+    help.textContent = 'Use a GitHub Actions run for this repository, then provide the full commit SHA tested by that run. Other CI providers cannot yet be verified automatically. Completion requires passing checks and a passing rubric evaluation.';
     const submit = document.createElement('button');
     submit.className = 'mt-2 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white';
     submit.textContent = hasSubmission ? 'Revise and resubmit' : 'Verify checks and get feedback';
@@ -260,7 +271,7 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
     draftNote.className = 'mt-3 text-xs text-slate-600';
     draftNote.textContent = 'Your draft is saved even when the checks page cannot be verified. Fix the link and submit again without retyping your work.';
     guide.append(guideTitle, steps, draftNote);
-    form.append(text, repository, checks, demo, guide, help, submit);
+    form.append(text, repository, checks, commit, branch, demo, guide, help, submit);
     form.addEventListener('submit', async (event) => {
         event.preventDefault();
         submit.disabled = true;
@@ -274,7 +285,7 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
                         'Content-Type': 'application/json',
                         'X-CSRF-Token': csrf,
                     },
-                    body: JSON.stringify({submission: text.value, repository_url: repository.value, checks_url: checks.value, demo_url: demo.value}),
+                    body: JSON.stringify({submission: text.value, repository_url: repository.value, checks_url: checks.value, commit_sha: commit.value, branch: branch.value, demo_url: demo.value}),
                 },
             );
             const result = await readJson(response);

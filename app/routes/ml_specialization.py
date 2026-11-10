@@ -514,11 +514,19 @@ def submit_project(module_id):
         return jsonify({'error': 'A public repository URL is required'}), 400
     if not isinstance(checks_url, str) or not checks_url.strip():
         return jsonify({'error': 'A public automated checks URL is required'}), 400
+    commit_sha = data.get('commit_sha')
+    branch = data.get('branch')
+    if not isinstance(commit_sha, str) or not commit_sha.strip():
+        return jsonify({'error': 'The full commit SHA tested by CI is required'}), 400
+    if branch is not None and not isinstance(branch, str):
+        return jsonify({'error': 'Branch must be a string'}), 400
 
     record = _record(module_id, create=True)
     draft = {
         'repository_url': repository_url.strip()[:500],
         'checks_url': checks_url.strip()[:500],
+        'commit_sha': commit_sha.strip()[:40],
+        'branch': branch.strip()[:255] if branch else '',
         'reflection': reflection.strip(),
         'report': report if isinstance(report, dict) else {},
     }
@@ -541,9 +549,10 @@ def submit_project(module_id):
             'draft_saved': True,
         }), 422
     try:
-        commit_sha = data.get('commit_sha') if isinstance(data.get('commit_sha'), str) else None
-        branch = data.get('branch') if isinstance(data.get('branch'), str) else None
-        verification = verify_checks(repository_url, checks_url, commit_sha=commit_sha, branch=branch)
+        verification = verify_checks(
+            repository_url, checks_url, commit_sha=commit_sha.strip(),
+            branch=branch.strip() if branch else None,
+        )
     except VerificationError as error:
         _attempt_outcome(record, 'ci_verification', str(error))
         return jsonify({'error': str(error), 'draft_saved': True}), 422

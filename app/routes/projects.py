@@ -497,6 +497,8 @@ def submit_module_project(module_id):
         return jsonify({'error': 'A public repository URL is required'}), 400
     if not isinstance(checks_url, str) or not checks_url.strip():
         return jsonify({'error': 'A public automated checks URL is required'}), 400
+    if not isinstance(commit_sha, str) or not commit_sha.strip():
+        return jsonify({'error': 'The full commit SHA tested by CI is required'}), 400
     try:
         demo_url = _optional_https_url('demo_url')
     except ValueError as error:
@@ -517,7 +519,9 @@ def submit_module_project(module_id):
     record.demo_url = demo_url
     db.session.commit()
     try:
-        verification = verify_checks(repository_url, checks_url, commit_sha=commit_sha, branch=branch)
+        verification = verify_checks(
+            repository_url, checks_url, commit_sha=commit_sha.strip(), branch=branch
+        )
     except VerificationError as error:
         return jsonify({'error': str(error), 'draft_saved': True}), 422
     project_payload = record.get_project()
