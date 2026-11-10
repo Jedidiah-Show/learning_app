@@ -480,6 +480,7 @@ def create_app(config_override=None):
     from app.routes.integrations import integrations_bp
     from app.routes.credentials import credentials_bp
     from app.routes.practice_arena import practice_arena_bp
+    from app.routes.passport import passport_bp
     from app.routes.ml_specialization import ml_specialization_bp
     try:
         from app.routes.cloud_ai_infrastructure import cloud_ai_infrastructure_bp
@@ -503,6 +504,7 @@ def create_app(config_override=None):
     if cloud_ai_infrastructure_bp is not None:
         app.register_blueprint(cloud_ai_infrastructure_bp)
     app.register_blueprint(practice_arena_bp)
+    app.register_blueprint(passport_bp)
 
     def _admin_header_token_valid():
         supplied = request.headers.get('X-Admin-Token', '')

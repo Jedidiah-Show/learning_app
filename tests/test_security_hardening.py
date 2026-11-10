@@ -1,10 +1,13 @@
 import hashlib
+import ipaddress
 import os
 import re
+import socket
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
-from unittest.mock import patch
+from email.message import Message
+from unittest.mock import MagicMock, patch
 
 from sqlalchemy import text
 from sqlalchemy.exc import IntegrityError
@@ -14,6 +17,7 @@ from app.encrypted_types import ENCRYPTED_PREFIX
 from app.models import (
     CalendarEvent, GeminiUsageBucket, PasswordResetToken, PracticeWorkspace, User,
 )
+from app.services.security import safe_fetch
 from app.user_preferences import get_user_preferences
 
 
@@ -410,6 +414,68 @@ class CsrfCoverageTests(unittest.TestCase):
             self.assertTrue(get_user_preferences(user)['progress']['track_streaks'])
             self.assertGreater(
                 CalendarEvent.query.filter_by(user_id=user.id).count(), 0
+            )
+
+
+class SafeFetchTests(unittest.TestCase):
+    def test_fetch_pins_public_address_and_preserves_safe_headers_and_path(self):
+        response = MagicMock()
+        response.status = 200
+        response.headers = Message()
+        response.read.return_value = b'{"ok":true}'
+        address = ipaddress.ip_address('93.184.216.34')
+        with patch(
+            'app.services.security._resolve_public_addresses',
+            return_value=[address],
+        ), patch(
+            'app.services.security._PinnedHTTPSConnection',
+        ) as connection_factory:
+            connection = connection_factory.return_value
+            connection.getresponse.return_value = response
+            body = safe_fetch(
+                'https://api.github.com/repos/learner/project?per_page=1',
+                headers={'Authorization': 'Bearer test-token'},
+            )
+
+        self.assertEqual(body, '{"ok":true}')
+        connection_factory.assert_called_once_with(
+            'api.github.com', '93.184.216.34', 443, 10.0,
+        )
+        request = connection.request.call_args
+        self.assertEqual(request.args, ('GET', '/repos/learner/project?per_page=1'))
+        self.assertEqual(
+            request.kwargs['headers']['Authorization'], 'Bearer test-token',
+        )
+        self.assertEqual(request.kwargs['headers']['Host'], 'api.github.com')
+
+    def test_fetch_rejects_private_dns_and_redirects(self):
+        with patch(
+            'app.services.security.socket.getaddrinfo',
+            return_value=[(
+                socket.AF_INET, socket.SOCK_STREAM, 6, '',
+                ('127.0.0.1', 443),
+            )],
+        ):
+            with self.assertRaisesRegex(ValueError, 'non-public'):
+                safe_fetch('https://api.github.com/repos/learner/project')
+
+        response = MagicMock()
+        response.status = 302
+        with patch(
+            'app.services.security._resolve_public_addresses',
+            return_value=[ipaddress.ip_address('93.184.216.34')],
+        ), patch(
+            'app.services.security._PinnedHTTPSConnection',
+        ) as connection_factory:
+            connection_factory.return_value.getresponse.return_value = response
+            with self.assertRaisesRegex(RuntimeError, 'Redirects are not allowed'):
+                safe_fetch('https://api.github.com/repos/learner/project')
+
+    def test_fetch_rejects_headers_that_can_override_connection_routing(self):
+        with self.assertRaisesRegex(ValueError, 'restricted request header'):
+            safe_fetch(
+                'https://api.github.com/repos/learner/project',
+                headers={'Host': '127.0.0.1'},
             )
 
 

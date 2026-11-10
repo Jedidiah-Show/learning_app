@@ -1,0 +1,383 @@
+"""Skill Passport Engine - maps curriculum lessons and practice problems
+to competency nodes and tracks learner progress."""
+
+from typing import Set, Dict, Any, Optional
+
+from app import db
+from app.models import SkillNode, UserSkillProgress, Submission, utcnow
+
+CURRICULUM_SKILLS = {
+    f'curriculum-{index:02d}': {
+        'title': f'Module {index:02d} competencies',
+        'category': 'curriculum',
+    }
+    for index in range(13)
+}
+
+PROJECT_SKILLS = {
+    'production-rag': {
+        'document-ingestion', 'permission-aware-retrieval', 'source-citations',
+        'rag-evaluation',
+    },
+    'multi-tool-agent-mcp': {
+        'tool-schema-design', 'bounded-agent-workflows', 'approval-checkpoints',
+        'mcp-integration',
+    },
+    'evaluation-harness': {
+        'llm-evaluation', 'golden-datasets', 'regression-testing',
+    },
+    'observable-microservice': {
+        'service-observability', 'rate-limiting', 'container-deployment',
+    },
+    'validated-rest-api': {
+        'api-design', 'request-validation', 'persistent-storage',
+        'rate-limiting', 'api-testing',
+    },
+    'rag-document-retriever': {
+        'document-ingestion', 'retrieval-ranking', 'rag-evaluation',
+        'source-citations',
+    },
+}
+
+
+def _normalize_skill_name(name: str) -> str:
+    """Normalize a skill name for consistent mapping."""
+    import re
+
+    return re.sub(r'[^a-z0-9-]+', '-', name.strip().lower()).strip('-')
+
+
+def _normalized_title(skill_id: str, title: str) -> str:
+    normalized_id = _normalize_skill_name(skill_id)[:64]
+    normalized_name = _normalize_skill_name(title)[:63]
+    return f'{normalized_id}-{normalized_name}'[:128]
+
+
+def map_problem_skills(problem: dict, user_id: int) -> Set[str]:
+    """Map a problem's skills to normalized skill names.
+
+    Args:
+        problem: Problem dict from arena problems data.
+        user_id: User ID for querying existing progress.
+
+    Returns:
+        Set of normalized skill names from the problem.
+    """
+    skills = problem.get('skills', [])
+    return {_normalize_skill_name(s) for s in skills if s}
+
+
+def _ensure_skill_node(
+    skill_id: str,
+    category: Optional[str] = None,
+    title: Optional[str] = None,
+) -> None:
+    if db.session.get(SkillNode, skill_id) is None:
+        normalized_title = _normalized_title(
+            skill_id, title or skill_id,
+        )
+        db.session.add(SkillNode(
+            id=skill_id,
+            title=title or skill_id.replace('-', ' ').replace('_', ' ').title(),
+            normalized_title=normalized_title,
+            category=category,
+        ))
+
+
+def _curriculum_lesson_nodes() -> Dict[str, Dict[str, str]]:
+    from app.curriculum import all_modules
+
+    nodes = {}
+    for module in all_modules():
+        for lesson in module.get('lessons', []):
+            lesson_id = lesson.get('id')
+            if not isinstance(lesson_id, str) or not lesson_id:
+                continue
+            normalized_id = _normalize_skill_name(
+                lesson_id.replace('.', '-'),
+            )
+            nodes[f'lesson-{normalized_id}'] = {
+                'title': lesson.get('title') or f'Lesson {lesson_id}',
+                'category': 'curriculum',
+            }
+    return nodes
+
+
+def ensure_all_skill_nodes() -> None:
+    from app.practice_arena import all_arena_problems
+
+    for skill_id, values in CURRICULUM_SKILLS.items():
+        if db.session.get(SkillNode, skill_id) is None:
+            db.session.add(SkillNode(
+                id=skill_id,
+                title=values['title'],
+                normalized_title=_normalized_title(skill_id, values['title']),
+                category=values['category'],
+            ))
+    for skill_id, values in _curriculum_lesson_nodes().items():
+        _ensure_skill_node(skill_id, values['category'], values['title'])
+    for problem in all_arena_problems().values():
+        for skill in map_problem_skills(problem, 0):
+            _ensure_skill_node(skill, problem['track'])
+    _ensure_skill_node('project-studio', 'projects')
+
+
+def update_skill_progress_from_submission(
+    submission: Submission, *, commit: bool = True
+) -> None:
+    """Update UserSkillProgress when a submission is verified.
+
+    If the submission was ACCEPTED, the associated skills are marked
+    DEMONSTRATED (or MASTERED if the user has multiple accepted submissions
+    on the same skill).
+
+    Args:
+        submission: The Submission record just verified by the judge.
+    """
+    from app.practice_arena import all_arena_problems
+
+    # Only process ACCEPTED submissions
+    if submission.verdict != 'ACCEPTED':
+        return
+
+    problem_id = submission.problem_id
+
+    # Find the problem and its skills
+    all_problems = all_arena_problems()
+    problem = all_problems.get(problem_id)
+    if problem is None:
+        return
+
+    skills = map_problem_skills(problem, submission.user_id)
+    if not skills:
+        return
+
+    for skill in skills:
+        _ensure_skill_node(skill)
+        # Use row-level lock to prevent race conditions on double submissions
+        progress = UserSkillProgress.query.filter_by(
+            user_id=submission.user_id, skill_id=skill
+        ).with_for_update().first()
+
+        if progress is None:
+            progress = UserSkillProgress(
+                user_id=submission.user_id,
+                skill_id=skill,
+                status='DEMONSTRATED',
+                evidence_type='PROBLEM',
+                evidence_id=problem_id,
+                updated_at=utcnow(),
+            )
+            db.session.add(progress)
+        else:
+            problem_ids = [
+                candidate['id']
+                for candidate in all_problems.values()
+                if skill in map_problem_skills(candidate, submission.user_id)
+            ]
+            accepted_count = Submission.query.filter(
+                Submission.user_id == submission.user_id,
+                Submission.verdict == 'ACCEPTED',
+                Submission.problem_id.in_(problem_ids),
+            ).count()
+            progress.status = (
+                'MASTERED' if accepted_count >= 3 else 'DEMONSTRATED'
+            )
+            if progress.evidence_type != 'PROJECT':
+                progress.evidence_type = 'PROBLEM'
+                progress.evidence_id = problem_id
+            progress.updated_at = utcnow()
+
+    if commit:
+        db.session.commit()
+
+
+def update_skill_progress_from_project(
+    user_id: int,
+    project_id: str,
+    project_skills: Optional[Set[str]] = None,
+    *,
+    commit: bool = True,
+) -> None:
+    """Update UserSkillProgress when a project is completed.
+
+    Args:
+        user_id: User ID.
+        project_id: The project module ID (e.g., '01', '02', etc.).
+        project_skills: Optional set of skill names demonstrated by the project.
+    """
+    skills = set(project_skills or ())
+    skills.add('project-studio')
+    for skill in skills:
+        skill = _normalize_skill_name(skill)
+        _ensure_skill_node(skill, 'projects')
+        progress = UserSkillProgress.query.filter_by(
+            user_id=user_id, skill_id=skill
+        ).first()
+        if progress is None:
+            progress = UserSkillProgress(
+                user_id=user_id,
+                skill_id=skill,
+                evidence_type='PROJECT',
+                evidence_id=project_id,
+                status='DEMONSTRATED',
+                updated_at=utcnow(),
+            )
+            db.session.add(progress)
+        else:
+            progress.status = 'DEMONSTRATED'
+            progress.evidence_type = 'PROJECT'
+            progress.evidence_id = project_id
+            progress.updated_at = utcnow()
+
+    if commit:
+        db.session.commit()
+
+
+def update_skill_progress_from_lesson(
+    user_id: int, lesson_id: str, *, commit: bool = True
+) -> None:
+    from app.practice_arena import topic_for_lesson
+    from app.curriculum import get_lesson
+
+    module_number = str(lesson_id).split('.', 1)[0]
+    try:
+        skill_id = f'curriculum-{int(module_number):02d}'
+    except ValueError:
+        skill_id = 'curriculum-00'
+    topic_title = topic_for_lesson(lesson_id).replace('-', ' ').title()
+    lesson = get_lesson(lesson_id) or {}
+    lesson_skill_id = f'lesson-{_normalize_skill_name(lesson_id.replace(".", "-"))}'
+    _ensure_skill_node(
+        skill_id, 'curriculum', f'{topic_title} competencies',
+    )
+    _ensure_skill_node(
+        lesson_skill_id,
+        'curriculum',
+        lesson.get('title') or f'Lesson {lesson_id}',
+    )
+    for competency_id in (skill_id, lesson_skill_id):
+        progress = UserSkillProgress.query.filter_by(
+            user_id=user_id, skill_id=competency_id,
+        ).first()
+        if progress is None:
+            db.session.add(UserSkillProgress(
+                user_id=user_id,
+                skill_id=competency_id,
+                status='DEVELOPING',
+                evidence_type='LESSON',
+                evidence_id=lesson_id,
+                updated_at=utcnow(),
+            ))
+        elif progress.status == 'NOT_STARTED':
+            progress.status = 'DEVELOPING'
+            progress.evidence_type = 'LESSON'
+            progress.evidence_id = lesson_id
+    if commit:
+        db.session.commit()
+
+
+def get_user_skill_state(user_id: int, skill_name: str) -> Optional[Dict[str, Any]]:
+    """Get a user's current competency state for a specific skill.
+
+    Returns dict with status and evidence, or None if no progress recorded.
+    """
+    progress = UserSkillProgress.query.filter_by(
+        user_id=user_id, skill_id=skill_name
+    ).first()
+
+    if progress is None:
+        return None
+
+    return {
+        'skill_id': progress.skill_id,
+        'status': progress.status,
+        'evidence_type': progress.evidence_type,
+        'evidence_id': progress.evidence_id,
+        'updated_at': progress.updated_at.isoformat() if progress.updated_at else None,
+    }
+
+
+def get_user_all_skill_states(user_id: int) -> Dict[str, Dict[str, Any]]:
+    """Get all skill states for a user.
+
+    Returns dict mapping skill_id to skill state dict without writing during
+    reads. Lesson completions are projected as evidence if a legacy record has
+    not yet been synchronized by the completion route.
+    """
+    from app.models import LessonCompletion
+    from app.practice_arena import all_arena_problems
+
+    catalog = {
+        skill_id: dict(values)
+        for skill_id, values in CURRICULUM_SKILLS.items()
+    }
+    catalog.update(_curriculum_lesson_nodes())
+    for problem in all_arena_problems().values():
+        for skill in map_problem_skills(problem, user_id):
+            catalog.setdefault(skill, {
+                'title': skill.replace('-', ' ').title(),
+                'category': problem['track'],
+            })
+    catalog['project-studio'] = {
+        'title': 'Project Studio competencies',
+        'category': 'projects',
+    }
+    for skill_set in PROJECT_SKILLS.values():
+        for skill in skill_set:
+            catalog.setdefault(skill, {
+                'title': skill.replace('-', ' ').title(),
+                'category': 'projects',
+            })
+    for node in SkillNode.query.all():
+        catalog[node.id] = {
+            'title': node.title,
+            'category': node.category,
+        }
+
+    states = {
+        skill_id: {
+            **values,
+            'status': 'NOT_STARTED',
+            'evidence_type': None,
+            'evidence_id': None,
+            'updated_at': None,
+        }
+        for skill_id, values in catalog.items()
+    }
+    for record in UserSkillProgress.query.filter_by(user_id=user_id).all():
+        state = states.setdefault(record.skill_id, {
+            'title': record.skill_id.replace('-', ' ').title(),
+            'category': None,
+        })
+        state.update({
+            'status': record.status or 'NOT_STARTED',
+            'evidence_type': record.evidence_type,
+            'evidence_id': record.evidence_id,
+            'updated_at': record.updated_at.isoformat() if record.updated_at else None,
+        })
+
+    for completion in LessonCompletion.query.filter_by(
+        user_id=user_id, completed=True,
+    ).all():
+        module_number = str(completion.lesson_id).split('.', 1)[0]
+        try:
+            module_skill_id = f'curriculum-{int(module_number):02d}'
+        except ValueError:
+            module_skill_id = 'curriculum-00'
+        lesson_skill_id = (
+            f'lesson-{_normalize_skill_name(completion.lesson_id.replace(".", "-"))}'
+        )
+        for skill_id in (module_skill_id, lesson_skill_id):
+            state = states.get(skill_id)
+            if state and state['status'] == 'NOT_STARTED':
+                state.update({
+                    'status': 'DEVELOPING',
+                    'evidence_type': 'LESSON',
+                    'evidence_id': completion.lesson_id,
+                    'updated_at': (
+                        completion.completed_at.isoformat()
+                        if completion.completed_at else None
+                    ),
+                })
+    return states

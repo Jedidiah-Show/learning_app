@@ -254,7 +254,7 @@ def project_page():
         'projects.html', modules=pathway_modules(destination),
         completed_modules=completed,
         milestones=milestones, pace=pace,
-        # The four required capstones belong to the AI continuation, so a
+        # Required capstones belong to the AI continuation, so a
         # learner on the ML pathway is never asked to choose one.
         required_projects=() if is_ml(destination) else REQUIRED_PROJECTS,
         course_plan=_plan_payload(plan), course=curriculum(),
@@ -305,7 +305,9 @@ def save_required_project():
         return jsonify({'error': 'Request body must be a JSON object'}), 400
     project_id = data.get('required_project_id')
     if not isinstance(project_id, str) or project_id not in PROJECT_BY_ID:
-        return jsonify({'error': 'Choose one of the four required capstone projects'}), 400
+        return jsonify({
+            'error': f'Choose one of the {len(REQUIRED_PROJECTS)} required capstone projects',
+        }), 400
     capstone = all_modules()[-1]
     project_record = _record(capstone)
     if (
@@ -632,6 +634,22 @@ def submit_module_project(module_id):
         and evaluation['score'] >= 70
         and all(item['score'] >= 50 for item in evaluation.get('criterion_feedback', []))
     )
+    if record.completed:
+        from app.services.skill_passport import (
+            PROJECT_SKILLS,
+            update_skill_progress_from_project,
+        )
+        project_skills = set(PROJECT_SKILLS.get(
+            (record.get_project() or {}).get('required_project_id'), set(),
+        ))
+        try:
+            project_skills.add(f'curriculum-{int(module_id):02d}')
+        except ValueError:
+            pass
+        update_skill_progress_from_project(
+            current_user.id, module_id, project_skills=project_skills,
+            commit=False,
+        )
     db.session.commit()
     return jsonify({
         'completed': record.completed,

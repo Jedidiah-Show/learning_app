@@ -6,8 +6,9 @@ import json
 import os
 import re
 from datetime import datetime, timezone
-from urllib.parse import urljoin, urlsplit
-from urllib.request import HTTPRedirectHandler, Request, build_opener
+from urllib.parse import urlsplit
+
+from app.services.security import safe_fetch
 
 
 class VerificationError(ValueError):
@@ -36,28 +37,6 @@ def validate_https_url(value, field):
     return value
 
 
-class _GitHubAPIRedirectHandler(HTTPRedirectHandler):
-    """Keep API credentials on the GitHub API host across redirects."""
-
-    def redirect_request(self, req, fp, code, msg, headers, newurl):
-        target = urlsplit(urljoin(req.full_url, newurl))
-        try:
-            port = target.port
-        except ValueError:
-            return None
-        if (
-            target.scheme != 'https'
-            or target.hostname != 'api.github.com'
-            or port not in (None, 443)
-            or target.username
-            or target.password
-        ):
-            return None
-        return super().redirect_request(
-            req, fp, code, msg, headers, target.geturl()
-        )
-
-
 def _github_api_fetch(url):
     """Fetch from GitHub API if token is available."""
     token = os.environ.get('GITHUB_TOKEN') or os.environ.get('GH_TOKEN')
@@ -67,13 +46,8 @@ def _github_api_fetch(url):
     }
     if token:
         headers['Authorization'] = f'Bearer {token}'
-    request = Request(url, headers=headers)
-    try:
-        with build_opener(_GitHubAPIRedirectHandler()).open(request, timeout=10) as response:
-            body = response.read(1_000_000).decode('utf-8', 'replace')
-            return response.status, body, response.geturl()
-    except Exception:
-        raise
+    body = safe_fetch(url, timeout=10, headers=headers)
+    return 200, body, url
 
 
 def _parse_github_actions_url(url):
@@ -134,6 +108,8 @@ def _verify_github_actions(repository_url, checks_url, commit_sha, branch=None):
     full_name = run_repo.get('full_name') if isinstance(run_repo, dict) else None
     if not isinstance(full_name, str) or full_name.lower() != expected_repo:
         raise VerificationError('The checks run does not belong to the submitted repository')
+    if run_repo.get('private') is not False:
+        raise VerificationError('The submitted repository must be public')
     actual_sha = data.get('head_sha')
     if not isinstance(actual_sha, str) or actual_sha.lower() != commit_sha.lower():
         raise VerificationError('The checks run is not for the submitted commit')

@@ -33,6 +33,8 @@ RATE_LIMIT_CONFIG = {
     'community-reply': {'limit': 20, 'window_seconds': 3600},
     'integration-probe': {'limit': 12, 'window_seconds': 600},
     'arena-editorial': {'limit': 20, 'window_seconds': 600},
+    'arena-hint': {'limit': 30, 'window_seconds': 600},
+    'arena-submit': {'limit': 10, 'window_seconds': 600},
     'support-request-user': {'limit': 5, 'window_seconds': 86400},
     'admin-ai-json-burst': {'limit': 6, 'window_seconds': 60},
     'admin-ai-json-daily': {'limit': 100, 'window_seconds': 86400},

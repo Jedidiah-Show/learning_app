@@ -3,9 +3,12 @@
 import os
 import tempfile
 import unittest
+from unittest.mock import patch
 
 from app import create_app, db
-from app.models import PracticeWorkspace, User
+from app.models import (
+    PracticeWorkspace, SkillNode, Submission, User, UserSkillProgress,
+)
 from app.practice_arena import (
     DIFFICULTIES,
     TOPICS,
@@ -181,7 +184,7 @@ class ArenaPageTests(ArenaTestCase):
         self.assertIn('id="arena-editor"', html)
         self.assertIn('sandbox="allow-scripts"', html)
         self.assertIn('js/arena.bundle.js', html)
-        self.assertIn('formative practice feedback, not secure grading', html)
+        self.assertIn('isolated server judge', html)
         self.assertIn('Not started', html)
         self.assertNotIn('status="solved"', html)
         # Reference material must not be embedded in the problem page.
@@ -205,8 +208,105 @@ class ArenaApiTests(ArenaTestCase):
         self.assertEqual(data['source'], data['problem']['starter_code'])
         self.assertNotIn('solution_code', data['problem'])
         self.assertNotIn('editorial', data['problem'])
-        self.assertIn('browser_checks', data['problem'])
+        self.assertNotIn('browser_checks', data['problem'])
+        self.assertNotIn('hints', data['problem'])
         self.assertEqual(data['status'], 'not-started')
+
+    def test_submit_queues_code_and_rejects_invalid_source(self):
+        self.register('grader')
+        invalid = self.client.post(
+            '/arena/api/problems/algo-binary-search/submit',
+            json={'code': 'def broken(:'},
+        )
+        self.assertEqual(invalid.status_code, 400)
+
+        queued = self.client.post(
+            '/arena/api/problems/algo-binary-search/submit',
+            json={'code': 'def binary_search(numbers, target):\n    return -1\n'},
+        )
+        self.assertEqual(queued.status_code, 202)
+        self.assertEqual(queued.get_json()['status'], 'queued')
+        with self.app.app_context():
+            record = db.session.get(
+                Submission, queued.get_json()['submission_id'],
+            )
+            self.assertEqual(record.verdict, 'PENDING')
+
+    def test_worker_records_verdict_and_verified_skill_evidence(self):
+        from app.services.judge import JudgeResult
+        from app.services.judge_worker import process_next_submission
+
+        self.register('judgelearner')
+        with self.app.app_context():
+            user = User.query.filter_by(username='judgelearner').one()
+            db.session.add(Submission(
+                id='judge-test-submission',
+                user_id=user.id,
+                problem_id='algo-binary-search',
+                code_snapshot='def binary_search(numbers, target): return -1',
+                verdict='PENDING',
+            ))
+            db.session.commit()
+
+        result = JudgeResult()
+        result.verdict = 'ACCEPTED'
+        result.tests_passed = 1
+        result.total_tests = 1
+        with patch(
+            'app.services.judge_worker.execute_in_sandbox',
+            return_value=result,
+        ):
+            self.assertTrue(process_next_submission(self.app))
+
+        with self.app.app_context():
+            submission = db.session.get(Submission, 'judge-test-submission')
+            self.assertEqual(submission.verdict, 'ACCEPTED')
+            self.assertEqual(
+                UserSkillProgress.query.filter_by(
+                    user_id=submission.user_id,
+                    skill_id='searching',
+                ).one().status,
+                'DEMONSTRATED',
+            )
+
+    def test_hints_are_progressive_and_editorial_requires_saved_attempt(self):
+        self.register('hintlearner')
+        hint = self.client.get(
+            '/arena/api/problems/algo-binary-search/hint?stage=1'
+        )
+        self.assertEqual(hint.status_code, 200)
+        self.assertTrue(hint.get_json()['hint'])
+
+        denied = self.client.get(
+            '/arena/api/problems/algo-binary-search/hint?stage=5'
+        )
+        self.assertEqual(denied.status_code, 403)
+
+        self.client.put(
+            '/arena/api/problems/algo-binary-search/workspace',
+            json={'source': 'def binary_search(numbers, target):\n    pass\n'},
+        )
+        allowed = self.client.get(
+            '/arena/api/problems/algo-binary-search/hint?stage=5'
+        )
+        self.assertEqual(allowed.status_code, 200)
+        self.assertIn('def binary_search', allowed.get_json()['hint'])
+
+    def test_passport_page_api_and_download_are_user_scoped(self):
+        self.register('passportlearner')
+        page = self.client.get('/passport')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('Skill Passport', page.get_data(as_text=True))
+        api = self.client.get('/api/passport')
+        self.assertEqual(api.status_code, 200)
+        self.assertTrue(api.get_json()['skills'])
+        with self.app.app_context():
+            self.assertEqual(SkillNode.query.count(), 0)
+        download = self.client.get('/passport/download')
+        self.assertEqual(download.status_code, 200)
+        self.assertEqual(download.mimetype, 'text/csv')
+        self.assertIn(b'skill_id,title,category,status', download.data)
+
 
     def test_workspace_saves_per_learner_and_problem(self):
         self.register('alpha')
@@ -302,6 +402,43 @@ class ArenaApiTests(ArenaTestCase):
             '/arena/api/problems/nope/workspace', json={'source': 'x = 1'},
         )
         self.assertEqual(response.status_code, 404)
+
+
+class TutorEngineTests(unittest.TestCase):
+    def test_socratic_hint_stages_hold_back_reference_code_until_editorial(self):
+        from app.services.tutor import (
+            CodeContext, PassportState, TutorContext, generate_hint_stage,
+        )
+
+        context = TutorContext(
+            code=CodeContext(
+                code='def solve(): pass',
+                problem_id='example',
+                skills_involved=['searching'],
+                hints=['concept clue', 'approach clue', 'boundary clue'],
+                editorial='Walkthrough',
+                solution_code='def solve():\n    return 42',
+                error_log='IndexError: list index out of range',
+            ),
+            passport=PassportState(),
+            error_summary='IndexError: list index out of range',
+        )
+        self.assertEqual(generate_hint_stage(1, context), 'concept clue')
+        self.assertEqual(generate_hint_stage(2, context), 'approach clue')
+        self.assertIn('IndexError', generate_hint_stage(3, context))
+        stage_four = generate_hint_stage(4, context)
+        self.assertIn('Pseudocode', stage_four)
+        self.assertNotIn('return 42', stage_four)
+        self.assertIn('return 42', generate_hint_stage(5, context))
+
+    def test_guardrail_removes_complete_code_from_hints_and_fixes_case(self):
+        from app.services.tutor import SocraticGuardrail
+
+        result = SocraticGuardrail.validate_response(
+            "THE ANSWER IS below:\n```python\nprint('answer')\n```"
+        )
+        self.assertNotIn("print('answer')", result)
+        self.assertIn('one approach to consider is', result)
 
 
 if __name__ == '__main__':

@@ -1,10 +1,9 @@
 """Practice Arena catalogue, taxonomy, and public problem serialisation.
 
 The Arena intentionally builds on the curated lesson exercises while keeping
-lesson practice untouched.  Problems published here are *formative*: browser
-checks are shown to the learner, but a problem is never reported as "solved"
-without an authoritative server-side judge (see RUACH_Practice_Arena_Spec.md
-sections 8 and 13).
+lesson practice untouched. Public problem payloads omit judge checks and
+reference solutions; completion is recorded only after an authoritative
+server-side verdict.
 """
 
 from functools import lru_cache
@@ -267,12 +266,7 @@ def problem_prerequisites(problem):
 
 
 def public_problem(problem):
-    """Serialise a problem without reference solutions or hidden material.
-
-    ``browser_checks`` is deliberately included: it powers the formative
-    in-browser Run experience.  It must not be treated as a secret or used for
-    authoritative grading.
-    """
+    """Serialise only material safe to send to the learner's browser."""
     return {
         'id': problem['id'],
         'source': problem['source'],
@@ -291,8 +285,6 @@ def public_problem(problem):
         'prerequisites': problem['prerequisites'],
         'estimated_minutes': problem['estimated_minutes'],
         'starter_code': problem['starter_code'],
-        'hints': problem['hints'],
-        'browser_checks': problem['browser_checks'],
         'has_editorial': bool(problem['solution_code'] or problem['editorial']),
     }
 
@@ -327,9 +319,12 @@ def filter_problems(problems, track=None, topic=None, difficulty=None,
     if topic:
         result = [item for item in result if item['topic'] == topic]
     if difficulty:
-        result = [
-            item for item in result if item['difficulty'] == difficulty
-        ]
+        if isinstance(difficulty, list):
+            result = [item for item in result if item['difficulty'] in difficulty]
+        else:
+            result = [
+                item for item in result if item['difficulty'] == difficulty
+            ]
     if skill:
         result = [item for item in result if skill in item['skills']]
     if query:
@@ -401,8 +396,14 @@ def catalogue(track=None, topic=None, difficulty=None, skill=None,
         track = None
     if topic not in valid_topics:
         topic = None
-    if difficulty not in DIFFICULTIES:
-        difficulty = None
+    if difficulty:
+        if isinstance(difficulty, list):
+            # Validate all difficulties in the list
+            difficulty = [d for d in difficulty if d in DIFFICULTIES]
+            if not difficulty:
+                difficulty = None
+        elif difficulty not in DIFFICULTIES:
+            difficulty = None
     if skill not in filters['skills']:
         skill = None
     if sort not in {'recommended', 'difficulty', 'title', 'time'}:
@@ -419,13 +420,22 @@ def catalogue(track=None, topic=None, difficulty=None, skill=None,
         ),
         sort=sort,
     )
+    # Build selected difficulties display
+    # Maintain backward compatibility: return '' when difficulty is None/invalid,
+    # string when single difficulty, list when multiple difficulties
+    if difficulty is None:
+        selected_difficulty = ''
+    elif isinstance(difficulty, list):
+        selected_difficulty = difficulty
+    else:
+        selected_difficulty = difficulty  # single valid string
     return {
         'problems': result,
         'filters': filters,
         'selected': {
             'track': track or '',
             'topic': topic or '',
-            'difficulty': difficulty or '',
+            'difficulty': selected_difficulty,
             'skill': skill or '',
             'query': query,
             'sort': sort,
