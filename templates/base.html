@@ -70,11 +70,7 @@
                     <a aria-label="Dashboard" title="Dashboard" href="{{ url_for('main.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.index' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🏠</span><span class="nav-label">Dashboard</span>
                     </a>
-                    {# The learner's own pathway sits directly under Dashboard and
-                       the other pathway follows as the alternate.  Labels are
-                       symmetric and always name both pathways explicitly, so an
-                       ML learner gets ML Pathway first and an AI or undecided
-                       learner gets AI Pathway first. #}
+                    <div class="mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Learn</div>
                     {% if pathway_destination == 'ml' %}
                     <a aria-label="ML pathway" title="ML pathway" href="{{ url_for('main.machine_learning_specialization') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.machine_learning_specialization' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">ML Pathway</span>
@@ -90,21 +86,24 @@
                         <span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">ML Pathway</span>
                     </a>
                     {% endif %}
-                    <a aria-label="Schedule" title="Schedule" href="{{ url_for('main.schedule') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.schedule' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">📅</span><span class="nav-label">Schedule</span>
+                    <a aria-label="Search" title="Search" href="{{ url_for('main.search') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.search' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">🔍</span><span class="nav-label">Search</span>
                     </a>
+                    <div class="mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Assessments & Review</div>
                     <a aria-label="Quizzes" title="Quizzes" href="{{ url_for('main.quizzes') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.quizzes' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🎯</span><span class="nav-label">Quizzes</span>
                     </a>
                     <a aria-label="Review center" title="Review center" href="{{ url_for('main.review') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.review' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🧠</span><span class="nav-label">Review Center</span>
                     </a>
+                    <div class="mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Projects & Portfolio</div>
                     <a aria-label="Projects" title="Projects" href="{{ url_for('projects.project_page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'projects.project_page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🧩</span><span class="nav-label">Projects</span>
                     </a>
                     <a aria-label="Portfolio" title="Portfolio" href="{{ url_for('projects.portfolio_page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'projects.portfolio_page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🗂️</span><span class="nav-label">Portfolio</span>
                     </a>
+                    <div class="mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Progress & Community</div>
                     <a aria-label="Progress" title="Progress" href="{{ url_for('main.progress') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.progress' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">📈</span><span class="nav-label">Progress</span>
                     </a>
@@ -114,8 +113,9 @@
                     <a aria-label="Community" title="Community" href="{{ url_for('community.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint and request.endpoint.startswith('community.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">💬</span><span class="nav-label">Community</span>
                     </a>
-                    <a aria-label="Search" title="Search" href="{{ url_for('main.search') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.search' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🔍</span><span class="nav-label">Search</span>
+                    <div class="mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Study Planner</div>
+                    <a aria-label="Schedule" title="Schedule" href="{{ url_for('main.schedule') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.schedule' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">📅</span><span class="nav-label">Schedule</span>
                     </a>
                     <div class="nav-utility-group">
                         <button type="button" class="theme-toggle w-full justify-start" data-theme-toggle aria-label="Switch to dark mode">

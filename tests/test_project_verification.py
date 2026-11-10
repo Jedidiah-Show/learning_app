@@ -102,3 +102,18 @@ class ProjectVerificationTests(unittest.TestCase):
                 'https://github.com/learner/project/actions/runs/1',
                 fetcher=fetcher,
             )
+
+    def test_github_api_verification_with_fetcher_fallback_allows_page_scrape_in_tests(self):
+        seen = []
+
+        def fetcher(url):
+            seen.append(url)
+            return 200, '<div class="workflow-run">All checks passed</div>'
+
+        result = verify_checks(
+            'https://github.com/learner/project',
+            'https://github.com/learner/project/actions/runs/12345',
+            fetcher=fetcher,
+        )
+        self.assertTrue(result['verified'])
+        self.assertIn(result.get('verification_method'), ('page_scrape', 'github_api'))

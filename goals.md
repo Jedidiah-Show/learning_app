@@ -943,40 +943,40 @@ The following sequence minimizes rework.
   Sequence                Workstream              Depends on
   ----------------------- ----------------------- -----------------------
   1                       Security and repository None
-                          hygiene                 
+                          hygiene
 
   2                       Production-like test    1
-                          environment             
+                          environment
 
   3                       CSRF and core workflow  1, 2
-                          stabilization           
+                          stabilization
 
   4                       Dashboard data          2
-                          correctness             
+                          correctness
 
   5                       Project verification    1, 2
-                          redesign                
+                          redesign
 
   6                       Regression and browser  2--5
-                          test coverage           
+                          test coverage
 
   7                       Navigation and          4
-                          dashboard UX            
+                          dashboard UX
 
   8                       Exercise and curriculum 6
-                          improvements            
+                          improvements
 
   9                       AI tutor improvements   6, 8
 
   10                      Cross-device            1, 2, 6
-                          persistence             
+                          persistence
 
   11                      Deployment and release  1--6
-                          maturity                
+                          maturity
 
   12                      Cloud and AI            Curriculum planning
-                          infrastructure          
-                          specialization          
+                          infrastructure
+                          specialization
   -----------------------------------------------------------------------
 
 ### Suggested release milestones

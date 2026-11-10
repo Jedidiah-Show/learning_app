@@ -15,7 +15,13 @@ Last updated: 2026-11-10 (commit 9d692b7)
 - [ ] **Goal 3 - Dashboard Fixes (partial)**: Removed duplicate ML card rendering; AI/ML progress calculated separately. Full coverage for empty/partially complete/pathway states not yet verified.
 - [ ] **Goal 2 - Project Verification (partial, not meeting acceptance criteria)**: Added GitHub Actions API verification (repo ownership, conclusion/status, commit SHA/branch) with fallback to page-text scraping when API unavailable/unsupported. Enhanced SSRF protections (block private/loopback/link-local, strict redirect validation, DNS resolution checks) but no connection-time address pinning/full DNS-rebinding defense. API path doesn’t strictly require repo identity in all cases, commit/branch checks optional, and no tests for the API verification path. Page-text fallback can still accept evidence contrary to Goal 2 acceptance criteria.
 
-**Status**: Phase 1 NOT PASSED (below 95%). Key release-blocking items remain open.
+**Status**: Phase 1 NOT PASSED (below 95%). Key release-blocking items remain open. Moving to Phase 2 while addressing remaining Phase 1 gaps.
+
+#### Phase 2 - Coherent Learner Experience (IN PROGRESS)
+- [ ] **Goal 4 - Navigation & Journey**: Review current nav structure; plan consolidation per IA. Need route mapping, redirects, mobile testing.
+- [ ] **Goal 5 - Interactive Learning**: Audit exercise coverage vs curriculum, add metadata (difficulty/skills), improve feedback.
+- [ ] **Goal 6 - AI Tutor**: Enhance context passing, improve modes (Hint/Quiz/Code Review), add guardrails.
+- [ ] **Goal 12 - UI/UX Quality**: Design tokens, accessibility improvements, consistent states.
 
 ### Completed (previous sessions)
 
