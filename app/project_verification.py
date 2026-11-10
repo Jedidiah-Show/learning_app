@@ -1,11 +1,4 @@
-"""Validate learner project repositories and automated checks.
-
-A repository link and a public CI result are evidence, not proof of authorship.
-The checks page is fetched from a small allowlist of code hosts so a learner
-cannot make the server request arbitrary internal URLs.  When the host cannot
-be reached or the page does not show a successful result, the project is not
-completed; the learner can fix the link and resubmit.
-"""
+"""Validate learner projects against their completed GitHub Actions run."""
 
 from __future__ import annotations
 

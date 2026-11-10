@@ -16,15 +16,17 @@ def all_practice_exercises():
         raise ValueError('Practice exercises must be a JSON list')
     by_id = {}
     for exercise in exercises:
-        required = {
+        string_fields = {
             'id', 'lesson_id', 'title', 'instructions',
-            'starter_code', 'checks_code', 'difficulty', 'skills',
-            'prerequisites',
+            'starter_code', 'checks_code',
+        }
+        required = string_fields | {
+            'difficulty', 'skills', 'prerequisites',
         }
         if (
             not isinstance(exercise, dict)
             or not required.issubset(exercise)
-            or any(not isinstance(exercise[key], str) for key in required)
+            or any(not isinstance(exercise[key], str) for key in string_fields)
             or not exercise['id']
             or not exercise['lesson_id']
             or exercise['id'] in by_id

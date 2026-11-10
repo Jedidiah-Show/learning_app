@@ -8,7 +8,6 @@ from unittest.mock import patch
 from app.project_verification import (
     _GitHubAPIRedirectHandler,
     VerificationError,
-    _SupportedHostRedirectHandler,
     verify_checks,
 )
 
@@ -95,24 +94,24 @@ class ProjectVerificationTests(unittest.TestCase):
                 with self.assertRaises(VerificationError):
                     verify_checks(REPOSITORY, CHECKS, commit_sha=COMMIT)
 
-    def test_api_outage_fails_closed_without_scraping_checks_page(self):
+    def test_api_outage_fails_closed(self):
         with patch(
             'app.project_verification._github_api_fetch',
             side_effect=OSError('offline'),
-        ), patch('app.project_verification._default_fetcher') as page_fetcher:
+        ) as api_fetch:
             with self.assertRaisesRegex(VerificationError, 'unavailable'):
                 verify_checks(REPOSITORY, CHECKS, commit_sha=COMMIT)
-        page_fetcher.assert_not_called()
+        api_fetch.assert_called_once()
 
-    def test_other_ci_providers_are_unavailable_not_page_scraped(self):
-        with patch('app.project_verification._default_fetcher') as page_fetcher:
+    def test_other_ci_providers_are_unavailable(self):
+        with patch('app.project_verification._github_api_fetch') as api_fetch:
             with self.assertRaisesRegex(VerificationError, 'Only GitHub Actions'):
                 verify_checks(
                     REPOSITORY,
                     'https://gitlab.com/learner/project/pipelines/1',
                     commit_sha=COMMIT,
                 )
-        page_fetcher.assert_not_called()
+        api_fetch.assert_not_called()
 
     def test_malformed_github_actions_url_is_rejected(self):
         with self.assertRaises(VerificationError):
@@ -131,15 +130,6 @@ class ProjectVerificationTests(unittest.TestCase):
             with self.subTest(repository=repository):
                 with self.assertRaises(VerificationError):
                     verify_checks(repository, CHECKS, commit_sha=COMMIT)
-
-    def test_redirect_handler_rejects_unsupported_and_internal_targets(self):
-        handler = _SupportedHostRedirectHandler()
-        request = Request(CHECKS)
-        for target in ('https://127.0.0.1/admin', 'https://github.com:8080/admin'):
-            with self.subTest(target=target):
-                self.assertIsNone(
-                    handler.redirect_request(request, None, 302, 'Found', {}, target)
-                )
 
     def test_api_redirect_handler_never_sends_credentials_to_another_host(self):
         handler = _GitHubAPIRedirectHandler()
