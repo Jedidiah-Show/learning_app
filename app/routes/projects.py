@@ -133,6 +133,7 @@ def _starter_files(module_id):
         )
         files[f'{root}/tests/test_docs.py'] = (
             '"""Starter kit checks for the module documentation deliverable."""\n\n'
+            'from pathlib import Path\n\n'
             'def test_glossary_is_present():\n    glossary = (  # noqa: SIM108\n        Path(__file__).parent.parent / "docs" / "glossary.md"\n    ).read_text()\n    assert glossary.strip()\n\n\n'
             'def test_architecture_sketch_is_present():\n    sketch = (\n        Path(__file__).parent.parent / "docs" / "architecture-sketch.md"\n    ).read_text()\n    assert sketch.strip()\n'
         )

@@ -1,6 +1,6 @@
 """Read-only access to the versioned RUACH course bundled with the app."""
 
-from functools import lru_cache
+from datetime import datetime, timedelta
 import json
 import re
 from pathlib import Path
@@ -8,6 +8,9 @@ from pathlib import Path
 from app.videos import build_lesson_video
 
 
+# Cache configuration
+CURRICULUM_TTL_SECONDS = 300  # 5 minutes - curriculum changes are rare
+_curriculum_cache = {'data': None, 'fetched_at': None}
 CURRICULUM_PATH = Path(__file__).parent / 'data' / 'dynamoai_curriculum.json'
 EXTRAS_PATH = Path(__file__).parent / 'data' / 'lesson_extras.json'
 OVERRIDES_PATH = Path(__file__).parent / 'data' / 'curriculum_overrides.json'
@@ -229,8 +232,17 @@ def _attach_extras(lesson, extras):
     ]
 
 
-@lru_cache(maxsize=1)
-def curriculum():
+def _is_cache_stale():
+    """Check if the cached curriculum data is older than the TTL."""
+    global _curriculum_cache
+    if _curriculum_cache['data'] is None:
+        return True
+    elapsed = (datetime.utcnow() - _curriculum_cache['fetched_at']).total_seconds()
+    return elapsed > CURRICULUM_TTL_SECONDS
+
+
+def _load_curriculum():
+    """Load the curriculum data from disk."""
     with CURRICULUM_PATH.open(encoding='utf-8') as source:
         data = json.load(source)
     if OVERRIDES_PATH.exists():
@@ -312,6 +324,23 @@ def curriculum():
         data['course']['estimated_hours'] / (12 * 4.345), 1
     )
     return data
+
+
+def _refresh_curriculum():
+    """Refresh the curriculum cache from disk."""
+    global _curriculum_cache
+    _curriculum_cache = {'data': _load_curriculum(), 'fetched_at': datetime.utcnow()}
+
+
+def curriculum():
+    """Return the bundled RUACH course curriculum with TTL-based caching.
+    
+    Curriculum data is cached for %d seconds to avoid repeated disk I/O
+    across server instances. The cache automatically refreshes when stale.
+    """ % CURRICULUM_TTL_SECONDS
+    if _is_cache_stale():
+        _refresh_curriculum()
+    return _curriculum_cache['data']
 
 
 def all_modules():

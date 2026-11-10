@@ -119,8 +119,8 @@ def generate_ai_json():
         return jsonify({'error': 'Administrator access required'}), 403
     # Token holders share one paid AI quota; cap burst and daily volume so a
     # leaked token cannot burn unlimited Pro-tier credits.
-    enforce_rate_limit('admin_ai_json_burst', 6, 60)
-    enforce_rate_limit('admin_ai_json_daily', 100, 86400)
+    enforce_rate_limit('admin_ai_json_burst', '')
+    enforce_rate_limit('admin_ai_json_daily', '')
     data = get_json_object()
     prompt = data.get('prompt') if isinstance(data, dict) else None
     if not isinstance(prompt, str) or not 0 < len(prompt) <= 24000:

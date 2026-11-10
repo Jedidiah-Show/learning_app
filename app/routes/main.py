@@ -633,9 +633,7 @@ def support():
             flash('Describe the issue or idea in 20–5,000 characters.', 'error')
         else:
             from app.rate_limit import enforce_rate_limit
-            enforce_rate_limit(
-                'support-request-user', 5, 86400, str(current_user.id)
-            )
+            enforce_rate_limit('support-request-user', str(current_user.id))
             referrer = urlsplit(request.referrer or '')
             request_host = urlsplit(request.host_url).netloc
             page_path = (

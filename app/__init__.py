@@ -6,14 +6,13 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
 from datetime import date, time, timedelta
-import hmac
-import os
-import re
-import secrets
-from copy import deepcopy
-from urllib.parse import urlsplit
-import yaml
-from werkzeug.middleware.proxy_fix import ProxyFix
+import time
+import uuid
+
+from flask import (
+    Flask, current_app, flash, g, jsonify, request, redirect, render_template,
+    url_for, session,
+)
 
 db = SQLAlchemy()
 login_manager = LoginManager()

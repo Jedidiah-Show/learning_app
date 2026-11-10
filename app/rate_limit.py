@@ -5,6 +5,10 @@ counter is not a meaningful abuse control.  Counters live in the application
 database and use a fixed window so they work across instances without adding
 another infrastructure dependency.  Database failures fail open: a temporary
 database problem must not lock learners out of the application.
+
+Rate limit configuration is centralized in RATE_LIMIT_CONFIG so that every
+endpoint uses consistent limits and window sizes.  Per-endpoint overrides
+are supported via the config dict.
 """
 
 from datetime import datetime, timedelta, timezone
@@ -16,10 +20,28 @@ from sqlalchemy.exc import IntegrityError
 from app import db
 
 
+# Centralized rate limit configuration
+RATE_LIMIT_CONFIG = {
+    # General API endpoints
+    'api-general': {'limit': 200, 'window_seconds': 600},
+    'api-strict': {'limit': 60, 'window_seconds': 60},
+    'api-relaxed': {'limit': 500, 'window_seconds': 600},
+
+    # Specific endpoint configs (overrides above)
+    'community-post': {'limit': 5, 'window_seconds': 3600},
+    'community-reply': {'limit': 20, 'window_seconds': 3600},
+    'integration-probe': {'limit': 12, 'window_seconds': 600},
+    'support-request-user': {'limit': 5, 'window_seconds': 86400},
+    'admin-ai-json-burst': {'limit': 6, 'window_seconds': 60},
+    'admin-ai-json-daily': {'limit': 100, 'window_seconds': 86400},
+}
+
+
 class RateLimitExceeded(Exception):
-    def __init__(self, retry_after):
+    def __init__(self, retry_after, name=None):
         super().__init__('Too many requests')
         self.retry_after = max(1, int(retry_after))
+        self.name = name
 
 
 def _utcnow():
@@ -40,6 +62,17 @@ def identity_hash(value):
 
 def _bucket_key(name, identity):
     return f'{name}:{identity or client_ip()}'[:255]
+
+
+def _get_config(name, identity=None):
+    """Get rate limit config for a given bucket name, with identity-aware fallback."""
+    # Start with default general API config
+    config = dict(RATE_LIMIT_CONFIG.get('api-general', {'limit': 200, 'window_seconds': 600}))
+    # Apply specific override if this is a known endpoint
+    if name in RATE_LIMIT_CONFIG:
+        if name not in ('api-general', 'api-strict', 'api-relaxed'):
+            config = dict(RATE_LIMIT_CONFIG[name])
+    return config
 
 
 def _increment(bucket, window_start):
@@ -66,13 +99,20 @@ def _increment(bucket, window_start):
         return count
 
 
-def check_rate_limit(name, limit, window_seconds, identity=None):
-    """Increment a counter and return seconds to wait when over the limit."""
+def check_rate_limit(name, identity=None):
+    """Increment a counter and return seconds to wait when over the limit.
+
+    Uses centralized RATE_LIMIT_CONFIG to determine limit and window.
+    Returns None if under the limit, or retry_after seconds if over.
+    """
     if not current_app.config.get(
         'RATE_LIMIT_ENABLED', not current_app.testing
     ):
         return None
     try:
+        config = _get_config(name, identity)
+        limit = config['limit']
+        window_seconds = config['window_seconds']
         aware_now = _utcnow()
         epoch = int(aware_now.timestamp())
         window_start = datetime.fromtimestamp(
@@ -103,10 +143,10 @@ def check_rate_limit(name, limit, window_seconds, identity=None):
         return None
 
 
-def enforce_rate_limit(name, limit, window_seconds, identity=None):
-    retry_after = check_rate_limit(name, limit, window_seconds, identity)
+def enforce_rate_limit(name, identity=None):
+    retry_after = check_rate_limit(name, identity)
     if retry_after is not None:
-        raise RateLimitExceeded(retry_after)
+        raise RateLimitExceeded(retry_after, name=name)
 
 
 def rate_limit_response(error):
@@ -117,6 +157,17 @@ def rate_limit_response(error):
         response = current_app.response_class(
             'Too many requests. Please try again later.', status=429,
             mimetype='text/plain',
+        )
+    name = getattr(error, 'name', None)
+    if name and name in RATE_LIMIT_CONFIG:
+        response.headers['X-RateLimit-Limit'] = str(RATE_LIMIT_CONFIG[name]['limit'])
+        response.headers['X-RateLimit-Window'] = str(RATE_LIMIT_CONFIG[name]['window_seconds'])
+    else:
+        response.headers['X-RateLimit-Limit'] = str(
+            current_app.config.get('RATE_LIMIT_GENERAL_LIMIT', 200)
+        )
+        response.headers['X-RateLimit-Window'] = str(
+            current_app.config.get('RATE_LIMIT_GENERAL_WINDOW', 600)
         )
     response.headers['Retry-After'] = str(error.retry_after)
     response.headers['X-RateLimit-Remaining'] = '0'

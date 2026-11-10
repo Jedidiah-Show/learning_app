@@ -42,7 +42,7 @@ def index():
 @community_bp.route('/community/posts', methods=['POST'])
 @login_required
 def create_post():
-    enforce_rate_limit('community-post', 5, 3600, str(current_user.id))
+    enforce_rate_limit('community-post', str(current_user.id))
     topic = request.form.get('topic', '').strip()
     title = request.form.get('title', '').strip()
     body = request.form.get('body', '').strip()
@@ -78,7 +78,7 @@ def discussion(post_id):
 @community_bp.route('/community/posts/<int:post_id>/replies', methods=['POST'])
 @login_required
 def create_reply(post_id):
-    enforce_rate_limit('community-reply', 20, 3600, str(current_user.id))
+    enforce_rate_limit('community-reply', str(current_user.id))
     post = db.get_or_404(CommunityPost, post_id)
     body = request.form.get('body', '').strip()
     if not body or len(body) > 3000:

@@ -613,6 +613,13 @@ def profile():
     request_row = PathwayChangeRequest.query.filter_by(
         user_id=current_user.id
     ).first()
+
+    # Check for ML specialization credential
+    from app.models import MLSpecializationCredential
+    credential = MLSpecializationCredential.query.filter_by(
+        user_id=current_user.id, pathway_id='machine-learning-engineering', revoked_at=None
+    ).first()
+
     return render_template(
         'auth/profile.html', user=current_user,
         phone_verification_available=(
@@ -627,6 +634,7 @@ def profile():
             and foundation['complete']
             and request_row is None
         ),
+        ml_credential=credential,
     )
 
 
@@ -720,6 +728,45 @@ def verify_phone():
     db.session.commit()
     flash('Phone number verified.', 'success')
     return redirect(url_for('auth.profile'))
+
+@auth_bp.route('/credential/verify/<public_id>')
+def verify_credential(public_id):
+    from app.models import MLSpecializationCredential
+
+    credential = MLSpecializationCredential.query.filter_by(
+        public_id=public_id, revoked_at=None
+    ).first_or_404(description='Credential not found or revoked.')
+
+    return jsonify({
+        'valid': True,
+        'public_id': credential.public_id,
+        'recipient_name': credential.recipient_name,
+        'pathway': credential.pathway_id,
+        'issued_at': credential.issued_at.isoformat() if credential.issued_at else None,
+        'revoked_at': credential.revoked_at.isoformat() if credential.revoked_at else None,
+    })
+
+
+def _verify_credential_public(public_id=None):
+    """Public endpoint to verify an ML specialization credential.
+
+    Returns the credential metadata so anyone with the verification ID can
+    confirm it is valid and not revoked.
+    """
+    from app.models import MLSpecializationCredential
+
+    credential = MLSpecializationCredential.query.filter_by(
+        public_id=public_id, revoked_at=None
+    ).first_or_404(description='Credential not found or revoked.')
+
+    return jsonify({
+        'valid': True,
+        'public_id': credential.public_id,
+        'recipient_name': credential.recipient_name,
+        'pathway': credential.pathway_id,
+        'issued_at': credential.issued_at.isoformat() if credential.issued_at else None,
+        'revoked_at': credential.revoked_at.isoformat() if credential.revoked_at else None,
+    })
 
 
 @auth_bp.route('/account/verify-phone/resend', methods=['POST'])
@@ -1006,11 +1053,12 @@ def delete_account():
                 'google_revoked': google_revoked,
             }
         return redirect(url_for('auth.login'))
-    except Exception:
+    except Exception as e:
         db.session.rollback()
+        current_app.logger.exception('Error deleting account for user %s: %s', user.id, e)
         if request.is_json:
             return {'error': 'Could not delete account'}, 500
-        flash('Failed to delete account', 'error')
+        flash('Failed to delete account. Contact support if the issue persists.', 'error')
         return redirect(url_for('auth.profile'))
 
 
@@ -1087,9 +1135,10 @@ def reset_account():
                 'google_revoked': google_revoked,
             }
         return redirect(url_for('main.index'))
-    except Exception:
+    except Exception as e:
         db.session.rollback()
+        current_app.logger.exception('Error resetting account for user %s: %s', user_id, e)
         if request.is_json:
             return {'error': 'Could not reset account'}, 500
-        flash('Failed to reset account', 'error')
+        flash('Failed to reset account. Contact support if the issue persists.', 'error')
         return redirect(url_for('auth.profile'))

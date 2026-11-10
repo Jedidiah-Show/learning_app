@@ -18,6 +18,7 @@ from app.models import (
     CoursePlan, LessonCompletion, PracticeUsageDaily, PracticeWorkspace, StudySession,
     VideoProgress,
 )
+from app.models import TutorConversation
 from app.practice import get_practice_exercise
 from app.rate_limit import enforce_rate_limit
 from app.request_data import get_json_object
@@ -725,6 +726,18 @@ def ask_lesson_question():
         if conversation_size > 8000:
             return jsonify({'error': 'Conversation history is too long'}), 400
         conversation.append({'role': role, 'content': content})
+
+    # Persist user message to database
+    from app import TutorConversation
+    tutoring_msg = TutorConversation(
+        user_id=current_user.id,
+        lesson_id=lesson_id,
+        role='user',
+        content=question.strip(),
+    )
+    db.session.add(tutoring_msg)
+    db.session.commit()
+
     if TUTOR_GREETING_RE.fullmatch(question.strip()):
         return jsonify({
             'answer': (
@@ -794,6 +807,16 @@ def ask_lesson_question():
     answer = result.get('answer')
     if not isinstance(answer, str) or not answer.strip():
         return jsonify({'error': 'Clarification is temporarily unavailable. Please retry.'}), 503
+    # Save assistant message to database
+    from app import TutorConversation
+    tutoring_msg = TutorConversation(
+        user_id=current_user.id,
+        lesson_id=lesson_id,
+        role='assistant',
+        content=answer.strip(),
+    )
+    db.session.add(tutoring_msg)
+    db.session.commit()
     return jsonify({'answer': answer.strip(), 'in_scope': True})
 
 

@@ -885,3 +885,28 @@ class PhoneVerificationCode(db.Model):
     __table_args__ = (
         db.Index('idx_phone_verification_user', 'user_id', 'purpose'),
     )
+
+
+class TutorConversation(db.Model):
+    """Persistent conversation history between a learner and the AI tutor."""
+    __tablename__ = 'tutor_conversation'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    lesson_id = db.Column(
+        db.String(100), nullable=True,
+        doc='Lesson ID if conversation is lesson-specific, otherwise None for general'
+    )
+    role = db.Column(
+        db.String(20), nullable=False,
+        doc='Role of the speaker: user or assistant'
+    )
+    content = db.Column(db.Text, nullable=False)
+    created_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    __table_args__ = (
+        db.Index('idx_tutor_conversation_user_lesson', 'user_id', 'lesson_id'),
+        db.Index('idx_tutor_conversation_user', 'user_id'),
+    )

@@ -5,6 +5,12 @@
   <p class="text-xs font-bold uppercase tracking-widest text-gold-700">{{ header.kicker }}</p>
   <h2 class="mt-2 text-3xl font-bold text-slate-900">{{ header.title }}</h2>
   <p class="mt-2 max-w-3xl text-slate-600">{{ header.blurb }}</p>
+  <!-- ML/AI filter toggle -->
+  <div class="mt-2 rounded-xl border border-slate-200 bg-white p-3 flex flex-wrap gap-2">
+    <button id="filter-ai" type="button" class="px-3 py-1.5 text-sm font-medium" data-filter="ai">AI-only lessons</button>
+    <button id="filter-ml" type="button" class="px-3 py-1.5 text-sm font-medium" data-filter="ml">ML lessons</button>
+  </div>
+
   {% if pathway_destination == 'ml' %}
   {# The nav names this page "AI Pathway", but for an ML learner it lists the
      whole course — say so plainly, and point at the pathway home. #}

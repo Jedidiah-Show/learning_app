@@ -17,6 +17,7 @@ from app.request_data import get_json_object
 
 integrations_bp = Blueprint('integrations', __name__)
 PROBE_CACHE_SECONDS = 30
+PROBE_CACHE_MAX_ENTRIES = 256
 
 
 def _cached_probe(target, probe):
@@ -28,6 +29,13 @@ def _cached_probe(target, probe):
     ]
     for key in stale:
         cache.pop(key, None)
+    # LRU-style eviction: remove entries with earliest expiration times
+    # if cache exceeds the maximum allowed entries
+    if len(cache) >= PROBE_CACHE_MAX_ENTRIES:
+        # Sort by expiration time (earliest first) and remove oldest
+        sorted_keys = sorted(cache.keys(), key=lambda k: cache[k][0])
+        for key in sorted_keys[: len(cache) - PROBE_CACHE_MAX_ENTRIES + 1]:
+            cache.pop(key, None)
     key = (current_user.id, target)
     cached = cache.get(key)
     if cached is not None:
@@ -37,6 +45,11 @@ def _cached_probe(target, probe):
         return result
     result = probe(current_user)
     cache[key] = (now + PROBE_CACHE_SECONDS, result)
+    # Ensure cache does not exceed max entries after new entry
+    if len(cache) > PROBE_CACHE_MAX_ENTRIES:
+        sorted_keys = sorted(cache.keys(), key=lambda k: cache[k][0])
+        for key in sorted_keys[: len(cache) - PROBE_CACHE_MAX_ENTRIES + 1]:
+            cache.pop(key, None)
     return result
 
 
@@ -70,9 +83,7 @@ def probe():
             ),
         }), 400
 
-    enforce_rate_limit(
-        'integration-probe', 12, 600, str(current_user.id)
-    )
+    enforce_rate_limit('integration-probe', str(current_user.id))
     probes = {
         'gemini': probe_gemini,
         'openrouter': probe_openrouter,
