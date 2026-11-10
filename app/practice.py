@@ -29,6 +29,11 @@ def all_practice_exercises():
             or exercise['id'] in by_id
         ):
             raise ValueError('Practice exercise data is invalid')
+        # Add default metadata if missing for better organization
+        exercise = dict(exercise)
+        exercise.setdefault('difficulty', exercise.get('difficulty') or 'beginner')
+        exercise.setdefault('skills', exercise.get('skills') or [])
+        exercise.setdefault('prerequisites', exercise.get('prerequisites') or [])
         by_id[exercise['id']] = exercise
     return by_id
 
