@@ -3,7 +3,7 @@
 Living checkpoint for the current branch. The curriculum overlay and review
 data remain authoritative; regeneration preserves both.
 
-Last updated: 2026-11-10
+Last updated: 2026-11-10 (commit 9d692b7)
 
 ## Next major release progress (2026-11-10)
 
@@ -13,7 +13,7 @@ Last updated: 2026-11-10
 - [x] **Goal 9 - Repository Hygiene (partial)**: Removed `.qoder/settings.local.json` from git tracking and added `.qoder/` to `.gitignore`. Added repository hygiene check and basic secret pattern scanning to CI. Changes staged but not committed. Still need: audit for historical secrets, credential rotation, provider scope review, reproducible clean-export process, and stronger secret scanning.
 - [x] **Goal 1 - CSRF Hardening (partial)**: Added explicit `X-CSRF-Token` headers in `static/js/practice.js` (workspace save) and `static/js/app.js` (video progress). Rebuilt practice.bundle.js. Global fetch wrapper in place. CSRF tests exist for guard/autosave/video but need coverage for all mutating workflows (scheduling, integration probing, calendar sync, settings writes).
 - [x] **Goal 3 - Dashboard Fixes (substantially done)**: Fixed ML pathway card duplication - consolidated rendering. Dashboard pathway comparison uses independent calculations for AI and ML.
-- [ ] **Goal 2 - Project Verification (improving)**: Enhanced SSRF protections (block private/loopback/link-local, strict redirect validation). Added GitHub Actions API-based verification that checks repo ownership, run conclusion, commit SHA/branch when available. API verification falls back gracefully to page scraping if API unavailable. Added `commit_sha`/`branch` fields and verification method tracking. Still needs stronger DNS rebinding protection/address pinning, more provider API coverage, and full integration with routes to pass/verify commit info.
+- [ ] **Goal 2 - Project Verification (improving)**: Enhanced SSRF protections (block private/loopback/link-local, strict redirect validation, DNS rebinding checks via resolution). Added GitHub Actions API-based verification that checks repo ownership, run conclusion, commit SHA/branch when available. API verification falls back gracefully to page scraping if API unavailable. Added `commit_sha`/`branch` fields and verification method tracking. Still needs address pinning at connection time and more provider API coverage.
 
 **Status**: Phase 1 partially complete. Focused tests pass (10+ tests) but key acceptance criteria from goals.md not met. Needs significant work on project verification, full CSRF test coverage, and security hygiene completion.
 

@@ -9,9 +9,11 @@ completed; the learner can fix the link and resubmit.
 
 from __future__ import annotations
 
+import ipaddress
 import json
 import os
 import re
+import socket
 from datetime import datetime, timezone
 from urllib.error import HTTPError, URLError
 from urllib.parse import urljoin, urlsplit
@@ -57,8 +59,21 @@ class _SupportedHostRedirectHandler(HTTPRedirectHandler):
         hostname = (parsed.hostname or '').lower().rstrip('.')
         # Block localhost, private, link-local, loopback, and reserved addresses
         blocked_patterns = ['localhost', '0.0.0.0', '::1']
-        if hostname in blocked_patterns or hostname.startswith('127.') or hostname.startswith('192.168.') or hostname.startswith('10.') or hostname.startswith('172.16.') or hostname.startswith('172.17.') or hostname.startswith('172.18.') or hostname.startswith('172.19.') or hostname.startswith('172.20.') or hostname.startswith('172.21.') or hostname.startswith('172.22.') or hostname.startswith('172.23.') or hostname.startswith('169.254.') or hostname.startswith('fc00:') or hostname.startswith('fe80:'):
+        if hostname in blocked_patterns or hostname.startswith('127.'):
             return None
+        try:
+            ip = ipaddress.ip_address(hostname)
+            if _is_blocked_ip(hostname):
+                return None
+        except ValueError:
+            pass
+        try:
+            for info in socket.getaddrinfo(hostname, None):
+                ip = info[4][0]
+                if _is_blocked_ip(ip):
+                    return None
+        except Exception:
+            pass
         if (
             parsed.scheme != 'https'
             or not hostname
@@ -95,8 +110,37 @@ def validate_https_url(value, field):
     return value
 
 
+def _is_blocked_ip(ip_str):
+    try:
+        ip = ipaddress.ip_address(ip_str)
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip.is_reserved or ip.is_multicast or ip.is_unspecified:
+            return True
+        return False
+    except Exception:
+        return True
+
+
 def _is_allowed_host(hostname):
     hostname = (hostname or '').lower().rstrip('.')
+    if hostname in ('localhost', '0.0.0.0', '::1') or hostname.startswith('127.'):
+        return False
+    # Check if it's an IP
+    try:
+        ipaddress.ip_address(hostname)
+        if _is_blocked_ip(hostname):
+            return False
+    except ValueError:
+        pass
+    # Try to resolve and check IPs (basic DNS rebinding protection)
+    try:
+        # Only resolve if it's not already blocked by patterns
+        for info in socket.getaddrinfo(hostname, None):
+            ip = info[4][0]
+            if _is_blocked_ip(ip):
+                return False
+    except Exception:
+        # If resolution fails, be conservative but let it pass through allowlist check
+        pass
     return any(
         hostname == allowed or hostname.endswith(f'.{allowed}')
         for allowed in ALLOWED_CHECKS_HOSTS
