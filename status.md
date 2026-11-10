@@ -94,7 +94,7 @@ All 172 tests pass across the full test suite.
 - [x] High Priority: Add TTL-based curriculum cache with automatic refresh
 
 **In Progress:**
-- [ ] [High Priority] Add request ID tracking and structured logging across all routes
+- [ ] [High Priority] Add request ID tracking and structured logging
 - [ ] [Medium Priority] Add API versioning (/api/v1/) and OpenAPI specification
 - [ ] [Medium Priority] Consolidate duplicate configuration management (user_preferences.py vs admin.py)
-- [ ] [Medium Priority] Replace process-level lru_cache with distributed-ready caching (/api/v1/) and OpenAPI specification
+- [ ] [Medium Priority] Replace process-level lru_cache with distributed-ready caching where needed (/api/v1/) and OpenAPI specification
