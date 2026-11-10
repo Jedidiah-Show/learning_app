@@ -112,6 +112,13 @@ class DynamicShellTestCase(unittest.TestCase):
 class DashboardCurriculumGridTests(DynamicShellTestCase):
     """The "Your curriculum" grid is scoped to the learner's pathway."""
 
+    def test_pathway_comparison_does_not_duplicate_the_curriculum_header(self):
+        self._set_destination('ai')
+        html = self._page()
+
+        self.assertIn('Progress comparison', html)
+        self.assertEqual(html.count('Your curriculum'), 1)
+
     def test_ml_destination_shows_foundation_plus_pathway_and_hides_ai_modules(self):
         self._set_destination('ml')
         html = self._page()
