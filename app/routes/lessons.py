@@ -174,23 +174,44 @@ def update_lesson_task_progress(lesson_id, task_index):
     if not isinstance(data, dict) or type(data.get('completed')) is not bool:
         return jsonify({'error': 'Completion state must be a boolean'}), 400
 
-    progress = LessonTaskProgress.query.filter_by(
-        user_id=current_user.id,
-        lesson_id=lesson_id,
-        task_index=task_index,
-    ).first()
-    if data['completed']:
+    values = {
+        'user_id': current_user.id,
+        'lesson_id': lesson_id,
+        'task_index': task_index,
+        'completed': data['completed'],
+        'updated_at': datetime.now(timezone.utc),
+    }
+    dialect = db.session.get_bind().dialect.name
+    if dialect == 'sqlite':
+        from sqlalchemy.dialects.sqlite import insert
+    elif dialect == 'postgresql':
+        from sqlalchemy.dialects.postgresql import insert
+    else:
+        progress = LessonTaskProgress.query.filter_by(
+            user_id=current_user.id,
+            lesson_id=lesson_id,
+            task_index=task_index,
+        ).first()
         if progress is None:
-            db.session.add(LessonTaskProgress(
-                user_id=current_user.id,
-                lesson_id=lesson_id,
-                task_index=task_index,
-            ))
+            db.session.add(LessonTaskProgress(**values))
         else:
-            progress.completed = True
-            progress.updated_at = datetime.now(timezone.utc)
-    elif progress is not None:
-        db.session.delete(progress)
+            progress.completed = data['completed']
+            progress.updated_at = values['updated_at']
+        db.session.commit()
+        return jsonify({
+            'lesson_id': lesson_id,
+            'task_index': task_index,
+            'completed': data['completed'],
+        })
+
+    statement = insert(LessonTaskProgress).values(**values)
+    db.session.execute(statement.on_conflict_do_update(
+        index_elements=['user_id', 'lesson_id', 'task_index'],
+        set_={
+            'completed': data['completed'],
+            'updated_at': values['updated_at'],
+        },
+    ))
     db.session.commit()
     return jsonify({
         'lesson_id': lesson_id,

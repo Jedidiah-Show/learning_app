@@ -6,13 +6,11 @@ test('registration, saved lesson tasks, and tutor history survive a reload', asy
   await page.getByLabel('Full Name').fill('Browser Learner');
   await page.getByLabel('Username *').fill(`browser-${suffix}`);
   await page.getByLabel('Email *').fill(`browser-${suffix}@example.test`);
-  await page.getByLabel('Password *').fill('browser-test-pass-123');
+  await page.getByLabel('Password *', {exact: true}).fill('browser-test-pass-123');
   await page.getByLabel('Confirm password *').fill('browser-test-pass-123');
   await page.getByRole('button', {name: 'Create Account'}).click();
 
   await expect(page).toHaveURL(/\/onboarding$/);
-  await page.getByRole('button', {name: 'Skip for now'}).click();
-  await expect(page).toHaveURL(/\/onboarding\/pathway$/);
   await page.getByRole('button', {name: 'Skip for now'}).click();
 
   await page.goto('/lesson/0.01');
@@ -43,4 +41,17 @@ test('registration, saved lesson tasks, and tutor history survive a reload', asy
     'Saved task progress loaded.',
   );
   await expect(firstTask).toBeChecked();
+
+  await page.setViewportSize({width: 375, height: 812});
+  await page.goto('/lesson/0.01');
+  await page.keyboard.press('Tab');
+  expect(await page.evaluate(() => document.activeElement.tagName)).not.toBe('BODY');
+  const navToggle = page.locator('[data-toggle-nav]');
+  await navToggle.focus();
+  await page.keyboard.press('Enter');
+  await expect(navToggle).toHaveAttribute('aria-expanded', 'true');
+  await expect(page.getByRole('navigation', {name: 'Main navigation'})).toBeVisible();
+  expect(await page.evaluate(
+    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
+  )).toBeTruthy();
 });

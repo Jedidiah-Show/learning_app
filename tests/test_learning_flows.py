@@ -1339,6 +1339,17 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertEqual(saved.status_code, 200, saved.get_json())
         restored = self.client.get(f"/api/lessons/tasks/{lesson['id']}")
         self.assertEqual(restored.get_json()['completed_task_indices'], [0])
+        unchecked = self.client.put(
+            url, json={'completed': False},
+            headers={'X-CSRF-Token': token},
+        )
+        self.assertEqual(unchecked.status_code, 200)
+        restored = self.client.get(f"/api/lessons/tasks/{lesson['id']}")
+        self.assertEqual(restored.get_json()['completed_task_indices'], [])
+        self.client.put(
+            url, json={'completed': True},
+            headers={'X-CSRF-Token': token},
+        )
 
         self.client.post('/logout', headers={'X-CSRF-Token': token})
         self.app.config['CSRF_ENABLED'] = False
