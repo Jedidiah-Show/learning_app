@@ -691,6 +691,22 @@ def update_video_progress():
     })
 
 
+@lessons_bp.route('/tutor/history/<lesson_id>', methods=['GET'])
+@login_required
+def get_tutor_history(lesson_id):
+    lesson = get_lesson(lesson_id) if isinstance(lesson_id, str) else None
+    if not lesson:
+        return jsonify({'error': 'Lesson not found'}), 404
+    if not lesson_is_available(current_user, lesson_id):
+        return jsonify({'error': 'Lesson is locked'}), 403
+    from app.models import TutorConversation
+    messages = TutorConversation.query.filter_by(
+        user_id=current_user.id, lesson_id=lesson_id
+    ).order_by(TutorConversation.created_at.asc()).limit(50).all()
+    history = [{'role': m.role, 'content': m.content} for m in messages]
+    return jsonify({'history': history})
+
+
 @lessons_bp.route('/ask', methods=['POST'])
 @login_required
 def ask_lesson_question():

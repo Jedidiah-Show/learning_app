@@ -410,10 +410,26 @@ const addTutorMessage = (role, text, state = '') => {
   tutorChat.scrollTop = tutorChat.scrollHeight;
   return message;
 };
-if (tutorHistory.length) {
-  tutorChat.replaceChildren();
-  tutorHistory.forEach((item) => addTutorMessage(item.role, item.content));
-}
+const renderTutorHistory = () => {
+  if (tutorHistory.length) {
+    tutorChat.replaceChildren();
+    tutorHistory.forEach((item) => addTutorMessage(item.role, item.content));
+  }
+};
+renderTutorHistory();
+// Try to sync from server for cross-device persistence
+fetch(`/api/lessons/tutor/history/${encodeURIComponent(lessonId)}`)
+  .then(r => r.ok ? r.json() : null)
+  .then(data => {
+    if (data && Array.isArray(data.history) && data.history.length && tutorHistory.length === 0) {
+      tutorHistory = data.history.filter((item) =>
+        item && ['user', 'assistant'].includes(item.role) && typeof item.content === 'string'
+      ).slice(-8);
+      try { localStorage.setItem(tutorStorageKey, JSON.stringify(tutorHistory)); } catch (error) {}
+      renderTutorHistory();
+    }
+  })
+  .catch(() => {});
 document.getElementById('ask-form').addEventListener('submit', async (event) => {
   event.preventDefault();
   const question = tutorQuestion.value.trim();
