@@ -117,3 +117,11 @@ class ProjectVerificationTests(unittest.TestCase):
         )
         self.assertTrue(result['verified'])
         self.assertIn(result.get('verification_method'), ('page_scrape', 'github_api'))
+
+    def test_verify_checks_rejects_ambiguous_failure_indicators(self):
+        with self.assertRaises(VerificationError):
+            verify_checks(
+                'https://github.com/learner/project',
+                'https://github.com/learner/project/actions/runs/99',
+                fetcher=lambda _: (200, 'All checks passed but build failed'),
+            )

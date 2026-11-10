@@ -258,6 +258,19 @@ def verify_checks(repository_url, checks_url, fetcher=None, commit_sha=None, bra
         if run_info:
             api_result = _verify_github_actions(repository_url, checks_url, fetcher)
             if api_result:
+                # Strictly verify repo identity
+                repo_parsed_check = urlsplit(repository_url)
+                repo_parts_check = [p for p in repo_parsed_check.path.split('/') if p]
+                if len(repo_parts_check) >= 2:
+                    expected_repo = f'{repo_parts_check[0]}/{repo_parts_check[1].replace(".git", "")}'.lower()
+                    result_repo = None
+                    if api_result.get('repository_url'):
+                        rp = urlsplit(api_result['repository_url'])
+                        rparts = [p for p in rp.path.split('/') if p]
+                        if len(rparts) >= 2:
+                            result_repo = f'{rparts[0]}/{rparts[1].replace(".git", "")}'.lower()
+                    if result_repo and result_repo != expected_repo:
+                        raise VerificationError('The checks run does not belong to the submitted repository')
                 # If commit_sha/branch provided, verify they match
                 if commit_sha and api_result.get('commit_sha') and api_result['commit_sha'] != commit_sha:
                     raise VerificationError('The checks run is for a different commit')
@@ -268,14 +281,11 @@ def verify_checks(repository_url, checks_url, fetcher=None, commit_sha=None, bra
                 if branch:
                     api_result['branch'] = branch
                 return api_result
-            # For parseable GitHub Actions run URLs, prefer API verification but
-            # don't silently fall back to arbitrary page scraping if API fails
-            # in a way that suggests misconfiguration; still allow fallback only
-            # if explicit fetcher is provided for tests
+            # For parseable GitHub Actions run URLs, prefer API verification
             if fetcher is not None:
                 pass  # allow test fetcher to override
             else:
-                raise VerificationError('Unable to verify checks via GitHub API; ensure the run is accessible or provide valid credentials')
+                raise VerificationError('Unable to verify checks via GitHub API; ensure the run belongs to the submitted repository and has completed successfully')
     
     if not _is_allowed_host(checks_host):
         raise VerificationError(
