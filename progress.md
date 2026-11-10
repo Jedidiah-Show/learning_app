@@ -9,13 +9,13 @@ Last updated: 2026-11-10 (commit 9d692b7)
 
 ### In Progress - Major release hardening
 
-#### Phase 1 - Security & Hygiene (IN PROGRESS - NOT COMPLETE)
-- [x] **Goal 9 - Repository Hygiene (partial)**: Removed `.qoder/settings.local.json` from git tracking and added `.qoder/` to `.gitignore`. Added repository hygiene check and basic secret pattern scanning to CI. Changes staged but not committed. Still need: audit for historical secrets, credential rotation, provider scope review, reproducible clean-export process, and stronger secret scanning.
-- [x] **Goal 1 - CSRF Hardening (partial)**: Added explicit `X-CSRF-Token` headers in `static/js/practice.js` (workspace save) and `static/js/app.js` (video progress). Rebuilt practice.bundle.js. Global fetch wrapper in place. CSRF tests exist for guard/autosave/video but need coverage for all mutating workflows (scheduling, integration probing, calendar sync, settings writes).
-- [x] **Goal 3 - Dashboard Fixes (substantially done)**: Fixed ML pathway card duplication - consolidated rendering. Dashboard pathway comparison uses independent calculations for AI and ML.
-- [ ] **Goal 2 - Project Verification (improving)**: Enhanced SSRF protections (block private/loopback/link-local, strict redirect validation, DNS rebinding checks via resolution). Added GitHub Actions API-based verification that checks repo ownership, run conclusion, commit SHA/branch when available. API verification falls back gracefully to page scraping if API unavailable. Added `commit_sha`/`branch` fields and verification method tracking. Still needs address pinning at connection time and more provider API coverage.
+#### Phase 1 - Security & Hygiene (IN PROGRESS — NOT COMPLETE; below 95% threshold)
+- [ ] **Goal 9 - Repository Hygiene (partial)**: Removed `.qoder/settings.local.json` from git tracking and added `.qoder/` to `.gitignore`. Added repository hygiene check and basic secret-pattern scanning to CI. **Remaining:** historical secret/history review, credential rotation, provider-scope review, reproducible clean-export process, stronger secret scanning, and full security-boundary review.
+- [ ] **Goal 1 - CSRF Hardening (partial)**: Added explicit `X-CSRF-Token` headers in `static/js/practice.js` (workspace save) and `static/js/app.js` (video progress). Rebuilt practice.bundle.js. Global fetch wrapper in place. Focused tests cover guard/autosave/video, but production-like tests for all affected mutating workflows (scheduling, integration probe, calendar sync, settings writes) are missing.
+- [ ] **Goal 3 - Dashboard Fixes (partial)**: Removed duplicate ML card rendering; AI/ML progress calculated separately. Full coverage for empty/partially complete/pathway states not yet verified.
+- [ ] **Goal 2 - Project Verification (partial, not meeting acceptance criteria)**: Added GitHub Actions API verification (repo ownership, conclusion/status, commit SHA/branch) with fallback to page-text scraping when API unavailable/unsupported. Enhanced SSRF protections (block private/loopback/link-local, strict redirect validation, DNS resolution checks) but no connection-time address pinning/full DNS-rebinding defense. API path doesn’t strictly require repo identity in all cases, commit/branch checks optional, and no tests for the API verification path. Page-text fallback can still accept evidence contrary to Goal 2 acceptance criteria.
 
-**Status**: Phase 1 partially complete. Focused tests pass (10+ tests) but key acceptance criteria from goals.md not met. Needs significant work on project verification, full CSRF test coverage, and security hygiene completion.
+**Status**: Phase 1 NOT PASSED (below 95%). Key release-blocking items remain open.
 
 ### Completed (previous sessions)
 
