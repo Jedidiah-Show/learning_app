@@ -86,6 +86,10 @@
                         <span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">ML Pathway</span>
                     </a>
                     {% endif %}
+                    <div class="mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Practice</div>
+                    <a aria-label="Practice" title="Practice" href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.lessons' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">💻</span><span class="nav-label">Practice Workspace</span>
+                    </a>
                     <a aria-label="Search" title="Search" href="{{ url_for('main.search') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.search' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🔍</span><span class="nav-label">Search</span>
                     </a>
@@ -117,6 +121,7 @@
                     <a aria-label="Schedule" title="Schedule" href="{{ url_for('main.schedule') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.schedule' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">📅</span><span class="nav-label">Schedule</span>
                     </a>
+                    <div class="mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Help & Support</div>
                     <div class="nav-utility-group">
                         <button type="button" class="theme-toggle w-full justify-start" data-theme-toggle aria-label="Switch to dark mode">
                             <span data-theme-icon aria-hidden="true">🌙</span>
