@@ -358,6 +358,59 @@ def lessons():
                            skill_level=(plan.skill_level if plan else '') or '')
 
 
+@main_bp.route('/practice')
+@login_required
+def practice_catalog():
+    from app.practice import all_practice_exercises
+    from app.pathway_scope import destination_for, pathway_lessons
+
+    destination = destination_for(current_user)
+    lessons_by_id = {
+        lesson['id']: lesson for lesson in pathway_lessons(destination)
+    }
+    exercise_by_id = all_practice_exercises()
+    difficulty = request.args.get('difficulty', '').strip().lower()
+    skill = request.args.get('skill', '').strip().lower()
+    difficulties = sorted({item['difficulty'] for item in exercise_by_id.values()})
+    skills = sorted({
+        item_skill for item in exercise_by_id.values()
+        for item_skill in item['skills']
+    })
+    if difficulty not in difficulties:
+        difficulty = ''
+    if skill not in skills:
+        skill = ''
+
+    exercises = []
+    for exercise in exercise_by_id.values():
+        lesson = lessons_by_id.get(exercise['lesson_id'])
+        if not lesson:
+            continue
+        if difficulty and exercise['difficulty'] != difficulty:
+            continue
+        if skill and skill not in exercise['skills']:
+            continue
+        exercises.append({
+            **exercise,
+            'lesson_title': lesson['title'],
+            'available': lesson_is_available(current_user, lesson['id']),
+            'prerequisite_titles': [
+                exercise_by_id[item]['title']
+                for item in exercise['prerequisites']
+                if item in exercise_by_id
+            ],
+        })
+    return render_template(
+        'practice.html',
+        user=current_user,
+        exercises=exercises,
+        difficulties=difficulties,
+        skills=skills,
+        selected_difficulty=difficulty,
+        selected_skill=skill,
+    )
+
+
 
 @main_bp.route('/specializations/machine-learning')
 @login_required

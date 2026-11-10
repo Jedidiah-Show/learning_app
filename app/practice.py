@@ -29,12 +29,29 @@ def all_practice_exercises():
             or exercise['id'] in by_id
         ):
             raise ValueError('Practice exercise data is invalid')
-        # Add default metadata if missing for better organization
         exercise = dict(exercise)
-        exercise.setdefault('difficulty', exercise.get('difficulty') or 'beginner')
-        exercise.setdefault('skills', exercise.get('skills') or [])
-        exercise.setdefault('prerequisites', exercise.get('prerequisites') or [])
+        exercise['difficulty'] = exercise.get('difficulty') or 'beginner'
+        exercise['skills'] = exercise.get('skills') or []
+        exercise['prerequisites'] = exercise.get('prerequisites') or []
+        if (
+            not isinstance(exercise['difficulty'], str)
+            or exercise['difficulty'] not in {'beginner', 'intermediate', 'advanced'}
+            or not isinstance(exercise['skills'], list)
+            or any(not isinstance(skill, str) or not skill for skill in exercise['skills'])
+            or not isinstance(exercise['prerequisites'], list)
+            or any(
+                not isinstance(prerequisite, str) or not prerequisite
+                for prerequisite in exercise['prerequisites']
+            )
+        ):
+            raise ValueError('Practice exercise metadata is invalid')
         by_id[exercise['id']] = exercise
+    for exercise in by_id.values():
+        if any(
+            prerequisite not in by_id or prerequisite == exercise['id']
+            for prerequisite in exercise['prerequisites']
+        ):
+            raise ValueError('Practice exercise prerequisite is invalid')
     return by_id
 
 

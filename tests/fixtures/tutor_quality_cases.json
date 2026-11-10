@@ -1,0 +1,30 @@
+[
+  {
+    "name": "grounded explanation",
+    "mode": "explain",
+    "depth": "standard",
+    "question": "Explain the core idea in this lesson.",
+    "prompt_requirements": ["Tutor style: explain", "concrete example or analogy"]
+  },
+  {
+    "name": "productive hint",
+    "mode": "hint",
+    "depth": "brief",
+    "question": "Give me a hint for the exercise without solving it.",
+    "prompt_requirements": ["Tutor style: hint", "progressive hints", "Response depth: brief"]
+  },
+  {
+    "name": "reasoning quiz",
+    "mode": "quiz",
+    "depth": "standard",
+    "question": "Quiz me on why this design works.",
+    "prompt_requirements": ["Tutor style: quiz", "test understanding"]
+  },
+  {
+    "name": "actionable code review",
+    "mode": "code_review",
+    "depth": "detailed",
+    "question": "Review this code and explain the trade-offs.",
+    "prompt_requirements": ["Tutor style: code_review", "defects, risks, trade-offs", "Response depth: detailed"]
+  }
+]

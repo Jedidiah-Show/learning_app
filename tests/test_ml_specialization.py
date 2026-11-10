@@ -301,6 +301,7 @@ class MLSpecializationFlowTests(unittest.TestCase):
                 json={
                     'repository_url': 'https://github.com/learner/ml-audit',
                     'checks_url': 'https://github.com/learner/ml-audit/actions/runs/1',
+                    'commit_sha': 'a' * 40,
                     'reflection': 'I audited the source data, preserved the time boundary, '
                                   'and excluded post-outcome refund information from features.',
                     'report': {
@@ -355,6 +356,7 @@ class MLSpecializationFlowTests(unittest.TestCase):
             return self.client.post(url, headers={'X-CSRF-Token': csrf}, json={
                 'repository_url': 'https://github.com/learner/ml-audit',
                 'checks_url': 'https://github.com/learner/ml-audit/actions/runs/1',
+                'commit_sha': 'a' * 40,
                 'reflection': reflection, 'report': payload,
             })
 

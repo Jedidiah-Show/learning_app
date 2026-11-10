@@ -134,6 +134,28 @@ class PracticeWorkspaceTests(unittest.TestCase):
                     flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT,
                 )
 
+    def test_exercise_metadata_is_valid_and_practice_catalog_filters_it(self):
+        exercises = all_practice_exercises()
+        self.assertEqual(
+            {exercise['difficulty'] for exercise in exercises.values()},
+            {'beginner', 'intermediate', 'advanced'},
+        )
+        self.assertTrue(any(exercise['prerequisites'] for exercise in exercises.values()))
+        for exercise in exercises.values():
+            self.assertTrue(exercise['skills'])
+            self.assertTrue(set(exercise['prerequisites']).issubset(exercises))
+
+        self.register('cataloglearner')
+        response = self.client.get(
+            '/practice?difficulty=intermediate&skill=python'
+        )
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('Find the cheapest model per provider', html)
+        self.assertIn('Score one case safely', html)
+        self.assertNotIn('Run your first tiny Python program', html)
+        self.assertIn('apply filters', html.lower())
+
     def test_workspace_ui_only_appears_on_lessons_with_curated_exercises(self):
         self.register('learner')
         regular_lesson = self.client.get('/lesson/0.01')

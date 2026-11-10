@@ -105,7 +105,7 @@ class ProjectVerificationTests(unittest.TestCase):
 
     def test_other_ci_providers_are_unavailable_not_page_scraped(self):
         with patch('app.project_verification._default_fetcher') as page_fetcher:
-            with self.assertRaisesRegex(VerificationError, 'only GitHub Actions'):
+            with self.assertRaisesRegex(VerificationError, 'Only GitHub Actions'):
                 verify_checks(
                     REPOSITORY,
                     'https://gitlab.com/learner/project/pipelines/1',

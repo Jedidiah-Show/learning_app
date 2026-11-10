@@ -297,8 +297,12 @@
       <form id="ask-form" class="lesson-ask-form tutor-composer">
         <label for="question" class="sr-only">Your question</label>
         <label for="tutor-mode" class="sr-only">Tutor response style</label>
+        <label for="tutor-depth" class="sr-only">Response depth</label>
         <select id="tutor-mode" class="mb-2 rounded-lg border px-3 py-2 text-sm">
           <option value="explain">Explain</option><option value="hint">Give me a hint</option><option value="quiz">Quiz me</option><option value="code_review">Review my code</option>
+        </select>
+        <select id="tutor-depth" class="mb-2 rounded-lg border px-3 py-2 text-sm">
+          <option value="brief">Brief</option><option value="standard" selected>Standard</option><option value="detailed">More detail</option>
         </select>
         <textarea id="question" rows="2" maxlength="2000" placeholder="Ask a question or follow up…"></textarea>
         <div class="tutor-composer-footer">
@@ -389,6 +393,7 @@ const tutorChat = document.getElementById('answer');
 const tutorQuestion = document.getElementById('question');
 const tutorSend = document.getElementById('ask-send');
 const tutorMode = document.getElementById('tutor-mode');
+const tutorDepth = document.getElementById('tutor-depth');
 const tutorStorageKey = `ruachai-tutor-{{ current_user.id }}-${lessonId}`;
 let tutorHistory = [];
 try {
@@ -442,7 +447,7 @@ document.getElementById('ask-form').addEventListener('submit', async (event) => 
     const response = await fetch('/api/lessons/ask', {
       method: 'POST',
       headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
-      body: JSON.stringify({lesson_id: lessonId, question, mode: tutorMode.value, history: tutorHistory.slice(-8)}),
+      body: JSON.stringify({lesson_id: lessonId, question, mode: tutorMode.value, depth: tutorDepth.value, history: tutorHistory.slice(-8)}),
     });
     const data = await readJson(response);
     pending.remove();

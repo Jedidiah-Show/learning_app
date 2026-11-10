@@ -10,6 +10,7 @@
     "estimated_minutes": 8,
     "difficulty": "beginner",
     "skills": [
+      "foundations",
       "python"
     ],
     "prerequisites": []
@@ -25,10 +26,12 @@
     "estimated_minutes": 25,
     "difficulty": "intermediate",
     "skills": [
-      "python",
-      "data-structures"
+      "data-structures",
+      "python"
     ],
-    "prerequisites": []
+    "prerequisites": [
+      "python-inventory-value"
+    ]
   },
   {
     "id": "python-score-case",
@@ -42,9 +45,11 @@
     "difficulty": "intermediate",
     "skills": [
       "python",
-      "data-structures"
+      "testing"
     ],
-    "prerequisites": []
+    "prerequisites": [
+      "python-safe-divide"
+    ]
   },
   {
     "id": "python-model-client",
@@ -87,11 +92,14 @@
     "estimated_minutes": 25,
     "difficulty": "intermediate",
     "skills": [
-      "python",
       "http",
-      "apis"
+      "python",
+      "reliability"
     ],
-    "prerequisites": []
+    "prerequisites": [
+      "python-http-status",
+      "python-model-client"
+    ]
   },
   {
     "id": "python-package-layout",
@@ -104,6 +112,7 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
+      "packaging",
       "python"
     ],
     "prerequisites": []
@@ -119,11 +128,13 @@
     "estimated_minutes": 25,
     "difficulty": "intermediate",
     "skills": [
-      "python",
       "http",
-      "apis"
+      "python",
+      "testing"
     ],
-    "prerequisites": []
+    "prerequisites": [
+      "python-bounded-retry"
+    ]
   },
   {
     "id": "python-typed-settings",
@@ -136,6 +147,7 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
+      "configuration",
       "python"
     ],
     "prerequisites": []
@@ -151,6 +163,7 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
+      "dependencies",
       "python"
     ],
     "prerequisites": []
@@ -166,7 +179,9 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
-      "python"
+      "dependencies",
+      "python",
+      "security"
     ],
     "prerequisites": []
   },
@@ -179,8 +194,9 @@
     "checks_code": "async def _check_async_map():\n    active = 0\n    peak = 0\n    async def worker(value):\n        nonlocal active, peak\n        active += 1\n        peak = max(peak, active)\n        await asyncio.sleep(0)\n        active -= 1\n        return value * 2\n    assert await async_map_bounded([3, 1, 2, 4], worker, limit=2) == [6, 2, 4, 8]\n    assert peak == 2\n    for limit in [0, -1, True, 1.5]:\n        try:\n            await async_map_bounded([], worker, limit)\n        except ValueError:\n            pass\n        else:\n            raise AssertionError(\"Invalid concurrency limits must be rejected\")\n    print(\"All checks passed.\")\nawait _check_async_map()",
     "solution_code": "import asyncio\nasync def async_map_bounded(items, worker, limit):\n    if not isinstance(limit,int) or isinstance(limit,bool) or limit <= 0: raise ValueError(\"limit must be positive\")\n    semaphore=asyncio.Semaphore(limit)\n    async def run(item):\n        async with semaphore: return await worker(item)\n    return await asyncio.gather(*(run(item) for item in items))",
     "estimated_minutes": 25,
-    "difficulty": "beginner",
+    "difficulty": "intermediate",
     "skills": [
+      "async",
       "python"
     ],
     "prerequisites": []
@@ -194,11 +210,15 @@
     "checks_code": "async def _check_summary():\n    started = []\n    async def usage(user_id):\n        started.append(\"usage\")\n        await asyncio.sleep(0)\n        return 42\n    async def plan(user_id):\n        started.append(\"plan\")\n        await asyncio.sleep(0)\n        return \"starter\"\n    assert await usage_summary(\"learner-1\", usage, plan) == {\"tokens\": 42, \"plan\": \"starter\"}\n    assert set(started) == {\"usage\", \"plan\"}\n    cancelled = []\n    async def slow_usage(user_id):\n        try:\n            await asyncio.sleep(2)\n        except asyncio.CancelledError:\n            cancelled.append(\"usage\")\n            raise\n    async def slow_plan(user_id):\n        try:\n            await asyncio.sleep(2)\n        except asyncio.CancelledError:\n            cancelled.append(\"plan\")\n            raise\n    try:\n        await usage_summary(\"learner-1\", slow_usage, slow_plan)\n    except TimeoutError:\n        pass\n    else:\n        raise AssertionError(\"The shared deadline must time out\")\n    assert set(cancelled) == {\"usage\", \"plan\"}\n    print(\"All checks passed.\")\nawait _check_summary()",
     "solution_code": "import asyncio\nasync def usage_summary(user_id, fetch_usage, fetch_plan):\n    async with asyncio.timeout(1):\n        async with asyncio.TaskGroup() as group:\n            usage=group.create_task(fetch_usage(user_id))\n            plan=group.create_task(fetch_plan(user_id))\n    return {\"tokens\":usage.result(),\"plan\":plan.result()}",
     "estimated_minutes": 25,
-    "difficulty": "beginner",
+    "difficulty": "advanced",
     "skills": [
-      "python"
+      "async",
+      "python",
+      "reliability"
     ],
-    "prerequisites": []
+    "prerequisites": [
+      "python-bounded-async-map"
+    ]
   },
   {
     "id": "python-mocked-http-contract",
@@ -209,11 +229,15 @@
     "checks_code": "class Response:\n    def __init__(self, status, content_type, body):\n        self.status_code = status\n        self.headers = {\"Content-Type\": content_type}\n        self.body = body\n    def json(self):\n        return self.body\ncalls = []\nassert fetch_json(lambda url: calls.append(url) or Response(200, \"application/json; charset=utf-8\", {\"ok\": True}), \"https://example.test\") == {\"ok\": True}\nassert calls == [\"https://example.test\"]\nfor response in [Response(500, \"application/json\", {}), Response(200, \"text/plain\", {})]:\n    try:\n        fetch_json(lambda url: response, \"https://example.test\")\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"Invalid HTTP responses must be rejected\")\nprint(\"All checks passed.\")",
     "solution_code": "def fetch_json(transport, url):\n    response=transport(url)\n    if not 200 <= response.status_code < 300: raise ValueError(\"unexpected HTTP status\")\n    if \"application/json\" not in response.headers.get(\"Content-Type\",\"\").lower(): raise ValueError(\"expected JSON\")\n    return response.json()",
     "estimated_minutes": 25,
-    "difficulty": "beginner",
+    "difficulty": "intermediate",
     "skills": [
-      "python"
+      "http",
+      "python",
+      "testing"
     ],
-    "prerequisites": []
+    "prerequisites": [
+      "python-http-client-contract"
+    ]
   },
   {
     "id": "python-staged-secret-scan",
@@ -224,9 +248,11 @@
     "checks_code": "files = {\"z.py\": \"# api_key = 'do-not-flag-this'\\nsecret_key = \\\"very-long-secret-value\\\"\\n\", \"a.env\": \"API_KEY='12345678'\\napi_key='short'\\n\"}\nassert find_secret_lines(files) == [(\"a.env\", 1), (\"z.py\", 2)]\nassert find_secret_lines({\"clean.py\": \"api_key = ''\\nsecret_key = None\\n\"}) == []\nassert \"very-long-secret-value\" not in repr(find_secret_lines(files))\nprint(\"All checks passed.\")",
     "solution_code": "import re\nSECRET_ASSIGNMENT = re.compile(r\"\\b(?:api_key|secret_key)\\s*=\\s*(['\\\"])(\\S{8,}?)\\1\", re.IGNORECASE)\ndef find_secret_lines(files):\n    found=[]\n    for filename, content in files.items():\n        for number, line in enumerate(content.splitlines(),1):\n            if line.lstrip().startswith(\"#\"): continue\n            if SECRET_ASSIGNMENT.search(line): found.append((filename,number))\n    return sorted(found)",
     "estimated_minutes": 25,
-    "difficulty": "beginner",
+    "difficulty": "advanced",
     "skills": [
-      "python"
+      "python",
+      "security",
+      "testing"
     ],
     "prerequisites": []
   },
@@ -286,6 +312,8 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
+      "apis",
+      "backend",
       "python"
     ],
     "prerequisites": []
@@ -301,7 +329,9 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
-      "python"
+      "python",
+      "rag",
+      "retrieval"
     ],
     "prerequisites": []
   },
@@ -314,9 +344,12 @@
     "checks_code": "assert run_steps(['search', 'email', 'search'], {'search'}, 1) == ['search']\nassert run_steps(['email'], {'search'}, 3) == []\nassert run_steps(['search', 'search'], {'search'}, 0) == []\nprint('All checks passed.')",
     "solution_code": "def run_steps(actions, allowed_tools, max_calls):\n    if not isinstance(max_calls, int) or isinstance(max_calls, bool) or max_calls <= 0: return []\n    accepted=[]\n    for action in actions:\n        if action in allowed_tools:\n            accepted.append(action)\n            if len(accepted) >= max_calls: break\n    return accepted",
     "estimated_minutes": 25,
-    "difficulty": "beginner",
+    "difficulty": "intermediate",
     "skills": [
-      "python"
+      "agents",
+      "python",
+      "reliability",
+      "tool-calling"
     ],
     "prerequisites": []
   },
@@ -331,7 +364,10 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
-      "python"
+      "mcp",
+      "python",
+      "security",
+      "tool-calling"
     ],
     "prerequisites": []
   },
@@ -346,7 +382,9 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
-      "python"
+      "python",
+      "reliability",
+      "security"
     ],
     "prerequisites": []
   },
@@ -361,7 +399,10 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
-      "python"
+      "deployment",
+      "docker",
+      "python",
+      "security"
     ],
     "prerequisites": []
   },
@@ -376,7 +417,10 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
-      "python"
+      "cost",
+      "python",
+      "reliability",
+      "system-design"
     ],
     "prerequisites": []
   },
@@ -389,9 +433,11 @@
     "checks_code": "assert acceptance_checklist([' log requests ', '', 'Test retrieval', 'LOG REQUESTS', ' test retrieval ']) == ['log requests', 'Test retrieval']\nassert acceptance_checklist([]) == []\nprint('All checks passed.')",
     "solution_code": "def acceptance_checklist(requirements):\n    result=[]; seen=set()\n    for value in requirements:\n        normalized=\" \".join(value.split())\n        key=normalized.casefold()\n        if normalized and key not in seen:\n            seen.add(key); result.append(normalized)\n    return result",
     "estimated_minutes": 25,
-    "difficulty": "beginner",
+    "difficulty": "intermediate",
     "skills": [
-      "python"
+      "capstone",
+      "python",
+      "testing"
     ],
     "prerequisites": []
   },
@@ -406,6 +452,8 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
+      "ai-engineering",
+      "llm",
       "python"
     ],
     "prerequisites": []
@@ -421,6 +469,8 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
+      "ai-engineering",
+      "llm",
       "python"
     ],
     "prerequisites": []
@@ -436,6 +486,8 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
+      "evaluation",
+      "llm",
       "python"
     ],
     "prerequisites": []
@@ -451,7 +503,9 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
-      "python"
+      "mcp",
+      "python",
+      "tool-calling"
     ],
     "prerequisites": []
   },
@@ -466,7 +520,9 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
-      "python"
+      "python",
+      "reliability",
+      "security"
     ],
     "prerequisites": []
   },
@@ -481,7 +537,9 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
-      "python"
+      "python",
+      "reliability",
+      "security"
     ],
     "prerequisites": []
   },
@@ -496,7 +554,9 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
-      "python"
+      "capstone",
+      "python",
+      "testing"
     ],
     "prerequisites": []
   },
@@ -509,9 +569,13 @@
     "checks_code": "jobs = {}\nassert create_or_reuse(\"k1\", jobs) == (\"created\", \"job-k1\")\nassert create_or_reuse(\"k1\", jobs) == (\"existing\", \"job-k1\")\nassert len(jobs) == 1\nassert create_or_reuse(\"\", jobs) == (\"error\", None)\nprint(\"All checks passed.\")",
     "solution_code": "def create_or_reuse(key,jobs):\n    if not isinstance(key,str) or not key.strip(): return (\"error\",None)\n    if key in jobs: return (\"existing\",jobs[key])\n    job_id=f\"job-{key}\"\n    jobs[key]=job_id\n    return (\"created\",job_id)",
     "estimated_minutes": 25,
-    "difficulty": "beginner",
+    "difficulty": "intermediate",
     "skills": [
-      "python"
+      "apis",
+      "backend",
+      "databases",
+      "python",
+      "reliability"
     ],
     "prerequisites": []
   },
@@ -524,11 +588,16 @@
     "checks_code": "assert reciprocal_rank({\"d2\"}, [\"d1\", \"d2\", \"d3\"], 3) == 0.5\nassert reciprocal_rank({\"d3\"}, [\"d1\", \"d2\", \"d3\"], 2) == 0\nassert reciprocal_rank(set(), [\"d1\"], 1) == 0\nassert reciprocal_rank({\"d1\"}, [\"d1\"], 0) == 0\nprint(\"All checks passed.\")",
     "solution_code": "def reciprocal_rank(relevant_ids,results,k):\n    if not isinstance(k,int) or isinstance(k,bool) or k <= 0: return 0\n    for rank, result in enumerate(results[:k],1):\n        if result in relevant_ids: return 1/rank\n    return 0",
     "estimated_minutes": 25,
-    "difficulty": "beginner",
+    "difficulty": "intermediate",
     "skills": [
-      "python"
+      "evaluation",
+      "python",
+      "rag",
+      "retrieval"
     ],
-    "prerequisites": []
+    "prerequisites": [
+      "rag-rank-chunks"
+    ]
   },
   {
     "id": "agent-tool-authorization",
@@ -539,11 +608,16 @@
     "checks_code": "allowed = {\"search\", \"send_email\"}\nwrites = {\"send_email\"}\nassert authorize_tool(\"search\", allowed, writes, False) is True\nassert authorize_tool(\"send_email\", allowed, writes, False) is False\nassert authorize_tool(\"send_email\", allowed, writes, True) is True\nassert authorize_tool(\"delete_all\", allowed, writes, True) is False\nprint(\"All checks passed.\")",
     "solution_code": "def authorize_tool(name,allowed_tools,write_tools,approved):\n    if name not in allowed_tools: return False\n    if name in write_tools and approved is not True: return False\n    return True",
     "estimated_minutes": 25,
-    "difficulty": "beginner",
+    "difficulty": "advanced",
     "skills": [
-      "python"
+      "agents",
+      "python",
+      "security",
+      "tool-calling"
     ],
-    "prerequisites": []
+    "prerequisites": [
+      "agent-tool-policy"
+    ]
   },
   {
     "id": "container-release-readiness",
@@ -554,11 +628,16 @@
     "checks_code": "assert release_ready({\"non_root\":True,\"baked_secrets\":False,\"healthcheck\":True}) is True\nassert release_ready({\"non_root\":False,\"baked_secrets\":False,\"healthcheck\":True}) is False\nassert release_ready({\"non_root\":True,\"baked_secrets\":True,\"healthcheck\":True}) is False\nassert release_ready({\"non_root\":True,\"baked_secrets\":False,\"healthcheck\":False}) is False\nprint(\"All checks passed.\")",
     "solution_code": "def release_ready(image):\n    return image.get(\"non_root\") is True and image.get(\"baked_secrets\") is False and image.get(\"healthcheck\") is True",
     "estimated_minutes": 25,
-    "difficulty": "beginner",
+    "difficulty": "intermediate",
     "skills": [
-      "python"
+      "deployment",
+      "docker",
+      "python",
+      "security"
     ],
-    "prerequisites": []
+    "prerequisites": [
+      "deployment-validate-container-config"
+    ]
   },
   {
     "id": "foundations-system-map",
@@ -571,6 +650,7 @@
     "solution_code": "LAYERS = {\"web form\":\"client\", \"request validator\":\"application\", \"language model\":\"model\", \"document index\":\"data\", \"search connector\":\"tools\", \"trace dashboard\":\"operations\"}\ndef classify_component(name):\n    try: return LAYERS[name]\n    except KeyError as exc: raise ValueError(\"unknown component\") from exc\n\nprint(classify_component(\"web form\"))",
     "difficulty": "beginner",
     "skills": [
+      "foundations",
       "python"
     ],
     "prerequisites": []
@@ -586,6 +666,10 @@
     "solution_code": "from math import isfinite\ndef revenue_by_customer(rows):\n    totals = {}\n    for row in rows:\n        customer = row.get(\"customer_id\")\n        if not isinstance(customer, str) or not customer.strip(): raise ValueError(\"customer_id required\")\n        if row.get(\"status\") != \"paid\": continue\n        raw = row.get(\"amount\")\n        if isinstance(raw, bool): raise ValueError(\"invalid amount\")\n        try: amount = float(raw)\n        except (TypeError, ValueError) as exc: raise ValueError(\"invalid amount\") from exc\n        if not isfinite(amount) or amount < 0: raise ValueError(\"invalid amount\")\n        totals[customer] = totals.get(customer, 0.0) + amount\n    return totals",
     "difficulty": "beginner",
     "skills": [
+      "apis",
+      "backend",
+      "data-quality",
+      "databases",
       "python"
     ],
     "prerequisites": []
@@ -601,6 +685,8 @@
     "solution_code": "def choose_model(models, min_quality, max_cost):\n    valid = [m for m in models if m.get(\"quality\", -1) >= min_quality and m.get(\"cost\", float(\"inf\")) <= max_cost]\n    return min(valid, key=lambda m: (m[\"cost\"], -m[\"quality\"], m[\"name\"])) if valid else None",
     "difficulty": "beginner",
     "skills": [
+      "ai-engineering",
+      "llm",
       "python"
     ],
     "prerequisites": []
@@ -616,6 +702,8 @@
     "solution_code": "def validate_claim(claim, source):\n    value = claim.get(\"value\")\n    evidence = claim.get(\"evidence\")\n    if not isinstance(value, str) or not value.strip(): raise ValueError(\"value required\")\n    if not isinstance(evidence, str) or not evidence.strip() or evidence not in source: raise ValueError(\"verbatim evidence required\")\n    return {\"value\": value.strip(), \"evidence\": evidence.strip()}",
     "difficulty": "beginner",
     "skills": [
+      "evaluation",
+      "llm",
       "python"
     ],
     "prerequisites": []
@@ -631,6 +719,8 @@
     "solution_code": "def failure_action(status, alternate_ready=False):\n    if status in {408, 429} or 500 <= status <= 599: return \"retry\"\n    if status in {401, 403} and alternate_ready: return \"fallback\"\n    return \"stop\"",
     "difficulty": "beginner",
     "skills": [
+      "evaluation",
+      "llm",
       "python"
     ],
     "prerequisites": []
@@ -644,11 +734,16 @@
     "starter_code": "def precision_at_k(results, relevant_ids, k):\n    # TODO: count unique relevant results in the first k unique IDs.\n    raise NotImplementedError\n\ndef reciprocal_rank(results, relevant_ids):\n    # TODO: return the reciprocal rank of the first relevant unique result.\n    raise NotImplementedError",
     "checks_code": "assert precision_at_k([\"a\",\"a\",\"b\",\"c\"], {\"a\",\"c\"}, 3) == 2/3\nassert reciprocal_rank([\"x\",\"x\",\"b\"], {\"b\"}) == 1/2\nassert precision_at_k([], {\"a\"}, 5) == 0\nassert reciprocal_rank([\"a\"], set()) == 0\nprint(\"All checks passed.\")",
     "solution_code": "def _unique(items): return list(dict.fromkeys(items))\ndef precision_at_k(results, relevant_ids, k):\n    if not isinstance(k, int) or isinstance(k, bool) or k <= 0: return 0.0\n    chosen = _unique(results)[:k]\n    return sum(item in relevant_ids for item in chosen) / k\ndef reciprocal_rank(results, relevant_ids):\n    for rank, item in enumerate(_unique(results), 1):\n        if item in relevant_ids: return 1 / rank\n    return 0.0",
-    "difficulty": "beginner",
+    "difficulty": "advanced",
     "skills": [
-      "python"
+      "evaluation",
+      "python",
+      "rag",
+      "retrieval"
     ],
-    "prerequisites": []
+    "prerequisites": [
+      "rag-reciprocal-rank"
+    ]
   },
   {
     "id": "agent-tool-policy",
@@ -661,7 +756,10 @@
     "solution_code": "def authorize_tool(call, allowed, user_scopes):\n    name, request_id = call.get(\"name\"), call.get(\"request_id\")\n    if not isinstance(name, str) or name not in allowed: raise PermissionError(\"tool not allowlisted\")\n    if not isinstance(request_id, str) or not request_id.strip(): raise PermissionError(\"request id required\")\n    required = allowed[name].get(\"scopes\", set())\n    if not required.issubset(user_scopes): raise PermissionError(\"missing scope\")\n    return {\"name\": name, \"request_id\": request_id.strip()}",
     "difficulty": "beginner",
     "skills": [
-      "python"
+      "agents",
+      "python",
+      "security",
+      "tool-calling"
     ],
     "prerequisites": []
   },
@@ -669,13 +767,15 @@
     "id": "orchestration-state-machine",
     "lesson_id": "7.09",
     "title": "Apply safe workflow state transitions",
-    "instructions": "Implement transition(state, event). Support queued\u2192running, running\u2192waiting_approval or complete, waiting_approval\u2192running or cancelled. Reject unknown events and transitions from terminal states. Return a new state value.",
+    "instructions": "Implement transition(state, event). Support queued→running, running→waiting_approval or complete, waiting_approval→running or cancelled. Reject unknown events and transitions from terminal states. Return a new state value.",
     "estimated_minutes": 25,
     "starter_code": "TRANSITIONS = {\n    # TODO: add valid transitions as {state: {event: next_state}}.\n}\ndef transition(state, event):\n    raise NotImplementedError",
     "checks_code": "assert transition(\"queued\", \"start\") == \"running\"\nassert transition(\"running\", \"needs_approval\") == \"waiting_approval\"\nassert transition(\"waiting_approval\", \"approve\") == \"running\"\nassert transition(\"waiting_approval\", \"reject\") == \"cancelled\"\nfor pair in [(\"complete\",\"start\"),(\"queued\",\"approve\"),(\"cancelled\",\"start\")]:\n    try: transition(*pair)\n    except ValueError: pass\n    else: raise AssertionError(\"Invalid transition must fail\")\nprint(\"All checks passed.\")",
     "solution_code": "TRANSITIONS = {\"queued\":{\"start\":\"running\"}, \"running\":{\"needs_approval\":\"waiting_approval\", \"finish\":\"complete\"}, \"waiting_approval\":{\"approve\":\"running\", \"reject\":\"cancelled\"}}\ndef transition(state, event):\n    try: return TRANSITIONS[state][event]\n    except KeyError as exc: raise ValueError(\"invalid workflow transition\") from exc",
-    "difficulty": "beginner",
+    "difficulty": "advanced",
     "skills": [
+      "agents",
+      "orchestration",
       "python"
     ],
     "prerequisites": []
@@ -689,11 +789,15 @@
     "starter_code": "from math import isfinite\ndef apply_once(event_id, value, store):\n    # store contains total and results.\n    raise NotImplementedError",
     "checks_code": "store = {\"total\":0.0, \"results\":{}}\nassert apply_once(\"e1\", 4, store) == 4\nassert apply_once(\"e1\", 4, store) == 4\nassert store[\"total\"] == 4\nassert apply_once(\"e2\", 3, store) == 7\nfor args in [(\"\",1,store),(\"e3\",float(\"nan\"),store)]:\n    try: apply_once(*args)\n    except ValueError: pass\n    else: raise AssertionError(\"Invalid event must fail\")\nprint(\"All checks passed.\")",
     "solution_code": "from math import isfinite\ndef apply_once(event_id, value, store):\n    if not isinstance(event_id, str) or not event_id.strip(): raise ValueError(\"event id required\")\n    if isinstance(value, bool) or not isinstance(value, (int,float)) or not isfinite(value): raise ValueError(\"finite numeric value required\")\n    if event_id in store[\"results\"]: return store[\"results\"][event_id]\n    store[\"total\"] += value\n    store[\"results\"][event_id] = store[\"total\"]\n    return store[\"total\"]",
-    "difficulty": "beginner",
+    "difficulty": "intermediate",
     "skills": [
+      "agents",
+      "orchestration",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [
+      "orchestration-state-machine"
+    ]
   },
   {
     "id": "mcp-permission-gate",
@@ -704,11 +808,16 @@
     "starter_code": "def authorize_mcp_call(tool, annotation, granted_scopes):\n    # TODO: decide from a server-owned policy, not model-visible annotation.\n    raise NotImplementedError",
     "checks_code": "assert authorize_mcp_call(\"read_doc\", {\"readOnlyHint\": True}, {\"docs:read\"}) is True\nassert authorize_mcp_call(\"delete_doc\", {\"readOnlyHint\": True}, set()) is False\nassert authorize_mcp_call(\"delete_doc\", {}, {\"docs:write\"}) is True\nassert authorize_mcp_call(\"unknown\", {}, {\"*\"}) is False\nprint(\"All checks passed.\")",
     "solution_code": "POLICY = {\"read_doc\":\"docs:read\", \"delete_doc\":\"docs:write\"}\ndef authorize_mcp_call(tool, annotation, granted_scopes):\n    required = POLICY.get(tool)\n    return required is not None and required in granted_scopes",
-    "difficulty": "beginner",
+    "difficulty": "advanced",
     "skills": [
-      "python"
+      "mcp",
+      "python",
+      "security",
+      "tool-calling"
     ],
-    "prerequisites": []
+    "prerequisites": [
+      "mcp-validate-tool-call"
+    ]
   },
   {
     "id": "production-eval-summary",
@@ -719,9 +828,12 @@
     "starter_code": "def evaluation_summary(cases):\n    # TODO: calculate accuracy and preserve every failing case ID.\n    raise NotImplementedError",
     "checks_code": "cases = [{\"id\":\"a\",\"expected\":\"yes\",\"actual\":\"yes\"},{\"id\":\"b\",\"expected\":\"no\",\"actual\":\"yes\"}]\nassert evaluation_summary(cases) == {\"total\":2,\"correct\":1,\"accuracy\":0.5,\"failures\":[\"b\"]}\nassert evaluation_summary([])[\"accuracy\"] == 0\ntry: evaluation_summary([{\"id\":\"x\",\"expected\":1,\"actual\":1},{\"id\":\"x\",\"expected\":1,\"actual\":0}])\nexcept ValueError: pass\nelse: raise AssertionError(\"Duplicate IDs must fail\")\nprint(\"All checks passed.\")",
     "solution_code": "def evaluation_summary(cases):\n    ids = [case.get(\"id\") for case in cases]\n    if any(not isinstance(i,str) or not i for i in ids) or len(ids) != len(set(ids)): raise ValueError(\"case IDs must be unique\")\n    failures = sorted(case[\"id\"] for case in cases if case.get(\"expected\") != case.get(\"actual\"))\n    correct = len(cases) - len(failures)\n    return {\"total\":len(cases), \"correct\":correct, \"accuracy\":correct/len(cases) if cases else 0.0, \"failures\":failures}",
-    "difficulty": "beginner",
+    "difficulty": "advanced",
     "skills": [
-      "python"
+      "evaluation",
+      "python",
+      "reliability",
+      "security"
     ],
     "prerequisites": []
   },
@@ -734,11 +846,16 @@
     "starter_code": "def deployment_issues(config):\n    # TODO: report every failed deployment safety condition.\n    raise NotImplementedError",
     "checks_code": "good = {\"image\":\"api@sha256:\"+\"a\"*64,\"run_as_root\":False,\"health_url\":\"https://service.test/health\",\"api_key_secret_ref\":\"vault://prod/ai-key\"}\nassert deployment_issues(good) == []\nbad = {\"image\":\"api:latest\",\"run_as_root\":True,\"health_url\":\"http://service.test/health\",\"api_key_secret_ref\":\"plain-secret\"}\nassert set(deployment_issues(bad)) == {\"image_not_digest_pinned\",\"root_user_enabled\",\"health_check_not_https\",\"secret_not_referenced\"}\nprint(\"All checks passed.\")",
     "solution_code": "import re\ndef deployment_issues(config):\n    issues=[]\n    if not re.search(r\"@sha256:[0-9a-f]{64}$\", str(config.get(\"image\",\"\"))): issues.append(\"image_not_digest_pinned\")\n    if config.get(\"run_as_root\") is not False: issues.append(\"root_user_enabled\")\n    if not str(config.get(\"health_url\",\"\" )).startswith(\"https://\"): issues.append(\"health_check_not_https\")\n    if not str(config.get(\"api_key_secret_ref\",\"\" )).startswith((\"vault://\",\"secret://\",\"arn:\")): issues.append(\"secret_not_referenced\")\n    return sorted(issues)",
-    "difficulty": "beginner",
+    "difficulty": "advanced",
     "skills": [
-      "python"
+      "deployment",
+      "docker",
+      "python",
+      "security"
     ],
-    "prerequisites": []
+    "prerequisites": [
+      "deployment-validate-container-config"
+    ]
   },
   {
     "id": "system-design-budget",
@@ -749,9 +866,13 @@
     "starter_code": "def budget_check(stages, max_latency_ms, max_cost_usd):\n    # TODO: validate and aggregate stage estimates.\n    raise NotImplementedError",
     "checks_code": "stages = [{\"latency_ms\":100,\"cost_usd\":0.002},{\"latency_ms\":300,\"cost_usd\":0.01}]\nassert budget_check(stages, 500, 0.02) == {\"latency_ms\":400,\"cost_usd\":0.012,\"exceeded\":[]}\nassert budget_check(stages, 399, 0.01)[\"exceeded\"] == [\"cost\",\"latency\"]\nprint(\"All checks passed.\")",
     "solution_code": "from math import isfinite\ndef budget_check(stages, max_latency_ms, max_cost_usd):\n    latency=cost=0\n    for stage in stages:\n        for key in (\"latency_ms\",\"cost_usd\"):\n            value=stage.get(key)\n            if isinstance(value,bool) or not isinstance(value,(int,float)) or not isfinite(value) or value<0: raise ValueError(\"invalid stage estimate\")\n        latency += stage[\"latency_ms\"]; cost += stage[\"cost_usd\"]\n    exceeded=[]\n    if latency>max_latency_ms: exceeded.append(\"latency\")\n    if cost>max_cost_usd: exceeded.append(\"cost\")\n    return {\"latency_ms\":latency,\"cost_usd\":round(cost,12),\"exceeded\":sorted(exceeded)}",
-    "difficulty": "beginner",
+    "difficulty": "advanced",
     "skills": [
-      "python"
+      "cost",
+      "python",
+      "reliability",
+      "system-design",
+      "testing"
     ],
     "prerequisites": []
   },
@@ -764,11 +885,15 @@
     "starter_code": "def untested_requirements(requirements, tests):\n    # TODO: return requirements with no linked test.\n    raise NotImplementedError",
     "checks_code": "reqs = [{\"id\":\"R1\"},{\"id\":\"R2\"},{\"id\":\"R3\"}]\ntests = [{\"requirement_ids\":[\"R1\",\"R3\"]}]\nassert untested_requirements(reqs, tests) == [\"R2\"]\nassert untested_requirements([], []) == []\ntry: untested_requirements([{\"id\":\"R1\"},{\"id\":\"R1\"}], [])\nexcept ValueError: pass\nelse: raise AssertionError(\"Duplicate requirements must fail\")\nprint(\"All checks passed.\")",
     "solution_code": "def untested_requirements(requirements, tests):\n    ids=[item.get(\"id\") for item in requirements]\n    if any(not isinstance(i,str) or not i for i in ids) or len(ids)!=len(set(ids)): raise ValueError(\"requirement IDs must be unique\")\n    traced={req_id for test in tests for req_id in test.get(\"requirement_ids\", [])}\n    return sorted(set(ids)-traced)",
-    "difficulty": "beginner",
+    "difficulty": "intermediate",
     "skills": [
-      "python"
+      "capstone",
+      "python",
+      "testing"
     ],
-    "prerequisites": []
+    "prerequisites": [
+      "capstone-requirement-checklist"
+    ]
   },
   {
     "id": "python-first-script",
@@ -781,6 +906,7 @@
     "estimated_minutes": 15,
     "difficulty": "beginner",
     "skills": [
+      "foundations",
       "python"
     ],
     "prerequisites": []
@@ -796,6 +922,7 @@
     "estimated_minutes": 20,
     "difficulty": "beginner",
     "skills": [
+      "foundations",
       "python"
     ],
     "prerequisites": []
@@ -811,6 +938,7 @@
     "estimated_minutes": 15,
     "difficulty": "beginner",
     "skills": [
+      "foundations",
       "python"
     ],
     "prerequisites": []
@@ -826,6 +954,7 @@
     "estimated_minutes": 20,
     "difficulty": "beginner",
     "skills": [
+      "foundations",
       "python"
     ],
     "prerequisites": []
@@ -841,6 +970,8 @@
     "estimated_minutes": 20,
     "difficulty": "beginner",
     "skills": [
+      "foundations",
+      "git",
       "python"
     ],
     "prerequisites": []
@@ -856,6 +987,8 @@
     "estimated_minutes": 20,
     "difficulty": "beginner",
     "skills": [
+      "foundations",
+      "http",
       "python"
     ],
     "prerequisites": []
@@ -871,6 +1004,8 @@
     "estimated_minutes": 20,
     "difficulty": "beginner",
     "skills": [
+      "ai-engineering",
+      "llm",
       "python"
     ],
     "prerequisites": []
@@ -886,6 +1021,8 @@
     "estimated_minutes": 20,
     "difficulty": "beginner",
     "skills": [
+      "ai-engineering",
+      "llm",
       "python"
     ],
     "prerequisites": []
@@ -901,6 +1038,8 @@
     "estimated_minutes": 20,
     "difficulty": "beginner",
     "skills": [
+      "ai-engineering",
+      "llm",
       "python"
     ],
     "prerequisites": []
@@ -916,7 +1055,9 @@
     "estimated_minutes": 20,
     "difficulty": "beginner",
     "skills": [
-      "python"
+      "agents",
+      "python",
+      "tool-calling"
     ],
     "prerequisites": []
   },
@@ -931,6 +1072,8 @@
     "estimated_minutes": 25,
     "difficulty": "beginner",
     "skills": [
+      "agents",
+      "orchestration",
       "python"
     ],
     "prerequisites": []

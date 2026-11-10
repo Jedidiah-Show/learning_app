@@ -6,6 +6,7 @@ import tempfile
 import unittest
 import zipfile
 from datetime import datetime
+from pathlib import Path
 from unittest.mock import patch
 
 from app import create_app, db
@@ -585,6 +586,41 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertNotIn('unrelated answer', response.get_json()['answer'])
         self.assertFalse(response.get_json()['in_scope'])
 
+    def test_tutor_modes_cover_quality_cases(self):
+        self.register()
+        lesson = all_lessons()[0]
+        cases = json.loads(
+            (Path(__file__).parent / 'fixtures' / 'tutor_quality_cases.json')
+            .read_text(encoding='utf-8')
+        )
+        for case in cases:
+            with self.subTest(case=case['name']), patch(
+                'app.gemini.generate_json',
+                return_value={'in_scope': True, 'answer': 'A grounded tutor response.'},
+            ) as generate:
+                response = self.client.post('/api/lessons/ask', json={
+                    'lesson_id': lesson['id'],
+                    'question': case['question'],
+                    'mode': case['mode'],
+                    'depth': case['depth'],
+                })
+                self.assertEqual(response.status_code, 200)
+                prompt = generate.call_args.args[0]
+                for requirement in case['prompt_requirements']:
+                    self.assertIn(requirement, prompt)
+                self.assertIn(lesson['title'], prompt)
+                self.assertIn('Learner pathway:', prompt)
+
+    def test_tutor_rejects_unknown_response_depth(self):
+        self.register()
+        response = self.client.post('/api/lessons/ask', json={
+            'lesson_id': all_lessons()[0]['id'],
+            'question': 'Explain this idea.',
+            'depth': 'unbounded',
+        })
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('response depth', response.get_json()['error'])
+
     def test_module_quiz_generates_questions_for_the_module(self):
         self.register()
         module = all_modules()[0]
@@ -768,6 +804,7 @@ class RuachAICourseTests(unittest.TestCase):
                     'submission': submission,
                     'repository_url': 'https://github.com/learner/project',
                     'checks_url': verification['checks_url'],
+                    'commit_sha': 'a' * 40,
                 },
             )
         self.assertEqual(rejected.status_code, 503)
@@ -798,6 +835,7 @@ class RuachAICourseTests(unittest.TestCase):
                 json={'submission': submission,
                       'repository_url': 'https://github.com/learner/project',
                       'checks_url': verification['checks_url'],
+                      'commit_sha': 'a' * 40,
                       'demo_url': 'https://demo.example.test'},
             )
         self.assertEqual(accepted.status_code, 200, accepted.get_json())
@@ -874,6 +912,7 @@ class RuachAICourseTests(unittest.TestCase):
             'submission': submission,
             'repository_url': 'https://github.com/learner/project',
             'checks_url': verification['checks_url'],
+            'commit_sha': 'a' * 40,
         }
         missing_checks = self.client.post(
             f"/api/projects/module/{module['id']}/submit",
@@ -1266,3 +1305,14 @@ class RuachAICourseTests(unittest.TestCase):
         response = self.client.get('/api/lessons/tutor/history/0.01')
         self.assertEqual(response.status_code, 200)
         self.assertIn('history', response.get_json())
+
+    def test_dashboard_loads_for_enrolled_user(self):
+        self.register()
+        response = self.client.get('/')
+        self.assertIn(response.status_code, [200, 503])
+
+
+    def test_dashboard_loads_for_enrolled_user(self):
+        self.register()
+        response = self.client.get('/')
+        self.assertIn(response.status_code, [200, 503])
