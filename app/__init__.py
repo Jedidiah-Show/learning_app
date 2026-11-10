@@ -493,6 +493,11 @@ def create_app(config_override=None):
     app.register_blueprint(ml_specialization_bp)
     if cloud_ai_infrastructure_bp is not None:
         app.register_blueprint(cloud_ai_infrastructure_bp)
+    try:
+        from app.routes.practice_arena import practice_arena_bp
+        app.register_blueprint(practice_arena_bp)
+    except Exception:
+        pass
 
     def _admin_header_token_valid():
         supplied = request.headers.get('X-Admin-Token', '')
