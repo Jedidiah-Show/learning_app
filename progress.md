@@ -3,27 +3,66 @@
 Living checkpoint for the current branch. The curriculum overlay and review
 data remain authoritative; regeneration preserves both.
 
-Last updated: 2026-11-10 (commit 9d692b7)
+Last updated: 2026-11-10 (HEAD 1a52b30 plus uncommitted responsive fix)
 
 ## Next major release progress (2026-11-10)
 
-### In Progress - Major release hardening
+The requested phases correspond to Milestones A-C in `goals.md`; strategic
+Milestone D is out of scope. **None of A-C is marked passed**: each still has
+acceptance criteria needing external review, production evidence, or further
+implementation, so a 95% pass claim is not currently supportable.
 
-#### Phase 1 - Security & Hygiene (IN PROGRESS — NOT COMPLETE; below 95% threshold)
-- [ ] **Goal 9 - Repository Hygiene (partial)**: Removed `.qoder/settings.local.json` from git tracking and added `.qoder/` to `.gitignore`. Added repository hygiene check and basic secret-pattern scanning to CI. **Remaining:** historical secret/history review, credential rotation, provider-scope review, reproducible clean-export process, stronger secret scanning, and full security-boundary review.
-- [ ] **Goal 1 - CSRF Hardening (partial)**: Added explicit `X-CSRF-Token` headers in `static/js/practice.js` (workspace save) and `static/js/app.js` (video progress). Rebuilt practice.bundle.js. Global fetch wrapper in place. Focused tests cover guard/autosave/video, but production-like tests for all affected mutating workflows (scheduling, integration probe, calendar sync, settings writes) are missing.
-- [ ] **Goal 3 - Dashboard Fixes (partial)**: Removed duplicate ML card rendering; AI/ML progress calculated separately. Full coverage for empty/partially complete/pathway states not yet verified.
-- [ ] **Goal 2 - Project Verification (partial, not meeting acceptance criteria)**: Added GitHub Actions API verification (repo ownership, conclusion/status, commit SHA/branch) with fallback to page-text scraping when API unavailable/unsupported. Enhanced SSRF protections (block private/loopback/link-local, strict redirect validation, DNS resolution checks) but no connection-time address pinning/full DNS-rebinding defense. API path doesn’t strictly require repo identity in all cases, commit/branch checks optional, and no tests for the API verification path. Page-text fallback can still accept evidence contrary to Goal 2 acceptance criteria.
+### Phase 1 / Milestone A - Trustworthy foundations — NOT PASSED
 
-**Status**: Phase 1 NOT PASSED (below 95%). Key release-blocking items remain open. Moving to Phase 2 while addressing remaining Phase 1 gaps.
+- Implemented CSRF protection and production-like regression coverage for core
+  lesson/practice writes, video progress, and selected settings/scheduling flows.
+- Project verification requires GitHub Actions API evidence tied to the
+  expected repository and full commit SHA; ambiguous/unsupported evidence fails
+  closed. Clean exports refuse destructive or repository-contained destinations.
+- Dashboard AI/ML pathway counts are separated; repository hygiene checks and
+  secret-pattern scanning run in CI.
+- **Still blocking:** independent security-boundary review; DNS-rebinding/
+  connection-pinning assurance for URL fetches; complete CSRF coverage of every
+  affected mutation; credential rotation/provider-scope and Git-history review;
+  and a verified threat model for sandbox and project verification.
 
-#### Phase 2 - Coherent Learner Experience (IN PROGRESS)
-- [ ] **Goal 4 - Navigation & Journey**: Review current nav structure; plan consolidation per IA. Need route mapping, redirects, mobile testing.
-- [ ] **Goal 5 - Interactive Learning**: Audit exercise coverage vs curriculum, add metadata (difficulty/skills), improve feedback.
-- [ ] **Goal 6 - AI Tutor**: Enhance context passing, improve modes (Hint/Quiz/Code Review), add guardrails.
-- [ ] **Goal 12 - UI/UX Quality**: Design tokens, accessibility improvements, consistent states.
+### Phase 2 / Milestone B - Coherent learner experience — NOT PASSED
 
-### Completed (previous sessions)
+- Added the practice catalogue with difficulty/skill/prerequisite metadata for
+  62 exercises, plus a curriculum-to-practice coverage map.
+- Tutor modes, response-depth control, persisted lesson context and an
+  evaluation rubric are in place. The rubric and mocked contract tests do not
+  establish real model-response quality.
+- **Still blocking:** curriculum-owner validation of outcome mapping and
+  practical coverage; scored tutor responses with latency/cost evidence;
+  representative beginner-learner usability review; and broader accessibility
+  validation.
+
+### Phase 3 / Milestone C - Continuity and operational maturity — NOT PASSED
+
+- Lesson-task completion and tutor history are authenticated, server-persisted
+  per learner/lesson; tutor history can be cleared, and the UI reports
+  synchronization errors. Migration `4d2a7f9c1b63` adds task progress.
+- Added browser-journey coverage, CI app dependencies, serial Playwright workers
+  for Pyodide stability, and a release/migration/rollback process.
+- **Still blocking:** production migration and authenticated journey smoke
+  tests; monitoring and availability validation; and validation of
+  offline/conflicting updates and the complete local-state inventory. Per the
+  user's decision, the free Render tier remains in use for the pilot, so
+  hosting reliability acceptance is deferred. No live deployment is claimed.
+
+### Current validation
+
+- Full Python suite: **248 passed, 1 skipped** (17:03); existing
+  `datetime.utcnow()` and dependency deprecation warnings remain.
+- Full browser suite: **2 passed**, including registration/onboarding,
+  persistence, keyboard navigation, mobile layout and isolated Python execution.
+- Frontend CSS/JS builds pass and reproduce committed generated assets. Alembic
+  has one head, `4d2a7f9c1b63`.
+- A responsive lesson test exposed conflicting mobile sidebar rules and
+  unbounded inline setup commands; both were fixed and the browser suite passes.
+
+### Completed in earlier work
 
 - **Dashboard pathway comparison now uses separate counts**: AI progress uses
   AI lesson completions; ML progress includes shared foundation lessons and ML

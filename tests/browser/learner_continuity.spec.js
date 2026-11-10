@@ -51,7 +51,8 @@ test('registration, saved lesson tasks, and tutor history survive a reload', asy
   await page.keyboard.press('Enter');
   await expect(navToggle).toHaveAttribute('aria-expanded', 'true');
   await expect(page.getByRole('navigation', {name: 'Main navigation'})).toBeVisible();
-  expect(await page.evaluate(
-    () => document.documentElement.scrollWidth <= document.documentElement.clientWidth,
-  )).toBeTruthy();
+  const documentWidth = await page.evaluate(() => document.documentElement.scrollWidth);
+  const viewportWidth = await page.evaluate(() => document.documentElement.clientWidth);
+  expect(documentWidth, 'mobile lesson should not overflow horizontally')
+    .toBeLessThanOrEqual(viewportWidth);
 });

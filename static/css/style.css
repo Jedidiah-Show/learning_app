@@ -365,13 +365,6 @@ html.nav-collapsed body.has-sidebar .nav-utility-group [data-theme-label] { disp
 }
 
 @media (max-width:760px) {
-    body.has-sidebar > header { width:4.75rem; }
-    html.nav-collapsed body.has-sidebar > main { width:calc(100% - 4.75rem);margin-left:4.75rem;padding:20px 16px; }
-    html.nav-collapsed body.has-sidebar > footer { width:calc(100% - 4.75rem);margin-left:4.75rem; }
-    html:not(.nav-collapsed) body.has-sidebar > header { width:min(16rem,82vw); }
-    html:not(.nav-collapsed) body.has-sidebar > main { width:calc(100% - min(16rem,82vw));margin-left:min(16rem,82vw);padding:20px 16px; }
-    html:not(.nav-collapsed) body.has-sidebar > footer { width:calc(100% - min(16rem,82vw));margin-left:min(16rem,82vw); }
-    body.has-sidebar > header > .max-w-7xl { padding:14px 10px; }
     body.has-sidebar .app-nav .nav-link { min-height:46px; }
     .auth-shell > header .flex.min-h-16 { flex-direction:row;align-items:center;justify-content:space-between; }
     .auth-shell > header .app-user-menu { flex-direction:row;align-items:center;margin-top:0; }
@@ -485,7 +478,7 @@ html[data-theme="dark"] .lesson-setup-check.lesson-setup-done { border-color:#27
 .lesson-setup-check label { display:flex;align-items:center;gap:10px;cursor:pointer;color:var(--app-text);font-size:14.5px;font-weight:650; }
 .lesson-setup-check input[type="checkbox"] { width:18px;height:18px;flex:none;accent-color:#218571; }
 .lesson-setup-command { margin-top:8px; }
-.lesson-setup-command code { display:inline-block;padding:6px 10px;border-radius:8px;background:#0F5247;color:#E9F7EE;font-size:12.5px;overflow-x:auto;white-space:nowrap; }
+.lesson-setup-command code { display:inline-block;max-width:100%;padding:6px 10px;border-radius:8px;background:#0F5247;color:#E9F7EE;font-size:12.5px;overflow-x:auto;white-space:nowrap; }
 .lesson-setup-expect { margin-top:8px;color:var(--app-muted);font-size:12.5px;line-height:1.6; }
 .lesson-setup-status { margin-top:8px;min-height:16px;color:#218571;font-size:12px;font-weight:700; }
 .lesson-plain-intro { margin-top:10px;color:var(--app-text);font-size:16px;line-height:1.8; }
