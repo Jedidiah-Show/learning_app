@@ -41,6 +41,21 @@ jobs:
         run: python -m compileall -q app tests migrations index.py wsgi.py
       - name: Check dependency consistency
         run: python -m pip check
+      - name: Repository hygiene check
+        run: |
+          if git ls-files | grep -E '\.(env|env\.local|pem|key)$' | grep -v '\.env\.example'; then
+            echo 'Prohibited environment/secret files tracked' && exit 1
+          fi
+          if git ls-files | grep -E '^\.qoder/|\.qoder/settings'; then
+            echo 'Local editor settings tracked' && exit 1
+          fi
+          echo 'Repository hygiene OK'
+      - name: Basic secret pattern scan
+        run: |
+          if git grep -n -I -E '(AKIA[0-9A-Z]{16}|sk_live_[0-9a-zA-Z]{24}|ghp_[A-Za-z0-9]{36}|xox[baprs]-[0-9a-zA-Z-]+)' -- ':!node_modules' ':!.venv' ':!*.lock' 2>&1 | grep -v '.github/workflows/ci.yml'; then
+            echo 'Potential secrets found' && exit 1
+          fi
+          echo 'Secret pattern scan OK'
       - name: Run tests
         run: python -m pytest -q
       - uses: actions/setup-node@v4

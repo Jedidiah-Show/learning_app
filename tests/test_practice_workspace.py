@@ -1,5 +1,6 @@
 import ast
 import os
+import re
 import tempfile
 import unittest
 
@@ -190,6 +191,33 @@ class PracticeWorkspaceTests(unittest.TestCase):
         with self.app.app_context():
             workspace = PracticeWorkspace.query.one()
             self.assertEqual(workspace.exercise_id, 'python-cheapest-by-provider')
+            self.assertEqual(workspace.source, source)
+
+    def test_workspace_autosave_persists_only_with_a_valid_csrf_token(self):
+        self.register('learner')
+        self.unlock('learner', '1.01')
+        page = self.client.get('/lesson/1.01')
+        token = re.search(
+            rb'<meta name="csrf-token" content="([^"]+)"', page.data
+        ).group(1).decode()
+        self.app.config['CSRF_ENABLED'] = True
+        url = '/api/lessons/practice/1.01/python-cheapest-by-provider'
+        source = 'def cheapest_by_provider(rows):\n    return rows[0]\n'
+
+        rejected = self.client.put(url, json={'source': source})
+        self.assertEqual(rejected.status_code, 400)
+        with self.app.app_context():
+            self.assertEqual(PracticeWorkspace.query.count(), 0)
+
+        saved = self.client.put(
+            url, json={'source': source},
+            headers={'X-CSRF-Token': token},
+        )
+        self.assertEqual(saved.status_code, 200, saved.get_json())
+        restored = self.client.get(url)
+        self.assertEqual(restored.get_json()['source'], source)
+        with self.app.app_context():
+            workspace = PracticeWorkspace.query.one()
             self.assertEqual(workspace.source, source)
 
     def test_workspace_routes_reject_locked_unknown_and_oversized_exercises(self):

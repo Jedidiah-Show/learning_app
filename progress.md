@@ -1,9 +1,66 @@
 # Implementation progress
 
-Living checkpoint for the current branch (`main` at `212e05f`). The curriculum
-overlay and review data remain authoritative; regeneration preserves both.
+Living checkpoint for the current branch. The curriculum overlay and review
+data remain authoritative; regeneration preserves both.
 
-Last updated: 2026-11-03
+Last updated: 2026-11-10
+
+## Next major release progress (2026-11-10)
+
+### In Progress - Major release hardening
+
+#### Phase 1 - Security & Hygiene (IN PROGRESS - NOT COMPLETE)
+- [x] **Goal 9 - Repository Hygiene (partial)**: Removed `.qoder/settings.local.json` from git tracking and added `.qoder/` to `.gitignore`. Added repository hygiene check and basic secret pattern scanning to CI. Changes staged but not committed. Still need: audit for historical secrets, credential rotation, provider scope review, reproducible clean-export process, and stronger secret scanning.
+- [x] **Goal 1 - CSRF Hardening (partial)**: Added explicit `X-CSRF-Token` headers in `static/js/practice.js` (workspace save) and `static/js/app.js` (video progress). Rebuilt practice.bundle.js. Global fetch wrapper in place. CSRF tests exist for guard/autosave/video but need coverage for all mutating workflows (scheduling, integration probing, calendar sync, settings writes).
+- [x] **Goal 3 - Dashboard Fixes (substantially done)**: Fixed ML pathway card duplication - consolidated rendering. Dashboard pathway comparison uses independent calculations for AI and ML.
+- [ ] **Goal 2 - Project Verification (improving)**: Enhanced SSRF protections (block private/loopback/link-local, strict redirect validation). Added GitHub Actions API-based verification that checks repo ownership, run conclusion, commit SHA/branch when available. API verification falls back gracefully to page scraping if API unavailable. Added `commit_sha`/`branch` fields and verification method tracking. Still needs stronger DNS rebinding protection/address pinning, more provider API coverage, and full integration with routes to pass/verify commit info.
+
+**Status**: Phase 1 partially complete. Focused tests pass (10+ tests) but key acceptance criteria from goals.md not met. Needs significant work on project verification, full CSRF test coverage, and security hygiene completion.
+
+### Completed (previous sessions)
+
+- **Dashboard pathway comparison now uses separate counts**: AI progress uses
+  AI lesson completions; ML progress includes shared foundation lessons and ML
+  specialization lessons. Removed the duplicate optional ML card and added a
+  regression test with ML-only completion data.
+- Restored missing app bootstrap imports that prevented database URL
+  normalization, app creation, and CSRF token generation. Also restored
+  compatibility for existing rate-limit call sites that pass per-endpoint
+  limits; those mismatched calls were preventing registration and blocking
+  production-like route tests.
+- Focused verification and dashboard regressions pass: **9 passed**.
+- Added an explicit `CSRF_ENABLED` test override and a regression covering
+  missing, invalid and valid header/form tokens. Auditing the production guard
+  exposed another missing bootstrap import (`hmac`), now restored; the CSRF
+  regression passes.
+- Audited mutating template and JavaScript `fetch` calls: the base layout loads
+  the shared same-origin CSRF fetch wrapper before page-specific scripts, so
+  calls without a local token header (including practice saves and video
+  tracking) receive the session token centrally.
+- CSRF + practice tests: **8 passed**; complete security-hardening suite:
+  **12 passed**.
+- Added production-like endpoint tests proving that practice autosave and
+  lesson-video progress reject writes without a token, persist writes with the
+  session token, and restore the saved data. Both targeted endpoint tests pass.
+- The broader learner-flow suite exposed a tutor persistence bug: greeting
+  responses saved the learner message but returned before saving the tutor
+  reply. The greeting branch now persists both sides of the exchange, with a
+  regression assertion covering the conversation record.
+- Final validation for this work session: `.venv/bin/python -m pytest -q
+  tests/test_security_hardening.py tests/test_practice_workspace.py
+  tests/test_learning_flows.py` → **71 passed**. The suite reports existing
+  `datetime.utcnow()` deprecation warnings; no test failures remain in these
+  targeted suites.
+
+### Remaining limitations
+
+- The verifier still infers build status from page text and does not tie CI
+  evidence to the submitted repository or exact commit. Provider API-backed
+  verification remains a P0 release requirement.
+- DNS resolution is not pinned to the validated connection, so this change is
+  not a complete DNS-rebinding defense. The release plan's full SSRF review and
+  production-like integration tests remain outstanding.
+- Other release goals have not yet been revalidated or marked complete.
 
 ## Done
 

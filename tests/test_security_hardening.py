@@ -1,5 +1,6 @@
 import hashlib
 import os
+import re
 import tempfile
 import unittest
 from datetime import datetime, timedelta, timezone
@@ -69,6 +70,36 @@ class SecurityHardeningTests(unittest.TestCase):
         self.assertIn('frame-ancestors', response.headers[
             'Content-Security-Policy-Report-Only'
         ])
+
+    def test_csrf_guard_can_be_enabled_in_tests_and_checks_form_and_header_tokens(self):
+        self.app.config['CSRF_ENABLED'] = True
+        page = self.client.get('/login')
+        token = re.search(
+            rb'<meta name="csrf-token" content="([^"]+)"', page.data
+        ).group(1).decode()
+
+        payload = {'username': 'missing', 'password': 'wrong'}
+        for headers in ({}, {'X-CSRF-Token': 'invalid'}):
+            with self.subTest(headers=headers):
+                rejected = self.client.post(
+                    '/login', data=payload, headers=headers
+                )
+                self.assertEqual(rejected.status_code, 400)
+                self.assertIn(b'CSRF validation failed', rejected.data)
+
+        accepted = self.client.post(
+            '/login', data=payload, headers={'X-CSRF-Token': token}
+        )
+        self.assertEqual(accepted.status_code, 200)
+        self.assertNotIn(b'CSRF validation failed', accepted.data)
+        self.assertIn(b'Invalid username or password', accepted.data)
+
+        form_accepted = self.client.post(
+            '/register',
+            data={'csrf_token': token},
+        )
+        self.assertEqual(form_accepted.status_code, 200)
+        self.assertNotIn(b'CSRF validation failed', form_accepted.data)
 
     def test_account_changes_require_current_password(self):
         self.register()

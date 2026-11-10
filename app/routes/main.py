@@ -247,6 +247,33 @@ def index():
         except Exception:
             current_app.logger.exception('ML pathway overview failed')
             ml_overview = None
+        pathway_comparison = None
+        if ml_overview:
+            ai_lessons = all_lessons()
+            foundation_lessons = [
+                lesson for lesson in ai_lessons
+                if lesson.get('module_id') in {'00', '01', '02'}
+            ]
+            pathway_comparison = {
+                'ai': {
+                    'completed': sum(
+                        lesson['id'] in completed_ids for lesson in ai_lessons
+                    ),
+                    'total': len(ai_lessons),
+                },
+                'ml': {
+                    'completed': (
+                        sum(
+                            lesson['id'] in completed_ids
+                            for lesson in foundation_lessons
+                        )
+                        + ml_overview['completed_lessons']
+                    ),
+                    'total': (
+                        len(foundation_lessons) + ml_overview['total_lessons']
+                    ),
+                },
+            }
         return render_template('dashboard.html', config=config, user=current_user,
                                course=curriculum(),
                                progress=progress, next_lesson=next_lesson,
@@ -257,6 +284,7 @@ def index():
                                next_module_id=next_module_id,
                                due_reviews=due_reviews,
                                ml_overview=ml_overview,
+                               pathway_comparison=pathway_comparison,
                                pathway_destination=pathway_destination)
     except Exception:
         current_app.logger.exception('Dashboard error')
@@ -275,6 +303,7 @@ def index():
                                streak=0, longest_streak=0,
                                onboarding_complete=True, next_module_id=None,
                                due_reviews=0, ml_overview=None,
+                               pathway_comparison=None,
                                pathway_destination=None,
                                progress_error=True), 503
 

@@ -6,9 +6,14 @@ from flask_sqlalchemy import SQLAlchemy
 from flask_login import LoginManager, current_user
 from flask_migrate import Migrate
 from datetime import date, time, timedelta
+from copy import deepcopy
+from urllib.parse import urlsplit
+from werkzeug.middleware.proxy_fix import ProxyFix
+import hmac
+import re
+import secrets
 import yaml
 import os
-import time
 import uuid
 
 from flask import (
@@ -513,7 +518,10 @@ def create_app(config_override=None):
 
     @app.before_request
     def enforce_csrf_protection():
-        if request.method in {'POST', 'PUT', 'PATCH', 'DELETE'} and not app.testing:
+        if (
+            request.method in {'POST', 'PUT', 'PATCH', 'DELETE'}
+            and app.config.get('CSRF_ENABLED', not app.testing)
+        ):
             # A custom header cannot be set by a cross-site form post, so
             # requests already proven by X-Admin-Token are CSRF-immune and
             # need no session token (keeps scripted maintenance calls working).

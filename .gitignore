@@ -22,3 +22,6 @@ backup*.dump
 /Ruach-ai.png
 /ruachai_logo.png
 /command_status.txt
+
+# Local editor/tool settings
+.qoder/

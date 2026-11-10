@@ -196,6 +196,9 @@
     const sections = document.querySelectorAll('[data-lesson-video]');
     if (!sections.length) return;
 
+    const csrfTokenMeta = document.querySelector('meta[name="csrf-token"]');
+    const videoCsrfToken = csrfTokenMeta ? csrfTokenMeta.content : null;
+
     const apiUrl = 'https://www.youtube.com/iframe_api';
     let apiPromise = null;
 
@@ -274,7 +277,7 @@
             lastReported = rounded;
             fetch(progressUrl, {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: { 'Content-Type': 'application/json', ...(videoCsrfToken ? { 'X-CSRF-Token': videoCsrfToken } : {}) },
                 keepalive: true,
                 body: JSON.stringify({
                     lesson_id: lessonId,

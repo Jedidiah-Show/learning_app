@@ -79,7 +79,7 @@ if (root) {
             try {
                 const response = await fetch(workspaceUrl(selectedExercise), {
                     method: 'PUT',
-                    headers: {'Content-Type': 'application/json'},
+                    headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrfToken},
                     body: JSON.stringify({source}),
                 });
                 const data = await response.json();

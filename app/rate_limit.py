@@ -99,18 +99,29 @@ def _increment(bucket, window_start):
         return count
 
 
-def check_rate_limit(name, identity=None):
+def check_rate_limit(name, identity=None, *, limit=None, window_seconds=None):
     """Increment a counter and return seconds to wait when over the limit.
 
     Uses centralized RATE_LIMIT_CONFIG to determine limit and window.
     Returns None if under the limit, or retry_after seconds if over.
     """
+    for label, value in (
+        ('limit', limit), ('window_seconds', window_seconds)
+    ):
+        if value is not None and (
+            not isinstance(value, int) or isinstance(value, bool) or value <= 0
+        ):
+            raise ValueError(f'{label} must be a positive integer')
     if not current_app.config.get(
         'RATE_LIMIT_ENABLED', not current_app.testing
     ):
         return None
     try:
         config = _get_config(name, identity)
+        if limit is not None:
+            config['limit'] = limit
+        if window_seconds is not None:
+            config['window_seconds'] = window_seconds
         limit = config['limit']
         window_seconds = config['window_seconds']
         aware_now = _utcnow()
@@ -143,8 +154,20 @@ def check_rate_limit(name, identity=None):
         return None
 
 
-def enforce_rate_limit(name, identity=None):
-    retry_after = check_rate_limit(name, identity)
+def enforce_rate_limit(name, identity=None, *legacy_args):
+    """Enforce a configured limit, including the previous per-call form.
+
+    The current form is ``enforce_rate_limit(name, identity)``. Existing
+    endpoints may still pass ``name, limit, window_seconds, identity``.
+    """
+    limit = window_seconds = None
+    if legacy_args:
+        if len(legacy_args) != 2:
+            raise TypeError('Expected identity or limit, window_seconds, identity')
+        limit, window_seconds, identity = identity, *legacy_args
+    retry_after = check_rate_limit(
+        name, identity, limit=limit, window_seconds=window_seconds
+    )
     if retry_after is not None:
         raise RateLimitExceeded(retry_after, name=name)
 

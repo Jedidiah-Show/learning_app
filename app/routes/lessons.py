@@ -728,7 +728,6 @@ def ask_lesson_question():
         conversation.append({'role': role, 'content': content})
 
     # Persist user message to database
-    from app import TutorConversation
     tutoring_msg = TutorConversation(
         user_id=current_user.id,
         lesson_id=lesson_id,
@@ -739,11 +738,19 @@ def ask_lesson_question():
     db.session.commit()
 
     if TUTOR_GREETING_RE.fullmatch(question.strip()):
+        answer = (
+            'Hi, I’m Ruach-AI, your tutor for the RUACH AI & ML Engineering course. '
+            'What would you like to understand better in this lesson?'
+        )
+        db.session.add(TutorConversation(
+            user_id=current_user.id,
+            lesson_id=lesson_id,
+            role='assistant',
+            content=answer,
+        ))
+        db.session.commit()
         return jsonify({
-            'answer': (
-                'Hi, I’m Ruach-AI, your tutor for the RUACH AI & ML Engineering course. '
-                'What would you like to understand better in this lesson?'
-            ),
+            'answer': answer,
             'in_scope': True,
         })
     from app.gemini import GeminiError, generate_json
@@ -808,7 +815,6 @@ def ask_lesson_question():
     if not isinstance(answer, str) or not answer.strip():
         return jsonify({'error': 'Clarification is temporarily unavailable. Please retry.'}), 503
     # Save assistant message to database
-    from app import TutorConversation
     tutoring_msg = TutorConversation(
         user_id=current_user.id,
         lesson_id=lesson_id,

@@ -1,6 +1,7 @@
 import io
 import json
 import os
+import re
 import tempfile
 import unittest
 import zipfile
@@ -12,7 +13,7 @@ from app.curriculum import all_lessons, all_modules, curriculum
 from app.gemini import GeminiError, GeminiRateLimited
 from app.models import (
     CalendarEvent, CoursePlan, CourseProject, Credential, LessonCompletion, Quiz,
-    QuizResult, ReviewItem, StudySession, User, VideoProgress,
+    QuizResult, ReviewItem, StudySession, TutorConversation, User, VideoProgress,
 )
 from sqlalchemy.exc import IntegrityError
 
@@ -556,6 +557,14 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertIn('Ruach-AI', response.get_json()['answer'])
         self.assertEqual(response.get_json()['in_scope'], True)
         generate.assert_not_called()
+        with self.app.app_context():
+            messages = TutorConversation.query.order_by(
+                TutorConversation.id
+            ).all()
+            self.assertEqual(
+                [(message.role, message.lesson_id) for message in messages],
+                [('user', lesson['id']), ('assistant', lesson['id'])],
+            )
 
     def test_lesson_tutor_uses_fixed_redirect_for_out_of_scope_response(self):
         self.register()
@@ -1046,6 +1055,36 @@ class RuachAICourseTests(unittest.TestCase):
         })
         self.assertEqual(no_video.status_code, 404)
         self.assertIn('no video', no_video.get_json()['error'])
+
+    def test_video_progress_requires_csrf_and_persists_with_valid_token(self):
+        self.register()
+        lesson = next(item for item in all_lessons() if item.get('video'))
+        self.unlock_lesson(lesson['id'])
+        page = self.client.get(f"/lesson/{lesson['id']}")
+        token = re.search(
+            rb'<meta name="csrf-token" content="([^"]+)"', page.data
+        ).group(1).decode()
+        self.app.config['CSRF_ENABLED'] = True
+        payload = {
+            'lesson_id': lesson['id'],
+            'position_seconds': 30,
+            'duration_seconds': 600,
+        }
+
+        rejected = self.client.post('/api/lessons/video-progress', json=payload)
+        self.assertEqual(rejected.status_code, 400)
+        with self.app.app_context():
+            self.assertEqual(VideoProgress.query.count(), 0)
+
+        saved = self.client.post(
+            '/api/lessons/video-progress', json=payload,
+            headers={'X-CSRF-Token': token},
+        )
+        self.assertEqual(saved.status_code, 200, saved.get_json())
+        with self.app.app_context():
+            progress = VideoProgress.query.one()
+            self.assertEqual(progress.lesson_id, lesson['id'])
+            self.assertEqual(progress.watched_seconds, 30)
 
     def test_video_progress_tracks_furthest_watch_position_and_completion(self):
         self.register()

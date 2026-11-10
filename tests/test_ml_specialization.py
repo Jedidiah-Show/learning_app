@@ -101,6 +101,24 @@ class MLSpecializationFlowTests(unittest.TestCase):
         advanced = self.client.get('/').get_data(as_text=True)
         self.assertIn('1 of 18 lessons', advanced)
 
+    def test_dashboard_compares_distinct_pathway_progress_and_shows_one_ml_card(self):
+        self._complete_shared_prerequisites()
+        first_ml_lesson = next(
+            lesson for module in machine_learning_pathway()['modules']
+            for lesson in module['lessons']
+            if lesson.get('status') == 'ready'
+        )
+        self._complete_quiz(first_ml_lesson)
+
+        page = self.client.get('/')
+        self.assertEqual(page.status_code, 200)
+        html = page.get_data(as_text=True)
+        self.assertEqual(
+            html.count('Machine Learning Engineering specialization'), 1
+        )
+        self.assertIn('id="ai-lessons-completed">0</p>', html)
+        self.assertIn('id="ml-lessons-completed">1</p>', html)
+
     def test_pathway_content_is_namespaced_and_not_in_shared_curriculum(self):
         pathway = machine_learning_pathway()
         pathway_ids = {
