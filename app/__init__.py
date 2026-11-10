@@ -41,6 +41,14 @@ _NEVER_GATED_ENDPOINTS = frozenset({
 })
 
 
+def _is_api_path(path):
+    """True for JSON API routes, including the Arena API under /arena/api."""
+    return (
+        path.startswith('/api/')
+        or path.startswith('/arena/api/')
+    )
+
+
 def hours_range(value):
     """Render an hour estimate as a friendly, rounded range.
 
@@ -272,7 +280,7 @@ def create_app(config_override=None):
 
     @app.errorhandler(RequestEntityTooLarge)
     def handle_file_too_large(e):
-        if request.path.startswith('/api/'):
+        if _is_api_path(request.path):
             return jsonify({'error': 'File is too large. Maximum size is 2MB.'}), 413
         flash('Profile photo is too large. Maximum size is 2MB.', 'error')
         return redirect(url_for('auth.profile'))
@@ -373,7 +381,7 @@ def create_app(config_override=None):
 
     @login_manager.unauthorized_handler
     def unauthorized():
-        if request.path.startswith('/api/'):
+        if _is_api_path(request.path):
             return jsonify({'error': 'Authentication required'}), 401
         return redirect(url_for('auth.login', next=request.url))
     
@@ -471,6 +479,7 @@ def create_app(config_override=None):
     from app.routes.leaderboard import leaderboard_bp
     from app.routes.integrations import integrations_bp
     from app.routes.credentials import credentials_bp
+    from app.routes.practice_arena import practice_arena_bp
     from app.routes.ml_specialization import ml_specialization_bp
     try:
         from app.routes.cloud_ai_infrastructure import cloud_ai_infrastructure_bp
@@ -493,11 +502,7 @@ def create_app(config_override=None):
     app.register_blueprint(ml_specialization_bp)
     if cloud_ai_infrastructure_bp is not None:
         app.register_blueprint(cloud_ai_infrastructure_bp)
-    try:
-        from app.routes.practice_arena import practice_arena_bp
-        app.register_blueprint(practice_arena_bp)
-    except Exception:
-        pass
+    app.register_blueprint(practice_arena_bp)
 
     def _admin_header_token_valid():
         supplied = request.headers.get('X-Admin-Token', '')
@@ -520,7 +525,7 @@ def create_app(config_override=None):
         if (
             current_user.is_authenticated
             and request.endpoint not in _NEVER_GATED_ENDPOINTS
-            and not request.path.startswith('/api/')
+            and not _is_api_path(request.path)
             and session.get('_post_setup_next')
             and not session.get('_onboarding_done')
         ):
@@ -541,7 +546,7 @@ def create_app(config_override=None):
             token = session.get('_csrf_token')
             supplied = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
             if not token or not supplied or not hmac.compare_digest(token, supplied):
-                if request.path.startswith('/api/'):
+                if _is_api_path(request.path):
                     return jsonify({'error': 'CSRF validation failed'}), 400
                 return 'CSRF validation failed', 400
         # Learners enter the fixed course immediately; the old subject and
@@ -579,7 +584,7 @@ def create_app(config_override=None):
 
     @app.errorhandler(403)
     def forbidden(error):
-        if request.path.startswith('/api/'):
+        if _is_api_path(request.path):
             return jsonify({'error': getattr(error, 'description', None)
                             or 'You do not have access to this resource.'}), 403
         message = getattr(error, 'description', None)
@@ -610,7 +615,7 @@ def create_app(config_override=None):
 
     @app.errorhandler(404)
     def not_found(error):
-        if request.path.startswith('/api/'):
+        if _is_api_path(request.path):
             return jsonify({'error': 'Not found'}), 404
         message = 'The page may have moved, or the link may be incomplete.'
         if request.path.startswith('/lesson/'):

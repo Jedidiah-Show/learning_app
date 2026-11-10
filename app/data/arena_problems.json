@@ -1,0 +1,291 @@
+[
+  {
+    "id": "algo-total-even-numbers",
+    "track": "algorithms",
+    "topic": "arrays-strings",
+    "title": "Total the even numbers",
+    "summary": "Iterate an array, filter by a condition, and accumulate a result.",
+    "statement": "Write total_even(numbers) that returns the sum of every even integer in numbers. Return 0 for an empty list. Do not use sum() or a comprehension for this first exercise: practise an explicit loop, a condition, and an accumulator.",
+    "examples": [
+      {
+        "input": "[1, 2, 3, 4]",
+        "output": "6",
+        "explanation": "2 and 4 are even, so 2 + 4 = 6."
+      },
+      {
+        "input": "[]",
+        "output": "0",
+        "explanation": "There is nothing to add, so the accumulator stays at zero."
+      }
+    ],
+    "constraints": [
+      "numbers contains only integers.",
+      "Return an int.",
+      "Use a loop rather than sum() or a comprehension."
+    ],
+    "difficulty": "beginner",
+    "skills": ["arrays", "loops", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 10,
+    "starter_code": "def total_even(numbers):\n    # TODO: keep a running total and add each even number.\n    pass\n",
+    "solution_code": "def total_even(numbers):\n    total = 0\n    for number in numbers:\n        if number % 2 == 0:\n            total += number\n    return total\n",
+    "browser_checks": "assert total_even([1, 2, 3, 4]) == 6\nassert total_even([]) == 0\nassert total_even([-2, -1, 0]) == -2\nprint('All public checks passed.')\n",
+    "hints": [
+      "Start with total = 0 before the loop.",
+      "A number is even when number % 2 == 0.",
+      "Add to the total only inside the if block."
+    ],
+    "editorial": "The loop visits one element at a time. The accumulator starts at zero, the condition selects even numbers, and the final return hands the total back to the caller. This pattern (initialize, iterate, conditionally update, return) appears in almost every data-processing task."
+  },
+  {
+    "id": "algo-count-word-frequency",
+    "track": "algorithms",
+    "topic": "dictionaries-sets",
+    "title": "Count word frequency",
+    "summary": "Use a dictionary as a frequency table while handling missing keys.",
+    "statement": "Write word_frequencies(words) that returns a dictionary mapping each lowercase word to the number of times it appears in the list. Treat words case-insensitively. Return an empty dictionary for an empty list.",
+    "examples": [
+      {
+        "input": "['AI', 'ai', 'systems']",
+        "output": "{'ai': 2, 'systems': 1}",
+        "explanation": "Both spellings of AI collapse to the same lowercase key."
+      }
+    ],
+    "constraints": [
+      "words is a list of strings.",
+      "Keys must be lowercase.",
+      "Return a dict."
+    ],
+    "difficulty": "beginner",
+    "skills": ["dictionaries", "loops", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 12,
+    "starter_code": "def word_frequencies(words):\n    # TODO: build and return a frequency dictionary.\n    pass\n",
+    "solution_code": "def word_frequencies(words):\n    counts = {}\n    for word in words:\n        key = word.lower()\n        counts[key] = counts.get(key, 0) + 1\n    return counts\n",
+    "browser_checks": "assert word_frequencies(['AI', 'ai', 'systems']) == {'ai': 2, 'systems': 1}\nassert word_frequencies([]) == {}\nassert word_frequencies(['One']) == {'one': 1}\nprint('All public checks passed.')\n",
+    "hints": [
+      "Create an empty dictionary before the loop.",
+      "dict.get(key, 0) gives you a safe default.",
+      "Add one to the previous count and store it back under the same key."
+    ],
+    "editorial": "A dictionary is the natural frequency table. Using counts.get(key, 0) avoids a separate membership check and keeps the update atomic and readable. Normalising keys before counting is what makes the operation case-insensitive."
+  },
+  {
+    "id": "algo-reverse-words",
+    "track": "algorithms",
+    "topic": "arrays-strings",
+    "title": "Reverse word order",
+    "summary": "Split, reorder, and join strings without losing whitespace discipline.",
+    "statement": "Write reverse_words(text) that returns the words in reverse order, separated by a single space. Collapse repeated whitespace. Return an empty string when there are no words.",
+    "examples": [
+      {
+        "input": "'build real AI systems'",
+        "output": "'systems AI real build'",
+        "explanation": "The word order is reversed but each word is unchanged."
+      },
+      {
+        "input": "'   '",
+        "output": "''",
+        "explanation": "Whitespace-only input contains no words."
+      }
+    ],
+    "constraints": [
+      "text is a string.",
+      "Words are separated by any run of whitespace.",
+      "Output uses one space between words."
+    ],
+    "difficulty": "beginner",
+    "skills": ["strings", "arrays", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 10,
+    "starter_code": "def reverse_words(text):\n    # TODO: split on whitespace, reverse, and join.\n    pass\n",
+    "solution_code": "def reverse_words(text):\n    words = text.split()\n    return ' '.join(reversed(words))\n",
+    "browser_checks": "assert reverse_words('build real AI systems') == 'systems AI real build'\nassert reverse_words('   ') == ''\nassert reverse_words('one') == 'one'\nassert reverse_words('  a   b  ') == 'b a'\nprint('All public checks passed.')\n",
+    "hints": [
+      "str.split() with no argument already collapses whitespace.",
+      "reversed(words) yields the items from last to first.",
+      "str.join() puts the separator between items."
+    ],
+    "editorial": "Splitting without an argument handles arbitrary whitespace for you. Reversing the resulting list and joining is clearer than manual index arithmetic, and it returns an empty string naturally when the list is empty."
+  },
+  {
+    "id": "algo-sort-records-by-score",
+    "track": "algorithms",
+    "topic": "sorting",
+    "title": "Sort records by score",
+    "summary": "Apply a multi-key sort and preserve a deterministic tie-break.",
+    "statement": "Write rank_records(records) that sorts a list of {'name': str, 'score': int} dictionaries by score descending, then by name ascending. Return a new list and do not mutate the input.",
+    "examples": [
+      {
+        "input": "[{'name': 'Ada', 'score': 90}, {'name': 'Lin', 'score': 90}, {'name': 'Kai', 'score': 70}]",
+        "output": "[{'name': 'Ada', 'score': 90}, {'name': 'Lin', 'score': 90}, {'name': 'Kai', 'score': 70}]",
+        "explanation": "Ada and Lin tie on score, so the name breaks the tie alphabetically."
+      }
+    ],
+    "constraints": [
+      "Each record has a string name and an integer score.",
+      "Return a new list.",
+      "The input list must not be reordered."
+    ],
+    "difficulty": "beginner",
+    "skills": ["sorting", "complexity", "python"],
+    "prerequisites": ["algo-total-even-numbers"],
+    "estimated_minutes": 15,
+    "starter_code": "def rank_records(records):\n    # TODO: sort by score descending, then name ascending.\n    pass\n",
+    "solution_code": "def rank_records(records):\n    return sorted(\n        records,\n        key=lambda record: (-record['score'], record['name']),\n    )\n",
+    "browser_checks": "records = [{'name': 'Lin', 'score': 90}, {'name': 'Ada', 'score': 90}, {'name': 'Kai', 'score': 70}]\noriginal = [dict(item) for item in records]\nranked = rank_records(records)\nassert [item['name'] for item in ranked] == ['Ada', 'Lin', 'Kai']\nassert records == original, 'rank_records must not mutate its input'\nassert rank_records([]) == []\nprint('All public checks passed.')\n",
+    "hints": [
+      "sorted() returns a new list; list.sort() mutates.",
+      "A tuple key applies the first element first.",
+      "Negate the score to get descending order without reverse=True."
+    ],
+    "editorial": "Python sorts tuples lexicographically, so (-score, name) expresses both rules in one key. Negating the numeric field is a compact way to invert only that field. sorted() also protects the caller's list from mutation, which matters when the same records are used elsewhere."
+  },
+  {
+    "id": "algo-binary-search",
+    "track": "algorithms",
+    "topic": "searching",
+    "title": "Binary search",
+    "summary": "Halve the search space and get the boundary conditions right.",
+    "statement": "Write binary_search(numbers, target) for a sorted list of integers. Return the index of target, or -1 when it is absent. Duplicate values may exist; returning any matching index is acceptable.",
+    "examples": [
+      {
+        "input": "[-5, -1, 3, 9], 3",
+        "output": "2",
+        "explanation": "3 is at index 2."
+      },
+      {
+        "input": "[1, 2, 3], 8",
+        "output": "-1",
+        "explanation": "8 is not present."
+      }
+    ],
+    "constraints": [
+      "numbers is sorted in ascending order.",
+      "Target and numbers contain integers.",
+      "Use a logarithmic search, not a linear scan."
+    ],
+    "difficulty": "intermediate",
+    "skills": ["searching", "complexity", "python"],
+    "prerequisites": ["algo-sort-records-by-score"],
+    "estimated_minutes": 20,
+    "starter_code": "def binary_search(numbers, target):\n    # TODO: maintain low/high boundaries and narrow the range.\n    pass\n",
+    "solution_code": "def binary_search(numbers, target):\n    low = 0\n    high = len(numbers) - 1\n    while low <= high:\n        middle = (low + high) // 2\n        if numbers[middle] == target:\n            return middle\n        if numbers[middle] < target:\n            low = middle + 1\n        else:\n            high = middle - 1\n    return -1\n",
+    "browser_checks": "assert binary_search([-5, -1, 3, 9], 3) == 2\nassert binary_search([1, 2, 3], 8) == -1\nassert binary_search([], 1) == -1\nassert binary_search([4], 4) == 0\nassert binary_search(list(range(0, 100, 2)), 98) == 49\nprint('All public checks passed.')\n",
+    "hints": [
+      "Use inclusive boundaries: low = 0 and high = len(numbers) - 1.",
+      "The loop continues while low <= high.",
+      "After comparing the middle value, discard the half that cannot contain the target."
+    ],
+    "editorial": "Each iteration removes half of the remaining candidates, which is why the running time is O(log n). The subtle part is the boundary update: low = middle + 1 and high = middle - 1 guarantee progress and avoid an infinite loop. An empty list works because high starts below low."
+  },
+  {
+    "id": "algo-factorial-recursive",
+    "track": "algorithms",
+    "topic": "recursion",
+    "title": "Factorial with recursion",
+    "summary": "Write a base case and a recursive step that shrinks the problem.",
+    "statement": "Write factorial(n) using recursion. factorial(0) is 1. Raise ValueError for negative input. Do not use math.factorial.",
+    "examples": [
+      {
+        "input": "5",
+        "output": "120",
+        "explanation": "5 * 4 * 3 * 2 * 1 = 120."
+      },
+      {
+        "input": "0",
+        "output": "1",
+        "explanation": "The empty product is defined as 1."
+      }
+    ],
+    "constraints": [
+      "n is an integer.",
+      "Negative input raises ValueError.",
+      "The implementation must call itself."
+    ],
+    "difficulty": "beginner",
+    "skills": ["recursion", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 12,
+    "starter_code": "def factorial(n):\n    # TODO: add a base case and a recursive case.\n    pass\n",
+    "solution_code": "def factorial(n):\n    if n < 0:\n        raise ValueError('factorial is not defined for negative numbers')\n    if n == 0:\n        return 1\n    return n * factorial(n - 1)\n",
+    "browser_checks": "assert factorial(0) == 1\nassert factorial(1) == 1\nassert factorial(5) == 120\ntry:\n    factorial(-1)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError('negative input must raise ValueError')\nprint('All public checks passed.')\n",
+    "hints": [
+      "Handle negative input first so the error is explicit.",
+      "The base case stops the recursion: factorial(0) is 1.",
+      "The recursive call must use n - 1 so the problem gets smaller."
+    ],
+    "editorial": "A recursive function needs a case that returns without calling itself and a case that moves toward that base case. Here n == 0 stops the chain, while n * factorial(n - 1) expresses the mathematical definition directly. Without the shrinking argument the call stack would never terminate."
+  },
+  {
+    "id": "algo-balanced-brackets",
+    "track": "algorithms",
+    "topic": "stacks-queues",
+    "title": "Balanced brackets",
+    "summary": "Use a stack to validate nested opening and closing symbols.",
+    "statement": "Write balanced_brackets(text) that returns True when every (), [], and {} pair is correctly nested and closed, and False otherwise. Ignore all other characters.",
+    "examples": [
+      {
+        "input": "'{[()]}'",
+        "output": "True",
+        "explanation": "Every closer matches the most recent opener."
+      },
+      {
+        "input": "'([)]'",
+        "output": "False",
+        "explanation": "The closing square bracket arrives while a round bracket is still open."
+      }
+    ],
+    "constraints": [
+      "text is a string.",
+      "Only bracket characters affect the result.",
+      "Return a bool."
+    ],
+    "difficulty": "intermediate",
+    "skills": ["stacks", "strings", "python"],
+    "prerequisites": ["algo-reverse-words"],
+    "estimated_minutes": 20,
+    "starter_code": "def balanced_brackets(text):\n    # TODO: push openers and match closers against the top of a stack.\n    pass\n",
+    "solution_code": "def balanced_brackets(text):\n    pairs = {')': '(', ']': '[', '}': '{'}\n    stack = []\n    for character in text:\n        if character in '([{':\n            stack.append(character)\n        elif character in pairs:\n            if not stack or stack.pop() != pairs[character]:\n                return False\n    return not stack\n",
+    "browser_checks": "assert balanced_brackets('{[()]}') is True\nassert balanced_brackets('([)]') is False\nassert balanced_brackets('') is True\nassert balanced_brackets('code(1)[2]{3}') is True\nassert balanced_brackets('(]') is False\nassert balanced_brackets('(((') is False\nprint('All public checks passed.')\n",
+    "hints": [
+      "A stack stores the openers you have not closed yet.",
+      "A closer must match the most recently opened bracket.",
+      "At the end, the stack must be empty."
+    ],
+    "editorial": "The stack mirrors nesting: the most recent opener is the first one that must close. Returning False on an empty stack or a mismatched top catches both over-closing and wrong ordering. Checking that the stack is empty at the end catches unclosed openers. The algorithm is O(n) time and O(n) space in the worst case."
+  },
+  {
+    "id": "algo-fibonacci",
+    "track": "algorithms",
+    "topic": "recursion",
+    "title": "Fast Fibonacci",
+    "summary": "Recognise repeated subproblems and avoid exponential recomputation.",
+    "statement": "Write fibonacci(n) returning the nth Fibonacci number with fibonacci(0) = 0 and fibonacci(1) = 1. Raise ValueError for negative input. Your solution must handle n = 35 quickly, so a naive double-recursive implementation is not sufficient.",
+    "examples": [
+      {
+        "input": "10",
+        "output": "55",
+        "explanation": "The sequence starts 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55."
+      }
+    ],
+    "constraints": [
+      "n is an integer.",
+      "Negative input raises ValueError.",
+      "Must run comfortably for n = 35."
+    ],
+    "difficulty": "intermediate",
+    "skills": ["recursion", "dynamic-programming", "complexity", "python"],
+    "prerequisites": ["algo-factorial-recursive"],
+    "estimated_minutes": 20,
+    "starter_code": "def fibonacci(n):\n    # TODO: avoid recomputing the same subproblems.\n    pass\n",
+    "solution_code": "def fibonacci(n):\n    if n < 0:\n        raise ValueError('fibonacci is not defined for negative numbers')\n    previous, current = 0, 1\n    for _ in range(n):\n        previous, current = current, previous + current\n    return previous\n",
+    "browser_checks": "assert fibonacci(0) == 0\nassert fibonacci(1) == 1\nassert fibonacci(10) == 55\nassert fibonacci(35) == 9227465\ntry:\n    fibonacci(-1)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError('negative input must raise ValueError')\nprint('All public checks passed.')\n",
+    "hints": [
+      "You only need the previous two values to produce the next one.",
+      "Iteration from 0 to n keeps the work linear.",
+      "Tuple assignment lets you update both values without a temporary variable."
+    ],
+    "editorial": "The naive recursive definition recomputes the same values exponentially many times. Storing only the last two numbers is enough because each term depends on its two predecessors. The loop performs n constant-time updates, giving O(n) time and O(1) extra space. This is the same subproblem-reuse idea behind dynamic programming."
+  }
+]

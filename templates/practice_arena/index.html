@@ -1,27 +1,63 @@
 {% extends "base.html" %}
+
 {% block title %}Practice Arena · RUACH{% endblock %}
+
 {% block content %}
-<section class="mx-auto max-w-6xl px-4 py-10">
+<section class="mx-auto max-w-6xl px-4 py-10 sm:px-6" aria-labelledby="arena-title">
   <header class="mb-8">
-    <p class="text-sm font-semibold uppercase tracking-widest text-indigo-600">Practice Arena</p>
-    <h1 class="mt-2 text-3xl font-bold text-slate-900">Solve real engineering problems</h1>
-    <p class="mt-2 text-lg text-slate-600">Learn a concept, solve a realistic problem, run your code, and build real AI systems.</p>
+    <p class="text-sm font-semibold uppercase tracking-widest text-indigo-700">Practice Arena</p>
+    <h1 id="arena-title" class="mt-2 text-3xl font-bold text-slate-900 dark:text-white sm:text-4xl">Solve real engineering problems</h1>
+    <p class="mt-3 max-w-3xl text-lg text-slate-600 dark:text-slate-300">Learn a concept, apply it to a realistic task, run your code in the browser, and build the judgement to ship AI systems. {{ total_problems }} problems are published across two tracks.</p>
   </header>
-  <div class="grid gap-6 md:grid-cols-2">
-    <a href="{{ url_for('practice_arena.ai_engineering') }}" class="rounded-2xl border border-indigo-200 bg-indigo-50 p-6 shadow-sm hover:shadow-md transition">
-      <h2 class="text-xl font-bold text-indigo-900">AI Engineering Practice</h2>
-      <p class="mt-2 text-indigo-800">Python, APIs, LLMs, RAG, agents, evaluation, and deployment.</p>
-    </a>
-    <a href="{{ url_for('practice_arena.algorithms') }}" class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm hover:shadow-md transition">
-      <h2 class="text-xl font-bold text-slate-900">Algorithms & Problem Solving</h2>
-      <p class="mt-2 text-slate-600">Data structures, algorithms, and computational thinking.</p>
-    </a>
-  </div>
-  <div class="mt-8">
-    <div class="flex items-center justify-between mb-4">
-      <h2 class="text-xl font-bold text-slate-900">All Problems</h2>
-      <a href="{{ url_for('practice_arena.catalogue') }}" class="text-indigo-600 font-semibold">View catalogue →</a>
+
+  {% if continue_problem %}
+  <a href="{{ url_for('practice_arena.problem_detail', problem_id=continue_problem.id) }}" class="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-5 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950 dark:hover:bg-indigo-900">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wide text-indigo-700 dark:text-indigo-300">Continue where you left off</p>
+      <p class="mt-1 text-lg font-bold text-slate-900 dark:text-white">{{ continue_problem.title }}</p>
+      <p class="text-sm text-slate-600 dark:text-slate-300">{{ continue_problem.track_name }} · {{ continue_problem.status_label }}</p>
     </div>
+    <span class="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white">Resume →</span>
+  </a>
+  {% endif %}
+
+  <div class="grid gap-6 md:grid-cols-2">
+    {% for track in tracks %}
+    <article class="flex flex-col rounded-2xl border p-6 shadow-sm {% if track.primary %}border-indigo-300 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-950{% else %}border-slate-200 bg-white dark:border-slate-700 dark:bg-slate-900{% endif %}">
+      <div class="flex items-start justify-between gap-3">
+        <p class="text-xs font-semibold uppercase tracking-widest {% if track.primary %}text-indigo-700 dark:text-indigo-300{% else %}text-slate-500 dark:text-slate-400{% endif %}">{% if track.primary %}Flagship track{% else %}Supporting track{% endif %}</p>
+        <span class="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ track.total }} problems</span>
+      </div>
+      <h2 class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ track.name }}</h2>
+      <p class="mt-2 flex-1 text-slate-700 dark:text-slate-300">{{ track.tagline }}</p>
+      <dl class="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
+        <div class="rounded-lg bg-white p-2 dark:bg-slate-800"><dt class="text-xs text-slate-500 dark:text-slate-400">Beginner</dt><dd class="font-bold text-slate-900 dark:text-white">{{ track.beginner }}</dd></div>
+        <div class="rounded-lg bg-white p-2 dark:bg-slate-800"><dt class="text-xs text-slate-500 dark:text-slate-400">Intermediate</dt><dd class="font-bold text-slate-900 dark:text-white">{{ track.intermediate }}</dd></div>
+        <div class="rounded-lg bg-white p-2 dark:bg-slate-800"><dt class="text-xs text-slate-500 dark:text-slate-400">Advanced</dt><dd class="font-bold text-slate-900 dark:text-white">{{ track.advanced }}</dd></div>
+      </dl>
+      <div class="mt-5 flex flex-wrap gap-2">
+        <a class="rounded-lg px-4 py-2 text-sm font-semibold text-white {% if track.primary %}bg-indigo-700 hover:bg-indigo-800{% else %}bg-slate-800 hover:bg-slate-900{% endif %}" href="{% if track.id == 'ai-engineering' %}{{ url_for('practice_arena.ai_engineering') }}{% else %}{{ url_for('practice_arena.algorithms') }}{% endif %}">Explore {{ track.short_name }} →</a>
+        <a class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800" href="{{ url_for('practice_arena.problems', track=track.id) }}">Filter catalogue</a>
+      </div>
+    </article>
+    {% endfor %}
   </div>
+
+  <section class="mt-10" aria-labelledby="arena-topics">
+    <h2 id="arena-topics" class="text-xl font-bold text-slate-900 dark:text-white">AI Engineering topics</h2>
+    <div class="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      {% for topic in tracks[0].topics if topic.count %}
+      <a class="rounded-xl border border-slate-200 bg-white p-4 hover:border-indigo-300 hover:bg-indigo-50 dark:border-slate-700 dark:bg-slate-900 dark:hover:border-indigo-700 dark:hover:bg-indigo-950" href="{{ url_for('practice_arena.problems', track='ai-engineering', topic=topic.id) }}">
+        <span class="block font-semibold text-slate-900 dark:text-white">{{ topic.name }}</span>
+        <span class="mt-1 block text-sm text-slate-500 dark:text-slate-400">{{ topic.count }} problem{% if topic.count != 1 %}s{% endif %}</span>
+      </a>
+      {% endfor %}
+    </div>
+  </section>
+
+  <aside class="mt-10 rounded-xl border border-amber-200 bg-amber-50 p-5 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">
+    <p class="font-semibold">How progress is labelled</p>
+    <p class="mt-1">Browser checks are immediate formative feedback. A problem you have attempted is marked <strong>Practised</strong>. Nothing is marked <strong>Solved</strong> until an authoritative, server-side judge receives an accepted submission. Secure Submit is gated behind the security and hosting review described in the specification.</p>
+  </aside>
 </section>
 {% endblock %}

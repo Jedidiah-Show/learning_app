@@ -18,6 +18,7 @@ from flask import current_app, jsonify, request
 from sqlalchemy.exc import IntegrityError
 
 from app import db
+from app import _is_api_path
 
 
 # Centralized rate limit configuration
@@ -31,6 +32,7 @@ RATE_LIMIT_CONFIG = {
     'community-post': {'limit': 5, 'window_seconds': 3600},
     'community-reply': {'limit': 20, 'window_seconds': 3600},
     'integration-probe': {'limit': 12, 'window_seconds': 600},
+    'arena-editorial': {'limit': 20, 'window_seconds': 600},
     'support-request-user': {'limit': 5, 'window_seconds': 86400},
     'admin-ai-json-burst': {'limit': 6, 'window_seconds': 60},
     'admin-ai-json-daily': {'limit': 100, 'window_seconds': 86400},
@@ -173,7 +175,7 @@ def enforce_rate_limit(name, identity=None, *legacy_args):
 
 
 def rate_limit_response(error):
-    if request.path.startswith('/api/') or request.is_json:
+    if _is_api_path(request.path) or request.is_json:
         response = jsonify({'error': 'Too many requests. Please try again later.'})
         response.status_code = 429
     else:

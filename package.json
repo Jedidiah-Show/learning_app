@@ -2,7 +2,8 @@
   "private": true,
   "scripts": {
     "build:css": "tailwindcss -i ./static/css/tailwind.src.css -o ./static/css/tailwind.css --minify",
-    "build:js": "esbuild static/js/practice.js --bundle --minify --format=esm --target=es2020 --outfile=static/js/practice.bundle.js",
+    "build:js": "esbuild static/js/practice.js --bundle --minify --format=esm --target=es2020 --outfile=static/js/practice.bundle.js && esbuild static/js/arena.js --bundle --minify --format=esm --target=es2020 --outfile=static/js/arena.bundle.js",
+    "build:arena": "esbuild static/js/arena.js --bundle --minify --format=esm --target=es2020 --outfile=static/js/arena.bundle.js",
     "test:browser": "playwright test"
   },
   "engines": {
