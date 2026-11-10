@@ -9,6 +9,7 @@ from app.project_verification import (
     _SupportedHostRedirectHandler,
     verify_checks,
 )
+from unittest.mock import patch
 
 
 class ProjectVerificationTests(unittest.TestCase):
@@ -125,3 +126,15 @@ class ProjectVerificationTests(unittest.TestCase):
                 'https://github.com/learner/project/actions/runs/99',
                 fetcher=lambda _: (200, 'All checks passed but build failed'),
             )
+
+    def test_github_api_verification_success_path(self):
+        api_response = '{"status":"completed","conclusion":"success","head_sha":"abc123","head_branch":"main","repository":{"full_name":"learner/project"}}'
+        with patch('app.project_verification._github_api_fetch') as mock_fetch:
+            mock_fetch.return_value = (200, api_response, 'https://api.github.com/repos/learner/project/actions/runs/123')
+            result = verify_checks(
+                'https://github.com/learner/project',
+                'https://github.com/learner/project/actions/runs/123',
+            )
+        self.assertTrue(result['verified'])
+        self.assertEqual(result.get('verification_method'), 'github_api')
+        self.assertEqual(result.get('commit_sha'), 'abc123')

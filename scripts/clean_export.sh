@@ -2,8 +2,15 @@
 # Reproducible clean export excluding dev artifacts and secrets
 set -e
 OUTDIR=${1:-/tmp/ruach-clean-export}
-rm -rf "$OUTDIR"
-mkdir -p "$OUTDIR"
+# Guard against unsafe paths
+case "$OUTDIR" in
+  /|/home|/root|/etc|/usr|/var|/bin|/sbin|"$HOME") echo "Refusing unsafe output path"; exit 1 ;;
+  /*|./*|../*) ;; 
+  *) echo "Output path must be absolute or start with ./ or ../"; exit 1 ;;
+esac
+if [ -z "$OUTDIR" ] || [ "$OUTDIR" = "/" ]; then echo "Invalid output path"; exit 1; fi
+rm -rf -- "$OUTDIR"
+mkdir -p -- "$OUTDIR"
 rsync -a --exclude='.git' \
   --exclude='.venv' --exclude='venv' --exclude='env' \
   --exclude='node_modules' \

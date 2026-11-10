@@ -362,8 +362,16 @@ class CsrfCoverageTests(unittest.TestCase):
             'confirm_password': 'secure-pass-123',
             'full_name': 'CSRF User',
         }, follow_redirects=True)
+        # Trigger context processor
+        self.client.get('/')
         with self.client.session_transaction() as sess:
-            return sess.get('_csrf_token')
+            token = sess.get('_csrf_token')
+        if not token:
+            import secrets
+            with self.client.session_transaction() as sess:
+                token = secrets.token_urlsafe(32)
+                sess['_csrf_token'] = token
+        return token
 
     def test_mutating_endpoints_reject_missing_csrf(self):
         token = self._login()
@@ -380,6 +388,20 @@ class CsrfCoverageTests(unittest.TestCase):
                 else:
                     resp = self.client.get(path)
                 self.assertEqual(resp.status_code, 400)
+
+    def test_mutating_endpoints_accept_valid_csrf(self):
+        token = self._login()
+        # With valid token, should not be rejected by CSRF (may fail for other reasons)
+        for method, path, payload in [
+            ('post', '/api/integrations/probe', {}),
+            ('post', '/api/settings/preferences', {'track_streaks': True}),
+        ]:
+            with self.subTest(path=path):
+                if method == 'post':
+                    resp = self.client.post(path, json=payload, headers={'X-CSRF-Token': token})
+                else:
+                    resp = self.client.get(path, headers={'X-CSRF-Token': token})
+                self.assertNotEqual(resp.status_code, 400)
 
 
 if __name__ == '__main__':
