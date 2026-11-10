@@ -375,7 +375,7 @@ class CsrfCoverageTests(unittest.TestCase):
         return token
 
     def test_mutating_endpoints_reject_missing_csrf(self):
-        token = self._login()
+        self._login()
         # These endpoints should reject without CSRF
         for method, path, payload in [
             ('post', '/api/calendar/schedule', {'lesson_id': '0.01'}),
@@ -383,12 +383,13 @@ class CsrfCoverageTests(unittest.TestCase):
             ('post', '/api/calendar/sync-all', {}),
             ('post', '/api/settings/preferences', {'track_streaks': True}),
         ]:
-            with self.subTest(path=path):
-                if method == 'post':
-                    resp = self.client.post(path, json=payload)
-                else:
-                    resp = self.client.get(path)
-                self.assertEqual(resp.status_code, 400)
+            for headers in ({}, {'X-CSRF-Token': 'invalid'}):
+                with self.subTest(path=path, headers=headers):
+                    if method == 'post':
+                        resp = self.client.post(path, json=payload, headers=headers)
+                    else:
+                        resp = self.client.get(path, headers=headers)
+                    self.assertEqual(resp.status_code, 400)
 
     def test_mutating_endpoints_accept_valid_csrf(self):
         token = self._login()

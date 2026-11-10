@@ -922,6 +922,15 @@ class RuachAICourseTests(unittest.TestCase):
             },
         )
         self.assertEqual(missing_checks.status_code, 400)
+        missing_commit = self.client.post(
+            f"/api/projects/module/{module['id']}/submit",
+            json={
+                'submission': submission,
+                'repository_url': 'https://github.com/learner/project',
+                'checks_url': verification['checks_url'],
+            },
+        )
+        self.assertEqual(missing_commit.status_code, 400)
         with patch(
             'app.routes.projects.verify_checks', return_value=verification
         ), patch('app.gemini.generate_json', side_effect=GeminiError('provider unavailable')):

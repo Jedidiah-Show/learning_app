@@ -18,7 +18,8 @@ def all_practice_exercises():
     for exercise in exercises:
         required = {
             'id', 'lesson_id', 'title', 'instructions',
-            'starter_code', 'checks_code',
+            'starter_code', 'checks_code', 'difficulty', 'skills',
+            'prerequisites',
         }
         if (
             not isinstance(exercise, dict)
@@ -30,13 +31,11 @@ def all_practice_exercises():
         ):
             raise ValueError('Practice exercise data is invalid')
         exercise = dict(exercise)
-        exercise['difficulty'] = exercise.get('difficulty') or 'beginner'
-        exercise['skills'] = exercise.get('skills') or []
-        exercise['prerequisites'] = exercise.get('prerequisites') or []
         if (
             not isinstance(exercise['difficulty'], str)
             or exercise['difficulty'] not in {'beginner', 'intermediate', 'advanced'}
             or not isinstance(exercise['skills'], list)
+            or not exercise['skills']
             or any(not isinstance(skill, str) or not skill for skill in exercise['skills'])
             or not isinstance(exercise['prerequisites'], list)
             or any(

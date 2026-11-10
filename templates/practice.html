@@ -3,10 +3,10 @@
 {% block title %}Practice library · RUACH{% endblock %}
 
 {% block content %}
-<main class="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+<section class="mx-auto max-w-6xl px-4 py-8 sm:px-6" aria-labelledby="practice-library-title">
   <header class="mb-7">
     <p class="text-sm font-semibold uppercase tracking-wide text-indigo-700">Practice</p>
-    <h1 class="mt-1 text-3xl font-bold text-slate-900">Practice library</h1>
+    <h1 id="practice-library-title" class="mt-1 text-3xl font-bold text-slate-900">Practice library</h1>
     <p class="mt-2 max-w-2xl text-slate-600">Find a runnable exercise by difficulty or skill. Exercises open from their lesson when its prerequisites are complete.</p>
   </header>
 
@@ -62,5 +62,5 @@
   {% else %}
   <p class="rounded-xl border border-slate-200 bg-white p-6 text-slate-700">No exercises match these filters. Try another skill or difficulty.</p>
   {% endif %}
-</main>
+</section>
 {% endblock %}

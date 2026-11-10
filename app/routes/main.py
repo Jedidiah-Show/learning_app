@@ -369,11 +369,15 @@ def practice_catalog():
         lesson['id']: lesson for lesson in pathway_lessons(destination)
     }
     exercise_by_id = all_practice_exercises()
+    scoped_exercises = [
+        exercise for exercise in exercise_by_id.values()
+        if exercise['lesson_id'] in lessons_by_id
+    ]
     difficulty = request.args.get('difficulty', '').strip().lower()
     skill = request.args.get('skill', '').strip().lower()
-    difficulties = sorted({item['difficulty'] for item in exercise_by_id.values()})
+    difficulties = sorted({item['difficulty'] for item in scoped_exercises})
     skills = sorted({
-        item_skill for item in exercise_by_id.values()
+        item_skill for item in scoped_exercises
         for item_skill in item['skills']
     })
     if difficulty not in difficulties:
@@ -382,10 +386,8 @@ def practice_catalog():
         skill = ''
 
     exercises = []
-    for exercise in exercise_by_id.values():
-        lesson = lessons_by_id.get(exercise['lesson_id'])
-        if not lesson:
-            continue
+    for exercise in scoped_exercises:
+        lesson = lessons_by_id[exercise['lesson_id']]
         if difficulty and exercise['difficulty'] != difficulty:
             continue
         if skill and skill not in exercise['skills']:

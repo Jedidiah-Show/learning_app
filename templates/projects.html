@@ -260,8 +260,8 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
     [
         'Create a public repository and push the starter kit or your project code.',
         'Run the project tests locally, then let the repository CI run them again.',
-        'Open the successful checks run and copy its public URL.',
-        'Paste the repository and checks URLs below, then submit for verification and rubric feedback.',
+        'Open the successful GitHub Actions run and copy its URL and the full 40-character commit SHA.',
+        'Paste the repository, run URL, and tested commit SHA below, then submit for verification and rubric feedback.',
     ].forEach((step) => {
         const item = document.createElement('li');
         item.textContent = step;

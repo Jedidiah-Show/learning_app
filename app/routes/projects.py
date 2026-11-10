@@ -492,7 +492,10 @@ def submit_module_project(module_id):
     repository_url = data.get('repository_url')
     checks_url = data.get('checks_url')
     commit_sha = data.get('commit_sha') if isinstance(data.get('commit_sha'), str) else None
-    branch = data.get('branch') if isinstance(data.get('branch'), str) else None
+    branch_value = data.get('branch')
+    if branch_value is not None and not isinstance(branch_value, str):
+        return jsonify({'error': 'Branch must be a string'}), 400
+    branch = branch_value.strip() or None if isinstance(branch_value, str) else None
     if not isinstance(repository_url, str) or not repository_url.strip():
         return jsonify({'error': 'A public repository URL is required'}), 400
     if not isinstance(checks_url, str) or not checks_url.strip():

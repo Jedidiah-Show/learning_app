@@ -6,6 +6,7 @@ from urllib.request import Request
 from unittest.mock import patch
 
 from app.project_verification import (
+    _GitHubAPIRedirectHandler,
     VerificationError,
     _SupportedHostRedirectHandler,
     verify_checks,
@@ -139,6 +140,23 @@ class ProjectVerificationTests(unittest.TestCase):
                 self.assertIsNone(
                     handler.redirect_request(request, None, 302, 'Found', {}, target)
                 )
+
+    def test_api_redirect_handler_never_sends_credentials_to_another_host(self):
+        handler = _GitHubAPIRedirectHandler()
+        request = Request('https://api.github.com/repos/learner/project')
+        self.assertIsNotNone(handler.redirect_request(
+            request, None, 302, 'Found', {},
+            'https://api.github.com/repos/learner/project-new',
+        ))
+        for target in (
+            'https://github.com/learner/project',
+            'http://api.github.com/repos/learner/project',
+            'https://api.github.com.evil.test/repo',
+        ):
+            with self.subTest(target=target):
+                self.assertIsNone(handler.redirect_request(
+                    request, None, 302, 'Found', {}, target
+                ))
 
 
 if __name__ == '__main__':

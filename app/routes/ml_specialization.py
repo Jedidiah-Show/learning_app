@@ -551,7 +551,7 @@ def submit_project(module_id):
     try:
         verification = verify_checks(
             repository_url, checks_url, commit_sha=commit_sha.strip(),
-            branch=branch.strip() if branch else None,
+            branch=branch.strip() or None if isinstance(branch, str) else None,
         )
     except VerificationError as error:
         _attempt_outcome(record, 'ci_verification', str(error))
