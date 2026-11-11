@@ -40,19 +40,27 @@
   to `app/data/arena_problems.json`. It is beginner difficulty, standard-library
   only (no pandas/numpy/ML packages), and computes mean, median, and population
   standard deviation.
+- Extended the ML exercise taxonomy with namespaced topics
+  (`ml-statistics`, `ml-python`, `ml-data-analysis`) to avoid colliding with
+  the ai-engineering track's topic IDs.
+- Added two more ML Practice Arena challenges:
+  - `ml-python-csv-inspection` ("Inspect a small CSV dataset") — beginner,
+    standard-library `csv` module, topic `ml-data-analysis`, skills
+    python/data-analysis.
+  - `ml-statistics-probability` ("Probability of an event") — beginner,
+    standard-library only, topic `ml-statistics`, skills statistics/python.
 - Added the `/arena/machine-learning` route in `app/routes/practice_arena.py`.
 - Extended `validate_problem_schema` in `app/services/judge.py` to accept the
   `machine-learning` track so ML submissions are not rejected at the schema gate.
 - Updated `templates/practice_arena/index.html` to render the new track card and
   its "Explore" link, and to report the track count dynamically.
-- Added tests: track taxonomy (3 tracks, AI primary), statistics topic,
-  statistics problem solution passes its browser checks, and ML track page
-  renders the statistics problem.
-- Test results: `tests/test_practice_arena.py` **27 passed** (including 4 new
-  ML tests); `tests/test_ml_specialization.py`, `tests/test_skill_passport.py`,
-  `tests/test_ml_starter_references.py` **18 passed, 1 skipped**; shared
-  practice workspace, curriculum audit, security hardening, and project
-  verification **55 passed**; learning flows and project studio **64 passed**.
+- Added tests: track taxonomy (3 tracks, AI primary; namespaced ML topics),
+  ML problems are beginner and their solutions pass browser checks, and
+  per-problem tests for descriptive statistics, CSV inspection, and probability.
+- Test results: `tests/test_practice_arena.py` **30 passed** (including 6 ML
+  tests); `tests/test_ml_specialization.py`, `tests/test_skill_passport.py`,
+  `tests/test_ml_starter_references.py`, `tests/test_practice_workspace.py`,
+  `tests/test_curriculum_audit.py` **42 passed, 1 skipped**.
 
 ## Remaining work
 
@@ -65,8 +73,11 @@
 
 ## Current work
 
-- None. The first ML Practice Arena challenge is complete and the Arena now
-  exposes a third, `machine-learning` track.
+- None. Three foundational ML Practice Arena challenges are complete and the
+  Arena exposes a third, `machine-learning` track with namespaced topics.
+  Next slices: more M1/M2 Arena challenges (regression/classification
+  concepts, data preparation), M1 practice assessments, and ML-aware tutor
+  context.
 
 ## Implementation decisions
 

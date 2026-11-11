@@ -64,9 +64,9 @@ TOPICS = (
     {'id': 'recursion', 'track': 'algorithms', 'name': 'Recursion'},
     {'id': 'stacks-queues', 'track': 'algorithms', 'name': 'Stacks & Queues'},
     {'id': 'mixed', 'track': 'algorithms', 'name': 'Mixed Challenges'},
-    {'id': 'statistics', 'track': 'machine-learning', 'name': 'Statistics'},
-    {'id': 'python', 'track': 'machine-learning', 'name': 'Python for ML'},
-    {'id': 'data-analysis', 'track': 'machine-learning', 'name': 'Data Analysis'},
+    {'id': 'ml-statistics', 'track': 'machine-learning', 'name': 'Statistics'},
+    {'id': 'ml-python', 'track': 'machine-learning', 'name': 'Python for ML'},
+    {'id': 'ml-data-analysis', 'track': 'machine-learning', 'name': 'Data Analysis'},
 )
 
 DIFFICULTIES = ('beginner', 'intermediate', 'advanced')

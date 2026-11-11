@@ -291,7 +291,7 @@
   {
     "id": "ml-statistics-descriptive-statistics",
     "track": "machine-learning",
-    "topic": "statistics",
+    "topic": "ml-statistics",
     "title": "Descriptive statistics from scratch",
     "summary": "Compute the mean, median, and population standard deviation using only the Python standard library.",
     "statement": "Write descriptive_statistics(numbers) that returns a dictionary with keys mean, median, and std_dev (population standard deviation) for a list of numbers. Return None for an empty list. Round each result to four decimal places. Do not import statistics, numpy, or any other package: practise the loop and arithmetic yourself.",
@@ -331,7 +331,7 @@
   {
     "id": "ml-python-csv-inspection",
     "track": "machine-learning",
-    "topic": "statistics",
+    "topic": "ml-data-analysis",
     "title": "Inspect a small CSV dataset",
     "summary": "Load a CSV string with the standard library and report its columns and row count.",
     "statement": "Write inspect_csv(csv_text) that parses a CSV string with a header row using only the csv module from the standard library. Return a dictionary with keys columns (a list of the header names) and row_count (the number of data rows). Return None for empty input or input with no header row. Do not import pandas or any external package.",
@@ -370,7 +370,7 @@
   {
     "id": "ml-statistics-probability",
     "track": "machine-learning",
-    "topic": "statistics",
+    "topic": "ml-statistics",
     "title": "Probability of an event",
     "summary": "Compute the probability of an event from equally likely outcomes.",
     "statement": "Write probability_of_event(outcomes, event) that returns the probability of event given a list of equally likely outcomes. event is a subset of outcomes. Return a float between 0 and 1. Return 0.0 for an empty outcomes list. Round the result to four decimal places. Do not import statistics or any external package.",
@@ -406,5 +406,119 @@
       "round(value, 4) keeps the result stable without hiding the calculation."
     ],
     "editorial": "Probability measures how likely an event is under a model of equally likely outcomes: count the favourable outcomes and divide by the total number of outcomes. This is the same idea behind baseline accuracy in classification, but it also reminds learners that probability is conditional on the assumed model — if outcomes are not actually equally likely, the calculation misleads."
+  },
+  {
+    "id": "ml-data-preparation-missing-values",
+    "track": "machine-learning",
+    "topic": "ml-data-analysis",
+    "title": "Handle missing values",
+    "summary": "Replace missing values (None) in a list of numbers with the mean of the present values.",
+    "statement": "Write handle_missing_values(values) that returns a new list where every None is replaced by the mean of the non-None values. Round each replacement to four decimal places. Return an empty list for an empty input. If every value is None, return a list of zeros with the same length. Do not import statistics or any external package.",
+    "examples": [
+      {
+        "input": "[2, None, 4, None, 6]",
+        "output": "[2, 4.0, 4, 4.0, 6]",
+        "explanation": "The non-None values are 2, 4, 6 with mean 4.0, so both None entries become 4.0."
+      },
+      {
+        "input": "[None, None]",
+        "output": "[0, 0]",
+        "explanation": "There are no present values, so each missing value is replaced by 0."
+      }
+    ],
+    "constraints": [
+      "values contains only numbers or None.",
+      "Return a new list; do not mutate the input.",
+      "Round each replacement to four decimal places.",
+      "Return an empty list for an empty input.",
+      "If every value is None, replace each with 0.",
+      "Do not import statistics or any external package."
+    ],
+    "difficulty": "beginner",
+    "skills": ["data-preparation", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def handle_missing_values(values):\n    # TODO: replace None entries with the mean of present values.\n    # Return a new list; do not mutate the input.\n    pass\n",
+    "solution_code": "def handle_missing_values(values):\n    if not values:\n        return []\n    present = [value for value in values if value is not None]\n    if not present:\n        return [0 for _ in values]\n    mean = sum(present) / len(present)\n    return [\n        round(mean, 4) if value is None else value\n        for value in values\n    ]\n",
+    "browser_checks": "assert handle_missing_values([2, None, 4, None, 6]) == [2, 4.0, 4, 4.0, 6]\nassert handle_missing_values([None, None]) == [0, 0]\nassert handle_missing_values([]) == []\nassert handle_missing_values([1, 2, 3]) == [1, 2, 3]\nprint('All public checks passed.')\n",
+    "hints": [
+      "Guard the empty input first and return an empty list.",
+      "Collect the non-None values to compute their mean.",
+      "If there are no present values, replace each None with 0.",
+      "Build a new list so the input is not mutated."
+    ],
+    "editorial": "Missing values are one of the most common data-quality problems. Replacing them with the mean (mean imputation) is a simple, standard-library-first approach that preserves the dataset size. The key engineering points are to compute the mean only from present values, round consistently, and return a new list rather than mutating the caller's data. This is a small but representative data-preparation step before modelling."
+  },
+  {
+    "id": "ml-regression-mean-squared-error",
+    "track": "machine-learning",
+    "topic": "ml-statistics",
+    "title": "Mean squared error",
+    "summary": "Compute the mean squared error between actual and predicted values.",
+    "statement": "Write mean_squared_error(actual, predicted) that returns the mean squared error between two equal-length lists of numbers. Return None for empty lists or lists of different lengths. Round the result to four decimal places. Do not import statistics or any external package.",
+    "examples": [
+      {
+        "input": "[3, 5, 2, 7], [2.5, 5, 3, 8]",
+        "output": "0.5625",
+        "explanation": "Squared errors are 0.25, 0, 1, 1; their mean is 2.25 / 4 = 0.5625."
+      }
+    ],
+    "constraints": [
+      "actual and predicted contain only numbers.",
+      "Return None for empty lists or lists of different lengths.",
+      "Round the result to four decimal places.",
+      "Do not import statistics or any external package."
+    ],
+    "difficulty": "beginner",
+    "skills": ["regression", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 10,
+    "starter_code": "def mean_squared_error(actual, predicted):\n    # TODO: return the mean of squared differences.\n    # Return None for empty or mismatched inputs.\n    pass\n",
+    "solution_code": "def mean_squared_error(actual, predicted):\n    if not actual or not predicted or len(actual) != len(predicted):\n        return None\n    total = 0.0\n    for a, p in zip(actual, predicted):\n        difference = a - p\n        total += difference * difference\n    return round(total / len(actual), 4)\n",
+    "browser_checks": "assert mean_squared_error([3, 5, 2, 7], [2.5, 5, 3, 8]) == 0.5625\nassert mean_squared_error([1, 2, 3], [1, 2, 3]) == 0.0\nassert mean_squared_error([], []) is None\nassert mean_squared_error([1, 2], [1]) is None\nprint('All public checks passed.')\n",
+    "hints": [
+      "Guard empty inputs and mismatched lengths first, returning None.",
+      "The squared error for one pair is (actual - predicted) ** 2.",
+      "Mean squared error is the average of all squared errors.",
+      "zip() walks both lists in parallel."
+    ],
+    "editorial": "Mean squared error is the workhorse regression metric: it penalises larger errors more than smaller ones because errors are squared. Computing it from scratch reinforces that a metric is just a deterministic calculation over actual and predicted values, and it prepares learners for comparing models in later evaluation challenges. Guarding mismatched inputs is the defensive practice that keeps metric code trustworthy."
+  },
+  {
+    "id": "ml-classification-confusion-matrix",
+    "track": "machine-learning",
+    "topic": "ml-statistics",
+    "title": "Confusion matrix",
+    "summary": "Build a binary confusion matrix from actual and predicted labels.",
+    "statement": "Write confusion_matrix(actual, predicted) that takes two equal-length lists of binary labels (0 or 1) and returns a dictionary with keys true_positive, false_positive, true_negative, false_negative. Return None for empty lists or lists of different lengths. Do not import statistics or any external package.",
+    "examples": [
+      {
+        "input": "[1, 0, 1, 1, 0], [1, 0, 1, 0, 1]",
+        "output": "{'true_positive': 2, 'false_positive': 1, 'true_negative': 1, 'false_negative': 1}",
+        "explanation": "Two positives predicted correctly, one negative predicted as positive, one negative predicted correctly, one positive predicted as negative."
+      }
+    ],
+    "constraints": [
+      "actual and predicted contain only 0 or 1.",
+      "Return None for empty lists or lists of different lengths.",
+      "true_positive: actual 1, predicted 1.",
+      "false_positive: actual 0, predicted 1.",
+      "true_negative: actual 0, predicted 0.",
+      "false_negative: actual 1, predicted 0.",
+      "Do not import statistics or any external package."
+    ],
+    "difficulty": "beginner",
+    "skills": ["classification", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def confusion_matrix(actual, predicted):\n    # TODO: count true positives, false positives, true negatives, false negatives.\n    # Return None for empty or mismatched inputs.\n    pass\n",
+    "solution_code": "def confusion_matrix(actual, predicted):\n    if not actual or not predicted or len(actual) != len(predicted):\n        return None\n    true_positive = false_positive = true_negative = false_negative = 0\n    for a, p in zip(actual, predicted):\n        if a == 1 and p == 1:\n            true_positive += 1\n        elif a == 0 and p == 1:\n            false_positive += 1\n        elif a == 0 and p == 0:\n            true_negative += 1\n        elif a == 1 and p == 0:\n            false_negative += 1\n    return {\n        'true_positive': true_positive,\n        'false_positive': false_positive,\n        'true_negative': true_negative,\n        'false_negative': false_negative,\n    }\n",
+    "browser_checks": "assert confusion_matrix([1, 0, 1, 1, 0], [1, 0, 1, 0, 1]) == {\n    'true_positive': 2, 'false_positive': 1,\n    'true_negative': 1, 'false_negative': 1\n}\nassert confusion_matrix([], []) is None\nassert confusion_matrix([1, 0], [1]) is None\nassert confusion_matrix([0, 0], [0, 0]) == {\n    'true_positive': 0, 'false_positive': 0,\n    'true_negative': 2, 'false_negative': 0\n}\nprint('All public checks passed.')\n",
+    "hints": [
+      "Guard empty inputs and mismatched lengths first, returning None.",
+      "Walk both lists in parallel with zip() and classify each pair.",
+      "true_positive means both actual and predicted are 1; false_negative means actual 1 but predicted 0."
+    ],
+    "editorial": "A confusion matrix breaks accuracy down into four counts and is the foundation of precision, recall, and F1. Building it by hand shows learners that metrics are derived from these counts, not magic, and it highlights why accuracy alone can mislead when classes are imbalanced. This is a deliberate, evaluation-focused step before learners compare algorithms in later challenges."
   }
 ]

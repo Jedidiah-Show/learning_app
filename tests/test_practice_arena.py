@@ -69,11 +69,18 @@ class ArenaTaxonomyTests(unittest.TestCase):
         self.assertFalse(TRACKS[1]['primary'])
         self.assertFalse(TRACKS[2]['primary'])
 
-    def test_machine_learning_track_has_statistics_topic(self):
-        topics = {topic['id']: topic for topic in TOPICS}
-        self.assertIn('statistics', topics)
-        self.assertEqual(topics['statistics']['track'], 'machine-learning')
-        self.assertEqual(topics['statistics']['name'], 'Statistics')
+    def test_machine_learning_topics(self):
+        topics = {
+            topic['id']: topic for topic in TOPICS
+            if topic['track'] == 'machine-learning'
+        }
+        self.assertEqual(
+            {topic['id'] for topic in topics.values()},
+            {'ml-statistics', 'ml-python', 'ml-data-analysis'},
+        )
+        self.assertEqual(topics['ml-statistics']['name'], 'Statistics')
+        self.assertEqual(topics['ml-python']['name'], 'Python for ML')
+        self.assertEqual(topics['ml-data-analysis']['name'], 'Data Analysis')
 
     def test_every_problem_has_a_valid_track_topic_and_difficulty(self):
         problems = all_arena_problems()
@@ -105,16 +112,43 @@ class ArenaTaxonomyTests(unittest.TestCase):
                 exec(problem['solution_code'], namespace)
                 exec(problem['browser_checks'], namespace)
 
-    def test_machine_learning_statistics_problem_solution_passes_checks(self):
+    def test_machine_learning_problems_are_beginner_and_pass_checks(self):
         problems = all_arena_problems()
-        statistics = [
+        ml = [
             problem for problem in problems.values()
             if problem['track'] == 'machine-learning'
         ]
-        self.assertEqual(len(statistics), 1)
-        problem = statistics[0]
-        self.assertEqual(problem['topic'], 'statistics')
-        self.assertEqual(problem['difficulty'], 'beginner')
+        self.assertEqual(len(ml), 3)
+        for problem in ml:
+            with self.subTest(problem=problem['id']):
+                self.assertEqual(problem['difficulty'], 'beginner')
+                self.assertTrue(problem['skills'])
+                namespace = {}
+                exec(problem['solution_code'], namespace)
+                exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_descriptive_statistics_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-statistics-descriptive-statistics']
+        self.assertEqual(problem['topic'], 'ml-statistics')
+        self.assertEqual(problem['skills'], ['statistics', 'python'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_csv_inspection_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-python-csv-inspection']
+        self.assertEqual(problem['topic'], 'ml-data-analysis')
+        self.assertEqual(problem['skills'], ['python', 'data-analysis'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_probability_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-statistics-probability']
+        self.assertEqual(problem['topic'], 'ml-statistics')
         self.assertEqual(problem['skills'], ['statistics', 'python'])
         namespace = {}
         exec(problem['solution_code'], namespace)
