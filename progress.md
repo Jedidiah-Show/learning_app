@@ -207,8 +207,65 @@ implementation, so a 95% pass claim is not currently supportable.
   untrusted content.
 
 #### Practice Arena (IN PROGRESS)
-- [ ] Phase 0: Foundation & audit
-- [ ] Phase 1: Arena foundation (tracks, catalogue, filters)
-- [ ] Phase 2: Workspace & browser Run
-- [ ] Phase 3: Content model & migration
-- [ ] Phase 4: Submission lifecycle (no judge yet)
+- [ ] Phase 0: Foundation & audit — baseline audit added (taxonomy + validation)
+- [ ] Phase 1: Arena foundation (tracks, catalogue, filters) — landing, track
+      pages, catalogue with composed filters/search/sort, problem detail shell
+- [ ] Phase 2: Workspace & browser Run — standalone workspace implemented
+      (CodeMirror + Pyodide Run, autosave, reset, hints, reveal); Playwright
+      coverage pending
+- [ ] Phase 3: Content model & migration — partial; content validation added
+      (70 published problems), canonical authoring format in progress
+- [ ] Phase 4: Submission lifecycle (no judge yet) — not started
+
+#### Practice Arena - implementation log (2026-11-11)
+
+- Fixed a route collision: the new Arena blueprint now mounts at `/arena`
+  (blueprint `url_prefix='/arena'`) instead of claiming `/practice`, which
+  silently shadowed the existing lesson practice library at
+  `/practice` (main.practice_catalog). The lesson library is intact.
+- Added `app/practice_arena.py`: two-track taxonomy (AI Engineering primary,
+  Algorithms & Problem Solving), topic registry, prerequisite validation,
+  cycle detection, search + filter composition, sorting, and public problem
+  serialisation that never exposes solutions/editorial.
+- Added `app/data/arena_problems.json`: 8 published algorithms problems with
+  compiling starter code, public browser checks, hints and worked solutions.
+- Arena now publishes 70 problems (62 AI Engineering from the curated lesson
+  exercises + 8 algorithms).
+- Added routes/templates/JS under `/arena`:
+  - `/arena/` landing, `/arena/ai-engineering`, `/arena/algorithms`,
+    `/arena/problems`, `/arena/problems/<id>`.
+  - APIs: `GET /arena/api/problems`, `GET /arena/api/problems/<id>`,
+    `PUT .../workspace`, `GET .../editorial`, `GET /arena/api/tracks`.
+  - Standalone problem workspace with CodeMirror + Pyodide browser Run, autosave,
+    reset, hint details, honest formative label, status `Practised`.
+  - Editorial reveal gated on an existing saved attempt, rate limited.
+- Workspace source size cap mirrored from lesson practice (20,000 chars) and
+  oversized sources rejected with 413.
+- Fixed API JSON responses for the new `/arena/api/*` prefix: added
+  `_is_api_path()` helper in `app/__init__.py` and used it in CSRF, error
+  handlers, unauthorized handler, and gate so Arena API failures return JSON
+  with the right status codes.
+- Added `scripts/validate_arena_content.py` (compiles starter/solution/checks,
+  verifies solutions pass public checks); validated 70 problems.
+- Added `tests/test_practice_arena.py` (18 tests) covering taxonomy, filters,
+  pages, catalogue, problem detail, workspace, ownership isolation, oversized
+  source, editorial gating, CSRF on Arena workspace writes.
+
+#### Practice Arena status (2026-11-11)
+
+- Phase 0 (foundation & audit): mostly complete.
+- Phase 1 (Arena foundation: tracks, catalogue, filters, problem detail shell):
+  implemented for the AI Engineering + new algorithms tracks; search, filters,
+  sorting; accessible forms; empty states; distinct track pages; problem detail
+  with statement/examples/constraints/hints; standalone workspace shell.
+- Phase 2 (Workspace & browser Run): implemented in `static/js/arena.js` +
+  `static/js/arena.bundle.js` (CodeMirror, Pyodide runner, autosave, reset, run,
+  reveal). Full desktop/mobile Playwright coverage not yet recorded.
+- Phase 3 (Content model & migration): partial; content validation script +
+  tests added; canonical problem format still being expanded.
+- Phase 4 (Submission lifecycle): not started (Submit remains gated behind
+  secure judge review).
+
+Remaining for the Practice Arena milestone: complete M1 exit criteria evidence
+(research, filters, mobile a11y), finish M2 run/keyboard/autosave browser
+coverage, expand content bank toward the 50 reviewed problems target.
