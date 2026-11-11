@@ -16,11 +16,6 @@ import yaml
 import os
 import uuid
 
-from flask import (
-    Flask, current_app, flash, g, jsonify, request, redirect, render_template,
-    url_for, session,
-)
-
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
@@ -480,11 +475,9 @@ def create_app(config_override=None):
     from app.routes.integrations import integrations_bp
     from app.routes.credentials import credentials_bp
     from app.routes.practice_arena import practice_arena_bp
+    from app.routes.passport import passport_bp
     from app.routes.ml_specialization import ml_specialization_bp
-    try:
-        from app.routes.cloud_ai_infrastructure import cloud_ai_infrastructure_bp
-    except Exception:
-        cloud_ai_infrastructure_bp = None
+    from app.routes.cloud_ai_infrastructure import cloud_ai_infrastructure_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
@@ -500,9 +493,9 @@ def create_app(config_override=None):
     app.register_blueprint(integrations_bp, url_prefix='/api/integrations')
     app.register_blueprint(credentials_bp)
     app.register_blueprint(ml_specialization_bp)
-    if cloud_ai_infrastructure_bp is not None:
-        app.register_blueprint(cloud_ai_infrastructure_bp)
+    app.register_blueprint(cloud_ai_infrastructure_bp)
     app.register_blueprint(practice_arena_bp)
+    app.register_blueprint(passport_bp)
 
     def _admin_header_token_valid():
         supplied = request.headers.get('X-Admin-Token', '')

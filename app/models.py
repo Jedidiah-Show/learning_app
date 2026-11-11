@@ -211,6 +211,98 @@ class PracticeWorkspace(db.Model):
     )
 
 
+class Submission(db.Model):
+    """Authoritative server-side submission record with verdict.
+
+    Stores code snapshots, execution metrics, and verdicts from the
+    containerized judge engine. Each submission is tied to a user and
+    problem, and tracks progress toward skill competency updates.
+    """
+    __tablename__ = 'submission'
+    id = db.Column(db.String(64), primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    problem_id = db.Column(
+        db.String(64), nullable=False
+    )
+    language = db.Column(db.String(32), default='python')
+    code_snapshot = db.Column(db.Text, nullable=False)
+    verdict = db.Column(
+        db.Enum('PENDING', 'ACCEPTED', 'WRONG_ANSWER',
+                'TIME_LIMIT_EXCEEDED', 'MEMORY_LIMIT_EXCEEDED',
+                'RUNTIME_ERROR', 'COMPILE_ERROR', 'RUNNING',
+                'INTERNAL_ERROR', native_enum=False),
+        default='PENDING', nullable=False
+    )
+    execution_time_ms = db.Column(db.Integer)
+    memory_kb = db.Column(db.Integer)
+    tests_passed = db.Column(db.Integer, default=0)
+    total_tests = db.Column(db.Integer, default=0)
+    error_details = db.Column(db.Text)
+    submitted_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+    started_at = db.Column(db.DateTime(timezone=True))
+    completed_at = db.Column(db.DateTime(timezone=True))
+
+    __table_args__ = (
+        db.Index('idx_submission_user', 'user_id'),
+        db.Index('idx_submission_problem', 'problem_id'),
+        db.Index('idx_submission_verdict', 'verdict'),
+    )
+
+
+class SkillNode(db.Model):
+    """A competency node that maps to curriculum lessons, practice problems,
+    or project studio milestones. User skill progress is tracked against
+    these nodes.
+    """
+    __tablename__ = 'skill_node'
+    id = db.Column(db.String(64), primary_key=True)
+    title = db.Column(db.String(128), nullable=False)
+    normalized_title = db.Column(
+        db.String(128), unique=True, nullable=False
+    )  # lower-cased, stripped, used for consistent mapping
+    category = db.Column(db.String(64)) # e.g., "Python", "RAG", "APIs"
+    description = db.Column(db.Text)
+
+
+class UserSkillProgress(db.Model):
+    """Learner's progress toward demonstrating a specific competency node.
+
+    Status evolves: NOT_STARTED -> DEVELOPING -> DEMONSTRATED -> MASTERED
+    as evidence (problem submissions, project deliverables, lesson completions)
+    is verified.
+    """
+    __tablename__ = 'user_skill_progress'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    skill_id = db.Column(
+        db.String(64), db.ForeignKey('skill_node.id'), nullable=False
+    )
+    status = db.Column(
+        db.Enum(
+            'NOT_STARTED', 'DEVELOPING', 'DEMONSTRATED', 'MASTERED',
+            native_enum=False,
+        ),
+        default='NOT_STARTED'
+    )
+    evidence_type = db.Column(db.String(32)) # "PROBLEM", "PROJECT", "LESSON"
+    evidence_id = db.Column(db.String(64)) # problem_id, project_id, or lesson_id
+    updated_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            'user_id', 'skill_id', name='unique_user_skill_progress',
+        ),
+        db.Index('idx_skillprogress_user', 'user_id'),
+        db.Index('idx_skillprogress_skill', 'skill_id'),
+    )
+
+
 class PracticeUsageDaily(db.Model):
     """Daily pilot counters that intentionally contain no learner identifiers."""
     __tablename__ = 'practice_usage_daily'

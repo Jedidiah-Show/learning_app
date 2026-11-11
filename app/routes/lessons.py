@@ -22,6 +22,9 @@ from app.models import TutorConversation
 from app.practice import get_practice_exercise
 from app.rate_limit import enforce_rate_limit
 from app.request_data import get_json_object
+from app.services.lesson_state import (
+    learner_today, setup_checks_for_plan,
+)
 
 lessons_bp = Blueprint('lessons', __name__)
 MAX_PRACTICE_SOURCE_LENGTH = 20000
@@ -34,21 +37,6 @@ TUTOR_GREETING_RE = re.compile(
 
 MAX_VIDEO_SECONDS = 24 * 60 * 60
 VIDEO_COMPLETION_RATIO = 0.9
-
-
-def _learner_today():
-    """Current calendar date in the learner's timezone (X-Timezone header)."""
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-
-    name = (request.headers.get('X-Timezone') or '').strip()
-    tz = timezone.utc
-    if name:
-        try:
-            tz = ZoneInfo(name)
-        except (ValueError, ZoneInfoNotFoundError):
-            pass
-    now = datetime.now(tz)
-    return now.date()
 
 
 @lessons_bp.cli.command('practice-usage')
@@ -261,7 +249,7 @@ def placement_check():
     data = get_json_object()
     # The placement questions ship with the curriculum; throttle retries so
     # brute-force scoring cannot mass-complete skippable lessons.
-    enforce_rate_limit('placement', 3, 3600, str(current_user.id))
+    enforce_rate_limit('placement', str(current_user.id))
     answers = data.get('answers') if isinstance(data, dict) else None
     if not isinstance(answers, dict):
         return jsonify({'error': 'Answers must be an object keyed by question id'}), 400
@@ -396,27 +384,6 @@ def placement_check():
     })
 
 
-def _setup_checks_of(plan):
-    stored = {}
-    if plan and plan.setup_checks:
-        try:
-            decoded = json.loads(plan.setup_checks)
-        except (TypeError, ValueError):
-            decoded = None
-        if isinstance(decoded, dict):
-            stored = {
-                check['id']: bool(decoded.get(check['id']))
-                for check in SETUP_CHECKS
-            }
-    return {check['id']: bool(stored.get(check['id'])) for check in SETUP_CHECKS}
-
-
-def _stored_setup_checks(user):
-    """Per-check guided-start ticks for one learner, from their persisted plan."""
-    plan = CoursePlan.query.filter_by(user_id=user.id).first()
-    return _setup_checks_of(plan) if plan else _setup_checks_of(None)
-
-
 @lessons_bp.route('/setup-checks', methods=['GET', 'POST'])
 @login_required
 def setup_checks():
@@ -429,7 +396,7 @@ def setup_checks():
     if plan is None:
         plan = CoursePlan(user_id=current_user.id, track='standard')
         db.session.add(plan)
-    checks = _setup_checks_of(plan)
+    checks = setup_checks_for_plan(plan)
     if request.method == 'GET':
         return jsonify({'checks': checks, 'done': sum(checks.values())})
 
@@ -647,7 +614,7 @@ def complete_lesson():
         ))
     try:
         from datetime import timedelta
-        _today = _learner_today()
+        _today = learner_today()
         if current_user.last_study_date is None:
             current_user.streak = 1
             current_user.longest_streak = max(current_user.longest_streak or 0, 1)
@@ -660,6 +627,10 @@ def complete_lesson():
             current_user.streak = 1
         current_user.last_study_date = _today
         db.session.add(current_user)
+        from app.services.skill_passport import update_skill_progress_from_lesson
+        update_skill_progress_from_lesson(
+            current_user.id, lesson_id, commit=False,
+        )
         db.session.commit()
     except IntegrityError:
         # Two tabs completed the same lesson at once. The unique constraint
@@ -805,6 +776,10 @@ def ask_lesson_question():
     lesson_id, question = data.get('lesson_id'), data.get('question')
     tutor_mode = data.get('mode', 'explain')
     response_depth = data.get('depth', 'standard')
+    problem_id = data.get('problem_id')
+    learner_code = data.get('code', '')
+    error_log = data.get('error_log', '')
+    hint_stage = data.get('hint_stage')
     lesson = get_lesson(lesson_id) if isinstance(lesson_id, str) else None
     if not lesson:
         return jsonify({'error': 'Lesson not found'}), 404
@@ -816,6 +791,35 @@ def ask_lesson_question():
         return jsonify({'error': 'Choose a valid tutor style'}), 400
     if not isinstance(response_depth, str) or response_depth not in {'brief', 'standard', 'detailed'}:
         return jsonify({'error': 'Choose a valid response depth'}), 400
+    if problem_id is not None and (
+        not isinstance(problem_id, str)
+        or not problem_id
+        or len(problem_id) > 100
+    ):
+        return jsonify({'error': 'Choose a valid practice problem'}), 400
+    if problem_id is not None:
+        from app.practice_arena import get_arena_problem
+        if get_arena_problem(problem_id) is None:
+            return jsonify({'error': 'Practice problem not found'}), 404
+    if not isinstance(learner_code, str) or len(learner_code) > 8000:
+        return jsonify({'error': 'Code context must be at most 8000 characters'}), 400
+    if not isinstance(error_log, str) or len(error_log) > 2000:
+        return jsonify({'error': 'Error context must be at most 2000 characters'}), 400
+    if hint_stage is not None and (
+        not isinstance(hint_stage, int)
+        or isinstance(hint_stage, bool)
+        or not 1 <= hint_stage <= 5
+    ):
+        return jsonify({'error': 'Hint stage must be between 1 and 5'}), 400
+    if tutor_mode == 'hint' and hint_stage == 5 and problem_id:
+        from app.models import PracticeWorkspace
+        attempt = PracticeWorkspace.query.filter_by(
+            user_id=current_user.id, exercise_id=problem_id,
+        ).first()
+        if attempt is None:
+            return jsonify({
+                'error': 'Save an attempt before revealing the editorial',
+            }), 403
     recent_messages = TutorConversation.query.filter_by(
         user_id=current_user.id, lesson_id=lesson_id
     ).order_by(TutorConversation.id.desc()).limit(8).all()
@@ -854,6 +858,36 @@ def ask_lesson_question():
             'answer': answer,
             'in_scope': True,
         })
+    from app.services.tutor import (
+        SocraticGuardrail,
+        assemble_tutor_context,
+        diagnose_knowledge_gaps,
+        generate_hint_stage,
+    )
+    assembled_context = assemble_tutor_context(
+        current_user.id,
+        lesson_id=lesson_id,
+        problem_id=problem_id,
+        code=learner_code,
+        error_log=error_log or None,
+    )
+    if tutor_mode == 'hint' and hint_stage is not None:
+        answer = generate_hint_stage(hint_stage, assembled_context)
+        if hint_stage < 5:
+            answer = SocraticGuardrail.validate_response(answer)
+        db.session.add(TutorConversation(
+            user_id=current_user.id,
+            lesson_id=lesson_id,
+            role='assistant',
+            content=answer,
+        ))
+        db.session.commit()
+        return jsonify({
+            'answer': answer,
+            'in_scope': True,
+            'hint_stage': hint_stage,
+            'diagnosis': diagnose_knowledge_gaps(assembled_context),
+        })
     from app.gemini import GeminiError, generate_json
     tutor_context_keys = (
         'title', 'subtitle', 'why_it_matters', 'outcomes', 'core_concepts',
@@ -862,6 +896,18 @@ def ask_lesson_question():
     )
     tutor_context = {
         key: lesson[key] for key in tutor_context_keys if lesson.get(key)
+    }
+    learner_context_payload = {
+        'code': assembled_context.code.code[:8000],
+        'error_log': assembled_context.code.error_log,
+        'recent_submissions': assembled_context.recent_submissions,
+        'passport': {
+            'demonstrated': assembled_context.passport.demonstrated_skills,
+            'developing': assembled_context.passport.developing_skills,
+            'not_started': assembled_context.passport.not_started_skills,
+            'mastered': assembled_context.passport.mastered_skills,
+        },
+        'lesson': assembled_context.lesson_context,
     }
     # The tutor's syllabus follows the learner's pathway, so an ML learner is
     # never steered toward an AI-only module they cannot open.
@@ -874,6 +920,8 @@ def ask_lesson_question():
     module_info = lesson.get('_module') or {}
     prompt = (
         'You are Ruach-AI, a patient tutor in an ongoing conversation. Guide learners to reason, practice, and build independence rather than just giving answers. '
+        'Use the supplied learner code, recent verdicts, execution error, lesson context, and Skill Passport as evidence. '
+        'In practice mode, do not provide a complete solution or code before the final editorial stage. '
         'Answer the current question only if it is about the supplied lesson or a topic explicitly covered by the course syllabus. '
         f'Learner pathway: {destination or "undecided"}. Module: {module_info.get("title","")} ({module_info.get("number","")}). '
         'The syllabus is limited to these modules: '
@@ -886,6 +934,7 @@ def ask_lesson_question():
         'Do not fabricate references or make unsupported claims.\n'
         f"Lesson: {json.dumps(tutor_context, ensure_ascii=False)}\n"
         f"Recent conversation: {json.dumps(conversation, ensure_ascii=False)}\n"
+        f"Learner context: {json.dumps(learner_context_payload, ensure_ascii=False)}\n"
         f"Current learner question: {json.dumps(question.strip(), ensure_ascii=False)}"
     )
     try:
@@ -921,16 +970,19 @@ def ask_lesson_question():
     answer = result.get('answer')
     if not isinstance(answer, str) or not answer.strip():
         return jsonify({'error': 'Clarification is temporarily unavailable. Please retry.'}), 503
+    answer = answer.strip()
+    if tutor_mode == 'hint':
+        answer = SocraticGuardrail.validate_response(answer)
     # Save assistant message to database
     tutoring_msg = TutorConversation(
         user_id=current_user.id,
         lesson_id=lesson_id,
         role='assistant',
-        content=answer.strip(),
+        content=answer,
     )
     db.session.add(tutoring_msg)
     db.session.commit()
-    return jsonify({'answer': answer.strip(), 'in_scope': True})
+    return jsonify({'answer': answer, 'in_scope': True})
 
 
 def get_effective_model():

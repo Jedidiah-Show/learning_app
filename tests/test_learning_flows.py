@@ -15,7 +15,7 @@ from app.gemini import GeminiError, GeminiRateLimited
 from app.models import (
     CalendarEvent, CoursePlan, CourseProject, Credential, LessonCompletion, Quiz,
     LessonTaskProgress, QuizResult, ReviewItem, StudySession,
-    TutorConversation, User, VideoProgress,
+    Submission, TutorConversation, User, VideoProgress,
 )
 from sqlalchemy.exc import IntegrityError
 
@@ -338,6 +338,21 @@ class RuachAICourseTests(unittest.TestCase):
             completion = LessonCompletion.query.one()
             self.assertEqual(completion.time_spent_minutes, 20)
 
+    def test_completed_lesson_maps_to_its_own_passport_competency(self):
+        self.register()
+        lesson = all_lessons()[0]
+        self.complete_lesson(lesson['id'])
+        from app.services.skill_passport import get_user_all_skill_states
+
+        with self.app.app_context():
+            user = User.query.one()
+            states = get_user_all_skill_states(user.id)
+            lesson_skill_id = f"lesson-{lesson['id'].replace('.', '-')}"
+            self.assertEqual(states[lesson_skill_id]['status'], 'DEVELOPING')
+            self.assertEqual(
+                states[lesson_skill_id]['evidence_id'], lesson['id'],
+            )
+
     def test_lesson_navigation_respects_completion_and_course_order(self):
         self.register()
         lessons = all_lessons()
@@ -611,6 +626,39 @@ class RuachAICourseTests(unittest.TestCase):
                     self.assertIn(requirement, prompt)
                 self.assertIn(lesson['title'], prompt)
                 self.assertIn('Learner pathway:', prompt)
+
+    def test_tutor_prompt_includes_code_error_recent_verdict_and_passport(self):
+        self.register()
+        lesson = all_lessons()[0]
+        with self.app.app_context():
+            user = User.query.one()
+            db.session.add(Submission(
+                id='tutor-context-submission',
+                user_id=user.id,
+                problem_id='algo-binary-search',
+                code_snapshot='def binary_search(values, target): return -1',
+                verdict='WRONG_ANSWER',
+                error_details='IndexError: list index out of range',
+            ))
+            db.session.commit()
+
+        with patch(
+            'app.gemini.generate_json',
+            return_value={'in_scope': True, 'answer': 'Check the boundary condition.'},
+        ) as generate:
+            response = self.client.post('/api/lessons/ask', json={
+                'lesson_id': lesson['id'],
+                'question': 'Why does this fail?',
+                'problem_id': 'algo-binary-search',
+                'code': 'def binary_search(values, target): return -1',
+                'error_log': 'IndexError: list index out of range',
+            })
+        self.assertEqual(response.status_code, 200)
+        prompt = generate.call_args.args[0]
+        self.assertIn('IndexError: list index out of range', prompt)
+        self.assertIn('WRONG_ANSWER', prompt)
+        self.assertIn('algo-binary-search', prompt)
+        self.assertIn('"passport"', prompt)
 
     def test_tutor_rejects_unknown_response_depth(self):
         self.register()

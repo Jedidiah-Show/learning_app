@@ -2,7 +2,7 @@
 
 Kept outside ``starter_kits`` so learner downloads stay stubbed. CI runs the
 shipped kit tests against this file and compares the output with the
-server-owned report contract (Stage A of machine_learning_pathway.md).
+server-owned report contract (Stage A of docs/machine_learning_pathway.md).
 """
 
 from pathlib import Path

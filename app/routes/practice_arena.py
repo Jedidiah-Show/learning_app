@@ -11,7 +11,7 @@ from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
 
 from app import db
-from app.models import PracticeWorkspace
+from app.models import PracticeWorkspace, Submission, utcnow
 from app.practice_arena import (
     TRACKS,
     all_arena_problems,
@@ -28,6 +28,10 @@ from app.practice_arena import (
 )
 from app.rate_limit import enforce_rate_limit
 from app.request_data import get_json_object
+from app.services.judge import (
+    _validate_code_syntax,
+    validate_problem_schema,
+)
 
 
 practice_arena_bp = Blueprint(
@@ -327,6 +331,42 @@ def reveal_editorial(problem_id):
     return jsonify(payload)
 
 
+@practice_arena_bp.route('/api/problems/<problem_id>/hint')
+@login_required
+def problem_hint(problem_id):
+    raw = get_arena_problem(problem_id)
+    if raw is None:
+        return jsonify({'error': 'Problem not found'}), 404
+    stage = request.args.get('stage', type=int)
+    if stage is None or not 1 <= stage <= 5:
+        return jsonify({'error': 'Hint stage must be between 1 and 5'}), 400
+    enforce_rate_limit('arena-hint', str(current_user.id))
+    workspace = _workspace_for(problem_id)
+    if stage == 5 and workspace is None:
+        return jsonify({
+            'error': 'Save an attempt before revealing the editorial',
+        }), 403
+    latest = Submission.query.filter_by(
+        user_id=current_user.id, problem_id=problem_id,
+    ).order_by(Submission.submitted_at.desc()).first()
+    from app.services.tutor import (
+        assemble_tutor_context,
+        diagnose_knowledge_gaps,
+        generate_hint_stage,
+    )
+    context = assemble_tutor_context(
+        current_user.id,
+        problem_id=problem_id,
+        code=workspace.source if workspace else '',
+        error_log=latest.error_details if latest else None,
+    )
+    return jsonify({
+        'stage': stage,
+        'hint': generate_hint_stage(stage, context),
+        'diagnosis': diagnose_knowledge_gaps(context),
+    })
+
+
 @practice_arena_bp.route('/api/tracks')
 @login_required
 def api_tracks():
@@ -336,4 +376,86 @@ def api_tracks():
             {**track, **_track_stats(problems, track['id'])}
             for track in TRACKS
         ],
+    })
+
+
+@practice_arena_bp.route('/api/problems/<problem_id>/submit', methods=['POST'])
+@login_required
+def submit_problem(problem_id):
+    """Submit code for authoritative server-side judging.
+
+    This endpoint replaces client-side Pyodide checks with an isolated
+    containerized execution engine. Hidden test cases are never exposed
+    to the client. Upon ACCEPTED verdict, associated skill competency
+    is updated in the learner's Skill Passport.
+    """
+    raw = get_arena_problem(problem_id)
+    if raw is None:
+        return jsonify({'error': 'Problem not found'}), 404
+    enforce_rate_limit('arena-submit', str(current_user.id))
+
+    # Validate the problem schema before execution
+    try:
+        validate_problem_schema(raw)
+    except ValueError as error:
+        return jsonify({'error': str(error)}), 400
+
+    if request.content_length is not None and request.content_length > MAX_ARENA_SOURCE_LENGTH + 1024:
+        return jsonify({'error': 'Code is too large'}), 413
+    data = get_json_object()
+    if not isinstance(data, dict) or 'code' not in data:
+        return jsonify({'error': 'Code is required in request body'}), 400
+
+    code = data['code']
+    if not isinstance(code, str) or not code.strip():
+        return jsonify({'error': 'Code must be non-empty text'}), 400
+    if len(code) > MAX_ARENA_SOURCE_LENGTH:
+        return jsonify({'error': 'Code is too large'}), 413
+
+    # Validate code syntax before sending to sandbox
+    try:
+        _validate_code_syntax(code)
+    except ValueError as error:
+        return jsonify({'error': str(error)}), 400
+
+    # Persist first. A dedicated worker claims and executes this durable job.
+    from uuid import uuid4
+    submission_id = uuid4().hex
+
+    submission = Submission(
+        id=submission_id,
+        user_id=current_user.id,
+        problem_id=problem_id,
+        language='python',
+        code_snapshot=code,
+        verdict='PENDING',
+        submitted_at=utcnow(),
+    )
+    db.session.add(submission)
+    db.session.commit()
+
+    return jsonify({
+        'submission_id': submission_id,
+        'verdict': submission.verdict,
+        'status': 'queued',
+    }), 202
+@practice_arena_bp.route('/api/submissions/<submission_id>')
+@login_required
+def submission_status(submission_id):
+    """Fetch verdict, run time, memory, and test results for a submission."""
+    submission = Submission.query.get_or_404(submission_id)
+
+    # Ensure the learner can only view their own submissions
+    if submission.user_id != current_user.id:
+        return jsonify({'error': 'Access denied'}), 403
+
+    return jsonify({
+        'submission_id': submission.id,
+        'verdict': submission.verdict,
+        'execution_time_ms': submission.execution_time_ms,
+        'memory_kb': submission.memory_kb,
+        'tests_passed': submission.tests_passed,
+        'total_tests': submission.total_tests,
+        'error_details': submission.error_details,
+        'submitted_at': submission.submitted_at.isoformat() if submission.submitted_at else None,
     })

@@ -22,13 +22,13 @@ Production styles are precompiled into `static/css/tailwind.css`; the app does n
 
 The lesson practice workspace provides curated Python exercises in the Python module and guided Python simulations for backend, RAG, agents, MCP, production, deployment, system design and capstone topics. The simulations run locally and do not connect to real services. Learner source is saved in the database, so apply outstanding migrations before deployment. The local pilot also stores daily aggregate counts of workspace opens, runs, and errors without learner IDs, lesson IDs, or code; inspect them with `flask --app index.py lessons practice-usage`. Python runs in a sandboxed browser frame and is not used for secure grading; Pyodide is served from the app first, then jsDelivr or unpkg as fallbacks.
 
-Missed quiz questions enter the Review Center and return on a spaced schedule. Correct reviews extend the interval; missed reviews come back sooner. The progress page summarizes study streaks, opt-in study time and recent quiz scores. Tutor conversations persist in the current browser's local storage per learner and lesson; **New chat** clears that local history. Module projects are resubmitted after feedback and complete only after a repository link, a public automated-checks run, and a passing AI evaluation against every rubric criterion are supplied; the AI cannot self-approve its own score, and outages or failed checks leave the module locked.
+Missed quiz questions enter the Review Center and return on a spaced schedule. Correct reviews extend the interval; missed reviews come back sooner. The progress page summarizes study streaks, opt-in study time and recent quiz scores. Tutor conversations are saved server-side per learner and lesson, so they follow the learner across devices; **New chat** clears that saved history. Module projects are resubmitted after feedback and complete only after a repository link, a public automated-checks run, and a passing AI evaluation against every rubric criterion are supplied; the AI cannot self-approve its own score, and outages or failed checks leave the module locked.
 
 The IDE runtime has a Playwright browser smoke test that loads the real sandboxed worker and runs a Python assertion:
 
 ```bash
 npx playwright install chromium
-npm run test:browser
+PYTHON=.venv/bin/python npm run test:browser
 ```
 
 The GitHub Actions browser job installs Chromium and runs the same smoke test, including the app's `Cross-Origin-Resource-Policy: cross-origin` requirement for the isolated iframe worker.

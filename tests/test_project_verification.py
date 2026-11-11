@@ -3,11 +3,9 @@
 import json
 import os
 import unittest
-from urllib.request import Request
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 from app.project_verification import (
-    _GitHubAPIRedirectHandler,
     VerificationError,
     _github_api_fetch,
     verify_checks,
@@ -26,7 +24,7 @@ class ProjectVerificationTests(unittest.TestCase):
             'conclusion': 'success',
             'head_sha': COMMIT,
             'head_branch': 'main',
-            'repository': {'full_name': 'learner/project'},
+            'repository': {'full_name': 'learner/project', 'private': False},
         }
         payload.update(overrides)
         return json.dumps(payload)
@@ -53,6 +51,20 @@ class ProjectVerificationTests(unittest.TestCase):
             ):
                 with self.assertRaises(VerificationError):
                     verify_checks(REPOSITORY, CHECKS, commit_sha=COMMIT)
+
+    def test_api_verification_rejects_private_repository(self):
+        with patch(
+            'app.project_verification._github_api_fetch',
+            return_value=(
+                200,
+                self.api_payload(repository={
+                    'full_name': 'learner/project', 'private': True,
+                }),
+                'https://api.github.com/',
+            ),
+        ):
+            with self.assertRaisesRegex(VerificationError, 'must be public'):
+                verify_checks(REPOSITORY, CHECKS, commit_sha=COMMIT)
 
     def test_api_verification_rejects_different_run_repository(self):
         with self.assertRaisesRegex(VerificationError, 'submitted repository'):
@@ -133,38 +145,17 @@ class ProjectVerificationTests(unittest.TestCase):
                 with self.assertRaises(VerificationError):
                     verify_checks(repository, CHECKS, commit_sha=COMMIT)
 
-    def test_api_redirect_handler_never_sends_credentials_to_another_host(self):
-        handler = _GitHubAPIRedirectHandler()
-        request = Request('https://api.github.com/repos/learner/project')
-        self.assertIsNotNone(handler.redirect_request(
-            request, None, 302, 'Found', {},
-            'https://api.github.com/repos/learner/project-new',
-        ))
-        for target in (
-            'https://github.com/learner/project',
-            'http://api.github.com/repos/learner/project',
-            'https://api.github.com.evil.test/repo',
-        ):
-            with self.subTest(target=target):
-                self.assertIsNone(handler.redirect_request(
-                    request, None, 302, 'Found', {}, target
-                ))
-
     def test_api_fetch_sends_configured_token_as_bearer(self):
-        response = MagicMock()
-        response.status = 200
-        response.read.return_value = b'{}'
-        response.geturl.return_value = 'https://api.github.com/repos/learner/project'
         with patch.dict(os.environ, {'GITHUB_TOKEN': 'safe-test-token'}), patch(
-            'app.project_verification.build_opener'
-        ) as build_opener:
-            build_opener.return_value.open.return_value.__enter__.return_value = response
+            'app.project_verification.safe_fetch', return_value='{}',
+        ) as safe_fetch:
             _github_api_fetch('https://api.github.com/repos/learner/project')
 
-        request = build_opener.return_value.open.call_args.args[0]
+        request = safe_fetch.call_args.kwargs
         self.assertEqual(
-            request.get_header('Authorization'), 'Bearer safe-test-token'
+            request['headers']['Authorization'], 'Bearer safe-test-token'
         )
+        self.assertEqual(request['timeout'], 10)
 
 
 if __name__ == '__main__':

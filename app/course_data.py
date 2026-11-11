@@ -461,6 +461,30 @@ REQUIRED_PROJECTS = [
         'stack': 'FastAPI · Docker Compose · OpenTelemetry, Langfuse, or Phoenix · Redis · Uvicorn',
         'evidence': ['Validate requests and model output with schemas', 'Trace model and tool spans with token and latency data', 'Start the app, vector store, and cache with one command'],
     },
+    {
+        'id': 'validated-rest-api',
+        'title': 'Build a Validated REST API Service',
+        'summary': 'Build a production-minded REST API with validated requests, persistent data, consistent errors, rate limits, and generated API documentation.',
+        'stack': 'Python · FastAPI · Pydantic · SQLite or PostgreSQL · Pytest',
+        'evidence': [
+            'Implement CRUD endpoints with typed request and response schemas',
+            'Persist records and validate edge cases with automated tests',
+            'Enforce rate limits and publish OpenAPI documentation',
+            'Provide a passing GitHub Actions run for the submitted commit',
+        ],
+    },
+    {
+        'id': 'rag-document-retriever',
+        'title': 'Build an End-to-End RAG Document Retriever',
+        'summary': 'Ingest a document set, retrieve relevant evidence, and return ranked passages with source references and an explicit low-confidence fallback.',
+        'stack': 'Python · FastAPI · Embeddings · Vector search · Pytest',
+        'evidence': [
+            'Ingest and chunk Markdown or PDF documents with stable source IDs',
+            'Retrieve and rank relevant passages for a query',
+            'Evaluate retrieval quality and handle empty or weak evidence',
+            'Provide a passing GitHub Actions run for the submitted commit',
+        ],
+    },
 ]
 
 PROJECT_BY_ID = {project['id']: project for project in REQUIRED_PROJECTS}

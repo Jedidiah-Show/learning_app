@@ -171,9 +171,9 @@ def login():
             or ''
         ).strip()
         password = request.form.get('password')
-        enforce_rate_limit('admin-login-ip', 10, 300, client_ip())
+        enforce_rate_limit('admin-login-ip', client_ip())
         enforce_rate_limit(
-            'admin-login-account', 5, 300,
+            'admin-login-account',
             f'{client_ip()}:{identity_hash(identifier)}',
         )
         account = None
@@ -819,7 +819,7 @@ def _ml_pilot_snapshot():
     so time-to-project is an estimate unless snapshotted weekly).
     """
     from app.ml_pathway import PATHWAY_ID, machine_learning_lessons
-    from app.routes.ml_specialization import FAILURE_STAGES
+    from app.services.ml_project import FAILURE_STAGES
 
     pilot_lessons = [
         lesson for lesson in machine_learning_lessons()
