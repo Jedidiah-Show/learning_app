@@ -118,7 +118,7 @@ class ArenaTaxonomyTests(unittest.TestCase):
             problem for problem in problems.values()
             if problem['track'] == 'machine-learning'
         ]
-        self.assertEqual(len(ml), 3)
+        self.assertEqual(len(ml), 6)
         for problem in ml:
             with self.subTest(problem=problem['id']):
                 self.assertEqual(problem['difficulty'], 'beginner')
@@ -150,6 +150,33 @@ class ArenaTaxonomyTests(unittest.TestCase):
         problem = problems['ml-statistics-probability']
         self.assertEqual(problem['topic'], 'ml-statistics')
         self.assertEqual(problem['skills'], ['statistics', 'python'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_missing_values_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-data-preparation-missing-values']
+        self.assertEqual(problem['topic'], 'ml-data-analysis')
+        self.assertEqual(problem['skills'], ['data-preparation', 'python'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_mean_squared_error_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-regression-mean-squared-error']
+        self.assertEqual(problem['topic'], 'ml-statistics')
+        self.assertEqual(problem['skills'], ['regression', 'python'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_confusion_matrix_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-classification-confusion-matrix']
+        self.assertEqual(problem['topic'], 'ml-statistics')
+        self.assertEqual(problem['skills'], ['classification', 'python'])
         namespace = {}
         exec(problem['solution_code'], namespace)
         exec(problem['browser_checks'], namespace)
@@ -222,6 +249,11 @@ class ArenaPageTests(ArenaTestCase):
         html = response.get_data(as_text=True)
         self.assertIn('Machine Learning Practice', html)
         self.assertIn('Descriptive statistics from scratch', html)
+        self.assertIn('Inspect a small CSV dataset', html)
+        self.assertIn('Probability of an event', html)
+        self.assertIn('Handle missing values', html)
+        self.assertIn('Mean squared error', html)
+        self.assertIn('Confusion matrix', html)
         self.assertNotIn('Binary search', html)
 
     def test_catalogue_filters_and_empty_state(self):

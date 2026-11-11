@@ -30,19 +30,27 @@ if (root) {
     const iframe = document.getElementById('arena-sandbox');
 
     let problem = null;
-    const editor = createPythonEditor(editorHost, {
-        theme: 'dark',
-        onChange: (source) => {
-            if (switching || source === savedSource) return;
-            queueSave();
-        },
-        onCursorChange: (line, col) => {
-            if (!statusPosition) return;
-            statusPosition.textContent = `Ln ${line}, Col ${col}`;
-        },
-        runCommand: () => { void saveWorkspace().then(runChecks); },
-        saveCommand: () => { void saveWorkspace(); },
-    });
+    let editor;
+    try {
+        editor = createPythonEditor(editorHost, {
+            theme: 'dark',
+            onChange: (source) => {
+                if (switching || source === savedSource) return;
+                queueSave();
+            },
+            onCursorChange: (line, col) => {
+                if (!statusPosition) return;
+                statusPosition.textContent = `Ln ${line}, Col ${col}`;
+            },
+            runCommand: () => { void saveWorkspace().then(runChecks); },
+            saveCommand: () => { void saveWorkspace(); },
+        });
+    } catch (e) {
+        console.error('Failed to create editor', e);
+        if (editorHost) {
+            editorHost.innerHTML = '<div style="padding:12px;color:#f87171;">Failed to load code editor. Please refresh.</div>';
+        }
+    }
     let savedSource = '';
     let saveTimer = null;
     let savePromise = null;

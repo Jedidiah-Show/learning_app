@@ -24,19 +24,27 @@ if (root) {
     let savedSource = '';
     let saveTimer = null;
     let savePromise = null;
-    const editor = createPythonEditor(editorHost, {
-        theme: 'dark',
-        onChange: (source) => {
-            if (switching || !selectedExercise || source === savedSource) return;
-            queueSave();
-        },
-        onCursorChange: (line, col) => {
-            if (!statusPosition) return;
-            statusPosition.textContent = `Ln ${line}, Col ${col}`;
-        },
-        runCommand: () => { void saveWorkspace().then(runExercise); },
-        saveCommand: () => { void saveWorkspace(); },
-    });
+    let editor;
+    try {
+        editor = createPythonEditor(editorHost, {
+            theme: 'dark',
+            onChange: (source) => {
+                if (switching || !selectedExercise || source === savedSource) return;
+                queueSave();
+            },
+            onCursorChange: (line, col) => {
+                if (!statusPosition) return;
+                statusPosition.textContent = `Ln ${line}, Col ${col}`;
+            },
+            runCommand: () => { void saveWorkspace().then(runExercise); },
+            saveCommand: () => { void saveWorkspace(); },
+        });
+    } catch (e) {
+        console.error('Failed to create editor', e);
+        if (editorHost) {
+            editorHost.innerHTML = '<div style="padding:12px;color:#f87171;">Failed to load code editor. Please refresh.</div>';
+        }
+    }
     let switching = false;
     let runnerReady = false;
     let activeRunId = null;
