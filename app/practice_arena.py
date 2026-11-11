@@ -33,6 +33,14 @@ TRACKS = (
                    'searching, sorting, recursion and data structures.',
         'primary': False,
     },
+    {
+        'id': 'machine-learning',
+        'name': 'Machine Learning Practice',
+        'short_name': 'Machine Learning',
+        'tagline': 'Work with data, probability, and models using the Python '
+                   'standard library before reaching for ML packages.',
+        'primary': False,
+    },
 )
 
 TOPICS = (
@@ -56,6 +64,7 @@ TOPICS = (
     {'id': 'recursion', 'track': 'algorithms', 'name': 'Recursion'},
     {'id': 'stacks-queues', 'track': 'algorithms', 'name': 'Stacks & Queues'},
     {'id': 'mixed', 'track': 'algorithms', 'name': 'Mixed Challenges'},
+    {'id': 'statistics', 'track': 'machine-learning', 'name': 'Statistics'},
 )
 
 DIFFICULTIES = ('beginner', 'intermediate', 'advanced')

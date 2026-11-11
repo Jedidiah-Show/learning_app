@@ -253,6 +253,12 @@ html[data-theme="dark"] .app-brand .text-slate-500 { color:var(--app-muted); }
 .top-right-cluster .top-right-profile { padding:.25rem .5rem; font-size:.875rem; }
 .top-right-cluster .top-right-profile .nav-label { display:none; }
 
+/* Arena editor container — dark background to match the VS Code Dark+
+   editor theme so light text stays readable on both site themes. */
+#arena-editor {
+    background:#1e1e1e;
+}
+
 /* Lesson tutor chat */
 .tutor-chat-heading { display:flex;align-items:flex-start;justify-content:space-between;gap:16px; }
 .tutor-new-chat { flex:none;min-height:36px;padding:7px 11px;font-size:12px; }

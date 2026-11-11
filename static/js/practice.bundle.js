@@ -1,3 +1,1550 @@
-import{C as Z,E as We,F as ee,G as q,H as Ce,I as Se,N as Be,O as _e,P as M,T as He,U as qe,a as me,b as V,c as Ue,d as Pe,e as m,f as pe,g as Fe,h as ge,i as ye,j as ke,k as X,l as Ge,m as Ne,n as Y,o as Ve,p as y,q as ze,r as Je,s as Q}from"./chunk-CE7CTLA7.js";var Ht=e=>{let{state:t}=e,r=t.doc.lineAt(t.selection.main.from),n=Me(e.state,r.from);return n.line?qt(e):n.block?Kt(e):!1};function De(e,t){return({state:r,dispatch:n})=>{if(r.readOnly)return!1;let l=e(t,r);return l?(n(r.update(l)),!0):!1}}var qt=De(Yt,0);var $t=De(tt,0);var Kt=De((e,t)=>tt(e,t,Xt(t)),0);function Me(e,t){let r=e.languageDataAt("commentTokens",t,1);return r.length?r[0]:{}}var $=50;function jt(e,{open:t,close:r},n,l){let o=e.sliceDoc(n-$,n),c=e.sliceDoc(l,l+$),s=/\s*$/.exec(o)[0].length,i=/^\s*/.exec(c)[0].length,a=o.length-s;if(o.slice(a-t.length,a)==t&&c.slice(i,i+r.length)==r)return{open:{pos:n-s,margin:s&&1},close:{pos:l+i,margin:i&&1}};let f,h;l-n<=2*$?f=h=e.sliceDoc(n,l):(f=e.sliceDoc(n,n+$),h=e.sliceDoc(l-$,l));let p=/^\s*/.exec(f)[0].length,S=/\s*$/.exec(h)[0].length,E=h.length-S-r.length;return f.slice(p,p+t.length)==t&&h.slice(E,E+r.length)==r?{open:{pos:n+p+t.length,margin:/\s/.test(f.charAt(p+t.length))?1:0},close:{pos:l-S-r.length,margin:/\s/.test(h.charAt(E-1))?1:0}}:null}function Xt(e){let t=[];for(let r of e.selection.ranges){let n=e.doc.lineAt(r.from),l=r.to<=n.to?n:e.doc.lineAt(r.to);l.from>n.from&&l.from==r.to&&(l=r.to==n.to+1?n:e.doc.lineAt(r.to-1));let o=t.length-1;o>=0&&t[o].to>n.from?t[o].to=l.to:t.push({from:n.from+/^\s*/.exec(n.text)[0].length,to:l.to})}return t}function tt(e,t,r=t.selection.ranges){let n=r.map(o=>Me(t,o.from).block);if(!n.every(o=>o))return null;let l=r.map((o,c)=>jt(t,n[c],o.from,o.to));if(e!=2&&!l.every(o=>o))return{changes:t.changes(r.map((o,c)=>l[c]?[]:[{from:o.from,insert:n[c].open+" "},{from:o.to,insert:" "+n[c].close}]))};if(e!=1&&l.some(o=>o)){let o=[];for(let c=0,s;c<l.length;c++)if(s=l[c]){let i=n[c],{open:a,close:f}=s;o.push({from:a.pos-i.open.length,to:a.pos+a.margin},{from:f.pos-f.margin,to:f.pos+i.close.length})}return{changes:o}}return null}function Yt(e,t,r=t.selection.ranges){let n=[],l=-1;e:for(let{from:o,to:c}of r){let s=n.length,i=1e9,a;for(let f=o;f<=c;){let h=t.doc.lineAt(f);if(a==null&&(a=Me(t,h.from).line,!a))continue e;if(h.from>l&&(o==c||c>h.from)){l=h.from;let p=/^\s*/.exec(h.text)[0].length,S=p==h.length,E=h.text.slice(p,p+a.length)==a?p:-1;p<h.text.length&&p<i&&(i=p),n.push({line:h,comment:E,token:a,indent:p,empty:S,single:!1})}f=h.to+1}if(i<1e9)for(let f=s;f<n.length;f++)n[f].indent<n[f].line.text.length&&(n[f].indent=i);n.length==s+1&&(n[s].single=!0)}if(e!=2&&n.some(o=>o.comment<0&&(!o.empty||o.single))){let o=[];for(let{line:s,token:i,indent:a,empty:f,single:h}of n)(h||!f)&&o.push({from:s.from+a,insert:i+" "});let c=t.changes(o);return{changes:c,selection:t.selection.map(c,1)}}else if(e!=1&&n.some(o=>o.comment>=0)){let o=[];for(let{line:c,comment:s,token:i}of n)if(s>=0){let a=c.from+s,f=a+i.length;c.text[f-c.from]==" "&&f++,o.push({from:a,to:f})}return{changes:o}}return null}var xe=ye.define(),Qt=ye.define(),Zt=pe.define(),nt=pe.define({combine(e){return Ne(e,{minDepth:100,newGroupDelay:500,joinToEvent:(t,r)=>r},{minDepth:Math.max,newGroupDelay:Math.min,joinToEvent:(t,r)=>(n,l)=>t(n,l)||r(n,l)})}}),rt=Fe.define({create(){return R.empty},update(e,t){let r=t.state.facet(nt),n=t.annotation(xe);if(n){let i=x.fromTransaction(t,n.selection),a=n.side,f=a==0?e.undone:e.done;return i?f=ne(f,f.length,r.minDepth,i):f=st(f,t.startState.selection),new R(a==0?n.rest:f,a==0?f:n.rest)}let l=t.annotation(Qt);if((l=="full"||l=="before")&&(e=e.isolate()),t.annotation(X.addToHistory)===!1)return t.changes.empty?e:e.addMapping(t.changes.desc);let o=x.fromTransaction(t),c=t.annotation(X.time),s=t.annotation(X.userEvent);return o?e=e.addChanges(o,c,s,r,t):t.selection&&(e=e.addSelection(t.startState.selection,c,s,r.newGroupDelay)),(l=="full"||l=="after")&&(e=e.isolate()),e},toJSON(e){return{done:e.done.map(t=>t.toJSON()),undone:e.undone.map(t=>t.toJSON())}},fromJSON(e){return new R(e.done.map(x.fromJSON),e.undone.map(x.fromJSON))}});function ot(e={}){return[rt,nt.of(e),y.domEventHandlers({beforeinput(t,r){let n=t.inputType=="historyUndo"?lt:t.inputType=="historyRedo"?Le:null;return n?(t.preventDefault(),n(r)):!1}})]}function re(e,t){return function({state:r,dispatch:n}){if(!t&&r.readOnly)return!1;let l=r.field(rt,!1);if(!l)return!1;let o=l.pop(e,r,t);return o?(n(o),!0):!1}}var lt=re(0,!1),Le=re(1,!1),en=re(0,!0),tn=re(1,!0);var x=class e{constructor(t,r,n,l,o){this.changes=t,this.effects=r,this.mapped=n,this.startSelection=l,this.selectionsAfter=o}setSelAfter(t){return new e(this.changes,this.effects,this.mapped,this.startSelection,t)}toJSON(){var t,r,n;return{changes:(t=this.changes)===null||t===void 0?void 0:t.toJSON(),mapped:(r=this.mapped)===null||r===void 0?void 0:r.toJSON(),startSelection:(n=this.startSelection)===null||n===void 0?void 0:n.toJSON(),selectionsAfter:this.selectionsAfter.map(l=>l.toJSON())}}static fromJSON(t){return new e(t.changes&&Pe.fromJSON(t.changes),[],t.mapped&&Ue.fromJSON(t.mapped),t.startSelection&&m.fromJSON(t.startSelection),t.selectionsAfter.map(m.fromJSON))}static fromTransaction(t,r){let n=B;for(let l of t.startState.facet(Zt)){let o=l(t);o.length&&(n=n.concat(o))}return!n.length&&t.changes.empty?null:new e(t.changes.invert(t.startState.doc),n,void 0,r||t.startState.selection,B)}static selection(t){return new e(void 0,B,void 0,void 0,t)}};function ne(e,t,r,n){let l=t+1>r+20?t-r-1:0,o=e.slice(l,t);return o.push(n),o}function nn(e,t){let r=[],n=!1;return e.iterChangedRanges((l,o)=>r.push(l,o)),t.iterChangedRanges((l,o,c,s)=>{for(let i=0;i<r.length;){let a=r[i++],f=r[i++];s>=a&&c<=f&&(n=!0)}}),n}function rn(e,t){return e.ranges.length==t.ranges.length&&e.ranges.filter((r,n)=>r.empty!=t.ranges[n].empty).length===0}function ct(e,t){return e.length?t.length?e.concat(t):e:t}var B=[],on=200;function st(e,t){if(e.length){let r=e[e.length-1],n=r.selectionsAfter.slice(Math.max(0,r.selectionsAfter.length-on));return n.length&&n[n.length-1].eq(t)?e:(n.push(t),ne(e,e.length-1,1e9,r.setSelAfter(n)))}else return[x.selection([t])]}function ln(e){let t=e[e.length-1],r=e.slice();return r[e.length-1]=t.setSelAfter(t.selectionsAfter.slice(0,t.selectionsAfter.length-1)),r}function Ae(e,t){if(!e.length)return e;let r=e.length,n=B;for(;r;){let l=cn(e[r-1],t,n);if(l.changes&&!l.changes.empty||l.effects.length){let o=e.slice(0,r);return o[r-1]=l,o}else t=l.mapped,r--,n=l.selectionsAfter}return n.length?[x.selection(n)]:B}function cn(e,t,r){let n=ct(e.selectionsAfter.length?e.selectionsAfter.map(s=>s.map(t)):B,r);if(!e.changes)return x.selection(n);let l=e.changes.map(t),o=t.mapDesc(e.changes,!0),c=e.mapped?e.mapped.composeDesc(o):o;return new x(l,ke.mapEffects(e.effects,t),c,e.startSelection.map(o),n)}var sn=/^(input\.type|delete)($|\.)/,R=class e{constructor(t,r,n=0,l=void 0){this.done=t,this.undone=r,this.prevTime=n,this.prevUserEvent=l}isolate(){return this.prevTime?new e(this.done,this.undone):this}addChanges(t,r,n,l,o){let c=this.done,s=c[c.length-1];return s&&s.changes&&!s.changes.empty&&t.changes&&(!n||sn.test(n))&&(!s.selectionsAfter.length&&r-this.prevTime<l.newGroupDelay&&l.joinToEvent(o,nn(s.changes,t.changes))||n=="input.type.compose")?c=ne(c,c.length-1,l.minDepth,new x(t.changes.compose(s.changes),ct(ke.mapEffects(t.effects,s.changes),s.effects),s.mapped,s.startSelection,B)):c=ne(c,c.length,l.minDepth,t),new e(c,B,r,n)}addSelection(t,r,n,l){let o=this.done.length?this.done[this.done.length-1].selectionsAfter:B;return o.length>0&&r-this.prevTime<l&&n==this.prevUserEvent&&n&&/^select($|\.)/.test(n)&&rn(o[o.length-1],t)?this:new e(st(this.done,t),this.undone,r,n)}addMapping(t){return new e(Ae(this.done,t),Ae(this.undone,t),this.prevTime,this.prevUserEvent)}pop(t,r,n){let l=t==0?this.done:this.undone;if(l.length==0)return null;let o=l[l.length-1],c=o.selectionsAfter[0]||(o.startSelection?o.startSelection.map(o.changes.invertedDesc,1):r.selection);if(n&&o.selectionsAfter.length)return r.update({selection:o.selectionsAfter[o.selectionsAfter.length-1],annotations:xe.of({side:t,rest:ln(l),selection:c}),userEvent:t==0?"select.undo":"select.redo",scrollIntoView:!0});if(o.changes){let s=l.length==1?B:l.slice(0,l.length-1);return o.mapped&&(s=Ae(s,o.mapped)),r.update({changes:o.changes,selection:o.startSelection,effects:o.effects,annotations:xe.of({side:t,rest:s,selection:c}),filter:!1,userEvent:t==0?"undo":"redo",scrollIntoView:!0})}else return null}};R.empty=new R(B,B);var it=[{key:"Mod-z",run:lt,preventDefault:!0},{key:"Mod-y",mac:"Mod-Shift-z",run:Le,preventDefault:!0},{linux:"Ctrl-Shift-z",run:Le,preventDefault:!0},{key:"Mod-u",run:en,preventDefault:!0},{key:"Alt-u",mac:"Mod-Shift-u",run:tn,preventDefault:!0}];function z(e,t){return m.create(e.ranges.map(t),e.mainIndex)}function L(e,t){return e.update({selection:t,scrollIntoView:!0,userEvent:"select"})}function b({state:e,dispatch:t},r){let n=z(e.selection,r);return n.eq(e.selection,!0)?!1:(t(L(e,n)),!0)}function oe(e,t){return m.cursor(t?e.to:e.from)}function at(e,t){return b(e,r=>r.empty?e.moveByChar(r,t):oe(r,t))}function C(e){return e.textDirectionAt(e.state.selection.main.head)==Ve.LTR}var ut=e=>at(e,!C(e)),ft=e=>at(e,C(e));function dt(e,t){return b(e,r=>r.empty?e.moveByGroup(r,t):oe(r,t))}var an=e=>dt(e,!C(e)),un=e=>dt(e,C(e));var sr=typeof Intl<"u"&&Intl.Segmenter?new Intl.Segmenter(void 0,{granularity:"word"}):null;function fn(e,t,r){if(t.type.prop(r))return!0;let n=t.to-t.from;return n&&(n>2||/[^\s,.;:]/.test(e.sliceDoc(t.from,t.to)))||t.firstChild}function le(e,t,r){let n=Z(e).resolveInner(t.head),l=r?Q.closedBy:Q.openedBy;for(let i=t.head;;){let a=r?n.childAfter(i):n.childBefore(i);if(!a)break;fn(e,a,l)?n=a:i=r?a.to:a.from}let o=n.type.prop(l),c,s;return o&&(c=r?M(e,n.from,1):M(e,n.to,-1))&&c.matched?s=r?c.end.to:c.end.from:s=r?n.to:n.from,m.cursor(s,r?-1:1)}var dn=e=>b(e,t=>le(e.state,t,!C(e))),hn=e=>b(e,t=>le(e.state,t,C(e)));function ht(e,t){return b(e,r=>{if(!r.empty)return oe(r,t);let n=e.moveVertically(r,t);return n.head!=r.head?n:e.moveToLineBoundary(r,t)})}var mt=e=>ht(e,!1),pt=e=>ht(e,!0);function gt(e){let t=e.scrollDOM.clientHeight<e.scrollDOM.scrollHeight-2,r=0,n=0,l;if(t){for(let o of e.state.facet(y.scrollMargins)){let c=o(e);c?.top&&(r=Math.max(c?.top,r)),c?.bottom&&(n=Math.max(c?.bottom,n))}l=e.scrollDOM.clientHeight-r-n}else l=(e.dom.ownerDocument.defaultView||window).innerHeight;return{marginTop:r,marginBottom:n,selfScroll:t,height:Math.max(e.defaultLineHeight,l-5)}}function yt(e,t){let r=gt(e),{state:n}=e,l=z(n.selection,c=>c.empty?e.moveVertically(c,t,r.height):oe(c,t));if(l.eq(n.selection))return!1;let o;if(r.selfScroll){let c=e.coordsAtPos(n.selection.main.head),s=e.scrollDOM.getBoundingClientRect(),i=s.top+r.marginTop,a=s.bottom-r.marginBottom;c&&c.top>i&&c.bottom<a&&(o=y.scrollIntoView(l.main.head,{y:"start",yMargin:c.top-i}))}return e.dispatch(L(n,l),{effects:o}),!0}var $e=e=>yt(e,!1),be=e=>yt(e,!0);function v(e,t,r){let n=e.lineBlockAt(t.head),l=e.moveToLineBoundary(t,r);if(l.head==t.head&&l.head!=(r?n.to:n.from)&&(l=e.moveToLineBoundary(t,r,!1)),!r&&l.head==n.from&&n.length){let o=/^\s*/.exec(e.state.sliceDoc(n.from,Math.min(n.from+100,n.to)))[0].length;o&&t.head!=n.from+o&&(l=m.cursor(n.from+o))}return l}var mn=e=>b(e,t=>v(e,t,!0)),pn=e=>b(e,t=>v(e,t,!1)),gn=e=>b(e,t=>v(e,t,!C(e))),yn=e=>b(e,t=>v(e,t,C(e))),kn=e=>b(e,t=>e.moveToLineBoundary(t,!1,!1)),Cn=e=>b(e,t=>e.moveToLineBoundary(t,!0,!1));function Sn(e,t,r){let n=!1,l=z(e.selection,o=>{let c=M(e,o.head,-1)||M(e,o.head,1)||o.head>0&&M(e,o.head-1,1)||o.head<e.doc.length&&M(e,o.head+1,-1);if(!c||!c.end)return o;n=!0;let s=c.start.from==o.head?c.end.to:c.end.from;return r?m.range(o.anchor,s):m.cursor(s)});return n?(t(L(e,l)),!0):!1}var Bn=({state:e,dispatch:t})=>Sn(e,t,!1);function A(e,t,r){let n=z(e.state.selection,l=>{l.undirectional&&l.head>=l.anchor!=t&&(l=m.range(l.head,l.anchor));let o=r(l);return m.range(l.anchor,o.head,o.goalColumn,o.bidiLevel||void 0,o.assoc)});return n.eq(e.state.selection)?!1:(e.dispatch(L(e.state,n)),!0)}function kt(e,t){return A(e,t,r=>e.moveByChar(r,t))}var Ct=e=>kt(e,!C(e)),St=e=>kt(e,C(e));function Bt(e,t){return A(e,t,r=>e.moveByGroup(r,t))}var An=e=>Bt(e,!C(e)),xn=e=>Bt(e,C(e));var Ln=e=>{let t=!C(e);return A(e,t,r=>le(e.state,r,t))},bn=e=>{let t=C(e);return A(e,t,r=>le(e.state,r,t))};function At(e,t){return A(e,t,r=>e.moveVertically(r,t))}var xt=e=>At(e,!1),Lt=e=>At(e,!0);function bt(e,t){return A(e,t,r=>e.moveVertically(r,t,gt(e).height))}var Ke=e=>bt(e,!1),je=e=>bt(e,!0),En=e=>A(e,!0,t=>v(e,t,!0)),Dn=e=>A(e,!1,t=>v(e,t,!1)),Mn=e=>{let t=!C(e);return A(e,t,r=>v(e,r,t))},Tn=e=>{let t=C(e);return A(e,t,r=>v(e,r,t))},vn=e=>A(e,!1,t=>m.cursor(e.lineBlockAt(t.head).from)),wn=e=>A(e,!0,t=>m.cursor(e.lineBlockAt(t.head).to)),Xe=({state:e,dispatch:t})=>(t(L(e,{anchor:0})),!0),Ye=({state:e,dispatch:t})=>(t(L(e,{anchor:e.doc.length})),!0),Qe=({state:e,dispatch:t})=>(t(L(e,{anchor:e.selection.main.anchor,head:0})),!0),Ze=({state:e,dispatch:t})=>(t(L(e,{anchor:e.selection.main.anchor,head:e.doc.length})),!0),In=({state:e,dispatch:t})=>(t(e.update({selection:{anchor:0,head:e.doc.length},userEvent:"select"})),!0),Rn=({state:e,dispatch:t})=>{let r=ce(e).map(({from:n,to:l})=>m.undirectionalRange(n,Math.min(l+1,e.doc.length)));return t(e.update({selection:m.create(r),userEvent:"select"})),!0},On=({state:e,dispatch:t})=>{let r=z(e.selection,n=>{let l=Z(e),o=l.resolveStack(n.from,1);if(n.empty){let c=l.resolveStack(n.from,-1);c.node.from>=o.node.from&&c.node.to<=o.node.to&&(o=c)}for(let c=o;c;c=c.next){let{node:s}=c;if((s.from<n.from&&s.to>=n.to||s.to>n.to&&s.from<=n.from)&&c.next)return m.undirectionalRange(s.from,s.to)}return n});return r.eq(e.selection)?!1:(t(L(e,r)),!0)};function Et(e,t){let{state:r}=e,n=r.selection,l=r.selection.ranges.slice();for(let o of r.selection.ranges){let c=r.doc.lineAt(o.head);if(t?c.to<e.state.doc.length:c.from>0)for(let s=o;;){let i=e.moveVertically(s,t);if(i.head<c.from||i.head>c.to){l.some(a=>a.head==i.head)||l.push(i);break}else{if(i.head==s.head)break;s=i}}}return l.length==n.ranges.length?!1:(e.dispatch(L(r,m.create(l,l.length-1))),!0)}var Un=e=>Et(e,!1),Pn=e=>Et(e,!0),Fn=({state:e,dispatch:t})=>{let r=e.selection,n=null;return r.ranges.length>1?n=m.create([r.main]):r.main.empty||(n=m.create([m.cursor(r.main.head)])),n?(t(L(e,n)),!0):!1};function K(e,t){if(e.state.readOnly)return!1;let r="delete.selection",{state:n}=e,l=n.changeByRange(o=>{let{from:c,to:s}=o;if(c==s){let i=t(o);i<c?(r="delete.backward",i=te(e,i,!1)):i>c&&(r="delete.forward",i=te(e,i,!0)),c=Math.min(c,i),s=Math.max(s,i)}else c=te(e,c,!1),s=te(e,s,!0);return c==s?{range:o}:{changes:{from:c,to:s},range:m.cursor(c,c<o.head?-1:1)}});return l.changes.empty?!1:(e.dispatch(n.update(l,{scrollIntoView:!0,userEvent:r,effects:r=="delete.selection"?y.announce.of(n.phrase("Selection deleted")):void 0})),!0)}function te(e,t,r){if(e instanceof y)for(let n of e.state.facet(y.atomicRanges).map(l=>l(e)))n.between(t,t,(l,o)=>{l<t&&o>t&&(t=r?o:l)});return t}var Dt=(e,t,r)=>K(e,n=>{let l=n.from,{state:o}=e,c=o.doc.lineAt(l),s,i;if(r&&!t&&l>c.from&&l<c.from+200&&!/[^ \t]/.test(s=c.text.slice(0,l-c.from))){if(s[s.length-1]=="	")return l-1;let a=Y(s,o.tabSize),f=a%ee(o)||ee(o);for(let h=0;h<f&&s[s.length-1-h]==" ";h++)l--;i=l}else i=V(c.text,l-c.from,t,t)+c.from,i==l&&c.number!=(t?o.doc.lines:1)?i+=t?1:-1:!t&&/[\ufe00-\ufe0f]/.test(c.text.slice(i-c.from,l-c.from))&&(i=V(c.text,i-c.from,!1,!1)+c.from);return i}),Ee=e=>Dt(e,!1,!0);var Mt=e=>Dt(e,!0,!1),Tt=(e,t)=>K(e,r=>{let n=r.head,{state:l}=e,o=l.doc.lineAt(n),c=l.charCategorizer(n);for(let s=null;;){if(n==(t?o.to:o.from)){n==r.head&&o.number!=(t?l.doc.lines:1)&&(n+=t?1:-1);break}let i=V(o.text,n-o.from,t)+o.from,a=o.text.slice(Math.min(n,i)-o.from,Math.max(n,i)-o.from),f=c(a);if(s!=null&&f!=s)break;(a!=" "||n!=r.head)&&(s=f),n=i}return n}),vt=e=>Tt(e,!1),Gn=e=>Tt(e,!0);var Nn=e=>K(e,t=>{let r=e.lineBlockAt(t.head).to;return t.head<r?r:Math.min(e.state.doc.length,t.head+1)});var Vn=e=>K(e,t=>{let r=e.moveToLineBoundary(t,!1).head;return t.head>r?r:Math.max(0,t.head-1)}),zn=e=>K(e,t=>{let r=e.moveToLineBoundary(t,!0).head;return t.head<r?r:Math.min(e.state.doc.length,t.head+1)});var Jn=({state:e,dispatch:t})=>{if(e.readOnly)return!1;let r=e.changeByRange(n=>({changes:{from:n.from,to:n.to,insert:me.of(["",""])},range:m.cursor(n.from)}));return t(e.update(r,{scrollIntoView:!0,userEvent:"input"})),!0},Wn=({state:e,dispatch:t})=>{if(e.readOnly)return!1;let r=e.changeByRange(n=>{if(!n.empty||n.from==0||n.from==e.doc.length)return{range:n};let l=n.from,o=e.doc.lineAt(l),c=l==o.from?l-1:V(o.text,l-o.from,!1)+o.from,s=l==o.to?l+1:V(o.text,l-o.from,!0)+o.from;return{changes:{from:c,to:s,insert:e.doc.slice(l,s).append(e.doc.slice(c,l))},range:m.cursor(s)}});return r.changes.empty?!1:(t(e.update(r,{scrollIntoView:!0,userEvent:"move.character"})),!0)};function ce(e){let t=[],r=-1;for(let n of e.selection.ranges){let l=e.doc.lineAt(n.from),o=e.doc.lineAt(n.to);if(!n.empty&&n.to==o.from&&(o=e.doc.lineAt(n.to-1)),r>=l.number){let c=t[t.length-1];c.to=o.to,c.ranges.push(n)}else t.push({from:l.from,to:o.to,ranges:[n]});r=o.number+1}return t}function wt(e,t,r){if(e.readOnly)return!1;let n=[],l=[];for(let o of ce(e)){if(r?o.to==e.doc.length:o.from==0)continue;let c=e.doc.lineAt(r?o.to+1:o.from-1),s=c.length+1;if(r){n.push({from:o.to,to:c.to},{from:o.from,insert:c.text+e.lineBreak});for(let i of o.ranges)l.push(m.range(Math.min(e.doc.length,i.anchor+s),Math.min(e.doc.length,i.head+s)))}else{n.push({from:c.from,to:o.from},{from:o.to,insert:e.lineBreak+c.text});for(let i of o.ranges)l.push(m.range(i.anchor-s,i.head-s))}}return n.length?(t(e.update({changes:n,scrollIntoView:!0,selection:m.create(l,e.selection.mainIndex),userEvent:"move.line"})),!0):!1}var _n=({state:e,dispatch:t})=>wt(e,t,!1),Hn=({state:e,dispatch:t})=>wt(e,t,!0);function It(e,t,r){if(e.readOnly)return!1;let n=[];for(let o of ce(e))r?n.push({from:o.from,insert:e.doc.slice(o.from,o.to)+e.lineBreak}):n.push({from:o.to,insert:e.lineBreak+e.doc.slice(o.from,o.to)});let l=e.changes(n);return t(e.update({changes:l,selection:e.selection.map(l,r?1:-1),scrollIntoView:!0,userEvent:"input.copyline"})),!0}var qn=({state:e,dispatch:t})=>It(e,t,!1),$n=({state:e,dispatch:t})=>It(e,t,!0),Kn=e=>{if(e.state.readOnly)return!1;let{state:t}=e,r=t.changes(ce(t).map(({from:l,to:o})=>(l>0?l--:o<t.doc.length&&o++,{from:l,to:o}))),n=z(t.selection,l=>{let o;if(e.lineWrapping){let c=e.lineBlockAt(l.head),s=e.coordsAtPos(l.head,l.assoc||1);s&&(o=c.bottom+e.documentTop-s.bottom+e.defaultLineHeight/2)}return e.moveVertically(l,!0,o)}).map(r);return e.dispatch({changes:r,selection:n,scrollIntoView:!0,userEvent:"delete.line"}),!0};function jn(e,t){if(/\(\)|\[\]|\{\}/.test(e.sliceDoc(t-1,t+1)))return{from:t,to:t};let r=Z(e).resolveInner(t),n=r.childBefore(t),l=r.childAfter(t),o;return n&&l&&n.to<=t&&l.from>=t&&(o=n.type.prop(Q.closedBy))&&o.indexOf(l.name)>-1&&e.doc.lineAt(n.to).from==e.doc.lineAt(l.from).from&&!/\S/.test(e.sliceDoc(n.to,l.from))?{from:n.to,to:l.from}:null}var et=Rt(!1),Xn=Rt(!0);function Rt(e){return({state:t,dispatch:r})=>{if(t.readOnly)return!1;let n=t.changeByRange(l=>{let{from:o,to:c}=l,s=t.doc.lineAt(o),i=!e&&o==c&&jn(t,o);e&&(o=c=(c<=s.to?s:t.doc.lineAt(c)).to);let a=new Se(t,{simulateBreak:o,simulateDoubleBreak:!!i}),f=Ce(a,o);for(f==null&&(f=Y(/^\s*/.exec(t.doc.lineAt(o).text)[0],t.tabSize));c<s.to&&/\s/.test(s.text[c-s.from]);)c++;i?{from:o,to:c}=i:o>s.from&&o<s.from+100&&!/\S/.test(s.text.slice(0,o))&&(o=s.from);let h=["",q(t,f)];return i&&h.push(q(t,a.lineIndent(s.from,-1))),{changes:{from:o,to:c,insert:me.of(h)},range:m.cursor(o+1+h[1].length)}});return r(t.update(n,{scrollIntoView:!0,userEvent:"input"})),!0}}function Te(e,t){let r=-1;return e.changeByRange(n=>{let l=[];for(let c=n.from;c<=n.to;){let s=e.doc.lineAt(c);s.number>r&&(n.empty||n.to>s.from)&&(t(s,l,n),r=s.number),c=s.to+1}let o=e.changes(l);return{changes:l,range:m.range(o.mapPos(n.anchor,1),o.mapPos(n.head,1))}})}var Yn=({state:e,dispatch:t})=>{if(e.readOnly)return!1;let r=Object.create(null),n=new Se(e,{overrideIndentation:o=>{let c=r[o];return c??-1}}),l=Te(e,(o,c,s)=>{let i=Ce(n,o.from);if(i==null)return;/\S/.test(o.text)||(i=0);let a=/^\s*/.exec(o.text)[0],f=q(e,i);(a!=f||s.from<o.from+a.length)&&(r[o.from]=i,c.push({from:o.from,to:o.from+a.length,insert:f}))});return l.changes.empty||t(e.update(l,{userEvent:"indent"})),!0},Ot=({state:e,dispatch:t})=>e.readOnly?!1:(t(e.update(Te(e,(r,n)=>{n.push({from:r.from,insert:e.facet(We)})}),{userEvent:"input.indent"})),!0),Ut=({state:e,dispatch:t})=>e.readOnly?!1:(t(e.update(Te(e,(r,n)=>{let l=/^\s*/.exec(r.text)[0];if(!l)return;let o=Y(l,e.tabSize),c=0,s=q(e,Math.max(0,o-ee(e)));for(;c<l.length&&c<s.length&&l.charCodeAt(c)==s.charCodeAt(c);)c++;n.push({from:r.from+c,to:r.from+l.length,insert:s.slice(c)})}),{userEvent:"delete.dedent"})),!0),Qn=e=>(e.setTabFocusMode(),!0);var Zn=[{key:"Ctrl-b",run:ut,shift:Ct,preventDefault:!0},{key:"Ctrl-f",run:ft,shift:St},{key:"Ctrl-p",run:mt,shift:xt},{key:"Ctrl-n",run:pt,shift:Lt},{key:"Ctrl-a",run:kn,shift:vn},{key:"Ctrl-e",run:Cn,shift:wn},{key:"Ctrl-d",run:Mt},{key:"Ctrl-h",run:Ee},{key:"Ctrl-k",run:Nn},{key:"Ctrl-Alt-h",run:vt},{key:"Ctrl-o",run:Jn},{key:"Ctrl-t",run:Wn},{key:"Ctrl-v",run:be}],er=[{key:"ArrowLeft",run:ut,shift:Ct,preventDefault:!0},{key:"Mod-ArrowLeft",mac:"Alt-ArrowLeft",run:an,shift:An,preventDefault:!0},{mac:"Cmd-ArrowLeft",run:gn,shift:Mn,preventDefault:!0},{key:"ArrowRight",run:ft,shift:St,preventDefault:!0},{key:"Mod-ArrowRight",mac:"Alt-ArrowRight",run:un,shift:xn,preventDefault:!0},{mac:"Cmd-ArrowRight",run:yn,shift:Tn,preventDefault:!0},{key:"ArrowUp",run:mt,shift:xt,preventDefault:!0},{mac:"Cmd-ArrowUp",run:Xe,shift:Qe},{mac:"Ctrl-ArrowUp",run:$e,shift:Ke},{key:"ArrowDown",run:pt,shift:Lt,preventDefault:!0},{mac:"Cmd-ArrowDown",run:Ye,shift:Ze},{mac:"Ctrl-ArrowDown",run:be,shift:je},{key:"PageUp",run:$e,shift:Ke},{key:"PageDown",run:be,shift:je},{key:"Home",run:pn,shift:Dn,preventDefault:!0},{key:"Mod-Home",run:Xe,shift:Qe},{key:"End",run:mn,shift:En,preventDefault:!0},{key:"Mod-End",run:Ye,shift:Ze},{key:"Enter",run:et,shift:et},{key:"Mod-a",run:In},{key:"Backspace",run:Ee,shift:Ee,preventDefault:!0},{key:"Delete",run:Mt,preventDefault:!0},{key:"Mod-Backspace",mac:"Alt-Backspace",run:vt,preventDefault:!0},{key:"Mod-Delete",mac:"Alt-Delete",run:Gn,preventDefault:!0},{mac:"Mod-Backspace",run:Vn,preventDefault:!0},{mac:"Mod-Delete",run:zn,preventDefault:!0}].concat(Zn.map(e=>({mac:e.key,run:e.run,shift:e.shift}))),Pt=[{key:"Alt-ArrowLeft",mac:"Ctrl-ArrowLeft",run:dn,shift:Ln},{key:"Alt-ArrowRight",mac:"Ctrl-ArrowRight",run:hn,shift:bn},{key:"Alt-ArrowUp",run:_n},{key:"Shift-Alt-ArrowUp",run:qn},{key:"Alt-ArrowDown",run:Hn},{key:"Shift-Alt-ArrowDown",run:$n},{key:"Mod-Alt-ArrowUp",run:Un},{key:"Mod-Alt-ArrowDown",run:Pn},{key:"Escape",run:Fn},{key:"Mod-Enter",run:Xn},{key:"Alt-l",mac:"Ctrl-l",run:Rn},{key:"Mod-i",run:On,preventDefault:!0},{key:"Mod-[",run:Ut},{key:"Mod-]",run:Ot},{key:"Mod-Alt-\\",run:Yn},{key:"Shift-Mod-k",run:Kn},{key:"Shift-Mod-\\",run:Bn},{key:"Mod-/",run:Ht},{key:"Alt-A",mac:"Ctrl-A",run:$t},{key:"Ctrl-m",mac:"Shift-Alt-m",run:Qn}].concat(er),Ft={key:"Tab",run:Ot,shift:Ut};var Vt='"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',tr=y.theme({},{dark:!0}),Gt=y.theme({"&":{color:"#d4d4d4",backgroundColor:"#1e1e1e"},".cm-content":{caretColor:"#aeafad",backgroundColor:"#1e1e1e",fontFamily:Vt},".cm-cursor, .cm-dropCursor":{borderLeftColor:"#aeafad"},".cm-gutters":{backgroundColor:"#1e1e1e",color:"#6e7681",border:"none"},".cm-activeLine":{backgroundColor:"#282828"},".cm-activeLineGutter":{backgroundColor:"#37373d"},".cm-selectionBackground, .cm-content ::selection":{backgroundColor:"#264f78"},".cm-matchingBracket":{backgroundColor:"#04395e"},".cm-nonmatchingBracket":{backgroundColor:"#f14c4c"}},{dark:!0}),Nt=y.theme({"&":{color:"#1f1f1f",backgroundColor:"#ffffff"},".cm-content":{caretColor:"#000000",backgroundColor:"#ffffff",fontFamily:Vt},".cm-cursor, .cm-dropCursor":{borderLeftColor:"#000000"},".cm-gutters":{backgroundColor:"#ffffff",color:"#237893",border:"none"},".cm-activeLine":{backgroundColor:"#f3f3f3"},".cm-activeLineGutter":{backgroundColor:"#e8e8e8"},".cm-selectionBackground, .cm-content ::selection":{backgroundColor:"#add6ff"},".cm-matchingBracket":{backgroundColor:"#3a5f8a"},".cm-nonmatchingBracket":{backgroundColor:"#f14c4c"}},{dark:!1});function zt(e,t={}){let{theme:r="dark",initialDoc:n="",onChange:l=null,onCursorChange:o=null,runCommand:c=null,saveCommand:s=null}=t,i=new ge,a=new ge,f=r==="light"?Nt:Gt,h=k=>{k.docChanged&&k.userEvent!=="programmatic"&&l&&l(k.state.doc.toString());let g=k.state.selection.main,T=k.state.doc.lineAt(g).number,J=g.character+1;o&&o(T,J)},p=[...Pt.filter(k=>k.key!=="Mod-Enter"),...it,...Be,{key:"Mod-Enter",run:()=>(c&&c(),!0)},{key:"Mod-s",run:()=>(s&&s(),!0)},Ft],S=new y({state:Ge.create({doc:n,extensions:[Je(),a.of(tr),i.of(f),ot(),He,qe(),M,_e(),Be,y.lineWrapping,y.highlightActiveLine,y.highlightActiveLineGutter,y.highlightSpecialChars,y.drawSelection,y.updateListener.of(h),ze.of(p)]}),parent:e}),E=(async()=>{let k=await import("./dist-E5TFO7AF.js");S.dispatch({effects:a.reconfigure(k.python())})})();return{editor:S,getSource:()=>S.state.doc.toString(),setSource:k=>{S.dispatch({changes:{from:0,to:S.state.doc.length,insert:k},userEvent:"programmatic"})},focus:()=>S.focus(),requestMeasure:()=>S.requestMeasure(),setTheme:k=>{S.dispatch({effects:i.reconfigure(k==="light"?Nt:Gt)})},languageReady:E}}var ve=document.querySelector("[data-practice-workspace]");if(ve){let e=ve.dataset.lessonId,t=JSON.parse(document.getElementById("practice-exercises").textContent),r=document.getElementById("practice-launcher"),n=document.getElementById("practice-panel"),l=document.getElementById("practice-editor"),o=document.getElementById("practice-exercise-select"),c=document.getElementById("practice-instructions"),s=document.getElementById("practice-save-status"),i=document.getElementById("practice-output"),a=document.getElementById("practice-run"),f=document.getElementById("practice-solution"),h=document.getElementById("practice-reset"),p=document.getElementById("practice-sandbox"),S=ve.dataset.usageUrl,E=document.querySelector('meta[name="csrf-token"]').content,k=document.getElementById("practice-statusbar-position"),g=null,T="",J=null,W=null,se=zt(l,{theme:"dark",onChange:u=>{O||!g||u===T||ue()},onCursorChange:(u,d)=>{k&&(k.textContent=`Ln ${u}, Col ${d}`)},runCommand:()=>{I().then(he)},saveCommand:()=>{I()}}),O=!1,U=!1,_=null,we=null,Jt=0,P=!1,H=!1,ie=null,ae=!1,Ie=u=>`/api/lessons/practice/${encodeURIComponent(e)}/${encodeURIComponent(u.id)}`,w=(u,d="")=>{s.textContent=u,s.dataset.state=d},F=()=>se.getSource(),G=async u=>{try{let d=await fetch(S,{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":E},body:JSON.stringify({event:u})});if(!d.ok)throw new Error(`Usage tracking returned ${d.status}`)}catch(d){console.warn("Could not record anonymous practice pilot usage.",d)}},I=async()=>{if(clearTimeout(J),W)return await W?F()===T?!0:I():!1;let u=F();return!g||u===T?!0:(W=(async()=>{w("Saving\u2026","saving");try{let d=await fetch(Ie(g),{method:"PUT",headers:{"Content-Type":"application/json","X-CSRF-Token":E},body:JSON.stringify({source:u})}),N=await d.json();if(!d.ok)throw new Error(N.error||"Could not save your work.");return T=u,w("Saved","saved"),F()!==T&&ue(),!0}catch(d){return w(d.message||"Could not save your work.","error"),!1}finally{W=null}})(),W)},ue=()=>{clearTimeout(J),w("Unsaved changes","dirty"),J=setTimeout(()=>{I()},700)},fe=u=>{O=!0,se.setSource(u),O=!1},Re=async u=>{let d=g;O=!0,g=u,ae=!1,f.hidden=!u.solution_code,f.disabled=!0,f.textContent="Show worked solution",document.getElementById("practice-task-title").textContent=u.title,c.textContent=u.instructions,i.textContent="Run your code to see output and checks.",a.disabled=!0,w("Loading saved work\u2026","saving");try{let N=await fetch(Ie(u)),j=await N.json();if(!N.ok)throw new Error(j.error||"Could not load this exercise.");T=j.source,fe(j.source),w(j.updated_at?"Saved work loaded":"Starter code loaded","saved")}catch(N){d&&(g=d,o.value=d.id,document.getElementById("practice-task-title").textContent=d.title,c.textContent=d.instructions),w(N.message||"Could not load this exercise.","error")}finally{O=!1,a.disabled=!U}},de=()=>requestAnimationFrame(()=>se.requestMeasure()),Wt=()=>{n.hidden=!1,n.classList.remove("is-collapsed"),r.hidden=!0,document.getElementById("practice-collapse").setAttribute("aria-expanded","true"),de(),G("open"),Oe()},_t=async()=>{await I()&&(n.hidden=!0,n.classList.remove("is-maximized","is-collapsed"),r.hidden=!1)},D=(u,d=!1)=>{i.textContent=u,i.dataset.state=d?"error":"output"},Oe=()=>{H||(H=!0,D("Loading the browser Python runtime\u2026"),p.src="/static/practice-sandbox.html",ie=setTimeout(()=>{U||(H=!1,P=!1,a.disabled=!1,p.src="about:blank",D("The Python runtime did not respond. Check that your browser allows background workers, then reload the lesson.",!0),G("error"))},45e3))},he=()=>{if(!g)return;if(!U){P=!0,a.disabled=!0,Oe();return}let u=++Jt;_=u,ae=!0,f.disabled=!g.solution_code,a.disabled=!0,D("Running in the browser\u2026"),p.contentWindow.postMessage({type:"run",runId:u,code:`${F()}
+import {
+  Annotation,
+  ChangeDesc,
+  ChangeSet,
+  Compartment,
+  Direction,
+  EditorSelection,
+  EditorState,
+  EditorView,
+  Facet,
+  IndentContext,
+  NodeProp,
+  StateEffect,
+  StateField,
+  Text,
+  Transaction,
+  autocompletion,
+  closeBrackets,
+  combineConfig,
+  countColumn,
+  findClusterBreak,
+  foldGutter,
+  foldKeymap,
+  getIndentUnit,
+  getIndentation,
+  indentString,
+  indentUnit,
+  keymap,
+  lineNumbers,
+  matchBrackets,
+  syntaxTree
+} from "./chunk-NCOOGUYM.js";
 
-${g.checks_code}`},"*"),we=setTimeout(()=>{_===u&&(_=null,a.disabled=!1,D("Execution timed out. The browser worker was stopped; try a smaller exercise.",!0),G("error"),U=!1,H=!1,p.src="about:blank")},1e4)};t.forEach(u=>{let d=document.createElement("option");d.value=u.id,d.textContent=u.title,o.append(d)}),r.addEventListener("click",Wt),document.getElementById("practice-close").addEventListener("click",()=>{_t()}),document.getElementById("practice-collapse").addEventListener("click",u=>{let d=n.classList.toggle("is-collapsed");u.currentTarget.setAttribute("aria-expanded",String(!d)),u.currentTarget.textContent=d?"Expand":"Minimize",u.currentTarget.setAttribute("aria-label",d?"Expand workspace":"Collapse workspace"),de()}),document.getElementById("practice-maximize").addEventListener("click",u=>{let d=n.classList.toggle("is-maximized");u.currentTarget.setAttribute("aria-pressed",String(d)),u.currentTarget.textContent=d?"Restore":"Maximize",de()}),o.addEventListener("change",async()=>{if(!await I()){o.value=g.id;return}let u=t.find(d=>d.id===o.value);u&&await Re(u)}),h.addEventListener("click",()=>{g&&(F()!==g.starter_code&&!window.confirm("Discard your edits and restore the starter code?")||(fe(g.starter_code),ue()))}),f.addEventListener("click",async()=>{!g?.solution_code||!ae||F()!==g.starter_code&&!window.confirm("Replace your current work with the worked solution?")||(fe(g.solution_code),await I(),D("Worked solution loaded. Read it, run the checks, and explain each decision."))}),a.addEventListener("click",()=>{G("run"),he()}),window.addEventListener("message",u=>{if(!(u.source!==p.contentWindow||u.origin!=="null"||!u.data)){if(u.data.type==="ready"){clearTimeout(ie),U=!0,a.disabled=O,P||D("Python runtime ready. Run checks when you are ready."),P&&(P=!1,he());return}if(u.data.type==="error"&&u.data.runId==null){clearTimeout(ie),U=!1,P=!1,H=!1,p.src="about:blank",a.disabled=!1,D(u.data.text||"Python runtime failed to load.",!0),G("error");return}if(u.data.type==="run-started"){D("Running checks\u2026");return}u.data.runId===_&&(u.data.type==="output"?i.textContent=`${i.textContent}${u.data.text}`.slice(0,12e3):(u.data.type==="done"||u.data.type==="error"||u.data.type==="timeout")&&(clearTimeout(we),_=null,a.disabled=!1,D(u.data.text,u.data.type!=="done"),u.data.type!=="done"&&G("error")))}}),Re(t[0])}
+// node_modules/@codemirror/commands/dist/index.js
+var toggleComment = (target) => {
+  let { state } = target, line = state.doc.lineAt(state.selection.main.from), config = getConfig(target.state, line.from);
+  return config.line ? toggleLineComment(target) : config.block ? toggleBlockCommentByLine(target) : false;
+};
+function command(f, option) {
+  return ({ state, dispatch }) => {
+    if (state.readOnly)
+      return false;
+    let tr = f(option, state);
+    if (!tr)
+      return false;
+    dispatch(state.update(tr));
+    return true;
+  };
+}
+var toggleLineComment = /* @__PURE__ */ command(
+  changeLineComment,
+  0
+  /* CommentOption.Toggle */
+);
+var toggleBlockComment = /* @__PURE__ */ command(
+  changeBlockComment,
+  0
+  /* CommentOption.Toggle */
+);
+var toggleBlockCommentByLine = /* @__PURE__ */ command(
+  (o, s) => changeBlockComment(o, s, selectedLineRanges(s)),
+  0
+  /* CommentOption.Toggle */
+);
+function getConfig(state, pos) {
+  let data = state.languageDataAt("commentTokens", pos, 1);
+  return data.length ? data[0] : {};
+}
+var SearchMargin = 50;
+function findBlockComment(state, { open, close }, from, to) {
+  let textBefore = state.sliceDoc(from - SearchMargin, from);
+  let textAfter = state.sliceDoc(to, to + SearchMargin);
+  let spaceBefore = /\s*$/.exec(textBefore)[0].length, spaceAfter = /^\s*/.exec(textAfter)[0].length;
+  let beforeOff = textBefore.length - spaceBefore;
+  if (textBefore.slice(beforeOff - open.length, beforeOff) == open && textAfter.slice(spaceAfter, spaceAfter + close.length) == close) {
+    return {
+      open: { pos: from - spaceBefore, margin: spaceBefore && 1 },
+      close: { pos: to + spaceAfter, margin: spaceAfter && 1 }
+    };
+  }
+  let startText, endText;
+  if (to - from <= 2 * SearchMargin) {
+    startText = endText = state.sliceDoc(from, to);
+  } else {
+    startText = state.sliceDoc(from, from + SearchMargin);
+    endText = state.sliceDoc(to - SearchMargin, to);
+  }
+  let startSpace = /^\s*/.exec(startText)[0].length, endSpace = /\s*$/.exec(endText)[0].length;
+  let endOff = endText.length - endSpace - close.length;
+  if (startText.slice(startSpace, startSpace + open.length) == open && endText.slice(endOff, endOff + close.length) == close) {
+    return {
+      open: {
+        pos: from + startSpace + open.length,
+        margin: /\s/.test(startText.charAt(startSpace + open.length)) ? 1 : 0
+      },
+      close: {
+        pos: to - endSpace - close.length,
+        margin: /\s/.test(endText.charAt(endOff - 1)) ? 1 : 0
+      }
+    };
+  }
+  return null;
+}
+function selectedLineRanges(state) {
+  let ranges = [];
+  for (let r of state.selection.ranges) {
+    let fromLine = state.doc.lineAt(r.from);
+    let toLine = r.to <= fromLine.to ? fromLine : state.doc.lineAt(r.to);
+    if (toLine.from > fromLine.from && toLine.from == r.to)
+      toLine = r.to == fromLine.to + 1 ? fromLine : state.doc.lineAt(r.to - 1);
+    let last = ranges.length - 1;
+    if (last >= 0 && ranges[last].to > fromLine.from)
+      ranges[last].to = toLine.to;
+    else
+      ranges.push({ from: fromLine.from + /^\s*/.exec(fromLine.text)[0].length, to: toLine.to });
+  }
+  return ranges;
+}
+function changeBlockComment(option, state, ranges = state.selection.ranges) {
+  let tokens = ranges.map((r) => getConfig(state, r.from).block);
+  if (!tokens.every((c) => c))
+    return null;
+  let comments = ranges.map((r, i) => findBlockComment(state, tokens[i], r.from, r.to));
+  if (option != 2 && !comments.every((c) => c)) {
+    return { changes: state.changes(ranges.map((range, i) => {
+      if (comments[i])
+        return [];
+      return [{ from: range.from, insert: tokens[i].open + " " }, { from: range.to, insert: " " + tokens[i].close }];
+    })) };
+  } else if (option != 1 && comments.some((c) => c)) {
+    let changes = [];
+    for (let i = 0, comment; i < comments.length; i++)
+      if (comment = comments[i]) {
+        let token = tokens[i], { open, close } = comment;
+        changes.push({ from: open.pos - token.open.length, to: open.pos + open.margin }, { from: close.pos - close.margin, to: close.pos + token.close.length });
+      }
+    return { changes };
+  }
+  return null;
+}
+function changeLineComment(option, state, ranges = state.selection.ranges) {
+  let lines = [];
+  let prevLine = -1;
+  ranges: for (let { from, to } of ranges) {
+    let startI = lines.length, minIndent = 1e9, token;
+    for (let pos = from; pos <= to; ) {
+      let line = state.doc.lineAt(pos);
+      if (token == void 0) {
+        token = getConfig(state, line.from).line;
+        if (!token)
+          continue ranges;
+      }
+      if (line.from > prevLine && (from == to || to > line.from)) {
+        prevLine = line.from;
+        let indent = /^\s*/.exec(line.text)[0].length;
+        let empty = indent == line.length;
+        let comment = line.text.slice(indent, indent + token.length) == token ? indent : -1;
+        if (indent < line.text.length && indent < minIndent)
+          minIndent = indent;
+        lines.push({ line, comment, token, indent, empty, single: false });
+      }
+      pos = line.to + 1;
+    }
+    if (minIndent < 1e9) {
+      for (let i = startI; i < lines.length; i++)
+        if (lines[i].indent < lines[i].line.text.length)
+          lines[i].indent = minIndent;
+    }
+    if (lines.length == startI + 1)
+      lines[startI].single = true;
+  }
+  if (option != 2 && lines.some((l) => l.comment < 0 && (!l.empty || l.single))) {
+    let changes = [];
+    for (let { line, token, indent, empty, single } of lines)
+      if (single || !empty)
+        changes.push({ from: line.from + indent, insert: token + " " });
+    let changeSet = state.changes(changes);
+    return { changes: changeSet, selection: state.selection.map(changeSet, 1) };
+  } else if (option != 1 && lines.some((l) => l.comment >= 0)) {
+    let changes = [];
+    for (let { line, comment, token } of lines)
+      if (comment >= 0) {
+        let from = line.from + comment, to = from + token.length;
+        if (line.text[to - line.from] == " ")
+          to++;
+        changes.push({ from, to });
+      }
+    return { changes };
+  }
+  return null;
+}
+var fromHistory = /* @__PURE__ */ Annotation.define();
+var isolateHistory = /* @__PURE__ */ Annotation.define();
+var invertedEffects = /* @__PURE__ */ Facet.define();
+var historyConfig = /* @__PURE__ */ Facet.define({
+  combine(configs) {
+    return combineConfig(configs, {
+      minDepth: 100,
+      newGroupDelay: 500,
+      joinToEvent: (_t, isAdjacent2) => isAdjacent2
+    }, {
+      minDepth: Math.max,
+      newGroupDelay: Math.min,
+      joinToEvent: (a, b) => (tr, adj) => a(tr, adj) || b(tr, adj)
+    });
+  }
+});
+var historyField_ = /* @__PURE__ */ StateField.define({
+  create() {
+    return HistoryState.empty;
+  },
+  update(state, tr) {
+    let config = tr.state.facet(historyConfig);
+    let fromHist = tr.annotation(fromHistory);
+    if (fromHist) {
+      let item = HistEvent.fromTransaction(tr, fromHist.selection), from = fromHist.side;
+      let other = from == 0 ? state.undone : state.done;
+      if (item)
+        other = updateBranch(other, other.length, config.minDepth, item);
+      else
+        other = addSelection(other, tr.startState.selection);
+      return new HistoryState(from == 0 ? fromHist.rest : other, from == 0 ? other : fromHist.rest);
+    }
+    let isolate = tr.annotation(isolateHistory);
+    if (isolate == "full" || isolate == "before")
+      state = state.isolate();
+    if (tr.annotation(Transaction.addToHistory) === false)
+      return !tr.changes.empty ? state.addMapping(tr.changes.desc) : state;
+    let event = HistEvent.fromTransaction(tr);
+    let time = tr.annotation(Transaction.time), userEvent = tr.annotation(Transaction.userEvent);
+    if (event)
+      state = state.addChanges(event, time, userEvent, config, tr);
+    else if (tr.selection)
+      state = state.addSelection(tr.startState.selection, time, userEvent, config.newGroupDelay);
+    if (isolate == "full" || isolate == "after")
+      state = state.isolate();
+    return state;
+  },
+  toJSON(value) {
+    return { done: value.done.map((e) => e.toJSON()), undone: value.undone.map((e) => e.toJSON()) };
+  },
+  fromJSON(json) {
+    return new HistoryState(json.done.map(HistEvent.fromJSON), json.undone.map(HistEvent.fromJSON));
+  }
+});
+function history(config = {}) {
+  return [
+    historyField_,
+    historyConfig.of(config),
+    EditorView.domEventHandlers({
+      beforeinput(e, view) {
+        let command2 = e.inputType == "historyUndo" ? undo : e.inputType == "historyRedo" ? redo : null;
+        if (!command2)
+          return false;
+        e.preventDefault();
+        return command2(view);
+      }
+    })
+  ];
+}
+function cmd(side, selection) {
+  return function({ state, dispatch }) {
+    if (!selection && state.readOnly)
+      return false;
+    let historyState = state.field(historyField_, false);
+    if (!historyState)
+      return false;
+    let tr = historyState.pop(side, state, selection);
+    if (!tr)
+      return false;
+    dispatch(tr);
+    return true;
+  };
+}
+var undo = /* @__PURE__ */ cmd(0, false);
+var redo = /* @__PURE__ */ cmd(1, false);
+var undoSelection = /* @__PURE__ */ cmd(0, true);
+var redoSelection = /* @__PURE__ */ cmd(1, true);
+var HistEvent = class _HistEvent {
+  constructor(changes, effects, mapped, startSelection, selectionsAfter) {
+    this.changes = changes;
+    this.effects = effects;
+    this.mapped = mapped;
+    this.startSelection = startSelection;
+    this.selectionsAfter = selectionsAfter;
+  }
+  setSelAfter(after) {
+    return new _HistEvent(this.changes, this.effects, this.mapped, this.startSelection, after);
+  }
+  toJSON() {
+    var _a, _b, _c;
+    return {
+      changes: (_a = this.changes) === null || _a === void 0 ? void 0 : _a.toJSON(),
+      mapped: (_b = this.mapped) === null || _b === void 0 ? void 0 : _b.toJSON(),
+      startSelection: (_c = this.startSelection) === null || _c === void 0 ? void 0 : _c.toJSON(),
+      selectionsAfter: this.selectionsAfter.map((s) => s.toJSON())
+    };
+  }
+  static fromJSON(json) {
+    return new _HistEvent(json.changes && ChangeSet.fromJSON(json.changes), [], json.mapped && ChangeDesc.fromJSON(json.mapped), json.startSelection && EditorSelection.fromJSON(json.startSelection), json.selectionsAfter.map(EditorSelection.fromJSON));
+  }
+  // This does not check `addToHistory` and such, it assumes the
+  // transaction needs to be converted to an item. Returns null when
+  // there are no changes or effects in the transaction.
+  static fromTransaction(tr, selection) {
+    let effects = none;
+    for (let invert of tr.startState.facet(invertedEffects)) {
+      let result = invert(tr);
+      if (result.length)
+        effects = effects.concat(result);
+    }
+    if (!effects.length && tr.changes.empty)
+      return null;
+    return new _HistEvent(tr.changes.invert(tr.startState.doc), effects, void 0, selection || tr.startState.selection, none);
+  }
+  static selection(selections) {
+    return new _HistEvent(void 0, none, void 0, void 0, selections);
+  }
+};
+function updateBranch(branch, to, maxLen, newEvent) {
+  let start = to + 1 > maxLen + 20 ? to - maxLen - 1 : 0;
+  let newBranch = branch.slice(start, to);
+  newBranch.push(newEvent);
+  return newBranch;
+}
+function isAdjacent(a, b) {
+  let ranges = [], isAdjacent2 = false;
+  a.iterChangedRanges((f, t) => ranges.push(f, t));
+  b.iterChangedRanges((_f, _t, f, t) => {
+    for (let i = 0; i < ranges.length; ) {
+      let from = ranges[i++], to = ranges[i++];
+      if (t >= from && f <= to)
+        isAdjacent2 = true;
+    }
+  });
+  return isAdjacent2;
+}
+function eqSelectionShape(a, b) {
+  return a.ranges.length == b.ranges.length && a.ranges.filter((r, i) => r.empty != b.ranges[i].empty).length === 0;
+}
+function conc(a, b) {
+  return !a.length ? b : !b.length ? a : a.concat(b);
+}
+var none = [];
+var MaxSelectionsPerEvent = 200;
+function addSelection(branch, selection) {
+  if (!branch.length) {
+    return [HistEvent.selection([selection])];
+  } else {
+    let lastEvent = branch[branch.length - 1];
+    let sels = lastEvent.selectionsAfter.slice(Math.max(0, lastEvent.selectionsAfter.length - MaxSelectionsPerEvent));
+    if (sels.length && sels[sels.length - 1].eq(selection))
+      return branch;
+    sels.push(selection);
+    return updateBranch(branch, branch.length - 1, 1e9, lastEvent.setSelAfter(sels));
+  }
+}
+function popSelection(branch) {
+  let last = branch[branch.length - 1];
+  let newBranch = branch.slice();
+  newBranch[branch.length - 1] = last.setSelAfter(last.selectionsAfter.slice(0, last.selectionsAfter.length - 1));
+  return newBranch;
+}
+function addMappingToBranch(branch, mapping) {
+  if (!branch.length)
+    return branch;
+  let length = branch.length, selections = none;
+  while (length) {
+    let event = mapEvent(branch[length - 1], mapping, selections);
+    if (event.changes && !event.changes.empty || event.effects.length) {
+      let result = branch.slice(0, length);
+      result[length - 1] = event;
+      return result;
+    } else {
+      mapping = event.mapped;
+      length--;
+      selections = event.selectionsAfter;
+    }
+  }
+  return selections.length ? [HistEvent.selection(selections)] : none;
+}
+function mapEvent(event, mapping, extraSelections) {
+  let selections = conc(event.selectionsAfter.length ? event.selectionsAfter.map((s) => s.map(mapping)) : none, extraSelections);
+  if (!event.changes)
+    return HistEvent.selection(selections);
+  let mappedChanges = event.changes.map(mapping), before = mapping.mapDesc(event.changes, true);
+  let fullMapping = event.mapped ? event.mapped.composeDesc(before) : before;
+  return new HistEvent(mappedChanges, StateEffect.mapEffects(event.effects, mapping), fullMapping, event.startSelection.map(before), selections);
+}
+var joinableUserEvent = /^(input\.type|delete)($|\.)/;
+var HistoryState = class _HistoryState {
+  constructor(done, undone, prevTime = 0, prevUserEvent = void 0) {
+    this.done = done;
+    this.undone = undone;
+    this.prevTime = prevTime;
+    this.prevUserEvent = prevUserEvent;
+  }
+  isolate() {
+    return this.prevTime ? new _HistoryState(this.done, this.undone) : this;
+  }
+  addChanges(event, time, userEvent, config, tr) {
+    let done = this.done, lastEvent = done[done.length - 1];
+    if (lastEvent && lastEvent.changes && !lastEvent.changes.empty && event.changes && (!userEvent || joinableUserEvent.test(userEvent)) && (!lastEvent.selectionsAfter.length && time - this.prevTime < config.newGroupDelay && config.joinToEvent(tr, isAdjacent(lastEvent.changes, event.changes)) || // For compose (but not compose.start) events, always join with previous event
+    userEvent == "input.type.compose")) {
+      done = updateBranch(done, done.length - 1, config.minDepth, new HistEvent(event.changes.compose(lastEvent.changes), conc(StateEffect.mapEffects(event.effects, lastEvent.changes), lastEvent.effects), lastEvent.mapped, lastEvent.startSelection, none));
+    } else {
+      done = updateBranch(done, done.length, config.minDepth, event);
+    }
+    return new _HistoryState(done, none, time, userEvent);
+  }
+  addSelection(selection, time, userEvent, newGroupDelay) {
+    let last = this.done.length ? this.done[this.done.length - 1].selectionsAfter : none;
+    if (last.length > 0 && time - this.prevTime < newGroupDelay && userEvent == this.prevUserEvent && userEvent && /^select($|\.)/.test(userEvent) && eqSelectionShape(last[last.length - 1], selection))
+      return this;
+    return new _HistoryState(addSelection(this.done, selection), this.undone, time, userEvent);
+  }
+  addMapping(mapping) {
+    return new _HistoryState(addMappingToBranch(this.done, mapping), addMappingToBranch(this.undone, mapping), this.prevTime, this.prevUserEvent);
+  }
+  pop(side, state, onlySelection) {
+    let branch = side == 0 ? this.done : this.undone;
+    if (branch.length == 0)
+      return null;
+    let event = branch[branch.length - 1], selection = event.selectionsAfter[0] || (event.startSelection ? event.startSelection.map(event.changes.invertedDesc, 1) : state.selection);
+    if (onlySelection && event.selectionsAfter.length) {
+      return state.update({
+        selection: event.selectionsAfter[event.selectionsAfter.length - 1],
+        annotations: fromHistory.of({ side, rest: popSelection(branch), selection }),
+        userEvent: side == 0 ? "select.undo" : "select.redo",
+        scrollIntoView: true
+      });
+    } else if (!event.changes) {
+      return null;
+    } else {
+      let rest = branch.length == 1 ? none : branch.slice(0, branch.length - 1);
+      if (event.mapped)
+        rest = addMappingToBranch(rest, event.mapped);
+      return state.update({
+        changes: event.changes,
+        selection: event.startSelection,
+        effects: event.effects,
+        annotations: fromHistory.of({ side, rest, selection }),
+        filter: false,
+        userEvent: side == 0 ? "undo" : "redo",
+        scrollIntoView: true
+      });
+    }
+  }
+};
+HistoryState.empty = /* @__PURE__ */ new HistoryState(none, none);
+var historyKeymap = [
+  { key: "Mod-z", run: undo, preventDefault: true },
+  { key: "Mod-y", mac: "Mod-Shift-z", run: redo, preventDefault: true },
+  { linux: "Ctrl-Shift-z", run: redo, preventDefault: true },
+  { key: "Mod-u", run: undoSelection, preventDefault: true },
+  { key: "Alt-u", mac: "Mod-Shift-u", run: redoSelection, preventDefault: true }
+];
+function updateSel(sel, by) {
+  return EditorSelection.create(sel.ranges.map(by), sel.mainIndex);
+}
+function setSel(state, selection) {
+  return state.update({ selection, scrollIntoView: true, userEvent: "select" });
+}
+function moveSel({ state, dispatch }, how) {
+  let selection = updateSel(state.selection, how);
+  if (selection.eq(state.selection, true))
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+}
+function rangeEnd(range, forward) {
+  return EditorSelection.cursor(forward ? range.to : range.from);
+}
+function cursorByChar(view, forward) {
+  return moveSel(view, (range) => range.empty ? view.moveByChar(range, forward) : rangeEnd(range, forward));
+}
+function ltrAtCursor(view) {
+  return view.textDirectionAt(view.state.selection.main.head) == Direction.LTR;
+}
+var cursorCharLeft = (view) => cursorByChar(view, !ltrAtCursor(view));
+var cursorCharRight = (view) => cursorByChar(view, ltrAtCursor(view));
+function cursorByGroup(view, forward) {
+  return moveSel(view, (range) => range.empty ? view.moveByGroup(range, forward) : rangeEnd(range, forward));
+}
+var cursorGroupLeft = (view) => cursorByGroup(view, !ltrAtCursor(view));
+var cursorGroupRight = (view) => cursorByGroup(view, ltrAtCursor(view));
+var segmenter = typeof Intl != "undefined" && Intl.Segmenter ? /* @__PURE__ */ new Intl.Segmenter(void 0, { granularity: "word" }) : null;
+function interestingNode(state, node, bracketProp) {
+  if (node.type.prop(bracketProp))
+    return true;
+  let len = node.to - node.from;
+  return len && (len > 2 || /[^\s,.;:]/.test(state.sliceDoc(node.from, node.to))) || node.firstChild;
+}
+function moveBySyntax(state, start, forward) {
+  let pos = syntaxTree(state).resolveInner(start.head);
+  let bracketProp = forward ? NodeProp.closedBy : NodeProp.openedBy;
+  for (let at = start.head; ; ) {
+    let next = forward ? pos.childAfter(at) : pos.childBefore(at);
+    if (!next)
+      break;
+    if (interestingNode(state, next, bracketProp))
+      pos = next;
+    else
+      at = forward ? next.to : next.from;
+  }
+  let bracket = pos.type.prop(bracketProp), match, newPos;
+  if (bracket && (match = forward ? matchBrackets(state, pos.from, 1) : matchBrackets(state, pos.to, -1)) && match.matched)
+    newPos = forward ? match.end.to : match.end.from;
+  else
+    newPos = forward ? pos.to : pos.from;
+  return EditorSelection.cursor(newPos, forward ? -1 : 1);
+}
+var cursorSyntaxLeft = (view) => moveSel(view, (range) => moveBySyntax(view.state, range, !ltrAtCursor(view)));
+var cursorSyntaxRight = (view) => moveSel(view, (range) => moveBySyntax(view.state, range, ltrAtCursor(view)));
+function cursorByLine(view, forward) {
+  return moveSel(view, (range) => {
+    if (!range.empty)
+      return rangeEnd(range, forward);
+    let moved = view.moveVertically(range, forward);
+    return moved.head != range.head ? moved : view.moveToLineBoundary(range, forward);
+  });
+}
+var cursorLineUp = (view) => cursorByLine(view, false);
+var cursorLineDown = (view) => cursorByLine(view, true);
+function pageInfo(view) {
+  let selfScroll = view.scrollDOM.clientHeight < view.scrollDOM.scrollHeight - 2;
+  let marginTop = 0, marginBottom = 0, height;
+  if (selfScroll) {
+    for (let source of view.state.facet(EditorView.scrollMargins)) {
+      let margins = source(view);
+      if (margins === null || margins === void 0 ? void 0 : margins.top)
+        marginTop = Math.max(margins === null || margins === void 0 ? void 0 : margins.top, marginTop);
+      if (margins === null || margins === void 0 ? void 0 : margins.bottom)
+        marginBottom = Math.max(margins === null || margins === void 0 ? void 0 : margins.bottom, marginBottom);
+    }
+    height = view.scrollDOM.clientHeight - marginTop - marginBottom;
+  } else {
+    height = (view.dom.ownerDocument.defaultView || window).innerHeight;
+  }
+  return {
+    marginTop,
+    marginBottom,
+    selfScroll,
+    height: Math.max(view.defaultLineHeight, height - 5)
+  };
+}
+function cursorByPage(view, forward) {
+  let page = pageInfo(view);
+  let { state } = view, selection = updateSel(state.selection, (range) => {
+    return range.empty ? view.moveVertically(range, forward, page.height) : rangeEnd(range, forward);
+  });
+  if (selection.eq(state.selection))
+    return false;
+  let effect;
+  if (page.selfScroll) {
+    let startPos = view.coordsAtPos(state.selection.main.head);
+    let scrollRect = view.scrollDOM.getBoundingClientRect();
+    let scrollTop = scrollRect.top + page.marginTop, scrollBottom = scrollRect.bottom - page.marginBottom;
+    if (startPos && startPos.top > scrollTop && startPos.bottom < scrollBottom)
+      effect = EditorView.scrollIntoView(selection.main.head, { y: "start", yMargin: startPos.top - scrollTop });
+  }
+  view.dispatch(setSel(state, selection), { effects: effect });
+  return true;
+}
+var cursorPageUp = (view) => cursorByPage(view, false);
+var cursorPageDown = (view) => cursorByPage(view, true);
+function moveByLineBoundary(view, start, forward) {
+  let line = view.lineBlockAt(start.head), moved = view.moveToLineBoundary(start, forward);
+  if (moved.head == start.head && moved.head != (forward ? line.to : line.from))
+    moved = view.moveToLineBoundary(start, forward, false);
+  if (!forward && moved.head == line.from && line.length) {
+    let space = /^\s*/.exec(view.state.sliceDoc(line.from, Math.min(line.from + 100, line.to)))[0].length;
+    if (space && start.head != line.from + space)
+      moved = EditorSelection.cursor(line.from + space);
+  }
+  return moved;
+}
+var cursorLineBoundaryForward = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, true));
+var cursorLineBoundaryBackward = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, false));
+var cursorLineBoundaryLeft = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, !ltrAtCursor(view)));
+var cursorLineBoundaryRight = (view) => moveSel(view, (range) => moveByLineBoundary(view, range, ltrAtCursor(view)));
+var cursorLineStart = (view) => moveSel(view, (range) => view.moveToLineBoundary(range, false, false));
+var cursorLineEnd = (view) => moveSel(view, (range) => view.moveToLineBoundary(range, true, false));
+function toMatchingBracket(state, dispatch, extend) {
+  let found = false, selection = updateSel(state.selection, (range) => {
+    let matching = matchBrackets(state, range.head, -1) || matchBrackets(state, range.head, 1) || range.head > 0 && matchBrackets(state, range.head - 1, 1) || range.head < state.doc.length && matchBrackets(state, range.head + 1, -1);
+    if (!matching || !matching.end)
+      return range;
+    found = true;
+    let head = matching.start.from == range.head ? matching.end.to : matching.end.from;
+    return extend ? EditorSelection.range(range.anchor, head) : EditorSelection.cursor(head);
+  });
+  if (!found)
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+}
+var cursorMatchingBracket = ({ state, dispatch }) => toMatchingBracket(state, dispatch, false);
+function extendSel(target, forward, how) {
+  let selection = updateSel(target.state.selection, (range) => {
+    if (range.undirectional && range.head >= range.anchor != forward)
+      range = EditorSelection.range(range.head, range.anchor);
+    let head = how(range);
+    return EditorSelection.range(range.anchor, head.head, head.goalColumn, head.bidiLevel || void 0, head.assoc);
+  });
+  if (selection.eq(target.state.selection))
+    return false;
+  target.dispatch(setSel(target.state, selection));
+  return true;
+}
+function selectByChar(view, forward) {
+  return extendSel(view, forward, (range) => view.moveByChar(range, forward));
+}
+var selectCharLeft = (view) => selectByChar(view, !ltrAtCursor(view));
+var selectCharRight = (view) => selectByChar(view, ltrAtCursor(view));
+function selectByGroup(view, forward) {
+  return extendSel(view, forward, (range) => view.moveByGroup(range, forward));
+}
+var selectGroupLeft = (view) => selectByGroup(view, !ltrAtCursor(view));
+var selectGroupRight = (view) => selectByGroup(view, ltrAtCursor(view));
+var selectSyntaxLeft = (view) => {
+  let forward = !ltrAtCursor(view);
+  return extendSel(view, forward, (range) => moveBySyntax(view.state, range, forward));
+};
+var selectSyntaxRight = (view) => {
+  let forward = ltrAtCursor(view);
+  return extendSel(view, forward, (range) => moveBySyntax(view.state, range, forward));
+};
+function selectByLine(view, forward) {
+  return extendSel(view, forward, (range) => view.moveVertically(range, forward));
+}
+var selectLineUp = (view) => selectByLine(view, false);
+var selectLineDown = (view) => selectByLine(view, true);
+function selectByPage(view, forward) {
+  return extendSel(view, forward, (range) => view.moveVertically(range, forward, pageInfo(view).height));
+}
+var selectPageUp = (view) => selectByPage(view, false);
+var selectPageDown = (view) => selectByPage(view, true);
+var selectLineBoundaryForward = (view) => extendSel(view, true, (range) => moveByLineBoundary(view, range, true));
+var selectLineBoundaryBackward = (view) => extendSel(view, false, (range) => moveByLineBoundary(view, range, false));
+var selectLineBoundaryLeft = (view) => {
+  let forward = !ltrAtCursor(view);
+  return extendSel(view, forward, (range) => moveByLineBoundary(view, range, forward));
+};
+var selectLineBoundaryRight = (view) => {
+  let forward = ltrAtCursor(view);
+  return extendSel(view, forward, (range) => moveByLineBoundary(view, range, forward));
+};
+var selectLineStart = (view) => extendSel(view, false, (range) => EditorSelection.cursor(view.lineBlockAt(range.head).from));
+var selectLineEnd = (view) => extendSel(view, true, (range) => EditorSelection.cursor(view.lineBlockAt(range.head).to));
+var cursorDocStart = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: 0 }));
+  return true;
+};
+var cursorDocEnd = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: state.doc.length }));
+  return true;
+};
+var selectDocStart = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: state.selection.main.anchor, head: 0 }));
+  return true;
+};
+var selectDocEnd = ({ state, dispatch }) => {
+  dispatch(setSel(state, { anchor: state.selection.main.anchor, head: state.doc.length }));
+  return true;
+};
+var selectAll = ({ state, dispatch }) => {
+  dispatch(state.update({ selection: { anchor: 0, head: state.doc.length }, userEvent: "select" }));
+  return true;
+};
+var selectLine = ({ state, dispatch }) => {
+  let ranges = selectedLineBlocks(state).map(({ from, to }) => EditorSelection.undirectionalRange(from, Math.min(to + 1, state.doc.length)));
+  dispatch(state.update({ selection: EditorSelection.create(ranges), userEvent: "select" }));
+  return true;
+};
+var selectParentSyntax = ({ state, dispatch }) => {
+  let selection = updateSel(state.selection, (range) => {
+    let tree = syntaxTree(state), stack = tree.resolveStack(range.from, 1);
+    if (range.empty) {
+      let stackBefore = tree.resolveStack(range.from, -1);
+      if (stackBefore.node.from >= stack.node.from && stackBefore.node.to <= stack.node.to)
+        stack = stackBefore;
+    }
+    for (let cur = stack; cur; cur = cur.next) {
+      let { node } = cur;
+      if ((node.from < range.from && node.to >= range.to || node.to > range.to && node.from <= range.from) && cur.next)
+        return EditorSelection.undirectionalRange(node.from, node.to);
+    }
+    return range;
+  });
+  if (selection.eq(state.selection))
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+};
+function addCursorVertically(view, forward) {
+  let { state } = view, sel = state.selection, ranges = state.selection.ranges.slice();
+  for (let range of state.selection.ranges) {
+    let line = state.doc.lineAt(range.head);
+    if (forward ? line.to < view.state.doc.length : line.from > 0)
+      for (let cur = range; ; ) {
+        let next = view.moveVertically(cur, forward);
+        if (next.head < line.from || next.head > line.to) {
+          if (!ranges.some((r) => r.head == next.head))
+            ranges.push(next);
+          break;
+        } else if (next.head == cur.head) {
+          break;
+        } else {
+          cur = next;
+        }
+      }
+  }
+  if (ranges.length == sel.ranges.length)
+    return false;
+  view.dispatch(setSel(state, EditorSelection.create(ranges, ranges.length - 1)));
+  return true;
+}
+var addCursorAbove = (view) => addCursorVertically(view, false);
+var addCursorBelow = (view) => addCursorVertically(view, true);
+var simplifySelection = ({ state, dispatch }) => {
+  let cur = state.selection, selection = null;
+  if (cur.ranges.length > 1)
+    selection = EditorSelection.create([cur.main]);
+  else if (!cur.main.empty)
+    selection = EditorSelection.create([EditorSelection.cursor(cur.main.head)]);
+  if (!selection)
+    return false;
+  dispatch(setSel(state, selection));
+  return true;
+};
+function deleteBy(target, by) {
+  if (target.state.readOnly)
+    return false;
+  let event = "delete.selection", { state } = target;
+  let changes = state.changeByRange((range) => {
+    let { from, to } = range;
+    if (from == to) {
+      let towards = by(range);
+      if (towards < from) {
+        event = "delete.backward";
+        towards = skipAtomic(target, towards, false);
+      } else if (towards > from) {
+        event = "delete.forward";
+        towards = skipAtomic(target, towards, true);
+      }
+      from = Math.min(from, towards);
+      to = Math.max(to, towards);
+    } else {
+      from = skipAtomic(target, from, false);
+      to = skipAtomic(target, to, true);
+    }
+    return from == to ? { range } : { changes: { from, to }, range: EditorSelection.cursor(from, from < range.head ? -1 : 1) };
+  });
+  if (changes.changes.empty)
+    return false;
+  target.dispatch(state.update(changes, {
+    scrollIntoView: true,
+    userEvent: event,
+    effects: event == "delete.selection" ? EditorView.announce.of(state.phrase("Selection deleted")) : void 0
+  }));
+  return true;
+}
+function skipAtomic(target, pos, forward) {
+  if (target instanceof EditorView)
+    for (let ranges of target.state.facet(EditorView.atomicRanges).map((f) => f(target)))
+      ranges.between(pos, pos, (from, to) => {
+        if (from < pos && to > pos)
+          pos = forward ? to : from;
+      });
+  return pos;
+}
+var deleteByChar = (target, forward, byIndentUnit) => deleteBy(target, (range) => {
+  let pos = range.from, { state } = target, line = state.doc.lineAt(pos), before, targetPos;
+  if (byIndentUnit && !forward && pos > line.from && pos < line.from + 200 && !/[^ \t]/.test(before = line.text.slice(0, pos - line.from))) {
+    if (before[before.length - 1] == "	")
+      return pos - 1;
+    let col = countColumn(before, state.tabSize), drop = col % getIndentUnit(state) || getIndentUnit(state);
+    for (let i = 0; i < drop && before[before.length - 1 - i] == " "; i++)
+      pos--;
+    targetPos = pos;
+  } else {
+    targetPos = findClusterBreak(line.text, pos - line.from, forward, forward) + line.from;
+    if (targetPos == pos && line.number != (forward ? state.doc.lines : 1))
+      targetPos += forward ? 1 : -1;
+    else if (!forward && /[\ufe00-\ufe0f]/.test(line.text.slice(targetPos - line.from, pos - line.from)))
+      targetPos = findClusterBreak(line.text, targetPos - line.from, false, false) + line.from;
+  }
+  return targetPos;
+});
+var deleteCharBackward = (view) => deleteByChar(view, false, true);
+var deleteCharForward = (view) => deleteByChar(view, true, false);
+var deleteByGroup = (target, forward) => deleteBy(target, (range) => {
+  let pos = range.head, { state } = target, line = state.doc.lineAt(pos);
+  let categorize = state.charCategorizer(pos);
+  for (let cat = null; ; ) {
+    if (pos == (forward ? line.to : line.from)) {
+      if (pos == range.head && line.number != (forward ? state.doc.lines : 1))
+        pos += forward ? 1 : -1;
+      break;
+    }
+    let next = findClusterBreak(line.text, pos - line.from, forward) + line.from;
+    let nextChar = line.text.slice(Math.min(pos, next) - line.from, Math.max(pos, next) - line.from);
+    let nextCat = categorize(nextChar);
+    if (cat != null && nextCat != cat)
+      break;
+    if (nextChar != " " || pos != range.head)
+      cat = nextCat;
+    pos = next;
+  }
+  return pos;
+});
+var deleteGroupBackward = (target) => deleteByGroup(target, false);
+var deleteGroupForward = (target) => deleteByGroup(target, true);
+var deleteToLineEnd = (view) => deleteBy(view, (range) => {
+  let lineEnd = view.lineBlockAt(range.head).to;
+  return range.head < lineEnd ? lineEnd : Math.min(view.state.doc.length, range.head + 1);
+});
+var deleteLineBoundaryBackward = (view) => deleteBy(view, (range) => {
+  let lineStart = view.moveToLineBoundary(range, false).head;
+  return range.head > lineStart ? lineStart : Math.max(0, range.head - 1);
+});
+var deleteLineBoundaryForward = (view) => deleteBy(view, (range) => {
+  let lineStart = view.moveToLineBoundary(range, true).head;
+  return range.head < lineStart ? lineStart : Math.min(view.state.doc.length, range.head + 1);
+});
+var splitLine = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  let changes = state.changeByRange((range) => {
+    return {
+      changes: { from: range.from, to: range.to, insert: Text.of(["", ""]) },
+      range: EditorSelection.cursor(range.from)
+    };
+  });
+  dispatch(state.update(changes, { scrollIntoView: true, userEvent: "input" }));
+  return true;
+};
+var transposeChars = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  let changes = state.changeByRange((range) => {
+    if (!range.empty || range.from == 0 || range.from == state.doc.length)
+      return { range };
+    let pos = range.from, line = state.doc.lineAt(pos);
+    let from = pos == line.from ? pos - 1 : findClusterBreak(line.text, pos - line.from, false) + line.from;
+    let to = pos == line.to ? pos + 1 : findClusterBreak(line.text, pos - line.from, true) + line.from;
+    return {
+      changes: { from, to, insert: state.doc.slice(pos, to).append(state.doc.slice(from, pos)) },
+      range: EditorSelection.cursor(to)
+    };
+  });
+  if (changes.changes.empty)
+    return false;
+  dispatch(state.update(changes, { scrollIntoView: true, userEvent: "move.character" }));
+  return true;
+};
+function selectedLineBlocks(state) {
+  let blocks = [], upto = -1;
+  for (let range of state.selection.ranges) {
+    let startLine = state.doc.lineAt(range.from), endLine = state.doc.lineAt(range.to);
+    if (!range.empty && range.to == endLine.from)
+      endLine = state.doc.lineAt(range.to - 1);
+    if (upto >= startLine.number) {
+      let prev = blocks[blocks.length - 1];
+      prev.to = endLine.to;
+      prev.ranges.push(range);
+    } else {
+      blocks.push({ from: startLine.from, to: endLine.to, ranges: [range] });
+    }
+    upto = endLine.number + 1;
+  }
+  return blocks;
+}
+function moveLine(state, dispatch, forward) {
+  if (state.readOnly)
+    return false;
+  let changes = [], ranges = [];
+  for (let block of selectedLineBlocks(state)) {
+    if (forward ? block.to == state.doc.length : block.from == 0)
+      continue;
+    let nextLine = state.doc.lineAt(forward ? block.to + 1 : block.from - 1);
+    let size = nextLine.length + 1;
+    if (forward) {
+      changes.push({ from: block.to, to: nextLine.to }, { from: block.from, insert: nextLine.text + state.lineBreak });
+      for (let r of block.ranges)
+        ranges.push(EditorSelection.range(Math.min(state.doc.length, r.anchor + size), Math.min(state.doc.length, r.head + size)));
+    } else {
+      changes.push({ from: nextLine.from, to: block.from }, { from: block.to, insert: state.lineBreak + nextLine.text });
+      for (let r of block.ranges)
+        ranges.push(EditorSelection.range(r.anchor - size, r.head - size));
+    }
+  }
+  if (!changes.length)
+    return false;
+  dispatch(state.update({
+    changes,
+    scrollIntoView: true,
+    selection: EditorSelection.create(ranges, state.selection.mainIndex),
+    userEvent: "move.line"
+  }));
+  return true;
+}
+var moveLineUp = ({ state, dispatch }) => moveLine(state, dispatch, false);
+var moveLineDown = ({ state, dispatch }) => moveLine(state, dispatch, true);
+function copyLine(state, dispatch, forward) {
+  if (state.readOnly)
+    return false;
+  let changes = [];
+  for (let block of selectedLineBlocks(state)) {
+    if (forward)
+      changes.push({ from: block.from, insert: state.doc.slice(block.from, block.to) + state.lineBreak });
+    else
+      changes.push({ from: block.to, insert: state.lineBreak + state.doc.slice(block.from, block.to) });
+  }
+  let changeSet = state.changes(changes);
+  dispatch(state.update({
+    changes: changeSet,
+    selection: state.selection.map(changeSet, forward ? 1 : -1),
+    scrollIntoView: true,
+    userEvent: "input.copyline"
+  }));
+  return true;
+}
+var copyLineUp = ({ state, dispatch }) => copyLine(state, dispatch, false);
+var copyLineDown = ({ state, dispatch }) => copyLine(state, dispatch, true);
+var deleteLine = (view) => {
+  if (view.state.readOnly)
+    return false;
+  let { state } = view, changes = state.changes(selectedLineBlocks(state).map(({ from, to }) => {
+    if (from > 0)
+      from--;
+    else if (to < state.doc.length)
+      to++;
+    return { from, to };
+  }));
+  let selection = updateSel(state.selection, (range) => {
+    let dist = void 0;
+    if (view.lineWrapping) {
+      let block = view.lineBlockAt(range.head), pos = view.coordsAtPos(range.head, range.assoc || 1);
+      if (pos)
+        dist = block.bottom + view.documentTop - pos.bottom + view.defaultLineHeight / 2;
+    }
+    return view.moveVertically(range, true, dist);
+  }).map(changes);
+  view.dispatch({ changes, selection, scrollIntoView: true, userEvent: "delete.line" });
+  return true;
+};
+function isBetweenBrackets(state, pos) {
+  if (/\(\)|\[\]|\{\}/.test(state.sliceDoc(pos - 1, pos + 1)))
+    return { from: pos, to: pos };
+  let context = syntaxTree(state).resolveInner(pos);
+  let before = context.childBefore(pos), after = context.childAfter(pos), closedBy;
+  if (before && after && before.to <= pos && after.from >= pos && (closedBy = before.type.prop(NodeProp.closedBy)) && closedBy.indexOf(after.name) > -1 && state.doc.lineAt(before.to).from == state.doc.lineAt(after.from).from && !/\S/.test(state.sliceDoc(before.to, after.from)))
+    return { from: before.to, to: after.from };
+  return null;
+}
+var insertNewlineAndIndent = /* @__PURE__ */ newlineAndIndent(false);
+var insertBlankLine = /* @__PURE__ */ newlineAndIndent(true);
+function newlineAndIndent(atEof) {
+  return ({ state, dispatch }) => {
+    if (state.readOnly)
+      return false;
+    let changes = state.changeByRange((range) => {
+      let { from, to } = range, line = state.doc.lineAt(from);
+      let explode = !atEof && from == to && isBetweenBrackets(state, from);
+      if (atEof)
+        from = to = (to <= line.to ? line : state.doc.lineAt(to)).to;
+      let cx = new IndentContext(state, { simulateBreak: from, simulateDoubleBreak: !!explode });
+      let indent = getIndentation(cx, from);
+      if (indent == null)
+        indent = countColumn(/^\s*/.exec(state.doc.lineAt(from).text)[0], state.tabSize);
+      while (to < line.to && /\s/.test(line.text[to - line.from]))
+        to++;
+      if (explode)
+        ({ from, to } = explode);
+      else if (from > line.from && from < line.from + 100 && !/\S/.test(line.text.slice(0, from)))
+        from = line.from;
+      let insert = ["", indentString(state, indent)];
+      if (explode)
+        insert.push(indentString(state, cx.lineIndent(line.from, -1)));
+      return {
+        changes: { from, to, insert: Text.of(insert) },
+        range: EditorSelection.cursor(from + 1 + insert[1].length)
+      };
+    });
+    dispatch(state.update(changes, { scrollIntoView: true, userEvent: "input" }));
+    return true;
+  };
+}
+function changeBySelectedLine(state, f) {
+  let atLine = -1;
+  return state.changeByRange((range) => {
+    let changes = [];
+    for (let pos = range.from; pos <= range.to; ) {
+      let line = state.doc.lineAt(pos);
+      if (line.number > atLine && (range.empty || range.to > line.from)) {
+        f(line, changes, range);
+        atLine = line.number;
+      }
+      pos = line.to + 1;
+    }
+    let changeSet = state.changes(changes);
+    return {
+      changes,
+      range: EditorSelection.range(changeSet.mapPos(range.anchor, 1), changeSet.mapPos(range.head, 1))
+    };
+  });
+}
+var indentSelection = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  let updated = /* @__PURE__ */ Object.create(null);
+  let context = new IndentContext(state, { overrideIndentation: (start) => {
+    let found = updated[start];
+    return found == null ? -1 : found;
+  } });
+  let changes = changeBySelectedLine(state, (line, changes2, range) => {
+    let indent = getIndentation(context, line.from);
+    if (indent == null)
+      return;
+    if (!/\S/.test(line.text))
+      indent = 0;
+    let cur = /^\s*/.exec(line.text)[0];
+    let norm = indentString(state, indent);
+    if (cur != norm || range.from < line.from + cur.length) {
+      updated[line.from] = indent;
+      changes2.push({ from: line.from, to: line.from + cur.length, insert: norm });
+    }
+  });
+  if (!changes.changes.empty)
+    dispatch(state.update(changes, { userEvent: "indent" }));
+  return true;
+};
+var indentMore = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  dispatch(state.update(changeBySelectedLine(state, (line, changes) => {
+    changes.push({ from: line.from, insert: state.facet(indentUnit) });
+  }), { userEvent: "input.indent" }));
+  return true;
+};
+var indentLess = ({ state, dispatch }) => {
+  if (state.readOnly)
+    return false;
+  dispatch(state.update(changeBySelectedLine(state, (line, changes) => {
+    let space = /^\s*/.exec(line.text)[0];
+    if (!space)
+      return;
+    let col = countColumn(space, state.tabSize), keep = 0;
+    let insert = indentString(state, Math.max(0, col - getIndentUnit(state)));
+    while (keep < space.length && keep < insert.length && space.charCodeAt(keep) == insert.charCodeAt(keep))
+      keep++;
+    changes.push({ from: line.from + keep, to: line.from + space.length, insert: insert.slice(keep) });
+  }), { userEvent: "delete.dedent" }));
+  return true;
+};
+var toggleTabFocusMode = (view) => {
+  view.setTabFocusMode();
+  return true;
+};
+var emacsStyleKeymap = [
+  { key: "Ctrl-b", run: cursorCharLeft, shift: selectCharLeft, preventDefault: true },
+  { key: "Ctrl-f", run: cursorCharRight, shift: selectCharRight },
+  { key: "Ctrl-p", run: cursorLineUp, shift: selectLineUp },
+  { key: "Ctrl-n", run: cursorLineDown, shift: selectLineDown },
+  { key: "Ctrl-a", run: cursorLineStart, shift: selectLineStart },
+  { key: "Ctrl-e", run: cursorLineEnd, shift: selectLineEnd },
+  { key: "Ctrl-d", run: deleteCharForward },
+  { key: "Ctrl-h", run: deleteCharBackward },
+  { key: "Ctrl-k", run: deleteToLineEnd },
+  { key: "Ctrl-Alt-h", run: deleteGroupBackward },
+  { key: "Ctrl-o", run: splitLine },
+  { key: "Ctrl-t", run: transposeChars },
+  { key: "Ctrl-v", run: cursorPageDown }
+];
+var standardKeymap = /* @__PURE__ */ [
+  { key: "ArrowLeft", run: cursorCharLeft, shift: selectCharLeft, preventDefault: true },
+  { key: "Mod-ArrowLeft", mac: "Alt-ArrowLeft", run: cursorGroupLeft, shift: selectGroupLeft, preventDefault: true },
+  { mac: "Cmd-ArrowLeft", run: cursorLineBoundaryLeft, shift: selectLineBoundaryLeft, preventDefault: true },
+  { key: "ArrowRight", run: cursorCharRight, shift: selectCharRight, preventDefault: true },
+  { key: "Mod-ArrowRight", mac: "Alt-ArrowRight", run: cursorGroupRight, shift: selectGroupRight, preventDefault: true },
+  { mac: "Cmd-ArrowRight", run: cursorLineBoundaryRight, shift: selectLineBoundaryRight, preventDefault: true },
+  { key: "ArrowUp", run: cursorLineUp, shift: selectLineUp, preventDefault: true },
+  { mac: "Cmd-ArrowUp", run: cursorDocStart, shift: selectDocStart },
+  { mac: "Ctrl-ArrowUp", run: cursorPageUp, shift: selectPageUp },
+  { key: "ArrowDown", run: cursorLineDown, shift: selectLineDown, preventDefault: true },
+  { mac: "Cmd-ArrowDown", run: cursorDocEnd, shift: selectDocEnd },
+  { mac: "Ctrl-ArrowDown", run: cursorPageDown, shift: selectPageDown },
+  { key: "PageUp", run: cursorPageUp, shift: selectPageUp },
+  { key: "PageDown", run: cursorPageDown, shift: selectPageDown },
+  { key: "Home", run: cursorLineBoundaryBackward, shift: selectLineBoundaryBackward, preventDefault: true },
+  { key: "Mod-Home", run: cursorDocStart, shift: selectDocStart },
+  { key: "End", run: cursorLineBoundaryForward, shift: selectLineBoundaryForward, preventDefault: true },
+  { key: "Mod-End", run: cursorDocEnd, shift: selectDocEnd },
+  { key: "Enter", run: insertNewlineAndIndent, shift: insertNewlineAndIndent },
+  { key: "Mod-a", run: selectAll },
+  { key: "Backspace", run: deleteCharBackward, shift: deleteCharBackward, preventDefault: true },
+  { key: "Delete", run: deleteCharForward, preventDefault: true },
+  { key: "Mod-Backspace", mac: "Alt-Backspace", run: deleteGroupBackward, preventDefault: true },
+  { key: "Mod-Delete", mac: "Alt-Delete", run: deleteGroupForward, preventDefault: true },
+  { mac: "Mod-Backspace", run: deleteLineBoundaryBackward, preventDefault: true },
+  { mac: "Mod-Delete", run: deleteLineBoundaryForward, preventDefault: true }
+].concat(/* @__PURE__ */ emacsStyleKeymap.map((b) => ({ mac: b.key, run: b.run, shift: b.shift })));
+var defaultKeymap = /* @__PURE__ */ [
+  { key: "Alt-ArrowLeft", mac: "Ctrl-ArrowLeft", run: cursorSyntaxLeft, shift: selectSyntaxLeft },
+  { key: "Alt-ArrowRight", mac: "Ctrl-ArrowRight", run: cursorSyntaxRight, shift: selectSyntaxRight },
+  { key: "Alt-ArrowUp", run: moveLineUp },
+  { key: "Shift-Alt-ArrowUp", run: copyLineUp },
+  { key: "Alt-ArrowDown", run: moveLineDown },
+  { key: "Shift-Alt-ArrowDown", run: copyLineDown },
+  { key: "Mod-Alt-ArrowUp", run: addCursorAbove },
+  { key: "Mod-Alt-ArrowDown", run: addCursorBelow },
+  { key: "Escape", run: simplifySelection },
+  { key: "Mod-Enter", run: insertBlankLine },
+  { key: "Alt-l", mac: "Ctrl-l", run: selectLine },
+  { key: "Mod-i", run: selectParentSyntax, preventDefault: true },
+  { key: "Mod-[", run: indentLess },
+  { key: "Mod-]", run: indentMore },
+  { key: "Mod-Alt-\\", run: indentSelection },
+  { key: "Shift-Mod-k", run: deleteLine },
+  { key: "Shift-Mod-\\", run: cursorMatchingBracket },
+  { key: "Mod-/", run: toggleComment },
+  { key: "Alt-A", mac: "Ctrl-A", run: toggleBlockComment },
+  { key: "Ctrl-m", mac: "Shift-Alt-m", run: toggleTabFocusMode }
+].concat(standardKeymap);
+var indentWithTab = { key: "Tab", run: indentMore, shift: indentLess };
+
+// static/js/python-editor.js
+var PYTHON_EDITOR_FONT = '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
+var inertLanguagePlaceholder = EditorView.theme({}, { dark: true });
+var VSCODE_DARK_EDITOR_THEME = EditorView.theme({
+  "&": { color: "#d4d4d4", backgroundColor: "#1e1e1e" },
+  ".cm-content": {
+    caretColor: "#aeafad",
+    backgroundColor: "#1e1e1e",
+    fontFamily: PYTHON_EDITOR_FONT
+  },
+  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#aeafad" },
+  ".cm-gutters": { backgroundColor: "#1e1e1e", color: "#6e7681", border: "none" },
+  ".cm-activeLine": { backgroundColor: "#282828" },
+  ".cm-activeLineGutter": { backgroundColor: "#37373d" },
+  ".cm-selectionBackground, .cm-content ::selection": { backgroundColor: "#264f78" },
+  ".cm-matchingBracket": { backgroundColor: "#04395e" },
+  ".cm-nonmatchingBracket": { backgroundColor: "#f14c4c" }
+}, { dark: true });
+var VSCODE_LIGHT_EDITOR_THEME = EditorView.theme({
+  "&": { color: "#1f1f1f", backgroundColor: "#ffffff" },
+  ".cm-content": { caretColor: "#000000", backgroundColor: "#ffffff", fontFamily: PYTHON_EDITOR_FONT },
+  ".cm-cursor, .cm-dropCursor": { borderLeftColor: "#000000" },
+  ".cm-gutters": { backgroundColor: "#ffffff", color: "#237893", border: "none" },
+  ".cm-activeLine": { backgroundColor: "#f3f3f3" },
+  ".cm-activeLineGutter": { backgroundColor: "#e8e8e8" },
+  ".cm-selectionBackground, .cm-content ::selection": { backgroundColor: "#add6ff" },
+  ".cm-matchingBracket": { backgroundColor: "#3a5f8a" },
+  ".cm-nonmatchingBracket": { backgroundColor: "#f14c4c" }
+}, { dark: false });
+function createPythonEditor(host, options = {}) {
+  const {
+    theme = "dark",
+    initialDoc = "",
+    onChange = null,
+    onCursorChange = null,
+    runCommand = null,
+    saveCommand = null
+  } = options;
+  const themeCompartment = new Compartment();
+  const languageCompartment = new Compartment();
+  const initialTheme = theme === "light" ? VSCODE_LIGHT_EDITOR_THEME : VSCODE_DARK_EDITOR_THEME;
+  const handleUpdate = (update) => {
+    if (update.docChanged && update.userEvent !== "programmatic" && onChange) {
+      onChange(update.state.doc.toString());
+    }
+    const cursor = update.state.selection.main;
+    const line = update.state.doc.lineAt(cursor).number;
+    const col = cursor.character + 1;
+    if (onCursorChange) onCursorChange(line, col);
+  };
+  const bindings = [
+    ...defaultKeymap.filter((binding) => binding.key !== "Mod-Enter"),
+    ...historyKeymap,
+    ...foldKeymap,
+    { key: "Mod-Enter", run: () => {
+      if (runCommand) runCommand();
+      return true;
+    } },
+    { key: "Mod-s", run: () => {
+      if (saveCommand) saveCommand();
+      return true;
+    } },
+    indentWithTab
+  ];
+  const editor = new EditorView({
+    state: EditorState.create({
+      doc: initialDoc,
+      extensions: [
+        lineNumbers(),
+        languageCompartment.of(inertLanguagePlaceholder),
+        themeCompartment.of(initialTheme),
+        history(),
+        closeBrackets,
+        autocompletion(),
+        matchBrackets,
+        foldGutter(),
+        foldKeymap,
+        EditorView.lineWrapping,
+        EditorView.highlightActiveLine,
+        EditorView.highlightActiveLineGutter,
+        EditorView.highlightSpecialChars,
+        EditorView.drawSelection,
+        EditorView.updateListener.of(handleUpdate),
+        keymap.of(bindings)
+      ]
+    }),
+    parent: host
+  });
+  const languageReady = (async () => {
+    const languageModule = await import("./dist-VWBRKAMX.js");
+    editor.dispatch({
+      effects: languageCompartment.reconfigure(languageModule.python())
+    });
+  })();
+  return {
+    editor,
+    getSource: () => editor.state.doc.toString(),
+    setSource: (source) => {
+      editor.dispatch({
+        changes: { from: 0, to: editor.state.doc.length, insert: source },
+        userEvent: "programmatic"
+      });
+    },
+    focus: () => editor.focus(),
+    requestMeasure: () => editor.requestMeasure(),
+    setTheme: (mode) => {
+      editor.dispatch({
+        effects: themeCompartment.reconfigure(
+          mode === "light" ? VSCODE_LIGHT_EDITOR_THEME : VSCODE_DARK_EDITOR_THEME
+        )
+      });
+    },
+    languageReady
+  };
+}
+
+// static/js/practice.js
+var root = document.querySelector("[data-practice-workspace]");
+if (root) {
+  const lessonId = root.dataset.lessonId;
+  const exerciseList = JSON.parse(
+    document.getElementById("practice-exercises").textContent
+  );
+  const launcher = document.getElementById("practice-launcher");
+  const panel = document.getElementById("practice-panel");
+  const editorHost = document.getElementById("practice-editor");
+  const selector = document.getElementById("practice-exercise-select");
+  const instructions = document.getElementById("practice-instructions");
+  const status = document.getElementById("practice-save-status");
+  const output = document.getElementById("practice-output");
+  const runButton = document.getElementById("practice-run");
+  const solutionButton = document.getElementById("practice-solution");
+  const resetButton = document.getElementById("practice-reset");
+  const iframe = document.getElementById("practice-sandbox");
+  const usageUrl = root.dataset.usageUrl;
+  const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+  const statusPosition = document.getElementById("practice-statusbar-position");
+  let selectedExercise = null;
+  let savedSource = "";
+  let saveTimer = null;
+  let savePromise = null;
+  const editor = createPythonEditor(editorHost, {
+    theme: "dark",
+    onChange: (source) => {
+      if (switching || !selectedExercise || source === savedSource) return;
+      queueSave();
+    },
+    onCursorChange: (line, col) => {
+      if (!statusPosition) return;
+      statusPosition.textContent = `Ln ${line}, Col ${col}`;
+    },
+    runCommand: () => {
+      void saveWorkspace().then(runExercise);
+    },
+    saveCommand: () => {
+      void saveWorkspace();
+    }
+  });
+  let switching = false;
+  let runnerReady = false;
+  let activeRunId = null;
+  let runTimeout = null;
+  let nextRunId = 0;
+  let queuedRun = false;
+  let runnerStarted = false;
+  let runnerLoadTimeout = null;
+  let hasAttemptedExercise = false;
+  const workspaceUrl = (exercise) => `/api/lessons/practice/${encodeURIComponent(lessonId)}/${encodeURIComponent(exercise.id)}`;
+  const setStatus = (message, state = "") => {
+    status.textContent = message;
+    status.dataset.state = state;
+  };
+  const currentSource = () => editor.getSource();
+  const recordUsage = async (event) => {
+    try {
+      const response = await fetch(usageUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": csrfToken
+        },
+        body: JSON.stringify({ event })
+      });
+      if (!response.ok) throw new Error(`Usage tracking returned ${response.status}`);
+    } catch (error) {
+      console.warn("Could not record anonymous practice pilot usage.", error);
+    }
+  };
+  const saveWorkspace = async () => {
+    clearTimeout(saveTimer);
+    if (savePromise) {
+      const saved = await savePromise;
+      if (!saved) return false;
+      return currentSource() === savedSource ? true : saveWorkspace();
+    }
+    const source = currentSource();
+    if (!selectedExercise || source === savedSource) return true;
+    savePromise = (async () => {
+      setStatus("Saving\u2026", "saving");
+      try {
+        const response = await fetch(workspaceUrl(selectedExercise), {
+          method: "PUT",
+          headers: { "Content-Type": "application/json", "X-CSRF-Token": csrfToken },
+          body: JSON.stringify({ source })
+        });
+        const data = await response.json();
+        if (!response.ok) throw new Error(data.error || "Could not save your work.");
+        savedSource = source;
+        setStatus("Saved", "saved");
+        if (currentSource() !== savedSource) queueSave();
+        return true;
+      } catch (error) {
+        setStatus(error.message || "Could not save your work.", "error");
+        return false;
+      } finally {
+        savePromise = null;
+      }
+    })();
+    return savePromise;
+  };
+  const queueSave = () => {
+    clearTimeout(saveTimer);
+    setStatus("Unsaved changes", "dirty");
+    saveTimer = setTimeout(() => {
+      void saveWorkspace();
+    }, 700);
+  };
+  const setEditorSource = (source) => {
+    switching = true;
+    editor.setSource(source);
+    switching = false;
+  };
+  const loadExercise = async (exercise) => {
+    const previousExercise = selectedExercise;
+    switching = true;
+    selectedExercise = exercise;
+    hasAttemptedExercise = false;
+    solutionButton.hidden = !exercise.solution_code;
+    solutionButton.disabled = true;
+    solutionButton.textContent = "Show worked solution";
+    document.getElementById("practice-task-title").textContent = exercise.title;
+    instructions.textContent = exercise.instructions;
+    output.textContent = "Run your code to see output and checks.";
+    runButton.disabled = true;
+    setStatus("Loading saved work\u2026", "saving");
+    try {
+      const response = await fetch(workspaceUrl(exercise));
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Could not load this exercise.");
+      savedSource = data.source;
+      setEditorSource(data.source);
+      setStatus(data.updated_at ? "Saved work loaded" : "Starter code loaded", "saved");
+    } catch (error) {
+      if (previousExercise) {
+        selectedExercise = previousExercise;
+        selector.value = previousExercise.id;
+        document.getElementById("practice-task-title").textContent = previousExercise.title;
+        instructions.textContent = previousExercise.instructions;
+      }
+      setStatus(error.message || "Could not load this exercise.", "error");
+    } finally {
+      switching = false;
+      runButton.disabled = !runnerReady;
+    }
+  };
+  const resizeEditor = () => requestAnimationFrame(() => editor.requestMeasure());
+  const openPanel = () => {
+    panel.hidden = false;
+    panel.classList.remove("is-collapsed");
+    launcher.hidden = true;
+    document.getElementById("practice-collapse").setAttribute("aria-expanded", "true");
+    resizeEditor();
+    void recordUsage("open");
+    startRunner();
+  };
+  const closePanel = async () => {
+    if (!await saveWorkspace()) return;
+    panel.hidden = true;
+    panel.classList.remove("is-maximized", "is-collapsed");
+    launcher.hidden = false;
+  };
+  const setRunOutput = (text, isError = false) => {
+    output.textContent = text;
+    output.dataset.state = isError ? "error" : "output";
+  };
+  const startRunner = () => {
+    if (!runnerStarted) {
+      runnerStarted = true;
+      setRunOutput("Loading the browser Python runtime\u2026");
+      iframe.src = "/static/practice-sandbox.html";
+      runnerLoadTimeout = setTimeout(() => {
+        if (runnerReady) return;
+        runnerStarted = false;
+        queuedRun = false;
+        runButton.disabled = false;
+        iframe.src = "about:blank";
+        setRunOutput("The Python runtime did not respond. Check that your browser allows background workers, then reload the lesson.", true);
+        void recordUsage("error");
+      }, 45e3);
+    }
+  };
+  const runExercise = () => {
+    if (!selectedExercise) return;
+    if (!runnerReady) {
+      queuedRun = true;
+      runButton.disabled = true;
+      startRunner();
+      return;
+    }
+    const runId = ++nextRunId;
+    activeRunId = runId;
+    hasAttemptedExercise = true;
+    solutionButton.disabled = !selectedExercise.solution_code;
+    runButton.disabled = true;
+    setRunOutput("Running in the browser\u2026");
+    iframe.contentWindow.postMessage({
+      type: "run",
+      runId,
+      code: `${currentSource()}
+
+${selectedExercise.checks_code}`
+    }, "*");
+    runTimeout = setTimeout(() => {
+      if (activeRunId !== runId) return;
+      activeRunId = null;
+      runButton.disabled = false;
+      setRunOutput("Execution timed out. The browser worker was stopped; try a smaller exercise.", true);
+      void recordUsage("error");
+      runnerReady = false;
+      runnerStarted = false;
+      iframe.src = "about:blank";
+    }, 1e4);
+  };
+  exerciseList.forEach((exercise) => {
+    const option = document.createElement("option");
+    option.value = exercise.id;
+    option.textContent = exercise.title;
+    selector.append(option);
+  });
+  launcher.addEventListener("click", openPanel);
+  document.getElementById("practice-close").addEventListener("click", () => {
+    void closePanel();
+  });
+  document.getElementById("practice-collapse").addEventListener("click", (event) => {
+    const collapsed = panel.classList.toggle("is-collapsed");
+    event.currentTarget.setAttribute("aria-expanded", String(!collapsed));
+    event.currentTarget.textContent = collapsed ? "Expand" : "Minimize";
+    event.currentTarget.setAttribute("aria-label", collapsed ? "Expand workspace" : "Collapse workspace");
+    resizeEditor();
+  });
+  document.getElementById("practice-maximize").addEventListener("click", (event) => {
+    const maximized = panel.classList.toggle("is-maximized");
+    event.currentTarget.setAttribute("aria-pressed", String(maximized));
+    event.currentTarget.textContent = maximized ? "Restore" : "Maximize";
+    resizeEditor();
+  });
+  selector.addEventListener("change", async () => {
+    if (!await saveWorkspace()) {
+      selector.value = selectedExercise.id;
+      return;
+    }
+    const exercise = exerciseList.find((item) => item.id === selector.value);
+    if (exercise) await loadExercise(exercise);
+  });
+  resetButton.addEventListener("click", () => {
+    if (!selectedExercise) return;
+    if (currentSource() !== selectedExercise.starter_code && !window.confirm("Discard your edits and restore the starter code?")) return;
+    setEditorSource(selectedExercise.starter_code);
+    queueSave();
+  });
+  solutionButton.addEventListener("click", async () => {
+    if (!selectedExercise?.solution_code || !hasAttemptedExercise) return;
+    if (currentSource() !== selectedExercise.starter_code && !window.confirm("Replace your current work with the worked solution?")) return;
+    setEditorSource(selectedExercise.solution_code);
+    await saveWorkspace();
+    setRunOutput("Worked solution loaded. Read it, run the checks, and explain each decision.");
+  });
+  runButton.addEventListener("click", () => {
+    void recordUsage("run");
+    runExercise();
+  });
+  window.addEventListener("message", (event) => {
+    if (event.source !== iframe.contentWindow || event.origin !== "null" || !event.data) return;
+    if (event.data.type === "ready") {
+      clearTimeout(runnerLoadTimeout);
+      runnerReady = true;
+      runButton.disabled = switching;
+      if (!queuedRun) setRunOutput("Python runtime ready. Run checks when you are ready.");
+      if (queuedRun) {
+        queuedRun = false;
+        runExercise();
+      }
+      return;
+    }
+    if (event.data.type === "error" && event.data.runId == null) {
+      clearTimeout(runnerLoadTimeout);
+      runnerReady = false;
+      queuedRun = false;
+      runnerStarted = false;
+      iframe.src = "about:blank";
+      runButton.disabled = false;
+      setRunOutput(event.data.text || "Python runtime failed to load.", true);
+      void recordUsage("error");
+      return;
+    }
+    if (event.data.type === "run-started") {
+      setRunOutput("Running checks\u2026");
+      return;
+    }
+    if (event.data.runId !== activeRunId) return;
+    if (event.data.type === "output") {
+      output.textContent = `${output.textContent}${event.data.text}`.slice(0, 12e3);
+    } else if (event.data.type === "done" || event.data.type === "error" || event.data.type === "timeout") {
+      clearTimeout(runTimeout);
+      activeRunId = null;
+      runButton.disabled = false;
+      setRunOutput(event.data.text, event.data.type !== "done");
+      if (event.data.type !== "done") void recordUsage("error");
+    }
+  });
+  void loadExercise(exerciseList[0]);
+}

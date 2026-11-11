@@ -15,7 +15,7 @@
       "number": 1,
       "title": "Data and problem formulation",
       "summary": "Turn a product question into a defensible tabular ML problem, then validate data and build features without leaking the answer.",
-      "estimated_hours": 13,
+      "estimated_hours": 16,
       "topics": [
         "Descriptive statistics",
         "Probability and base rates",
@@ -208,6 +208,174 @@
             ],
             "answer": 1,
             "explanation": "The update is 0 - 0.1 × (-4) = 0.4, a step toward the minimum at w = 2."
+          }
+        },
+        {
+          "id": "mle.math.05",
+          "title": "Understand probability distributions and sampling",
+          "status": "ready",
+          "study_minutes": 45,
+          "goal": "Distinguish common probability distributions and explain how samples vary.",
+          "sections": [
+            {
+              "heading": "A distribution describes possible values",
+              "body": [
+                "A probability distribution describes the values a random quantity can take and how likely those values are under a stated model. A Bernoulli variable has two outcomes, such as churn or no churn. A binomial variable counts successes in a fixed number of independent Bernoulli trials with the same success probability.",
+                "For a binomial count with 5 independent trials and success probability 0.2, the expected number of successes is 5 × 0.2 = 1. This is a long-run average across repeated groups of five, not a promise that every group contains exactly one success."
+              ]
+            },
+            {
+              "heading": "Samples have their own variation",
+              "body": [
+                "A statistic such as a sample mean or proportion changes from sample to sample. That sampling variation is different from a biased collection process: taking more observations can reduce random variation under suitable assumptions, but it does not automatically make a systematically unrepresentative sample representative.",
+                "A normal distribution is a symmetric, bell-shaped model often used to describe measurement variation or approximate some sampling distributions. Real data need not be normal. Inspect the data and check whether the assumptions behind a calculation are reasonable."
+              ]
+            },
+            {
+              "heading": "Match the model to the quantity",
+              "body": [
+                "Use a distribution as a model of uncertainty, not as a label assigned by habit. Counts, binary outcomes, and continuous measurements have different possible values. State the unit of observation and how the sample was obtained before interpreting probabilities.",
+                "In machine learning, predicted probabilities and evaluation metrics are estimates from data. Their uncertainty and the population they represent matter when decisions affect people or resources."
+              ]
+            }
+          ],
+          "task": "If 5 independent trials each have a 0.2 success probability, calculate the expected success count. Explain why the result does not guarantee exactly one success.",
+          "quiz": {
+            "question": "For 5 independent trials with success probability 0.2 each, what is the expected number of successes?",
+            "choices": [
+              "0.2",
+              "1",
+              "2.5",
+              "5"
+            ],
+            "answer": 1,
+            "explanation": "The expected count is n × p = 5 × 0.2 = 1, an average across repeated groups rather than a guaranteed outcome."
+          }
+        },
+        {
+          "id": "mle.math.06",
+          "title": "Use matrices to combine feature vectors",
+          "status": "ready",
+          "study_minutes": 45,
+          "goal": "Read matrix shapes and calculate a small matrix-vector product.",
+          "sections": [
+            {
+              "heading": "Rows and columns have meaning",
+              "body": [
+                "A matrix is a rectangular arrangement of numbers. In a tabular dataset, rows commonly represent examples and columns represent features. A matrix with m rows and n columns has shape m by n; recording that shape helps catch mismatches between data and model parameters.",
+                "A vector can represent one example's ordered feature values. Keep the feature order and units attached to the vector so a calculation remains interpretable."
+              ]
+            },
+            {
+              "heading": "A matrix can apply several weighted sums",
+              "body": [
+                "For A = [[1, 2], [-1, 3]] and x = [2, 1], the product Ax is [1 × 2 + 2 × 1, (-1) × 2 + 3 × 1] = [4, 1]. Each row of A supplies one set of weights for a result.",
+                "If A has shape m by n, x must contain n values and Ax has m values. A dimension mismatch means the operation is not defined as written; do not silently reorder or drop features to make the shapes fit."
+              ]
+            },
+            {
+              "heading": "Connect the operation to models",
+              "body": [
+                "Linear layers use matrix multiplication to compute weighted combinations for many examples or output units at once. The operation is efficient, but its meaning still depends on the feature schema, weight order, and any bias terms.",
+                "Matrix multiplication is not generally commutative: changing the order can change the result or make the product undefined. Check shapes and write down what each axis represents."
+              ]
+            }
+          ],
+          "task": "Calculate [[1, 2], [-1, 3]] × [2, 1] by taking the dot product of each matrix row with the vector.",
+          "quiz": {
+            "question": "What is [[1, 2], [-1, 3]] × [2, 1]?",
+            "choices": [
+              "[4, 1]",
+              "[3, 2]",
+              "[2, 4]",
+              "[1, -1]"
+            ],
+            "answer": 0,
+            "explanation": "The first row gives 1 × 2 + 2 × 1 = 4; the second gives (-1) × 2 + 3 × 1 = 1."
+          }
+        },
+        {
+          "id": "mle.math.07",
+          "title": "Interpret partial derivatives",
+          "status": "ready",
+          "study_minutes": 45,
+          "goal": "Explain how a partial derivative measures a loss change for one parameter at a time.",
+          "sections": [
+            {
+              "heading": "Vary one parameter while holding others fixed",
+              "body": [
+                "A partial derivative measures how a function changes as one input changes while the other inputs are held fixed. For f(a, b) = 2a + 3b, the partial derivative with respect to a is 2, and the partial derivative with respect to b is 3.",
+                "For a loss function with many parameters, the gradient is the vector of partial derivatives. Each entry describes a local change for one parameter; together, they provide the direction used by gradient-based training."
+              ]
+            },
+            {
+              "heading": "Read a gradient at a point",
+              "body": [
+                "For J(a, b) = (a - 1)² + (b + 2)², the partial derivatives are 2(a - 1) and 2(b + 2). At (a, b) = (0, 0), the gradient is [-2, 4]. It points toward local increase; gradient descent steps in the opposite direction.",
+                "The derivative is local information. For nonlinear functions, the slope can change as parameters move, so training recomputes gradients rather than assuming one direction stays correct everywhere."
+              ]
+            },
+            {
+              "heading": "Use partial derivatives carefully",
+              "body": [
+                "The derivative depends on the function, units, and current parameter values. A large gradient can produce a large update unless the learning rate or parameter scaling controls the step.",
+                "Automatic differentiation computes derivatives through supported operations, but it does not check whether the chosen loss, data, or model is appropriate. Inspect the objective and verify training behavior."
+              ]
+            }
+          ],
+          "task": "For J(a, b) = (a - 1)² + (b + 2)², calculate both partial derivatives at (0, 0) and write the gradient as an ordered pair.",
+          "quiz": {
+            "question": "For f(a, b) = 2a + 3b, what is the partial derivative with respect to a?",
+            "choices": [
+              "2",
+              "3",
+              "2a",
+              "3b"
+            ],
+            "answer": 0,
+            "explanation": "Holding b fixed, the coefficient of a is 2, so the partial derivative with respect to a is 2."
+          }
+        },
+        {
+          "id": "mle.math.08",
+          "title": "Interpret confidence intervals and hypothesis tests",
+          "status": "ready",
+          "study_minutes": 45,
+          "goal": "Describe uncertainty in sample estimates and interpret a hypothesis-test p-value without overclaiming.",
+          "sections": [
+            {
+              "heading": "A confidence interval describes a procedure",
+              "body": [
+                "A confidence interval is produced by a procedure that, under its assumptions, covers the fixed population quantity at a stated rate over repeated samples. A 95% confidence procedure does not mean there is a 95% probability that this particular interval contains the fixed parameter.",
+                "Intervals communicate uncertainty and plausible values under the model and sampling design. A narrow interval can still be misleading if the sample is biased, measurements are wrong, or important groups are missing."
+              ]
+            },
+            {
+              "heading": "A p-value is conditional on a null model",
+              "body": [
+                "A p-value is the probability, assuming the null hypothesis and test assumptions, of observing a result at least as extreme as the one measured. It is not the probability that the null hypothesis is true, nor does it measure the practical importance of an effect.",
+                "Choose the question and analysis before looking at results where possible. Repeatedly testing many hypotheses and reporting only small p-values increases the chance of a misleading finding."
+              ]
+            },
+            {
+              "heading": "Association is not a causal explanation",
+              "body": [
+                "Correlation summarizes how two numerical variables vary together, while covariance uses the variables' original scales. Neither alone establishes that one variable caused the other; confounding, selection, and timing can explain an association.",
+                "In ML, statistical significance is not the same as predictive usefulness or a justified product decision. Report effect size, uncertainty, data limitations, and the evaluation question together."
+              ]
+            }
+          ],
+          "task": "In plain language, explain why a 95% confidence interval is not a 95% probability statement about a fixed parameter, and name one reason a statistically significant association may not be causal.",
+          "quiz": {
+            "question": "A test reports p = 0.03 under its null hypothesis. Which interpretation is valid?",
+            "choices": [
+              "There is a 3% probability that the null hypothesis is true",
+              "Under the null and test assumptions, results at least this extreme have probability 3%",
+              "The observed effect is large enough to matter in practice",
+              "There is a 97% probability that the model will generalize"
+            ],
+            "answer": 1,
+            "explanation": "A p-value is conditional on the null hypothesis and assumptions; it is not the probability the null is true or a measure of practical importance."
           }
         },
         {

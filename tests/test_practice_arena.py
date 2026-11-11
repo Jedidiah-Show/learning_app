@@ -60,13 +60,20 @@ class ArenaTestCase(unittest.TestCase):
 
 
 class ArenaTaxonomyTests(unittest.TestCase):
-    def test_two_tracks_are_present_and_ai_is_primary(self):
+    def test_three_tracks_are_present_and_ai_is_primary(self):
         self.assertEqual(
             [track['id'] for track in TRACKS],
-            ['ai-engineering', 'algorithms'],
+            ['ai-engineering', 'algorithms', 'machine-learning'],
         )
         self.assertTrue(TRACKS[0]['primary'])
         self.assertFalse(TRACKS[1]['primary'])
+        self.assertFalse(TRACKS[2]['primary'])
+
+    def test_machine_learning_track_has_statistics_topic(self):
+        topics = {topic['id']: topic for topic in TOPICS}
+        self.assertIn('statistics', topics)
+        self.assertEqual(topics['statistics']['track'], 'machine-learning')
+        self.assertEqual(topics['statistics']['name'], 'Statistics')
 
     def test_every_problem_has_a_valid_track_topic_and_difficulty(self):
         problems = all_arena_problems()
@@ -97,6 +104,21 @@ class ArenaTaxonomyTests(unittest.TestCase):
                 namespace = {}
                 exec(problem['solution_code'], namespace)
                 exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_statistics_problem_solution_passes_checks(self):
+        problems = all_arena_problems()
+        statistics = [
+            problem for problem in problems.values()
+            if problem['track'] == 'machine-learning'
+        ]
+        self.assertEqual(len(statistics), 1)
+        problem = statistics[0]
+        self.assertEqual(problem['topic'], 'statistics')
+        self.assertEqual(problem['difficulty'], 'beginner')
+        self.assertEqual(problem['skills'], ['statistics', 'python'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
 
     def test_catalogue_filters_compose(self):
         result = catalogue(
@@ -158,6 +180,15 @@ class ArenaPageTests(ArenaTestCase):
         self.assertIn('Binary search', algo_html)
         self.assertIn('Factorial with recursion', algo_html)
         self.assertNotIn('Run your first tiny Python program', algo_html)
+
+    def test_machine_learning_track_shows_statistics_problem(self):
+        self.register('mlarena')
+        response = self.client.get('/arena/machine-learning')
+        self.assertEqual(response.status_code, 200)
+        html = response.get_data(as_text=True)
+        self.assertIn('Machine Learning Practice', html)
+        self.assertIn('Descriptive statistics from scratch', html)
+        self.assertNotIn('Binary search', html)
 
     def test_catalogue_filters_and_empty_state(self):
         self.register('arena')

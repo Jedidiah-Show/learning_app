@@ -210,7 +210,7 @@ def validate_problem_schema(problem: Dict[str, Any]) -> None:
         raise ValueError(f"Problem {problem.get('id', '<unknown>')} missing fields: {', '.join(sorted(missing))}")
 
     # Validate track
-    valid_tracks = {"ai-engineering", "algorithms"}
+    valid_tracks = {"ai-engineering", "algorithms", "machine-learning"}
     if problem["track"] not in valid_tracks:
         raise ValueError(f"Problem {problem['id']} has invalid track: {problem['track']}")
 

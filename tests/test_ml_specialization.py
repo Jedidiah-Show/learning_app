@@ -95,11 +95,11 @@ class MLSpecializationFlowTests(unittest.TestCase):
         ][0]
         opened = self.client.get('/')
         self.assertIn('Continue: ' + first['title'], opened.get_data(as_text=True))
-        self.assertIn('0 of 22 lessons · 0 of 6 projects complete', opened.get_data(as_text=True))
+        self.assertIn('0 of 26 lessons · 0 of 6 projects complete', opened.get_data(as_text=True))
 
         self._complete_quiz(first)
         advanced = self.client.get('/').get_data(as_text=True)
-        self.assertIn('1 of 22 lessons', advanced)
+        self.assertIn('1 of 26 lessons', advanced)
 
     def test_dashboard_compares_distinct_pathway_progress_and_shows_one_ml_card(self):
         self._complete_shared_prerequisites()
@@ -129,6 +129,12 @@ class MLSpecializationFlowTests(unittest.TestCase):
         self.assertTrue(all(item.startswith('mle.') for item in pathway_ids))
         self.assertFalse(any(lesson['id'] in pathway_ids for lesson in all_lessons()))
         self.assertEqual(pathway['id'], PATHWAY_ID)
+        first_module_lessons = pathway['modules'][0]['lessons']
+        self.assertEqual(
+            [lesson['id'] for lesson in first_module_lessons[:8]],
+            [f'mle.math.{index:02d}' for index in range(1, 9)],
+        )
+        self.assertEqual(first_module_lessons[8]['id'], 'mle.data.01')
 
     def test_ml_lesson_evidence_is_pathway_scoped_and_not_mastery(self):
         self._complete_shared_prerequisites()

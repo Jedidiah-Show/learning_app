@@ -287,5 +287,45 @@
       "Tuple assignment lets you update both values without a temporary variable."
     ],
     "editorial": "The naive recursive definition recomputes the same values exponentially many times. Storing only the last two numbers is enough because each term depends on its two predecessors. The loop performs n constant-time updates, giving O(n) time and O(1) extra space. This is the same subproblem-reuse idea behind dynamic programming."
+  },
+  {
+    "id": "ml-statistics-descriptive-statistics",
+    "track": "machine-learning",
+    "topic": "statistics",
+    "title": "Descriptive statistics from scratch",
+    "summary": "Compute the mean, median, and population standard deviation using only the Python standard library.",
+    "statement": "Write descriptive_statistics(numbers) that returns a dictionary with keys mean, median, and std_dev (population standard deviation) for a list of numbers. Return None for an empty list. Round each result to four decimal places. Do not import statistics, numpy, or any other package: practise the loop and arithmetic yourself.",
+    "examples": [
+      {
+        "input": "[2, 4, 4, 4, 5, 5, 7, 9]",
+        "output": "{'mean': 5.0, 'median': 4.5, 'std_dev': 2.0}",
+        "explanation": "The mean is 40 / 8 = 5. The sorted list has two middle values, 4 and 5, so the median is 4.5. The population variance is 32 / 8 = 4, so the standard deviation is 2."
+      },
+      {
+        "input": "[]",
+        "output": "None",
+        "explanation": "There are no values to summarize, so the function returns None."
+      }
+    ],
+    "constraints": [
+      "numbers contains only integers or floats.",
+      "Return None for an empty list.",
+      "Round each result to four decimal places.",
+      "Do not import statistics, numpy, or any external package."
+    ],
+    "difficulty": "beginner",
+    "skills": ["statistics", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def descriptive_statistics(numbers):\n    # TODO: compute mean, median, and population standard deviation.\n    # Return None for an empty list; round each result to 4 decimals.\n    pass\n",
+    "solution_code": "def descriptive_statistics(numbers):\n    if not numbers:\n        return None\n    count = len(numbers)\n    total = 0.0\n    for number in numbers:\n        total += number\n    mean = total / count\n    ordered = sorted(numbers)\n    middle = count // 2\n    if count % 2:\n        median = ordered[middle]\n    else:\n        median = (ordered[middle - 1] + ordered[middle]) / 2\n    squared_difference = 0.0\n    for number in numbers:\n        difference = number - mean\n        squared_difference += difference * difference\n    variance = squared_difference / count\n    std_dev = variance ** 0.5\n    return {\n        'mean': round(mean, 4),\n        'median': round(median, 4),\n        'std_dev': round(std_dev, 4),\n    }\n",
+    "browser_checks": "assert descriptive_statistics([2, 4, 4, 4, 5, 5, 7, 9]) == {\n    'mean': 5.0, 'median': 4.5, 'std_dev': 2.0\n}\nassert descriptive_statistics([]) is None\nassert descriptive_statistics([5]) == {\n    'mean': 5.0, 'median': 5.0, 'std_dev': 0.0\n}\nprint('All public checks passed.')\n",
+    "hints": [
+      "Guard the empty list first and return None before dividing.",
+      "The mean is the running total divided by the count of values.",
+      "Sort a copy of the list to find the median: the middle value, or the average of the two middle values.",
+      "Population standard deviation averages the squared differences over the full count, then takes the square root."
+    ],
+    "editorial": "Start by handling the empty input so the rest of the function can divide safely. The mean is the running total divided by the count. For the median, sort the values and take the middle one; with an even count, average the two middle values. For the population standard deviation, square each difference from the mean, average those squares over the full count (not count minus one), and take the square root. Rounding keeps the result stable and presentable without hiding the underlying arithmetic."
   }
 ]

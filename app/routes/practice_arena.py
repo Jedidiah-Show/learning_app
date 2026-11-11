@@ -158,6 +158,12 @@ def algorithms():
     return _render_track('algorithms')
 
 
+@practice_arena_bp.route('/machine-learning')
+@login_required
+def machine_learning():
+    return _render_track('machine-learning')
+
+
 def _render_track(track_id):
     track = track_by_id(track_id)
     if track is None:
