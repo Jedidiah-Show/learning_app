@@ -17,8 +17,22 @@ from uuid import uuid4
 
 
 SANDBOX_IMAGE = "ruach-python-sandbox:latest"
-MAX_TIMEOUT_SECONDS = 5.0
-MAX_MEMORY_MB = 256
+MAX_TIMEOUT_SECONDS = 15.0
+MAX_MEMORY_MB = 512
+# allowed packages that can be installed in the sandbox
+ALLOWED_PACKAGES = {
+    "numpy",
+    "pandas",
+    "matplotlib",
+    "scipy",
+    "sympy",
+    "networkx",
+    "pytest",
+    "torch",
+    "tensorflow",
+    "scikit-learn",
+}
+
 
 
 class SandboxExecutionError(RuntimeError):
@@ -113,6 +127,7 @@ def execute_in_sandbox(
     container_name = f"ruach-judge-{uuid4().hex}"
     docker_cmd = _build_docker_command(
         timeout_sec, memory_mb, container_name,
+        frozenset(ALLOWED_PACKAGES),
     )
 
     result = JudgeResult()
