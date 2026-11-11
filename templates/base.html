@@ -52,7 +52,7 @@
                     </div>
                 </a>
                 {% if current_user.is_authenticated %}
-                <button type="button" class="app-nav-toggle flex-shrink-0 lg:hidden" data-toggle-nav aria-label="Toggle navigation" aria-controls="app-navigation" aria-pressed="false">
+                <button type="button" class="app-nav-toggle flex-shrink-0" data-toggle-nav aria-label="Toggle navigation" aria-controls="app-navigation" aria-pressed="false">
                     <span aria-hidden="true">☰</span>
                     <span data-nav-toggle-label>Menu</span>
                 </button>
@@ -148,31 +148,29 @@
     
     <!-- Main Content -->
     <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 {% if current_user.is_authenticated %}lg:ml-64{% endif %} {% if request.endpoint and request.endpoint.startswith('auth.') and request.endpoint != 'auth.profile' %}auth-main{% endif %}">
-        {% if current_user.is_authenticated and not current_user.is_admin and request.endpoint != 'auth.profile' %}
-        <div class="learner-streak-bar">
-            <span class="learner-streak" role="group" aria-label="Current learning streak">
-                <span aria-hidden="true">🔥</span>
-                <strong>{{ current_user.streak or 0 }}</strong>
-                <span>day streak</span>
-            </span>
-        </div>
-        {% endif %}
         {% if current_user.is_authenticated %}
-        <div class="top-right-cluster flex items-center justify-end gap-2 sm:gap-3">
-            <button type="button" class="theme-toggle flex-shrink-0" data-theme-toggle aria-label="Switch to dark mode">
-                <span data-theme-icon aria-hidden="true">🌙</span>
-                <span data-theme-label class="hidden sm:inline">Dark mode</span>
-            </button>
-            <a href="{{ url_for('auth.profile') }}" aria-label="Profile" title="Profile" class="top-right-profile flex items-center gap-2 px-3 py-2 text-xs font-semibold rounded-md text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% if request.endpoint == 'auth.profile' %} text-indigo-700 font-bold{% endif %}">
-                <span class="nav-icon nav-profile-icon" aria-hidden="true">
-                    {% if current_user.profile_photo %}
-                    <img src="{{ current_user.profile_photo }}" alt="Profile picture" class="w-6 h-6 rounded-full object-cover">
-                    {% else %}
-                    <span class="w-6 h-6 rounded-full bg-cyan-600 text-white flex items-center justify-center text-xs font-bold">{{ (current_user.full_name or current_user.username or 'U')[0]|upper }}</span>
-                    {% endif %}
+        <div class="flex w-full justify-end mb-2">
+            <div class="top-right-cluster flex items-center gap-2">
+                {% if not current_user.is_admin and request.endpoint != 'auth.profile' %}
+                <span class="learner-streak flex items-center gap-1.5 px-2.5 py-1.5 rounded-full border border-cyan-200 bg-cyan-50 text-cyan-900 text-xs font-semibold" role="group" aria-label="Current learning streak">
+                    <span aria-hidden="true">🔥</span>
+                    <strong>{{ current_user.streak or 0 }}</strong>
                 </span>
-                <span class="nav-label">{{ current_user.username }}</span>
-            </a>
+                {% endif %}
+                <button type="button" class="theme-toggle flex-shrink-0" data-theme-toggle aria-label="Switch to dark mode">
+                    <span data-theme-icon aria-hidden="true">🌙</span>
+                    <span data-theme-label class="hidden">Dark mode</span>
+                </button>
+                <a href="{{ url_for('auth.profile') }}" aria-label="Profile" title="Profile" class="top-right-profile flex items-center gap-1.5 px-2 py-1.5 rounded-md text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% if request.endpoint == 'auth.profile' %} text-indigo-700 font-bold{% endif %}">
+                    <span class="nav-icon nav-profile-icon" aria-hidden="true">
+                        {% if current_user.profile_photo %}
+                        <img src="{{ current_user.profile_photo }}" alt="Profile picture" class="w-6 h-6 rounded-full object-cover">
+                        {% else %}
+                        <span class="w-6 h-6 rounded-full bg-cyan-600 text-white flex items-center justify-center text-xs font-bold">{{ (current_user.full_name or current_user.username or 'U')[0]|upper }}</span>
+                        {% endif %}
+                    </span>
+                </a>
+            </div>
         </div>
         {% endif %}
         {% with messages = get_flashed_messages(with_categories=true) %}

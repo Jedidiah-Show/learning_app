@@ -64,8 +64,8 @@ class Submission(db.Model):
     problem_id = db.Column(db.String(64), db.ForeignKey('problem.id'))
     language = db.Column(db.String(32), default='python')
     code_snapshot = db.Column(db.Text, nullable=False)
-    verdict = db.Column(db.Enum('PENDING', 'ACCEPTED', 'WRONG_ANSWER', 
-                                'TIME_LIMIT_EXCEEDED', 'MEMORY_LIMIT_EXCEEDED', 
+    verdict = db.Column(db.Enum('PENDING', 'ACCEPTED', 'WRONG_ANSWER',
+                                'TIME_LIMIT_EXCEEDED', 'MEMORY_LIMIT_EXCEEDED',
                                 'RUNTIME_ERROR', 'COMPILE_ERROR'), default='PENDING')
     execution_time_ms = db.Column(db.Integer)
     memory_kb = db.Column(db.Integer)
@@ -114,7 +114,7 @@ def execute_in_sandbox(code: str, test_cases: list, timeout_sec: float = 3.0) ->
         "test_cases": test_cases,
         "timeout": timeout_sec
     }
-    
+
     # Run container with dropped privileges, no network, read-only rootfs
     docker_cmd = [
         "docker", "run", "--rm", "-i",
@@ -125,7 +125,7 @@ def execute_in_sandbox(code: str, test_cases: list, timeout_sec: float = 3.0) ->
         "--security-opt", "no-new-privileges:true",
         "ruach-python-sandbox:latest"
     ]
-    
+
     try:
         proc = subprocess.run(
             docker_cmd,

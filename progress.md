@@ -152,6 +152,29 @@ implementation, so a 95% pass claim is not currently supportable.
   `test_practice_arena.py`, `test_practice_workspace.py`, `test_profile_photos.py`,
   `test_admin_portal.py`, `test_security_hardening.py`, `test_integrations.py`.
 
+### Learner shell fixes (2026-11-11)
+
+- Fixed the code editor: `static/js/python-editor.js` referenced
+  `pythonLanguageCompartment` but the compartment is named `languageCompartment`,
+  throwing a `ReferenceError` that broke editor creation entirely; now the
+  shared CodeMirror 6 factory mounts and the lazy Python language loads.
+- Reverted the top-right cluster to icon-only per user request: theme toggle
+  and profile now render icons only (labels kept in DOM as `hidden` so the
+  theme JS stays functional), ordered left-to-right as streak → theme-toggle
+  icon → profile icon, placed at the top-right of the main content area. The
+  learner streak bar and previous top-right cluster were merged into this one
+  cluster.
+- Made the nav collapse toggle available on desktop (removed `lg:hidden` from
+  `[data-toggle-nav]`) so the sidebar can be collapsed to icon-only; the
+  drag-resize handle still lets the width be set between 240px and the
+  viewport minus 140px.
+- Fixed dark-theme contrast regressions: dark surfaces (`.bg-white`,
+  `.panel-card`, etc.) switch to dark but hardcoded dark text on
+  `.field-label` and `.event-row` strong/span now use `var(--app-muted)` /
+  `var(--app-text)` so they stay readable in dark theme.
+- Completed the cyan rebrand consistency: learner-streak badge and the
+  reading-progress gradient are now cyan (brand) instead of green/orange.
+
 ### Skill Passport and Project Studio follow-up (2026-11-11)
 
 - Added Passport schema preflight to the page, API, and download routes.
@@ -167,11 +190,24 @@ implementation, so a 95% pass claim is not currently supportable.
   track-form handler on the ML pathway.
 - Focused Passport, Project Studio, readiness, and existing capstone-flow
   tests: **25 passed**; `git diff --check` passes.
-- Production code release is paused by user decision. The latest `main` CI run
-  fails only at compiled-asset freshness checks (both Python jobs); the
-  browser job and test steps pass. No Vercel drains or error-monitoring
-  integration are configured. The unrelated frontend/editor changes remain
-  untouched, and no Passport/Studio code has been committed or deployed.
+- The dedicated `tests/test_project_studio.py` regression file remains
+  untracked locally. A subsequent `main` commit `60d7a96` included the
+  Passport/Studio code and rebuilt frontend assets. Its CI run
+  `43009699461` passed both Python versions, browser checks, and compiled-asset
+  verification.
+- Render and Vercel now serve commit `60d7a96`; both `/readyz` endpoints return
+  `200` with migration `f73d2c8a9b41` current. Vercel reports the corresponding
+  production deployment READY. This update occurred after the release had been
+  paused and was not initiated by this task.
+- No Vercel drains or error-monitoring integration are configured, and an
+  authenticated Passport/Project Studio browser smoke test remains outstanding.
+- Local Studio follow-up: the selected flagship now surfaces its submitted
+  GitHub repository and Actions run, with the run's verification status.
+  Milestone checkboxes are explicitly identified as learner progress rather
+  than repository verification. A new submission attempt clears stale CI,
+  completion, and evaluation state until the new run is verified.
+- Focused evidence-display and submission-state tests: **6 passed**. These
+  follow-up changes remain local and have not been deployed.
 
 ### Completed in earlier work
 

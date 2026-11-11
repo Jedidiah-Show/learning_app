@@ -12,6 +12,7 @@ from unittest.mock import patch
 from app import create_app, db
 from app.curriculum import all_lessons, all_modules, curriculum
 from app.gemini import GeminiError, GeminiRateLimited
+from app.project_verification import VerificationError
 from app.models import (
     CalendarEvent, CoursePlan, CourseProject, Credential, LessonCompletion, Quiz,
     LessonTaskProgress, QuizResult, ReviewItem, StudySession,
@@ -996,7 +997,6 @@ class RuachAICourseTests(unittest.TestCase):
         )
         self.assertEqual(rejected.status_code, 404)
         # A failing or unreachable checks page never records a submission.
-        from app.project_verification import VerificationError
         with patch(
             'app.routes.projects.verify_checks',
             side_effect=VerificationError('The checks page reports a failed build'),
@@ -1013,6 +1013,44 @@ class RuachAICourseTests(unittest.TestCase):
             self.assertEqual(
                 CourseProject.query.one().submission.strip(), submission.strip()
             )
+
+    def test_failed_resubmission_clears_stale_project_verification(self):
+        self.register()
+        module = all_modules()[0]
+        for lesson in module['lessons']:
+            self.complete_lesson(lesson['id'])
+        self.client.get(f"/api/projects/module/{module['id']}")
+        with self.app.app_context():
+            record = CourseProject.query.one()
+            record.checks_verified = True
+            record.completed = True
+            record.evaluation = json.dumps({'score': 95})
+            db.session.commit()
+
+        with patch(
+            'app.routes.projects.verify_checks',
+            side_effect=VerificationError('The checks run failed'),
+        ):
+            response = self.client.post(
+                f"/api/projects/module/{module['id']}/submit",
+                json={
+                    'submission': (
+                        'I revised the project and documented the implementation '
+                        'and current verification evidence.'
+                    ),
+                    'repository_url': 'https://github.com/learner/project',
+                    'checks_url': 'https://github.com/learner/project/actions/runs/3',
+                    'commit_sha': 'b' * 40,
+                },
+            )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertTrue(response.get_json()['draft_saved'])
+        with self.app.app_context():
+            record = CourseProject.query.one()
+            self.assertFalse(record.checks_verified)
+            self.assertFalse(record.completed)
+            self.assertIsNone(record.evaluation)
 
     def test_module_zero_starter_kit_is_the_docs_kit(self):
         self.register()

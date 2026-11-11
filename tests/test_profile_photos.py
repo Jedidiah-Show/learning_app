@@ -62,11 +62,14 @@ class ProfilePhotoTests(unittest.TestCase):
         self.assertEqual(photo_response.mimetype, 'image/png')
         self.assertEqual(photo_response.data, image)
 
-    def test_profile_page_keeps_username_in_navigation_and_shows_upload_control(self):
+    def test_profile_page_keeps_profile_link_in_navigation_and_shows_upload_control(self):
         response = self.client.get('/profile')
         page = response.get_data(as_text=True)
         self.assertEqual(response.status_code, 200)
-        self.assertIn('nav-label">photo-learner</span>', page)
+        # Profile renders as an icon-only top-right link to /profile.
+        self.assertIn('href="/profile"', page)
+        self.assertIn('bg-cyan-600', page)
+        self.assertIn('>P<', page)
         self.assertIn('name="profile_photo_file"', page)
         self.assertIn('Horizontal focus', page)
         self.assertIn('Vertical focus', page)

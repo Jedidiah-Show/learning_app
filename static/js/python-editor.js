@@ -93,7 +93,7 @@ export function createPythonEditor(host, options = {}) {
             doc: initialDoc,
             extensions: [
                 lineNumbers(),
-                pythonLanguageCompartment.of(inertLanguagePlaceholder),
+                languageCompartment.of(inertLanguagePlaceholder),
                 themeCompartment.of(initialTheme),
                 history(),
                 closeBrackets,

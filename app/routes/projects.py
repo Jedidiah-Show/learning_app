@@ -255,6 +255,11 @@ def project_page():
     studio_project = None
     studio_progress = {}
     studio_checks_verified = False
+    studio_evidence = {
+        'repository_url': None,
+        'checks_url': None,
+        'checks_verified': False,
+    }
     selected_capstone = PROJECT_BY_ID.get(plan.required_project_id) if plan else None
     if selected_capstone and selected_capstone.get('milestones'):
         studio_project = selected_capstone
@@ -266,6 +271,11 @@ def project_page():
                 if isinstance(saved_progress, dict):
                     studio_progress = saved_progress
                 studio_checks_verified = capstone_record.checks_verified
+                studio_evidence = {
+                    'repository_url': capstone_record.repository_url,
+                    'checks_url': capstone_record.checks_url,
+                    'checks_verified': capstone_record.checks_verified,
+                }
     return render_template(
         'projects.html', modules=pathway_modules(destination),
         completed_modules=completed,
@@ -281,6 +291,7 @@ def project_page():
         studio_project=studio_project,
         studio_progress=studio_progress,
         studio_checks_verified=studio_checks_verified,
+        studio_evidence=studio_evidence,
     )
 
 
@@ -608,6 +619,9 @@ def submit_module_project(module_id):
     record.repository_url = repository_url
     record.checks_url = checks_url
     record.demo_url = demo_url
+    record.checks_verified = False
+    record.completed = False
+    record.evaluation = None
     db.session.commit()
     try:
         verification = verify_checks(
