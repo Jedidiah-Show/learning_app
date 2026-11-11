@@ -32,6 +32,10 @@ REQUIRED_TABLES = (
     'lesson_bookmark',
     'lesson_note',
     'pathway_change_request',
+    'tutor_conversation',
+    'submission',
+    'skill_node',
+    'user_skill_progress',
 )
 
 # Columns that newer application code reads on every request. A missing column
@@ -50,6 +54,14 @@ REQUIRED_COLUMNS = {
     'review_item': ('pathway_id',),
     # Read by the dashboard pathway card and the admin pilot analytics.
     'ml_specialization_project': ('failure_stage', 'failure_detail'),
+    # Read by the Skill Passport and its evidence-backed progress projections.
+    'skill_node': (
+        'id', 'title', 'normalized_title', 'category', 'description',
+    ),
+    'user_skill_progress': (
+        'id', 'user_id', 'skill_id', 'status', 'evidence_type',
+        'evidence_id', 'updated_at',
+    ),
 }
 
 

@@ -104,6 +104,10 @@
       </div>
 
       <div id="arena-editor" class="mt-3 overflow-hidden rounded-lg border border-slate-700" style="min-height: 22rem" aria-label="Python code editor"></div>
+      <footer id="arena-statusbar" class="mt-2 flex items-center justify-between gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs text-slate-300" data-arena-statusbar>
+        <span class="font-mono text-slate-400">main.py</span>
+        <span id="arena-statusbar-position" data-arena-cursor="true">Ln 1, Col 1</span>
+      </footer>
       <label for="arena-custom-checks" class="mt-3 block text-sm font-semibold text-slate-700 dark:text-slate-200">Optional local checks</label>
       <textarea id="arena-custom-checks" rows="3" class="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 p-3 font-mono text-xs dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Add Python assertions for your own quick feedback. These run only in your browser."></textarea>
 

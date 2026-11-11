@@ -439,6 +439,34 @@ REQUIRED_PROJECTS = [
         'summary': 'Build a document Q&A engine with hybrid search, reranking, permission-aware retrieval, citations, and a clear low-confidence fallback.',
         'stack': 'Python · FastAPI · pgvector or Qdrant · SentenceTransformers · Pydantic',
         'evidence': ['Ingest PDF, Markdown, and tabular sources', 'Enforce role-based access in retrieval', 'Cite exact sources and abstain when context is insufficient'],
+        'milestones': [
+            {
+                'id': 'design',
+                'title': 'Design ingestion and access boundaries',
+                'description': 'Define source formats, chunk metadata, tenant roles, and the permission checks retrieval must enforce.',
+            },
+            {
+                'id': 'ingestion',
+                'title': 'Build reliable document ingestion',
+                'description': 'Ingest PDF, Markdown, and tabular sources with stable document and chunk identifiers.',
+            },
+            {
+                'id': 'retrieval',
+                'title': 'Implement grounded retrieval',
+                'description': 'Add hybrid search, reranking, permission-aware filtering, citations, and a low-confidence fallback.',
+            },
+            {
+                'id': 'evaluation',
+                'title': 'Measure retrieval quality',
+                'description': 'Create a golden query set and tests for relevance, access isolation, citations, and abstention.',
+            },
+            {
+                'id': 'verified-ci',
+                'title': 'Pass and verify repository checks',
+                'description': 'The LMS verifies the submitted GitHub Actions run against the exact commit.',
+                'automated': True,
+            },
+        ],
     },
     {
         'id': 'multi-tool-agent-mcp',
@@ -446,6 +474,34 @@ REQUIRED_PROJECTS = [
         'summary': 'Build a bounded workflow or assistant with scoped tools and approval for consequential actions. Use MCP for interoperability; use multiple agents only when evaluation evidence justifies the added coordination.',
         'stack': 'Python · provider SDKs · Asyncio · Docker · optional MCP',
         'evidence': ['Define local or remote tools with strict schemas', 'Recover from failed or invalid tool calls', 'Demonstrate approval checkpoints and durable application state', 'Record evidence for choosing workflow, single agent, MCP, or an optional multi-agent split'],
+        'milestones': [
+            {
+                'id': 'tool-contracts',
+                'title': 'Define bounded tool contracts',
+                'description': 'Specify schemas, permissions, timeouts, and safe failure responses for each tool.',
+            },
+            {
+                'id': 'workflow',
+                'title': 'Build the durable workflow',
+                'description': 'Implement state transitions, retries, and recovery from invalid or failed tool calls.',
+            },
+            {
+                'id': 'approval',
+                'title': 'Add approval checkpoints',
+                'description': 'Require explicit approval before consequential actions and persist the decision.',
+            },
+            {
+                'id': 'evaluation',
+                'title': 'Test behavior and architecture choices',
+                'description': 'Exercise edge cases and document why a workflow, single agent, MCP, or optional multi-agent split fits.',
+            },
+            {
+                'id': 'verified-ci',
+                'title': 'Pass and verify repository checks',
+                'description': 'The LMS verifies the submitted GitHub Actions run against the exact commit.',
+                'automated': True,
+            },
+        ],
     },
     {
         'id': 'evaluation-harness',

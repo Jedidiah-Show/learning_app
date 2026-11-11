@@ -3,7 +3,7 @@
 Living checkpoint for the current branch. The curriculum overlay and review
 data remain authoritative; regeneration preserves both.
 
-Last updated: 2026-11-10 (HEAD 1a52b30 plus uncommitted responsive fix)
+Last updated: 2026-11-11 (working tree updates)
 
 ## Next major release progress (2026-11-10)
 
@@ -45,17 +45,17 @@ implementation, so a 95% pass claim is not currently supportable.
   synchronization errors. Migration `4d2a7f9c1b63` adds task progress.
 - Added browser-journey coverage, CI app dependencies, serial Playwright workers
   for Pyodide stability, and a release/migration/rollback process.
-- **Still blocking:** production migration and authenticated journey smoke
-  tests; monitoring and availability validation; and validation of
+- **Still blocking:** authenticated journey smoke tests; monitoring and
+  availability validation; and validation of
   offline/conflicting updates and the complete local-state inventory. Per the
   user's decision, the free Render tier remains in use for the pilot, so
   hosting reliability acceptance is deferred. No live deployment is claimed.
 
 ### Current validation
 
-- Full Python suite (post-merge, clean run): **291 passed, 1 skipped** — exit 0.
-  This run covers the merged remote state (Skill Passport, judge/sandbox
-  services, Arena) plus the credential-scope and passport follow-up fixes.
+- Full Python suite (current worktree): **294 passed, 1 skipped** — exit 0,
+  with one Google OAuth dependency deprecation warning. This includes the
+  credential-scope, Skill Passport, and shared-shell regressions.
 - Full browser suite: **2 passed**, including registration/onboarding,
   persistence, keyboard navigation, mobile layout and isolated Python execution.
 - Frontend CSS/JS builds pass and reproduce committed generated assets. Alembic
@@ -73,6 +73,105 @@ implementation, so a 95% pass claim is not currently supportable.
   for ML learners) while AI-course eligibility gate remains pinned.
 - Arena API JSON error handling fixed via `_is_api_path()` for
   `/arena/api/*` paths.
+
+### Whole-app scan and learner shell (2026-11-11)
+
+- Removed the duplicate logout action from the learner sidebar; the
+  CSRF-protected logout form remains on Profile. Added the current streak to
+  the upper-right shared learner content area, excluding admins and Profile;
+  removed the dashboard's duplicate streak badge.
+- At audit time, Render `/readyz` returned **503 degraded** on commit `98bddf3`:
+  DB revision `4d2a7f9c1b63`, expected head `f73d2c8a9b41`,
+  `migration_current: false`. The response reports no missing tables or
+  columns, but migration readiness was failing. Resolved on 2026-11-11; see
+  the Passport and Project Studio follow-up below.
+- Practice Arena submissions are persisted as `PENDING`; `render.yaml` starts
+  Gunicorn only and does not configure the separate judge worker. Unless that
+  worker is started elsewhere, submissions will not be evaluated.
+- The worker evaluates `browser_checks` from `app/data/arena_problems.json`,
+  which also ships `solution_code`; add private server-side tests before using
+  Arena submissions for high-stakes assessment.
+- Sandbox execution has CPU, memory, process, and wall-clock constraints, but
+  stdout/stderr are captured without an explicit output-size cap. Add bounded
+  output capture/truncation to protect worker capacity.
+- Feature opportunities: deploy and monitor a durable judge worker; separate
+  private grading tests from learner-visible examples; cap execution output;
+  and make streak tracking preferences consistently control streak updates and
+  display.
+- Validation: full Python suite **294 passed, 1 skipped** (one Google OAuth
+  dependency deprecation warning); browser suite **2 passed**; focused shared
+  shell suite **13 passed**; `pip check`, Python compile, and `git diff --check`
+  passed.
+
+### Integrated code editor overhaul (2026-11-11)
+
+- Added shared CodeMirror 6 factory `static/js/python-editor.js`
+  (`createPythonEditor`) used by both the Practice Arena and lesson practice
+  editors.
+- Editor feature set upgraded: syntax highlighting (lazily loaded Python
+  language), autocompletion, auto-close brackets, bracket matching, fold
+  gutter (functions/classes), undo/redo history, comment toggle (Mod-/),
+  indent on Tab/Shift-Tab, active-line and special-character highlighting,
+  selection drawing and line wrapping.
+- Editor look moved to VS Code Dark+ / VS Code Light+ palettes via
+  `EditorView.theme` (compartment-switched); default is Dark+.
+- The Python language now loads through a dynamic `import('@codemirror/lang-python')`
+  behind a `Compartment`, so the heavy parser/completion chunk is deferred until
+  after the editor mounts; esbuild builds now use `--splitting`, producing
+  `static/js/{arena,practice}.bundle.js` entries plus lazy chunks served from
+  `/static/js/`.
+- Added a bottom-anchored editor status bar (`#arena-statusbar`,
+  `#practice-statusbar`) with `Ln X, Col Y` cursor tracking from the editor
+  update listener.
+- Arena Mod-Enter now runs the checks (previously shadowed by the default
+  `insertBlankLine` binding) and Mod-S saves; practice Mod-Enter saves then runs.
+
+### Learner shell: top-right cluster, nav drag-resize, cyan rebrand (2026-11-11)
+
+- Moved the theme toggle and profile link out of the sidebar nav into a single
+  top-right cluster (`templates/base.html`) rendered after the learner streak bar
+  for all authenticated users; the profile link is highlighted on the Profile page.
+- Made the nav sidebar width movable via cursor drag: added `.nav-resize-handle`
+  (hidden by default, `col-resize` cursor at min-width 1024px) and pointer
+  drag/up/cancel logic in `static/js/app.js` that clamps header/main/footer
+  widths between 240px and the viewport minus 140px; disabled when the nav is
+  collapsed.
+- Rebranded the app to cyan (breath/spirit) as the main color:
+  - `tailwind.config.js`: brand palette is now the Tailwind cyan ramp
+    (50 `#ecfeff` … 950 `#083344`); `indigo` and `emerald` utilities map onto it.
+  - `static/css/style.css`: all hardcoded emerald/green brand hexes converted to
+    cyan equivalents, preserving relative lightness so contrast relationships hold
+    in both light and dark themes; dashboard hero, buttons, practice
+    launcher/header, auth gradients, lesson hero, focus rings, and the skip link
+    now use cyan.
+  - Rebuilt `static/css/tailwind.css` via `npm run build:css`; updated
+    `theme-color` meta tags to `#06b6d4`.
+- Verified no invisible / background-synonymous text in light or dark themes:
+  light `emerald-50/100/200` text only appears on dark `bg-brand-950` headers.
+- Targeted suites green: `test_dynamic_shell.py`, `test_learning_flows.py`,
+  `test_practice_arena.py`, `test_practice_workspace.py`, `test_profile_photos.py`,
+  `test_admin_portal.py`, `test_security_hardening.py`, `test_integrations.py`.
+
+### Skill Passport and Project Studio follow-up (2026-11-11)
+
+- Added Passport schema preflight to the page, API, and download routes.
+  Missing Passport tables or columns now return an actionable 503 instead of
+  an internal error. Readiness checks now include the Passport and judge tables.
+- Applied production migration `f73d2c8a9b41` through guarded GitHub Actions
+  run `43003166677` after backup confirmation. Render and Vercel `/readyz`
+  both return `200`, with `migration_current: true` and no missing tables or
+  columns. An authenticated Passport browser smoke test remains outstanding.
+- Added guided, saved milestone workflows for the RAG and bounded
+  tool-using/MCP flagship projects. Progress uses the existing course-project
+  JSON; the final CI milestone remains server-verified. Fixed the absent
+  track-form handler on the ML pathway.
+- Focused Passport, Project Studio, readiness, and existing capstone-flow
+  tests: **25 passed**; `git diff --check` passes.
+- Production code release is paused by user decision. The latest `main` CI run
+  fails only at compiled-asset freshness checks (both Python jobs); the
+  browser job and test steps pass. No Vercel drains or error-monitoring
+  integration are configured. The unrelated frontend/editor changes remain
+  untouched, and no Passport/Studio code has been committed or deployed.
 
 ### Completed in earlier work
 

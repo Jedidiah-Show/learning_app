@@ -242,10 +242,10 @@ class LearnerAccountChromeTests(DynamicShellTestCase):
     def test_streak_is_shown_on_learner_pages_but_not_profile(self):
         self._set_streak(4)
 
-        for path in ('/lessons', '/progress', '/settings'):
+        for path in ('/', '/lessons', '/progress', '/settings'):
             with self.subTest(path=path):
                 html = self._page(path)
-                self.assertIn('Current learning streak: 4 days', html)
+                self.assertIn('aria-label="Current learning streak"', html)
                 self.assertIn('>4</strong>', html)
 
         profile = self._page('/profile')

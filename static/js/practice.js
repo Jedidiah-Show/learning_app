@@ -1,8 +1,4 @@
-import {defaultKeymap, indentWithTab} from '@codemirror/commands';
-import {python} from '@codemirror/lang-python';
-import {EditorState} from '@codemirror/state';
-import {oneDark} from '@codemirror/theme-one-dark';
-import {EditorView, keymap, lineNumbers} from '@codemirror/view';
+import {createPythonEditor} from './python-editor.js';
 
 const root = document.querySelector('[data-practice-workspace]');
 if (root) {
@@ -23,11 +19,24 @@ if (root) {
     const iframe = document.getElementById('practice-sandbox');
     const usageUrl = root.dataset.usageUrl;
     const csrfToken = document.querySelector('meta[name="csrf-token"]').content;
+    const statusPosition = document.getElementById('practice-statusbar-position');
     let selectedExercise = null;
     let savedSource = '';
     let saveTimer = null;
     let savePromise = null;
-    let editor;
+    const editor = createPythonEditor(editorHost, {
+        theme: 'dark',
+        onChange: (source) => {
+            if (switching || !selectedExercise || source === savedSource) return;
+            queueSave();
+        },
+        onCursorChange: (line, col) => {
+            if (!statusPosition) return;
+            statusPosition.textContent = `Ln ${line}, Col ${col}`;
+        },
+        runCommand: () => { void saveWorkspace().then(runExercise); },
+        saveCommand: () => { void saveWorkspace(); },
+    });
     let switching = false;
     let runnerReady = false;
     let activeRunId = null;
@@ -46,7 +55,7 @@ if (root) {
         status.dataset.state = state;
     };
 
-    const currentSource = () => editor?.state.doc.toString() ?? '';
+    const currentSource = () => editor.getSource();
 
     const recordUsage = async (event) => {
         try {
@@ -105,9 +114,9 @@ if (root) {
     };
 
     const setEditorSource = (source) => {
-        editor.dispatch({
-            changes: {from: 0, to: editor.state.doc.length, insert: source},
-        });
+        switching = true;
+        editor.setSource(source);
+        switching = false;
     };
 
     const loadExercise = async (exercise) => {
@@ -144,7 +153,7 @@ if (root) {
         }
     };
 
-    const resizeEditor = () => requestAnimationFrame(() => editor?.requestMeasure());
+    const resizeEditor = () => requestAnimationFrame(() => editor.requestMeasure());
 
     const openPanel = () => {
         panel.hidden = false;
@@ -218,23 +227,6 @@ if (root) {
         }, 10000);
     };
 
-    editor = new EditorView({
-        state: EditorState.create({
-            doc: '',
-            extensions: [
-                lineNumbers(),
-                python(),
-                oneDark,
-                keymap.of([...defaultKeymap, indentWithTab]),
-                EditorView.lineWrapping,
-                EditorView.updateListener.of((update) => {
-                    if (update.docChanged && !switching) queueSave();
-                }),
-            ],
-        }),
-        parent: editorHost,
-    });
-
     exerciseList.forEach((exercise) => {
         const option = document.createElement('option');
         option.value = exercise.id;
@@ -250,9 +242,7 @@ if (root) {
         const collapsed = panel.classList.toggle('is-collapsed');
         event.currentTarget.setAttribute('aria-expanded', String(!collapsed));
         event.currentTarget.textContent = collapsed ? 'Expand' : 'Minimize';
-        event.currentTarget.setAttribute(
-            'aria-label', collapsed ? 'Expand workspace' : 'Collapse workspace',
-        );
+        event.currentTarget.setAttribute('aria-label', collapsed ? 'Expand workspace' : 'Collapse workspace');
         resizeEditor();
     });
     document.getElementById('practice-maximize').addEventListener('click', (event) => {

@@ -209,6 +209,8 @@ def _required_project_brief(project):
         'title': project['title'],
         'brief': project['summary'],
         'deliverables': project['evidence'],
+        'milestones': project.get('milestones', []),
+        'milestone_progress': {},
         'learning_goals': project['evidence'],
         'required_project_id': project['id'],
         'rubric': [
@@ -250,6 +252,20 @@ def project_page():
         )
     )
     plan = _plan()
+    studio_project = None
+    studio_progress = {}
+    studio_checks_verified = False
+    selected_capstone = PROJECT_BY_ID.get(plan.required_project_id) if plan else None
+    if selected_capstone and selected_capstone.get('milestones'):
+        studio_project = selected_capstone
+        capstone_record = _record(all_modules()[-1])
+        if capstone_record:
+            saved_project = capstone_record.get_project()
+            if saved_project.get('required_project_id') == selected_capstone['id']:
+                saved_progress = saved_project.get('milestone_progress')
+                if isinstance(saved_progress, dict):
+                    studio_progress = saved_progress
+                studio_checks_verified = capstone_record.checks_verified
     return render_template(
         'projects.html', modules=pathway_modules(destination),
         completed_modules=completed,
@@ -262,6 +278,9 @@ def project_page():
         selected_track=track, track_label=track_label(track),
         track_months=track_for(track)['months'], recalibration=recalibration,
         pathway_destination=destination,
+        studio_project=studio_project,
+        studio_progress=studio_progress,
+        studio_checks_verified=studio_checks_verified,
     )
 
 
@@ -320,12 +339,73 @@ def save_required_project():
     record = _plan(create=True)
     record.required_project_id = project_id
     if project_record and not project_record.submission and not project_record.completed:
-        project_record.project = json.dumps(
-            _required_project_brief(PROJECT_BY_ID[project_id]), ensure_ascii=False
-        )
+        brief = _required_project_brief(PROJECT_BY_ID[project_id])
+        saved_project = project_record.get_project()
+        if saved_project.get('required_project_id') == project_id:
+            saved_progress = saved_project.get('milestone_progress')
+            if isinstance(saved_progress, dict):
+                brief['milestone_progress'] = saved_progress
+        project_record.project = json.dumps(brief, ensure_ascii=False)
         project_record.is_ai_generated = False
     db.session.commit()
     return jsonify({'plan': _plan_payload(record)})
+
+
+@projects_bp.route(
+    '/api/course-plan/project-studio/milestone', methods=['POST']
+)
+@login_required
+def save_project_studio_milestone():
+    data = get_json_object()
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Request body must be a JSON object'}), 400
+    project_id = data.get('project_id')
+    milestone_id = data.get('milestone_id')
+    completed = data.get('completed')
+    project = PROJECT_BY_ID.get(project_id) if isinstance(project_id, str) else None
+    if project is None or not project.get('milestones'):
+        return jsonify({'error': 'Choose a supported Project Studio flagship'}), 400
+    if not isinstance(milestone_id, str) or type(completed) is not bool:
+        return jsonify({'error': 'Milestone and completion status are required'}), 400
+    milestone = next(
+        (item for item in project['milestones'] if item['id'] == milestone_id),
+        None,
+    )
+    if milestone is None or milestone.get('automated'):
+        return jsonify({'error': 'That milestone cannot be changed manually'}), 400
+
+    plan = _plan()
+    if not plan or plan.required_project_id != project_id:
+        return jsonify({'error': 'Choose this flagship before updating its milestones'}), 409
+
+    capstone = all_modules()[-1]
+    record = _record(capstone)
+    if record and record.submission and (
+        record.get_project().get('required_project_id') != project_id
+    ):
+        return jsonify({'error': 'The submitted project no longer matches this flagship'}), 409
+    if record is None or record.get_project().get('required_project_id') != project_id:
+        record = CourseProject(
+            user_id=current_user.id,
+            module_id=capstone['id'],
+            project=json.dumps(_required_project_brief(project), ensure_ascii=False),
+            is_ai_generated=False,
+        )
+        db.session.add(record)
+
+    saved_project = record.get_project()
+    progress = saved_project.get('milestone_progress')
+    if not isinstance(progress, dict):
+        progress = {}
+    progress[milestone_id] = completed
+    saved_project['milestone_progress'] = progress
+    record.project = json.dumps(saved_project, ensure_ascii=False)
+    db.session.commit()
+    return jsonify({
+        'project_id': project_id,
+        'milestone_id': milestone_id,
+        'completed': completed,
+    })
 
 
 @projects_bp.route('/api/course-plan/portfolio', methods=['POST'])
@@ -384,7 +464,13 @@ def get_module_project(module_id):
         return jsonify({'error': 'Choose your required capstone project before opening this project'}), 409
     record = _record(module)
     if is_capstone and selected_project and record and not record.submission and not record.completed:
-        record.project = json.dumps(_required_project_brief(selected_project), ensure_ascii=False)
+        brief = _required_project_brief(selected_project)
+        saved_project = record.get_project()
+        if saved_project.get('required_project_id') == selected_project['id']:
+            saved_progress = saved_project.get('milestone_progress')
+            if isinstance(saved_progress, dict):
+                brief['milestone_progress'] = saved_progress
+        record.project = json.dumps(brief, ensure_ascii=False)
         record.is_ai_generated = False
         db.session.commit()
     if record is None:

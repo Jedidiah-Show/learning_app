@@ -64,6 +64,33 @@ class SkillPassportTests(unittest.TestCase):
         api = self.client.get('/api/passport')
         self.assertIn(api.status_code, (302, 401))
 
+    def test_missing_passport_tables_return_actionable_unavailable_responses(self):
+        self.register('schemauser')
+        with self.app.app_context():
+            db.session.execute(db.text(
+                'ALTER TABLE skill_node DROP COLUMN description'
+            ))
+            db.session.commit()
+
+        missing_column = self.client.get('/passport')
+        self.assertEqual(missing_column.status_code, 503)
+
+        with self.app.app_context():
+            db.session.execute(db.text('DROP TABLE user_skill_progress'))
+            db.session.execute(db.text('DROP TABLE skill_node'))
+            db.session.commit()
+
+        page = self.client.get('/passport')
+        self.assertEqual(page.status_code, 503)
+        self.assertIn(b'database is being updated', page.data)
+
+        api = self.client.get('/api/passport')
+        self.assertEqual(api.status_code, 503)
+        self.assertIn('temporarily unavailable', api.get_json()['error'])
+
+        download = self.client.get('/passport/download')
+        self.assertEqual(download.status_code, 503)
+
 
 if __name__ == '__main__':
     unittest.main()

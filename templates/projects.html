@@ -1,9 +1,9 @@
 {% extends "base.html" %}
-{% block title %}Module Projects · RUACH{% endblock %}
+{% block title %}Project Studio · RUACH{% endblock %}
 {% block content %}
 <header class="mb-7">
-  <p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Learning plan and project evidence</p>
-  <h2 class="mt-2 text-3xl font-bold">Learn, build, and show your work</h2>
+  <p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Guided builds and project evidence</p>
+  <h2 class="mt-2 text-3xl font-bold">Project Studio</h2>
   {% if pathway_destination == 'ml' %}
   <p class="mt-2 max-w-3xl text-slate-600">Your projects are the shared foundation (modules 0-2) plus the six ML pathway modules. A module project completes only when it has a public repository, a verified passing automated-checks run, and a passing AI evaluation against every rubric criterion.</p>
   {% else %}
@@ -49,6 +49,44 @@
 </section>
 {% endif %}
 
+{% if required_projects %}
+<section id="project-studio" class="mb-7 rounded-2xl border border-violet-200 bg-violet-50 p-5" aria-labelledby="project-studio-title">
+  <p class="text-xs font-bold uppercase tracking-wider text-violet-700">Flagship build workflow</p>
+  <h3 id="project-studio-title" class="mt-1 text-xl font-bold">Project Studio milestones</h3>
+  {% if studio_project %}
+  <p class="mt-1 text-sm text-slate-700">{{ studio_project.title }} · progress saves to your account.</p>
+  <ol class="mt-4 space-y-3">
+    {% for milestone in studio_project.milestones %}
+    <li class="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-violet-100 bg-white p-4">
+      <div class="min-w-0 flex-1">
+        <h4 class="font-semibold">{{ loop.index }}. {{ milestone.title }}</h4>
+        <p class="mt-1 text-sm text-slate-600">{{ milestone.description }}</p>
+      </div>
+      {% if milestone.automated %}
+      <span class="rounded-full px-3 py-1 text-xs font-semibold {{ 'bg-emerald-100 text-emerald-800' if studio_checks_verified else 'bg-slate-100 text-slate-700' }}">
+        {{ 'Verified' if studio_checks_verified else 'Pending verified CI' }}
+      </span>
+      {% else %}
+      <label class="inline-flex shrink-0 items-center gap-2 text-sm font-semibold text-violet-900">
+        <input type="checkbox" data-studio-milestone
+               data-project-id="{{ studio_project.id }}"
+               data-milestone-id="{{ milestone.id }}"
+               {% if studio_progress.get(milestone.id) %}checked{% endif %}>
+        Done
+      </label>
+      {% endif %}
+    </li>
+    {% endfor %}
+  </ol>
+  <p id="project-studio-status" class="mt-3 text-sm text-slate-600" role="status" aria-live="polite">Project milestones save to your account; the final CI milestone is verified from your submitted GitHub Actions run.</p>
+  {% elif course_plan.required_project_id %}
+  <p class="mt-2 text-sm text-slate-700">Guided milestones are available for the RAG engine and bounded tool-using assistant flagships. Your other required capstones remain available below.</p>
+  {% else %}
+  <p class="mt-2 text-sm text-slate-700">Choose the RAG engine or bounded tool-using assistant above to open its guided milestone workflow. The final GitHub Actions milestone is verified when you submit your project.</p>
+  {% endif %}
+</section>
+{% endif %}
+
 <section class="mb-7 rounded-2xl border bg-white p-5" aria-labelledby="portfolio-project-title">
   <h3 id="portfolio-project-title" class="text-xl font-bold">Your personal portfolio project</h3>
   <p class="mt-1 text-sm text-slate-600">Track a project you care about. It stays separate from the LMS-required capstone.</p>
@@ -85,7 +123,8 @@ const readJson = async (response) => {
 };
 const needsSignIn = (response) => response.redirected || response.status === 401;
 
-document.getElementById('track-form').addEventListener('change', async (event) => {
+const trackForm = document.getElementById('track-form');
+trackForm?.addEventListener('change', async (event) => {
     const status = document.getElementById('track-status');
     status.textContent = 'Saving track…';
     try {
@@ -111,8 +150,39 @@ document.querySelectorAll('[name="required_project_id"]').forEach((input) => {
             });
             const result = await readJson(response);
             if (!response.ok) throw new Error(result.error || 'Could not save your choice.');
-            status.textContent = 'Required capstone saved.';
+            status.textContent = 'Required capstone saved. Updating the Studio…';
+            window.location.reload();
         } catch (error) { status.textContent = error.message || 'Could not save your choice. Retry.'; }
+    });
+});
+
+document.querySelectorAll('[data-studio-milestone]').forEach((input) => {
+    input.addEventListener('change', async () => {
+        const status = document.getElementById('project-studio-status');
+        const previouslyChecked = !input.checked;
+        input.disabled = true;
+        status.textContent = 'Saving milestone…';
+        try {
+            const response = await fetch('/api/course-plan/project-studio/milestone', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+                body: JSON.stringify({
+                    project_id: input.dataset.projectId,
+                    milestone_id: input.dataset.milestoneId,
+                    completed: input.checked,
+                }),
+            });
+            const result = await readJson(response);
+            if (!response.ok) throw new Error(result.error || 'Could not save milestone.');
+            status.textContent = input.checked
+                ? 'Milestone saved as complete.'
+                : 'Milestone marked in progress.';
+        } catch (error) {
+            input.checked = previouslyChecked;
+            status.textContent = error.message || 'Could not save milestone. Retry.';
+        } finally {
+            input.disabled = false;
+        }
     });
 });
 

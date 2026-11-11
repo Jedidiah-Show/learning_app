@@ -1,21 +1,20 @@
 /** @type {import('tailwindcss').Config} */
 // Palette direction: breath · wind · freshness · newness.
-// Greens shift toward sea-glass teal, neutrals shift from warm beige to cool
-// mist, the ML-pathway violet becomes sky-wind blue. The root identity
-// (#083D2E) and the gold accent stay: RUACH is still the deep breath, dawn
-// light still gilds it.
+// Cyan now carries the primary brand identity (breath / spirit), with the
+// gold accent marking dawn light. Neutrals stay cool mist; the deep cyan
+// replaces the old deep green for surfaces, text and gradients.
 const brand = {
-  50: '#edf8f5',
-  100: '#d5f0e8',
-  200: '#aae1d3',
-  300: '#76ccb9',
-  400: '#46b59c',
-  500: '#2fa38a',
-  600: '#218571',
-  700: '#1b6a5b',
-  800: '#17534a',
-  900: '#083D2E',
-  950: '#062a24',
+  50: '#ecfeff',
+  100: '#cffafe',
+  200: '#a5f3fc',
+  300: '#67e8f9',
+  400: '#22d3ee',
+  500: '#06b6d4',
+  600: '#0891b2',
+  700: '#0e7490',
+  800: '#155e75',
+  900: '#164e63',
+  950: '#083344',
 };
 
 module.exports = {
@@ -31,6 +30,7 @@ module.exports = {
         // Existing templates use these utility families for the primary
         // interface colour, so map them onto the RUACH identity.
         indigo: brand,
+        emerald: brand,
         violet: {
           50: '#eef7fa',
           100: '#d9edf4',
@@ -43,19 +43,6 @@ module.exports = {
           800: '#1e4a61',
           900: '#173646',
           950: '#0c202e',
-        },
-        emerald: {
-          50: '#ecf8f6',
-          100: '#d2f1ea',
-          200: '#a7e2d5',
-          300: '#72cfba',
-          400: '#43b89e',
-          500: '#2fa38a',
-          600: '#218571',
-          700: '#1b6a5b',
-          800: '#1d5750',
-          900: '#154339',
-          950: '#08251f',
         },
         amber: {
           50: '#fdf9eb',

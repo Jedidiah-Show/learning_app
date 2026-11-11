@@ -120,6 +120,54 @@
     };
 })();
 
+// Nav sidebar width drag-resize (desktop only; header/main/footer widths).
+(() => {
+    const handle = document.getElementById('nav-resize-handle');
+    const header = document.querySelector('body.has-sidebar > header');
+    const main = document.querySelector('body.has-sidebar > main');
+    const footer = document.querySelector('body.has-sidebar > footer');
+    if (!handle || !header || !main || !footer) return;
+
+    let active = false;
+    let startX = 0;
+    let startWidth = 0;
+
+    const clamp = (width) => Math.min(Math.max(width, 240), window.innerWidth - 140);
+
+    const apply = (width) => {
+        const next = clamp(width);
+        header.style.width = `${next}px`;
+        main.style.marginLeft = `${next}px`;
+        main.style.width = `calc(100% - ${next}px)`;
+        footer.style.marginLeft = `${next}px`;
+        footer.style.width = `calc(100% - ${next}px)`;
+    };
+
+    const start = (event) => {
+        if (document.documentElement.classList.contains('nav-collapsed')) return;
+        active = true;
+        startX = event.clientX;
+        startWidth = header.offsetWidth;
+        handle.setPointerCapture(event.pointerId);
+        handle.classList.add('is-resizing');
+    };
+
+    const move = (event) => {
+        if (!active) return;
+        apply(startWidth + event.clientX - startX);
+    };
+
+    const stop = () => {
+        active = false;
+        handle.classList.remove('is-resizing');
+    };
+
+    handle.addEventListener('pointerdown', start);
+    handle.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', stop);
+    window.addEventListener('pointercancel', stop);
+})();
+
 // Beginner-friendly lesson aids: view mode, reading progress, and saved tasks.
 (() => {
     const modeToggle = document.querySelector('[data-beginner-toggle]');

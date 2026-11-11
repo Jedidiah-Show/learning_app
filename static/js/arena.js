@@ -1,8 +1,4 @@
-import {defaultKeymap, indentWithTab} from '@codemirror/commands';
-import {python} from '@codemirror/lang-python';
-import {Compartment, EditorState} from '@codemirror/state';
-import {oneDark} from '@codemirror/theme-one-dark';
-import {EditorView, keymap, lineNumbers} from '@codemirror/view';
+import {createPythonEditor} from './python-editor.js';
 
 const root = document.querySelector('[data-arena-workspace]');
 if (root) {
@@ -16,6 +12,8 @@ if (root) {
     const editorHost = document.getElementById('arena-editor');
     const saveStatus = document.getElementById('arena-save-status');
     const output = document.getElementById('arena-output');
+    const statusBar = document.getElementById('arena-statusbar');
+    const statusPosition = document.getElementById('arena-statusbar-position');
     const runButton = document.getElementById('arena-run');
     const submitButton = document.getElementById('arena-submit');
     const customChecks = document.getElementById('arena-custom-checks');
@@ -32,7 +30,19 @@ if (root) {
     const iframe = document.getElementById('arena-sandbox');
 
     let problem = null;
-    let editor;
+    const editor = createPythonEditor(editorHost, {
+        theme: 'dark',
+        onChange: (source) => {
+            if (switching || source === savedSource) return;
+            queueSave();
+        },
+        onCursorChange: (line, col) => {
+            if (!statusPosition) return;
+            statusPosition.textContent = `Ln ${line}, Col ${col}`;
+        },
+        runCommand: () => { void saveWorkspace().then(runChecks); },
+        saveCommand: () => { void saveWorkspace(); },
+    });
     let savedSource = '';
     let saveTimer = null;
     let savePromise = null;
@@ -45,14 +55,6 @@ if (root) {
     let nextRunId = 0;
     let runTimeout = null;
     let lightTheme = false;
-    const theme = new Compartment();
-    const lightEditorTheme = EditorView.theme({
-        '&': {color: '#0f172a', backgroundColor: '#ffffff'},
-        '.cm-content': {caretColor: '#0f172a'},
-        '.cm-gutters': {color: '#64748b', backgroundColor: '#f1f5f9', border: 'none'},
-        '.cm-activeLine': {backgroundColor: '#f8fafc'},
-        '.cm-activeLineGutter': {backgroundColor: '#e2e8f0'},
-    });
 
     const setSaveStatus = (message, state = '') => {
         saveStatus.textContent = message;
@@ -64,21 +66,17 @@ if (root) {
         output.dataset.state = state;
     };
 
-    const currentSource = () => editor?.state.doc.toString() ?? '';
+    const currentSource = () => editor.getSource();
 
     const setEditorSource = (source) => {
         switching = true;
-        editor.dispatch({
-            changes: {from: 0, to: editor.state.doc.length, insert: source},
-        });
+        editor.setSource(source);
         switching = false;
     };
 
     themeButton.addEventListener('click', () => {
         lightTheme = !lightTheme;
-        editor.dispatch({
-            effects: theme.reconfigure(lightTheme ? lightEditorTheme : oneDark),
-        });
+        editor.setTheme(lightTheme ? 'light' : 'dark');
         themeButton.setAttribute('aria-pressed', String(lightTheme));
         themeButton.textContent = lightTheme ? 'Dark editor' : 'Light editor';
     });
@@ -96,7 +94,8 @@ if (root) {
     });
     document.addEventListener('fullscreenchange', () => {
         fullscreenButton.textContent = document.fullscreenElement === root
-            ? 'Exit full screen' : 'Full screen';
+            ? 'Exit full screen'
+            : 'Full screen';
     });
 
     let resizeStart = null;
@@ -201,6 +200,7 @@ if (root) {
             setSaveStatus(data.updated_at ? 'Saved work loaded' : 'Starter code loaded', 'saved');
             runButton.disabled = !runnerReady;
             submitButton.disabled = false;
+            void editor.languageReady;
         } catch (error) {
             setSaveStatus(error.message || 'Could not load this problem.', 'error');
             setOutput('The problem could not be loaded. Reload the page to try again.', 'error');
@@ -315,28 +315,6 @@ if (root) {
             revealButton.disabled = false;
         }
     };
-
-    editor = new EditorView({
-        state: EditorState.create({
-            doc: '',
-            extensions: [
-                lineNumbers(),
-                python(),
-                theme.of(oneDark),
-                keymap.of([
-                    {key: 'Mod-Enter', run: () => { void saveWorkspace().then(runChecks); return true; }},
-                    {key: 'Mod-s', run: () => { void saveWorkspace(); return true; }},
-                    ...defaultKeymap,
-                    indentWithTab,
-                ]),
-                EditorView.lineWrapping,
-                EditorView.updateListener.of((update) => {
-                    if (update.docChanged && !switching) queueSave();
-                }),
-            ],
-        }),
-        parent: editorHost,
-    });
 
     runButton.addEventListener('click', () => { void saveWorkspace().then(runChecks); });
     submitButton.addEventListener('click', () => { void submitCode(); });
