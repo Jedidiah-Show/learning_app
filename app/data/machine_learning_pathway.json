@@ -15,11 +15,14 @@
       "number": 1,
       "title": "Data and problem formulation",
       "summary": "Turn a product question into a defensible tabular ML problem, then validate data and build features without leaking the answer.",
-      "estimated_hours": 10,
+      "estimated_hours": 13,
       "topics": [
+        "Descriptive statistics",
+        "Probability and base rates",
+        "Vectors and dot products",
+        "Gradient descent intuition",
         "NumPy and pandas",
         "Dataset validation",
-        "Descriptive statistics",
         "Feature engineering",
         "Data leakage and split design"
       ],
@@ -39,6 +42,174 @@
         }
       ],
       "lessons": [
+        {
+          "id": "mle.math.01",
+          "title": "Summarize a distribution before modeling",
+          "status": "ready",
+          "study_minutes": 45,
+          "goal": "Calculate and interpret basic measures of center and spread before choosing a model.",
+          "sections": [
+            {
+              "heading": "Describe the center",
+              "body": [
+                "The mean is the sum of values divided by their count. The median is the middle value after sorting. The mode is the most frequent value. These measures answer related but different questions, so choose one that describes the data you actually have.",
+                "For the values 2, 3, 3, 4, 8, the mean is 4 and the median is 3. The value 8 pulls the mean upward, while the median remains the middle observation. That makes the median less sensitive to a single extreme value, but it does not make it universally better."
+              ]
+            },
+            {
+              "heading": "Describe the spread",
+              "body": [
+                "The range is the maximum minus the minimum. Variance summarizes squared distances from the mean, and standard deviation is the square root of variance, expressed in the original units. For these five values treated as the full population, the variance is 4.4 and the standard deviation is about 2.1.",
+                "A spread measure does not explain why values differ. Check the distribution and data source before treating a large value as an error or removing it."
+              ]
+            },
+            {
+              "heading": "Summaries are a starting point",
+              "body": [
+                "A single mean can hide multiple groups, skew, or missing values. Compare useful subgroups and inspect a plot when possible. Keep the measurement unit with each summary; a standard deviation of 2 dollars means something different from a standard deviation of 2 years.",
+                "These summaries help you notice data issues and choose later checks. They do not establish that one feature causes an outcome or that a model will perform well."
+              ]
+            }
+          ],
+          "task": "For the values 2, 3, 3, 4, 8, calculate the mean, median, and range. Explain which center measure changes less if 8 is replaced by 80.",
+          "quiz": {
+            "question": "For the values 2, 3, 3, 4, 8, which measure of center is least affected if 8 is replaced by 80?",
+            "choices": [
+              "Mean",
+              "Median",
+              "Range",
+              "Standard deviation"
+            ],
+            "answer": 1,
+            "explanation": "The sorted middle value stays 3, while the mean and spread measures change substantially."
+          }
+        },
+        {
+          "id": "mle.math.02",
+          "title": "Reason with probability, base rates, and samples",
+          "status": "ready",
+          "study_minutes": 45,
+          "goal": "Use base rates and conditional probabilities to interpret model flags and data samples.",
+          "sections": [
+            {
+              "heading": "Start with the base rate",
+              "body": [
+                "A probability is a value from 0 to 1 (or 0% to 100%) describing uncertainty under a stated setup. The base rate is how common an outcome is before considering a model signal. A rare outcome can remain uncommon even when a model catches many positive cases.",
+                "Suppose 1,000 accounts have a 10% churn rate. A model flags 80% of the 100 accounts that churn and also flags 20% of the 900 that do not. It finds 80 true positives and 180 false positives. About 80 of 260 flags are true positives, or 31%."
+              ]
+            },
+            {
+              "heading": "Keep conditional questions distinct",
+              "body": [
+                "Recall asks what fraction of actual positive cases were flagged: 80 out of 100, or 80%. Precision asks what fraction of flagged cases were actually positive: 80 out of 260, or about 31%. They use different denominators and answer different decision questions.",
+                "When a model score is used as a probability, check whether predicted probabilities match observed rates for the population and time period where decisions will be made. A ranking score is not automatically a calibrated probability."
+              ]
+            },
+            {
+              "heading": "Ask how the sample was collected",
+              "body": [
+                "A sample is useful when it represents the population relevant to the question. If one region, time period, or customer group is missing, a summary or model may not transfer to that group. Record the sampling frame and compare important groups when it is safe and appropriate.",
+                "Random sampling can reduce some selection effects, but it cannot repair an unclear target, missing population, or measurement process that changes over time."
+              ]
+            }
+          ],
+          "task": "Using the example in this lesson, calculate recall and precision from the true-positive and false-positive counts. State which one answers 'Of the accounts we flagged, how many churned?'",
+          "quiz": {
+            "question": "A model finds 80 churners and also flags 180 accounts that do not churn. What fraction of its 260 flags are true positives, approximately?",
+            "choices": [
+              "31%",
+              "8%",
+              "20%",
+              "80%"
+            ],
+            "answer": 0,
+            "explanation": "Precision is 80 divided by 80 + 180, which is about 31%."
+          }
+        },
+        {
+          "id": "mle.math.03",
+          "title": "Represent features with vectors and dot products",
+          "status": "ready",
+          "study_minutes": 45,
+          "goal": "Interpret a weighted sum of numeric features as a simple model calculation.",
+          "sections": [
+            {
+              "heading": "A vector keeps values in order",
+              "body": [
+                "A feature vector is an ordered list of values for one example. The order matters: a value for tenure must not be mistaken for a value for support tickets. A dataset with several examples can be written as a matrix with one row per example and one column per feature.",
+                "A model's weights use the same feature order. Record feature names and units so the numbers remain interpretable when data moves between training and prediction."
+              ]
+            },
+            {
+              "heading": "Compute a dot product",
+              "body": [
+                "The dot product multiplies matching entries and adds the results. For features x = [2, 3], weights w = [0.5, -1], and bias b = 4, the linear score is 0.5 × 2 + (-1) × 3 + 4 = 2.",
+                "This weighted sum is a building block in linear regression, logistic regression, and neural-network layers. It is a score, not automatically a probability; the model and task determine how the score is interpreted."
+              ]
+            },
+            {
+              "heading": "Check shapes and meaning",
+              "body": [
+                "The number and order of weights must match the number and order of features. A shape mismatch is often a useful error rather than something to hide. Scaling can make features easier to optimize, but its parameters must be learned from training data only.",
+                "A large weight alone does not prove a feature is important because feature units and correlations affect comparisons. Interpret model parameters with the data representation and evaluation context."
+              ]
+            }
+          ],
+          "task": "For x = [3, 4], w = [2, -0.5], and bias b = 1, calculate the linear score. Show the two products before adding the bias.",
+          "quiz": {
+            "question": "For x = [2, 3], w = [0.5, -1], and bias b = 4, what is the linear score w · x + b?",
+            "choices": [
+              "2",
+              "3.5",
+              "5",
+              "7"
+            ],
+            "answer": 0,
+            "explanation": "The dot product is 0.5 × 2 + (-1) × 3 = -2; adding the bias 4 gives 2."
+          }
+        },
+        {
+          "id": "mle.math.04",
+          "title": "Understand gradients and gradient descent",
+          "status": "ready",
+          "study_minutes": 45,
+          "goal": "Explain how a gradient and learning rate guide a model parameter toward lower loss.",
+          "sections": [
+            {
+              "heading": "A gradient describes local change",
+              "body": [
+                "A derivative measures how a scalar quantity changes when one parameter changes. For several parameters, the gradient collects those partial derivatives. It points toward the direction of steepest local increase in the loss.",
+                "Training often moves parameters in the opposite direction. This is gradient descent: use the current gradient to choose a step that is expected to reduce loss nearby."
+              ]
+            },
+            {
+              "heading": "Work a one-parameter step",
+              "body": [
+                "Consider the simple loss L(w) = (w - 2)². Its derivative is 2(w - 2). At w = 0, the gradient is -4. With learning rate 0.1, the update is w_new = w - 0.1 × (-4) = 0.4, which moves toward the minimum at w = 2.",
+                "The learning rate controls step size. A very small rate can make progress slow; a very large rate can jump past a low-loss region or make the loss oscillate."
+              ]
+            },
+            {
+              "heading": "Check the result, not only the update",
+              "body": [
+                "An update rule is not proof that training is working. Track loss on training data and evaluate generalization on separate validation data. If loss grows or becomes unstable, inspect the learning rate, data scaling, gradients, and implementation.",
+                "Real models have many parameters and more complicated loss surfaces. The one-dimensional example gives the direction intuition, not a guarantee that every step in every model improves performance."
+              ]
+            }
+          ],
+          "task": "For L(w) = (w - 2)² at w = 0 and learning rate 0.1, calculate the gradient and the next parameter value. Explain why the update moves toward 2.",
+          "quiz": {
+            "question": "For L(w) = (w - 2)² at w = 0, the gradient is -4. With learning rate 0.1, what is the next value using w_new = w - learning_rate × gradient?",
+            "choices": [
+              "-0.4",
+              "0.4",
+              "2.0",
+              "4.0"
+            ],
+            "answer": 1,
+            "explanation": "The update is 0 - 0.1 × (-4) = 0.4, a step toward the minimum at w = 2."
+          }
+        },
         {
           "id": "mle.data.01",
           "title": "Frame the prediction problem",

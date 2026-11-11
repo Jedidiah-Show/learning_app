@@ -39,6 +39,108 @@ PROJECT_SKILLS = {
     },
 }
 
+ML_COMPETENCIES = {
+    'ml-mathematics-statistics': {
+        'title': 'Mathematics and statistics',
+        'category': 'Machine Learning',
+    },
+    'ml-python-programming': {
+        'title': 'Python programming',
+        'category': 'Machine Learning',
+    },
+    'ml-data-analysis': {
+        'title': 'Data analysis',
+        'category': 'Machine Learning',
+    },
+    'ml-data-preparation': {
+        'title': 'Data preparation',
+        'category': 'Machine Learning',
+    },
+    'ml-feature-engineering': {
+        'title': 'Feature engineering',
+        'category': 'Machine Learning',
+    },
+    'ml-supervised-learning': {
+        'title': 'Supervised learning',
+        'category': 'Machine Learning',
+    },
+    'ml-unsupervised-learning': {
+        'title': 'Unsupervised learning',
+        'category': 'Machine Learning',
+    },
+    'ml-model-evaluation': {
+        'title': 'Model evaluation',
+        'category': 'Machine Learning',
+    },
+    'ml-deep-learning': {
+        'title': 'Deep learning',
+        'category': 'Machine Learning',
+    },
+    'ml-deployment': {
+        'title': 'ML deployment',
+        'category': 'Machine Learning',
+    },
+    'ml-mlops': {
+        'title': 'MLOps',
+        'category': 'Machine Learning',
+    },
+    'ml-responsible-ml': {
+        'title': 'Responsible ML',
+        'category': 'Machine Learning',
+    },
+}
+
+ML_LESSON_COMPETENCIES = {
+    'mle.math.01': {'ml-mathematics-statistics'},
+    'mle.math.02': {'ml-mathematics-statistics'},
+    'mle.math.03': {'ml-mathematics-statistics'},
+    'mle.math.04': {'ml-mathematics-statistics'},
+    'mle.data.01': {'ml-data-analysis', 'ml-model-evaluation', 'ml-responsible-ml'},
+    'mle.data.02': {'ml-data-analysis', 'ml-data-preparation'},
+    'mle.data.03': {'ml-data-preparation', 'ml-model-evaluation'},
+    'mle.data.04': {
+        'ml-data-preparation', 'ml-feature-engineering', 'ml-responsible-ml',
+    },
+    'mle.classical.01': {'ml-supervised-learning', 'ml-model-evaluation'},
+    'mle.classical.02': {'ml-data-preparation', 'ml-supervised-learning'},
+    'mle.classical.03': {'ml-model-evaluation'},
+    'mle.classical.04': {'ml-model-evaluation'},
+    'mle.repro.01': {'ml-mlops'},
+    'mle.repro.02': {'ml-mlops'},
+    'mle.repro.03': {'ml-mlops', 'ml-model-evaluation'},
+    'mle.production.01': {'ml-deployment'},
+    'mle.production.02': {'ml-deployment', 'ml-mlops', 'ml-responsible-ml'},
+    'mle.production.03': {'ml-deployment', 'ml-mlops', 'ml-responsible-ml'},
+    'mle.pytorch.01': {'ml-deep-learning', 'ml-supervised-learning'},
+    'mle.pytorch.02': {'ml-deep-learning', 'ml-supervised-learning'},
+    'mle.capstone.01': {
+        'ml-python-programming', 'ml-data-analysis', 'ml-data-preparation',
+        'ml-feature-engineering', 'ml-supervised-learning',
+        'ml-model-evaluation', 'ml-deep-learning', 'ml-deployment', 'ml-mlops',
+        'ml-responsible-ml',
+    },
+    'mle.capstone.02': {'ml-deployment', 'ml-mlops', 'ml-responsible-ml'},
+}
+
+ML_PROJECT_COMPETENCIES = {
+    'mle.data-problem-formulation': {
+        'ml-python-programming', 'ml-data-analysis', 'ml-data-preparation',
+        'ml-feature-engineering', 'ml-responsible-ml',
+    },
+    'mle.classical-ml': {
+        'ml-data-preparation', 'ml-supervised-learning', 'ml-model-evaluation',
+    },
+    'mle.reproducible-training': {'ml-mlops', 'ml-model-evaluation'},
+    'mle.production-ml': {'ml-deployment', 'ml-mlops', 'ml-responsible-ml'},
+    'mle.pytorch-advanced': {'ml-deep-learning', 'ml-supervised-learning'},
+    'mle.capstone-integration': {
+        'ml-python-programming', 'ml-data-analysis', 'ml-data-preparation',
+        'ml-feature-engineering', 'ml-supervised-learning',
+        'ml-model-evaluation', 'ml-deep-learning', 'ml-deployment', 'ml-mlops',
+        'ml-responsible-ml',
+    },
+}
+
 
 def _normalize_skill_name(name: str) -> str:
     """Normalize a skill name for consistent mapping."""
@@ -106,6 +208,8 @@ def _curriculum_lesson_nodes() -> Dict[str, Dict[str, str]]:
 def ensure_all_skill_nodes() -> None:
     from app.practice_arena import all_arena_problems
 
+    for skill_id, values in ML_COMPETENCIES.items():
+        _ensure_skill_node(skill_id, values['category'], values['title'])
     for skill_id, values in CURRICULUM_SKILLS.items():
         if db.session.get(SkillNode, skill_id) is None:
             db.session.add(SkillNode(
@@ -277,6 +381,122 @@ def update_skill_progress_from_lesson(
         db.session.commit()
 
 
+def update_skill_progress_from_ml_lesson(
+    user_id: int, lesson_id: str, *, commit: bool = True
+) -> None:
+    """Record an ML lesson as developmental evidence, never verified mastery."""
+    from app.ml_pathway import get_machine_learning_lesson
+
+    lesson = get_machine_learning_lesson(lesson_id)
+    if not lesson or lesson.get('status') != 'ready':
+        return
+    for skill_id in ML_LESSON_COMPETENCIES.get(lesson_id, ()):
+        values = ML_COMPETENCIES[skill_id]
+        _ensure_skill_node(skill_id, values['category'], values['title'])
+        progress = UserSkillProgress.query.filter_by(
+            user_id=user_id, skill_id=skill_id,
+        ).with_for_update().first()
+        if progress is None:
+            db.session.add(UserSkillProgress(
+                user_id=user_id,
+                skill_id=skill_id,
+                status='DEVELOPING',
+                evidence_type='ML_LESSON',
+                evidence_id=lesson_id,
+                updated_at=utcnow(),
+            ))
+        elif progress.status not in {'DEMONSTRATED', 'MASTERED'}:
+            progress.status = 'DEVELOPING'
+            progress.evidence_type = 'ML_LESSON'
+            progress.evidence_id = lesson_id
+            progress.updated_at = utcnow()
+    if commit:
+        db.session.commit()
+
+
+def reset_skill_progress_from_ml_project(
+    user_id: int, module_id: str, *, commit: bool = True
+) -> None:
+    """Remove stale project evidence when a learner starts a new submission."""
+    from app.models import MLSpecializationLessonCompletion
+    from app.ml_pathway import PATHWAY_ID
+
+    competencies = ML_PROJECT_COMPETENCIES.get(module_id, ())
+    completed_lessons = {
+        row.lesson_id for row in MLSpecializationLessonCompletion.query.filter_by(
+            user_id=user_id, pathway_id=PATHWAY_ID,
+        ).all()
+    }
+    for skill_id in competencies:
+        progress = UserSkillProgress.query.filter_by(
+            user_id=user_id,
+            skill_id=skill_id,
+            evidence_type='ML_PROJECT',
+            evidence_id=module_id,
+        ).with_for_update().first()
+        if progress is None:
+            continue
+        lesson_evidence = next(
+            (
+                lesson_id for lesson_id, lesson_skills in ML_LESSON_COMPETENCIES.items()
+                if skill_id in lesson_skills and lesson_id in completed_lessons
+            ),
+            None,
+        )
+        if lesson_evidence:
+            progress.status = 'DEVELOPING'
+            progress.evidence_type = 'ML_LESSON'
+            progress.evidence_id = lesson_evidence
+        else:
+            progress.status = 'NOT_STARTED'
+            progress.evidence_type = None
+            progress.evidence_id = None
+        progress.updated_at = utcnow()
+    if commit:
+        db.session.commit()
+
+
+def update_skill_progress_from_ml_project(
+    user_id: int, module_id: str, *, commit: bool = True
+) -> None:
+    """Record project evidence only after the ML project passes its checks."""
+    from app.models import MLSpecializationProject
+    from app.ml_pathway import PATHWAY_ID
+
+    project = MLSpecializationProject.query.filter_by(
+        user_id=user_id,
+        pathway_id=PATHWAY_ID,
+        module_id=module_id,
+        completed=True,
+    ).first()
+    if project is None:
+        return
+    for skill_id in ML_PROJECT_COMPETENCIES.get(module_id, ()):
+        values = ML_COMPETENCIES[skill_id]
+        _ensure_skill_node(skill_id, values['category'], values['title'])
+        progress = UserSkillProgress.query.filter_by(
+            user_id=user_id, skill_id=skill_id,
+        ).with_for_update().first()
+        if progress is None:
+            db.session.add(UserSkillProgress(
+                user_id=user_id,
+                skill_id=skill_id,
+                status='DEMONSTRATED',
+                evidence_type='ML_PROJECT',
+                evidence_id=module_id,
+                updated_at=utcnow(),
+            ))
+        else:
+            progress.status = (
+                'MASTERED' if progress.status == 'MASTERED' else 'DEMONSTRATED'
+            )
+            progress.evidence_type = 'ML_PROJECT'
+            progress.evidence_id = module_id
+            progress.updated_at = utcnow()
+    if commit:
+        db.session.commit()
+
+
 def get_user_skill_state(user_id: int, skill_name: str) -> Optional[Dict[str, Any]]:
     """Get a user's current competency state for a specific skill.
 
@@ -305,13 +525,21 @@ def get_user_all_skill_states(user_id: int) -> Dict[str, Dict[str, Any]]:
     reads. Lesson completions are projected as evidence if a legacy record has
     not yet been synchronized by the completion route.
     """
-    from app.models import LessonCompletion
+    from app.models import (
+        LessonCompletion, MLSpecializationLessonCompletion,
+        MLSpecializationProject,
+    )
+    from app.ml_pathway import PATHWAY_ID
     from app.practice_arena import all_arena_problems
 
     catalog = {
         skill_id: dict(values)
         for skill_id, values in CURRICULUM_SKILLS.items()
     }
+    catalog.update({
+        skill_id: dict(values)
+        for skill_id, values in ML_COMPETENCIES.items()
+    })
     catalog.update(_curriculum_lesson_nodes())
     for problem in all_arena_problems().values():
         for skill in map_problem_skills(problem, user_id):
@@ -378,6 +606,39 @@ def get_user_all_skill_states(user_id: int) -> Dict[str, Dict[str, Any]]:
                     'updated_at': (
                         completion.completed_at.isoformat()
                         if completion.completed_at else None
+                    ),
+                })
+
+    for completion in MLSpecializationLessonCompletion.query.filter_by(
+        user_id=user_id,
+    ).all():
+        for skill_id in ML_LESSON_COMPETENCIES.get(completion.lesson_id, ()):
+            state = states.get(skill_id)
+            if state and state['status'] == 'NOT_STARTED':
+                state.update({
+                    'status': 'DEVELOPING',
+                    'evidence_type': 'ML_LESSON',
+                    'evidence_id': completion.lesson_id,
+                    'updated_at': (
+                        completion.completed_at.isoformat()
+                        if completion.completed_at else None
+                    ),
+                })
+
+    for project in MLSpecializationProject.query.filter_by(
+        user_id=user_id, pathway_id=PATHWAY_ID,
+        completed=True,
+    ).all():
+        for skill_id in ML_PROJECT_COMPETENCIES.get(project.module_id, ()):
+            state = states.get(skill_id)
+            if state and state['status'] not in {'DEMONSTRATED', 'MASTERED'}:
+                state.update({
+                    'status': 'DEMONSTRATED',
+                    'evidence_type': 'ML_PROJECT',
+                    'evidence_id': project.module_id,
+                    'updated_at': (
+                        project.updated_at.isoformat()
+                        if project.updated_at else None
                     ),
                 })
     return states

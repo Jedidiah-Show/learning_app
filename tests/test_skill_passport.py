@@ -49,7 +49,12 @@ class SkillPassportTests(unittest.TestCase):
 
         api = self.client.get('/api/passport')
         self.assertEqual(api.status_code, 200)
-        self.assertIn('skills', api.get_json())
+        skills = {skill['id']: skill for skill in api.get_json()['skills']}
+        self.assertIn('ml-mathematics-statistics', skills)
+        self.assertIn('ml-unsupervised-learning', skills)
+        self.assertEqual(
+            skills['ml-mathematics-statistics']['status'], 'NOT_STARTED'
+        )
 
         download = self.client.get('/passport/download')
         self.assertEqual(download.status_code, 200)

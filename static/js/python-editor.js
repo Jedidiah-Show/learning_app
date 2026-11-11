@@ -1,4 +1,4 @@
-import {defaultKeymap, historyKeymap, indentWithTab} from '@codemirror/commands';
+import {defaultKeymap, history, historyKeymap, indentWithTab} from '@codemirror/commands';
 import {EditorState, Compartment} from '@codemirror/state';
 import {autocompletion, closeBrackets} from '@codemirror/autocomplete';
 import {EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, highlightSpecialChars, drawSelection} from '@codemirror/view';

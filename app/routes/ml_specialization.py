@@ -525,6 +525,10 @@ def submit_project(module_id):
     # This attempt's outcome is unknown until a branch below decides it.
     record.failure_stage = None
     record.failure_detail = None
+    from app.services.skill_passport import reset_skill_progress_from_ml_project
+    reset_skill_progress_from_ml_project(
+        current_user.id, module_id, commit=False,
+    )
     db.session.commit()
 
     if not _report_matches(module_id, report):
@@ -591,6 +595,11 @@ def submit_project(module_id):
         evaluation['score'] >= 70
         and all(item['score'] >= 50 for item in evaluation['criterion_feedback'])
     )
+    if record.completed:
+        from app.services.skill_passport import update_skill_progress_from_ml_project
+        update_skill_progress_from_ml_project(
+            current_user.id, module_id, commit=False,
+        )
     # A completed rubric below threshold is a failure too, with its own stage.
     _attempt_outcome(
         record, None if record.completed else 'rubric_below_threshold',

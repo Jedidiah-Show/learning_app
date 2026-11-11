@@ -1,7 +1,5 @@
-const CACHE_NAME = 'ruach-v5';
+const CACHE_NAME = 'ruach-v6';
 const ASSETS = [
-  '/static/css/tailwind.css',
-  '/static/css/style.css',
   '/static/js/app.js',
   '/static/img/ruach-icon-96.png',
   '/static/img/ruach-icon-192.png',
@@ -35,6 +33,13 @@ self.addEventListener('fetch', (event) => {
   if (request.mode === 'navigate' || request.headers.get('accept')?.includes('text/html')) return;
   const isStaticAsset = url.pathname.startsWith('/static/');
   if (!isStaticAsset) return;
+  // Always fetch CSS fresh so style/tailwind changes take effect immediately.
+  if (url.pathname.endsWith('.css')) {
+    return fetch(request).then((response) => {
+      if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+      return response;
+    });
+  }
   event.respondWith(caches.match(request).then((cached) => {
     if (cached) return cached;
     return fetch(request).then((response) => {

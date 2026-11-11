@@ -95,11 +95,11 @@ class MLSpecializationFlowTests(unittest.TestCase):
         ][0]
         opened = self.client.get('/')
         self.assertIn('Continue: ' + first['title'], opened.get_data(as_text=True))
-        self.assertIn('0 of 18 lessons · 0 of 6 projects complete', opened.get_data(as_text=True))
+        self.assertIn('0 of 22 lessons · 0 of 6 projects complete', opened.get_data(as_text=True))
 
         self._complete_quiz(first)
         advanced = self.client.get('/').get_data(as_text=True)
-        self.assertIn('1 of 18 lessons', advanced)
+        self.assertIn('1 of 22 lessons', advanced)
 
     def test_dashboard_compares_distinct_pathway_progress_and_shows_one_ml_card(self):
         self._complete_shared_prerequisites()
@@ -129,6 +129,33 @@ class MLSpecializationFlowTests(unittest.TestCase):
         self.assertTrue(all(item.startswith('mle.') for item in pathway_ids))
         self.assertFalse(any(lesson['id'] in pathway_ids for lesson in all_lessons()))
         self.assertEqual(pathway['id'], PATHWAY_ID)
+
+    def test_ml_lesson_evidence_is_pathway_scoped_and_not_mastery(self):
+        self._complete_shared_prerequisites()
+        lesson = next(
+            item for item in machine_learning_pathway()['modules'][0]['lessons']
+            if item['id'] == 'mle.math.01'
+        )
+        self.assertEqual(self._complete_quiz(lesson).status_code, 302)
+
+        from app.services.skill_passport import get_user_all_skill_states
+
+        with self.app.app_context():
+            user = User.query.filter_by(username='mllearner').one()
+            states = get_user_all_skill_states(user.id)
+            self.assertEqual(
+                states['ml-mathematics-statistics']['status'], 'DEVELOPING'
+            )
+            self.assertEqual(
+                states['ml-mathematics-statistics']['evidence_type'], 'ML_LESSON'
+            )
+            self.assertEqual(
+                states['ml-mathematics-statistics']['evidence_id'], lesson['id']
+            )
+            self.assertEqual(
+                states['ml-unsupervised-learning']['status'], 'NOT_STARTED'
+            )
+            self.assertEqual(LessonCompletion.query.count(), 0)
 
     def test_all_starter_downloads_contain_the_expected_project_files(self):
         for module_id, root in (
@@ -323,6 +350,20 @@ class MLSpecializationFlowTests(unittest.TestCase):
                 module_id=module['id'],
             ).one()
             self.assertTrue(project.completed)
+            from app.services.skill_passport import get_user_all_skill_states
+            states = get_user_all_skill_states(user.id)
+            self.assertEqual(
+                states['ml-feature-engineering']['status'], 'DEMONSTRATED'
+            )
+            self.assertEqual(
+                states['ml-feature-engineering']['evidence_type'], 'ML_PROJECT'
+            )
+            self.assertEqual(
+                states['ml-feature-engineering']['evidence_id'], module['id']
+            )
+            self.assertEqual(
+                states['ml-mathematics-statistics']['status'], 'DEVELOPING'
+            )
 
     def test_failed_submissions_record_a_classified_failure_stage(self):
         from app.gemini import GeminiError
@@ -451,6 +492,20 @@ class MLSpecializationFlowTests(unittest.TestCase):
         self.assertIsNone(state['stage'])
         self.assertIsNone(state['detail'])
         self.assertTrue(state['completed'])
+
+        response = submit(dict(report, row_count=999))
+        self.assertEqual(response.status_code, 422)
+        with self.app.app_context():
+            user = User.query.filter_by(username='mllearner').one()
+            from app.services.skill_passport import get_user_all_skill_states
+            states = get_user_all_skill_states(user.id)
+            self.assertFalse(recorded()['completed'])
+            self.assertEqual(
+                states['ml-data-preparation']['status'], 'DEVELOPING'
+            )
+            self.assertEqual(
+                states['ml-data-preparation']['evidence_type'], 'ML_LESSON'
+            )
 
     def test_eligible_learner_can_issue_and_publicly_verify_credential(self):
         pathway = machine_learning_pathway()
