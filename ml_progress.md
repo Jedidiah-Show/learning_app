@@ -1,7 +1,7 @@
 # Machine Learning Pathway — Progress
 
 **Last updated:** 2026-11-11
-**Status:** Adding the first ML Practice Arena challenge
+**Status:** First ML Practice Arena challenge complete
 
 ## Completed
 
@@ -32,21 +32,41 @@
   the pathway has 26 lessons.
 - ML/Passport regression tests remain green: **18 passed, 1 skipped**; catalog
   loading, compilation, and whitespace checks pass.
+- Added the `machine-learning` Arena track and a `statistics` topic to
+  `app/practice_arena.py` (TRACKS and TOPICS), alongside the existing
+  `ai-engineering` and `algorithms` tracks.
+- Added the first ML Practice Arena challenge,
+  `ml-statistics-descriptive-statistics` ("Descriptive statistics from scratch"),
+  to `app/data/arena_problems.json`. It is beginner difficulty, standard-library
+  only (no pandas/numpy/ML packages), and computes mean, median, and population
+  standard deviation.
+- Added the `/arena/machine-learning` route in `app/routes/practice_arena.py`.
+- Extended `validate_problem_schema` in `app/services/judge.py` to accept the
+  `machine-learning` track so ML submissions are not rejected at the schema gate.
+- Updated `templates/practice_arena/index.html` to render the new track card and
+  its "Explore" link, and to report the track count dynamically.
+- Added tests: track taxonomy (3 tracks, AI primary), statistics topic,
+  statistics problem solution passes its browser checks, and ML track page
+  renders the statistics problem.
+- Test results: `tests/test_practice_arena.py` **27 passed** (including 4 new
+  ML tests); `tests/test_ml_specialization.py`, `tests/test_skill_passport.py`,
+  `tests/test_ml_starter_references.py` **18 passed, 1 skipped**; shared
+  practice workspace, curriculum audit, security hardening, and project
+  verification **55 passed**; learning flows and project studio **64 passed**.
 
 ## Remaining work
 
 - M1 still needs fuller applications, practice assessments, and learner
   evidence for the foundations already introduced.
-- The goals' ML-specific Practice Arena challenges, ML-aware tutor context,
-  richer project experiment evidence, and later unsupervised-learning work
-  remain unimplemented.
+- Further ML-specific Practice Arena challenges (regression, classification,
+  evaluation, deep learning, ML engineering), ML-aware tutor context, richer
+  project experiment evidence, and later unsupervised-learning work remain
+  unimplemented.
 
 ## Current work
 
-- The Arena supports pathway tracks and the isolated Python judge, but currently
-  has only AI Engineering and Algorithms tracks. Adding one standard-library
-  statistics challenge, without installing ML packages or executing learner
-  code inside Flask.
+- None. The first ML Practice Arena challenge is complete and the Arena now
+  exposes a third, `machine-learning` track.
 
 ## Implementation decisions
 
@@ -64,3 +84,6 @@
 - The new math/statistics lessons provide developmental evidence only. The
   existing Module 1 project does not assess those calculations, so it does not
   claim verified mathematics/statistics proficiency.
+- Arena submissions run in the isolated sandbox judge (not inside the Flask
+  process); the statistics challenge uses only the Python standard library so no
+  ML packages are required in any execution environment.

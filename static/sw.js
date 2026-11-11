@@ -1,4 +1,4 @@
-const CACHE_NAME = 'ruach-v6';
+const CACHE_NAME = 'ruach-v7';
 const ASSETS = [
   '/static/js/app.js',
   '/static/img/ruach-icon-96.png',
@@ -35,6 +35,13 @@ self.addEventListener('fetch', (event) => {
   if (!isStaticAsset) return;
   // Always fetch CSS fresh so style/tailwind changes take effect immediately.
   if (url.pathname.endsWith('.css')) {
+    return fetch(request).then((response) => {
+      if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
+      return response;
+    });
+  }
+  // Always fetch JS bundles fresh to avoid stale editor chunks.
+  if (url.pathname.endsWith('.js')) {
     return fetch(request).then((response) => {
       if (response.ok) caches.open(CACHE_NAME).then((cache) => cache.put(request, response.clone()));
       return response;

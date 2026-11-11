@@ -4,7 +4,7 @@
 
 {% block content %}
 <section class="mx-auto max-w-7xl px-4 py-6 sm:px-6" aria-labelledby="problem-title">
-  <nav aria-label="Breadcrumb" class="text-sm text-slate-500 dark:text-slate-400">
+  <nav aria-label="Breadcrumb" class="text-sm text-slate-600 dark:text-slate-300">
     <a class="font-semibold text-indigo-700 dark:text-indigo-300" href="{{ url_for('practice_arena.index') }}">Practice Arena</a>
     <span aria-hidden="true"> / </span>
     <a class="font-semibold text-indigo-700 dark:text-indigo-300" href="{% if track.id == 'ai-engineering' %}{{ url_for('practice_arena.ai_engineering') }}{% else %}{{ url_for('practice_arena.algorithms') }}{% endif %}">{{ track.short_name }}</a>
@@ -30,7 +30,7 @@
         <p class="mt-3 whitespace-pre-line text-slate-700 dark:text-slate-200">{{ problem.statement }}</p>
 
         {% if problem.examples %}
-        <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Examples</h3>
+        <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">Examples</h3>
         <div class="mt-2 space-y-3">
           {% for example in problem.examples %}
           <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800">
@@ -44,21 +44,21 @@
         {% endif %}
 
         {% if problem.constraints %}
-        <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Constraints</h3>
+        <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">Constraints</h3>
         <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700 dark:text-slate-200">
           {% for constraint in problem.constraints %}<li>{{ constraint }}</li>{% endfor %}
         </ul>
         {% endif %}
 
         {% if problem.skills %}
-        <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Skills</h3>
+        <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">Skills</h3>
         <ul class="mt-2 flex flex-wrap gap-2 text-xs" aria-label="Skills practised">
           {% for skill in problem.skills %}<li class="rounded-full bg-indigo-50 px-2.5 py-1 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200">{{ skill }}</li>{% endfor %}
         </ul>
         {% endif %}
 
         {% if prerequisites %}
-        <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Helpful first</h3>
+        <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">Helpful first</h3>
         <ul class="mt-2 space-y-1 text-sm">
           {% for prerequisite in prerequisites %}
           <li><a class="font-semibold text-indigo-700 hover:underline dark:text-indigo-300" href="{{ url_for('practice_arena.problem_detail', problem_id=prerequisite.id) }}">{{ prerequisite.title }}</a></li>
@@ -91,7 +91,7 @@
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 id="workspace-title" class="text-lg font-bold text-slate-900 dark:text-white">Code workspace</h2>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Python · <span id="arena-save-status" data-state="idle" aria-live="polite">Starter code loaded</span></p>
+          <p class="text-xs text-slate-600 dark:text-slate-300">Python · <span id="arena-save-status" data-state="idle" aria-live="polite">Starter code loaded</span></p>
         </div>
         <div class="flex flex-wrap gap-2">
           <button type="button" id="arena-theme" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:border-slate-600 dark:text-slate-200" aria-pressed="false">Light editor</button>
@@ -113,8 +113,8 @@
 
       <div class="mt-3">
         <div class="flex flex-wrap items-center justify-between gap-2">
-          <h3 class="text-sm font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">Output</h3>
-          <p class="text-xs text-slate-500 dark:text-slate-400">Ctrl/Cmd + Enter runs · Ctrl/Cmd + S saves</p>
+          <h3 class="text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">Output</h3>
+          <p class="text-xs text-slate-600 dark:text-slate-300">Ctrl/Cmd + Enter runs · Ctrl/Cmd + S saves</p>
         </div>
         <pre id="arena-output" class="mt-1 min-h-24 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-950 p-3 text-sm text-slate-100" data-state="idle" aria-live="polite">Run your code or submit it for server-side verification.</pre>
       </div>

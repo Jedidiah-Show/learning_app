@@ -70,7 +70,7 @@ class CredentialScopeTests(unittest.TestCase):
         html = response.get_data(as_text=True)
         # ML destination scope: shared foundation plus the ML pathway modules,
         # not the AI course's full 213 lessons / 13 modules.
-        self.assertIn('0 / 68', html)
+        self.assertIn('0 / 76', html)
         self.assertIn('0 / 9', html)
         self.assertNotIn('0 / 213', html)
         self.assertNotIn('0 / 13', html)

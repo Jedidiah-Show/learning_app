@@ -123,7 +123,7 @@ class DashboardCurriculumGridTests(DynamicShellTestCase):
         self._set_destination('ml')
         html = self._page()
 
-        self.assertIn('9 modules · 68 lessons', html)
+        self.assertIn('9 modules · 76 lessons', html)
         for title in FOUNDATION_TITLES + ML_TITLES:
             self.assertIn(title, html)
         for title in AI_ONLY_TITLES:
@@ -175,7 +175,7 @@ class DashboardCurriculumGridTests(DynamicShellTestCase):
 
         html = self._page()
 
-        self.assertIn('9 modules · 68 lessons', html)
+        self.assertIn('9 modules · 76 lessons', html)
         for title in AI_ONLY_TITLES:
             self.assertNotIn(title, html)
         # The foundation pointer is spent, so no generic "continue" card is left

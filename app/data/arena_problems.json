@@ -327,5 +327,84 @@
       "Population standard deviation averages the squared differences over the full count, then takes the square root."
     ],
     "editorial": "Start by handling the empty input so the rest of the function can divide safely. The mean is the running total divided by the count. For the median, sort the values and take the middle one; with an even count, average the two middle values. For the population standard deviation, square each difference from the mean, average those squares over the full count (not count minus one), and take the square root. Rounding keeps the result stable and presentable without hiding the underlying arithmetic."
+  },
+  {
+    "id": "ml-python-csv-inspection",
+    "track": "machine-learning",
+    "topic": "statistics",
+    "title": "Inspect a small CSV dataset",
+    "summary": "Load a CSV string with the standard library and report its columns and row count.",
+    "statement": "Write inspect_csv(csv_text) that parses a CSV string with a header row using only the csv module from the standard library. Return a dictionary with keys columns (a list of the header names) and row_count (the number of data rows). Return None for empty input or input with no header row. Do not import pandas or any external package.",
+    "examples": [
+      {
+        "input": "'name,score\\nAda,90\\nLin,85\\nKai,70'",
+        "output": "{'columns': ['name', 'score'], 'row_count': 3}",
+        "explanation": "The header has two columns and there are three data rows."
+      },
+      {
+        "input": "''",
+        "output": "None",
+        "explanation": "Empty input has no header row, so the function returns None."
+      }
+    ],
+    "constraints": [
+      "Use only the csv module from the standard library.",
+      "Return None for empty input or input without a header row.",
+      "columns must be a list of strings.",
+      "row_count must count data rows, excluding the header."
+    ],
+    "difficulty": "beginner",
+    "skills": ["python", "data-analysis"],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "import csv\n\ndef inspect_csv(csv_text):\n    # TODO: parse the CSV text and return {'columns': [...], 'row_count': n}.\n    # Return None for empty input or input with no header row.\n    pass\n",
+    "solution_code": "import csv\nimport io\n\n\ndef inspect_csv(csv_text):\n    if not csv_text or not csv_text.strip():\n        return None\n    reader = csv.reader(io.StringIO(csv_text))\n    rows = list(reader)\n    if not rows:\n        return None\n    columns = rows[0]\n    row_count = len(rows) - 1\n    return {'columns': columns, 'row_count': row_count}\n",
+    "browser_checks": "import csv\nimport io\n\nresult = inspect_csv('name,score\\nAda,90\\nLin,85\\nKai,70')\nassert result == {'columns': ['name', 'score'], 'row_count': 3}\nassert inspect_csv('') is None\nassert inspect_csv('   ') is None\nsingle = inspect_csv('name,score\\nAda,90')\nassert single == {'columns': ['name', 'score'], 'row_count': 1}\nprint('All public checks passed.')\n",
+    "hints": [
+      "Guard empty or whitespace-only input first and return None.",
+      "csv.reader works with any file-like object; io.StringIO turns a string into one.",
+      "The first row returned by csv.reader is the header; every row after it is a data row."
+    ],
+    "editorial": "CSV inspection is the first step of any data-analysis workflow: confirm the schema (column names) and the volume (row count) before cleaning or modelling. The csv module handles quoting, commas inside fields, and line endings correctly, which string splitting does not. Wrapping the text in io.StringIO lets csv.reader consume it like a file. Returning None on malformed or empty input keeps the function predictable for callers."
+  },
+  {
+    "id": "ml-statistics-probability",
+    "track": "machine-learning",
+    "topic": "statistics",
+    "title": "Probability of an event",
+    "summary": "Compute the probability of an event from equally likely outcomes.",
+    "statement": "Write probability_of_event(outcomes, event) that returns the probability of event given a list of equally likely outcomes. event is a subset of outcomes. Return a float between 0 and 1. Return 0.0 for an empty outcomes list. Round the result to four decimal places. Do not import statistics or any external package.",
+    "examples": [
+      {
+        "input": "['red', 'blue', 'green'], ['red']",
+        "output": "0.3333",
+        "explanation": "One favourable outcome out of three equally likely outcomes gives 1 / 3 = 0.3333."
+      },
+      {
+        "input": "[1, 2, 3, 4, 5, 6], [2, 4, 6]",
+        "output": "0.5",
+        "explanation": "Three favourable outcomes (even numbers) out of six gives 3 / 6 = 0.5."
+      }
+    ],
+    "constraints": [
+      "outcomes contains hashable items.",
+      "event is a subset of outcomes.",
+      "Return 0.0 for an empty outcomes list.",
+      "Round the result to four decimal places.",
+      "Do not import statistics or any external package."
+    ],
+    "difficulty": "beginner",
+    "skills": ["statistics", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 10,
+    "starter_code": "def probability_of_event(outcomes, event):\n    # TODO: return len(event) / len(outcomes), rounded to 4 decimals.\n    # Return 0.0 when outcomes is empty.\n    pass\n",
+    "solution_code": "def probability_of_event(outcomes, event):\n    if not outcomes:\n        return 0.0\n    favourable = len(event)\n    total = len(outcomes)\n    return round(favourable / total, 4)\n",
+    "browser_checks": "assert probability_of_event(['red', 'blue', 'green'], ['red']) == 0.3333\nassert probability_of_event([1, 2, 3, 4, 5, 6], [2, 4, 6]) == 0.5\nassert probability_of_event([], []) == 0.0\nassert probability_of_event(['a', 'b'], []) == 0.0\nprint('All public checks passed.')\n",
+    "hints": [
+      "Guard the empty outcomes list first to avoid division by zero.",
+      "Probability is favourable outcomes divided by total outcomes.",
+      "round(value, 4) keeps the result stable without hiding the calculation."
+    ],
+    "editorial": "Probability measures how likely an event is under a model of equally likely outcomes: count the favourable outcomes and divide by the total number of outcomes. This is the same idea behind baseline accuracy in classification, but it also reminds learners that probability is conditional on the assumed model — if outcomes are not actually equally likely, the calculation misleads."
   }
 ]
