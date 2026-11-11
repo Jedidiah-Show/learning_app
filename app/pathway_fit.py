@@ -4,9 +4,8 @@ Why a weighted questionnaire rather than a knowledge test or an AI-generated
 one:
 
 - New learners are a valid onboarding cohort (``skill_level: 'new'``), so a
-  knowledge test would measure schooling rather than fit, and readiness is
-  already gated structurally: the Machine Learning pathway opens only after
-  the shared Module 01 and 02 projects.
+  knowledge test would measure schooling rather than fit. The Machine Learning
+  pathway therefore begins with its own foundation rather than an AI-course gate.
 - An LLM-generated assessment would add an external dependency, rate limits,
   and nondeterminism at the single most important first-run moment. A weighted
   scoring function is unit-testable and works offline, matching the existing

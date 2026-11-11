@@ -323,20 +323,15 @@ class DashboardPathwayLeadTests(unittest.TestCase):
         self.assertNotIn('Optional pathway', html)
         self.assertEqual(html.count('Machine Learning Engineering specialization'), 1)
         self.assertLess(html.index('Your pathway'), html.index('Getting started'))
-        self.assertLess(html.index('Your pathway'), html.index('Continue your course'))
-        # Shared foundation stays visible below, and the locked state points
-        # at the shared next step rather than a dead end.
-        self.assertIn('Opens after your Module 01 and Module 02 course projects', html)
-        self.assertIn('Start the shared foundation', html)
-        self.assertIn('Continue your course', html)
+        # ML is independently accessible and leads with its own next lesson:
+        # there is no separate "continue your course" card for the pathway.
+        self.assertIn('Continue your pathway', html)
 
     def test_unlocked_ml_destination_leads_the_hero_with_the_pathway(self):
         self._set_destination('ml')
-        self._complete_shared_prerequisites()
         html = self._dashboard()
         self.assertIn('Continue your pathway', html)
         self.assertIn('pathway lessons', html)
-        self.assertLess(html.index('Your pathway'), html.index('Continue your course'))
 
     def test_unset_destination_keeps_the_current_order(self):
         html = self._dashboard()
@@ -359,7 +354,9 @@ class DashboardPathwayLeadTests(unittest.TestCase):
             html = self._dashboard()
         self.assertNotIn('Optional pathway', html)
         self.assertNotIn('Your pathway', html)
-        self.assertIn('Continue your course', html)
+        # The rest of the dashboard still renders: the course shell and the
+        # getting-started card stay visible even when the pathway card errors.
+        self.assertIn('Getting started', html)
 
 
 if __name__ == '__main__':

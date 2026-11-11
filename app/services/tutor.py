@@ -68,6 +68,116 @@ HINT_STAGES: Dict[int, str] = {
 }
 
 
+# ────────────────────────────────────────────────────────────────────────────
+# ML-aware hint helpers (G8: ML-Aware AI Tutor 2.0)
+# ────────────────────────────────────────────────────────────────────────────
+
+def _ml_concept_hint(skills: str) -> str:
+    """Return an ML-domain-specific concept hint when skills are ML-related."""
+    skill_list = [s.strip() for s in skills.split(',') if s.strip()]
+    if 'statistics' in skill_list:
+        return (
+            " Remember that a statistic summarizes a sample: the mean is the "
+            "balance point, the median is the middle value, and standard "
+            "deviation measures spread around the mean."
+        )
+    if 'data-preparation' in skill_list:
+        return (
+            " Data preparation is about making data safe and useful for "
+            "modelling: handle missing values, scale features, and keep the "
+            "train/validation/test boundary intact."
+        )
+    if 'classification' in skill_list or 'regression' in skill_list:
+        return (
+            " In supervised learning, you're learning a mapping from inputs "
+            "to outputs. Start with a baseline, then measure how well it "
+            "generalises to held-out data."
+        )
+    if 'deep-learning' in skill_list:
+        return (
+            " A neural network layer computes a weighted sum of inputs, adds "
+            "a bias, then applies an activation. Each step is differentiable, "
+            "which is what makes gradient-based training possible."
+        )
+    if 'model-evaluation' in skill_list:
+        return (
+            " Evaluation answers 'how good is the model?' using metrics "
+            "chosen for the problem — accuracy alone can mislead on "
+            "imbalanced data; precision, recall, and F1 tell a fuller story."
+        )
+    if 'ml-deployment' in skill_list:
+        return (
+            " Deployment means the model can be loaded and used outside the "
+            "training notebook: serialise weights, preserve preprocessing, "
+            "and validate inputs before predicting."
+        )
+    return ""
+
+
+def _ml_edge_case_hint(skills: str) -> str:
+    """Return an ML-domain-specific edge-case hint when skills are ML-related."""
+    skill_list = [s.strip() for s in skills.split(',') if s.strip()]
+    if 'statistics' in skill_list:
+        return (
+            " Watch for empty inputs (return None or a safe default) and "
+            "zero standard deviation (division by zero when standardising)."
+        )
+    if 'data-preparation' in skill_list:
+        return (
+            " Watch for missing values, mismatched list lengths, and ratios "
+            "that do not sum to 1 when splitting data."
+        )
+    if 'classification' in skill_list:
+        return (
+            " Watch for zero denominators in precision (TP + FP = 0) and "
+            "recall (TP + FN = 0); guard them explicitly."
+        )
+    if 'deep-learning' in skill_list:
+        return (
+            " Watch for empty or mismatched input/weight lists — a neuron "
+            "cannot compute without matching dimensions."
+        )
+    if 'model-evaluation' in skill_list:
+        return (
+            " Watch for empty or mismatched actual/predicted lists — "
+            "metrics are undefined without aligned data."
+        )
+    return ""
+
+
+def _ml_pseudocode_hint(skills: str) -> str:
+    """Return an ML-domain-specific pseudocode hint when skills are ML-related."""
+    skill_list = [s.strip() for s in skills.split(',') if s.strip()]
+    if 'statistics' in skill_list:
+        return (
+            " Guard empty input first. Accumulate a running total and count, "
+            "then divide. Sort a copy for the median, and average squared "
+            "differences for variance."
+        )
+    if 'data-preparation' in skill_list:
+        return (
+            " Validate inputs first (empty lists, invalid ratios). Build a new "
+            "list rather than mutating the input. Preserve order where it matters."
+        )
+    if 'classification' in skill_list:
+        return (
+            " Walk actual and predicted in parallel. Increment the matching "
+            "confusion-matrix cell for each pair, then derive metrics from counts."
+        )
+    if 'deep-learning' in skill_list:
+        return (
+            " Validate input and weight lengths match. Accumulate the weighted "
+            "sum, add the bias, then apply the sigmoid: 1 / (1 + e^-z)."
+        )
+    if 'model-evaluation' in skill_list:
+        return (
+            " Guard empty or mismatched inputs first. Count errors across "
+            "training and validation, then compare: both high suggests "
+            "underfitting, low train with high validation suggests overfitting."
+        )
+    return ""
+
+
 @dataclass
 class CodeContext:
     """Context about the learner's code state for the AI Tutor."""
@@ -331,16 +441,18 @@ def generate_hint_stage(
         if tutor_context.code.hints:
             return tutor_context.code.hints[0]
         skills = ", ".join(tutor_context.code.skills_involved) or "programming"
+        ml_context = _ml_concept_hint(skills)
         return (
             f"💡 *Concept hint:* This problem involves {skills}. "
             f"Focus on what you're being asked to compute or produce. "
-            f"What is the input, and what should the output represent?"
+            f"What is the input, and what should the output represent?{ml_context}"
         )
 
     # Stage 2: Approach - suggest decomposition
     if stage == 2:
         if len(tutor_context.code.hints) >= 2:
             return tutor_context.code.hints[1]
+        skills = ", ".join(tutor_context.code.skills_involved) or "programming"
         return (
             "🧭 *Approach hint:* Try decomposing the problem into sub-problems. "
             "Can you identify 2-3 smaller tasks that, if solved individually, "
@@ -357,23 +469,26 @@ def generate_hint_stage(
                     f"{tutor_context.error_summary}"
                 )
             return hint
+        skills = ", ".join(tutor_context.code.skills_involved) or "programming"
+        ml_context = _ml_edge_case_hint(skills)
         return (
             "⚠️ *Edge case hint:* Consider what happens with boundary inputs: "
             "empty lists, single-element inputs, maximum values, or negative numbers. "
-            "Does your code handle these cases correctly?"
-        )
+            "Does your code handle these cases correctly?{ml_context}"
+        ).format(ml_context=ml_context)
 
     # Stage 4: Pseudocode - algorithm in plain language
     if stage == 4:
         skills = ', '.join(tutor_context.code.skills_involved) or 'the main task'
+        ml_context = _ml_pseudocode_hint(skills)
         return (
             f"📝 *Pseudocode hint:* For {skills}, write the algorithm in plain "
             "language before coding:\n"
             "1. Identify the input and the result the problem asks for.\n"
             "2. Set up the state or data structure you need.\n"
             "3. Process each relevant input item and update that state.\n"
-            "4. Return the result, then check it against an empty and a boundary input."
-        )
+            "4. Return the result, then check it against an empty and a boundary input.{ml_context}"
+        ).format(ml_context=ml_context)
 
     # Stage 5: Editorial - reference solution
     if stage == 5:
@@ -486,7 +601,23 @@ def diagnose_knowledge_gaps(tutor_context: TutorContext) -> Dict[str, Any]:
             (r"zerodivisionerror", "division and zero checks", 2),
             (r"import error", "module import issues", 1),
         ]
+        # ML-specific error and concept patterns
+        ml_patterns: List[tuple] = [
+            (r"division by zero|zero division", "statistics: division by zero in metric or mean", 2),
+            (r"empty.*list|list.*empty", "data preparation: handling empty input", 2),
+            (r"mean|average|std|standard deviation", "statistics: descriptive statistics", 1),
+            (r"precision|recall|f1|confusion", "classification: evaluation metrics", 1),
+            (r"overfit|underfit", "model evaluation: bias-variance diagnosis", 2),
+            (r"forward|sigmoid|neural", "deep learning: forward propagation", 2),
+        ]
         for pattern, gap_name, stage in patterns:
+            if re.search(pattern, error_summary, re.IGNORECASE):
+                gaps.append(gap_name)
+                suggested_stage = min(suggested_stage or stage, stage)
+                relevant_skills.extend(
+                    tutor_context.passport.not_started_skills
+                )
+        for pattern, gap_name, stage in ml_patterns:
             if re.search(pattern, error_summary, re.IGNORECASE):
                 gaps.append(gap_name)
                 suggested_stage = min(suggested_stage or stage, stage)

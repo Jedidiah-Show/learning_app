@@ -253,6 +253,13 @@ def create_app(config_override=None):
     # Set SECRET_KEY in the environment to keep sessions valid across restarts.
     app.config['SECRET_KEY'] = secret_key or os.urandom(32)
     app.config['TOKEN_ENCRYPTION_KEY'] = os.environ.get('TOKEN_ENCRYPTION_KEY')
+    # A web deployment must opt in only after its separate judge worker and
+    # container sandbox have been provisioned. Otherwise submissions would
+    # queue forever or execute untrusted code in the web process.
+    app.config['JUDGE_SUBMISSIONS_ENABLED'] = (
+        os.environ.get('JUDGE_SUBMISSIONS_ENABLED', '').strip().lower()
+        in {'1', 'true', 'yes'}
+    )
     if production and not app.config['TOKEN_ENCRYPTION_KEY']:
         # Deriving the Fernet key from SECRET_KEY would silently invalidate
         # every stored OAuth refresh token whenever SECRET_KEY rotates.

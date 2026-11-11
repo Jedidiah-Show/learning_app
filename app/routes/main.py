@@ -201,9 +201,8 @@ def index():
         # Seed the per-request cache the nav shell reads, so rendering the
         # dashboard does not fetch the same plan a second time.
         g.pathway_destination = pathway_destination
-        # An ML destination's curriculum is the shared foundation plus the ML
-        # pathway; the AI-only modules 03-12 are a different course and must
-        # not appear in its grid, totals, or next-step pointers.
+        # An ML destination's curriculum is fully independent; AI Engineering
+        # modules never appear in its grid, totals, or completion claims.
         progress = pathway_dashboard_progress(
             current_user, pathway_destination, progress,
             completed=completed_ids, completed_projects=completed_project_ids,
@@ -248,10 +247,6 @@ def index():
         pathway_comparison = None
         if ml_overview:
             ai_lessons = all_lessons()
-            foundation_lessons = [
-                lesson for lesson in ai_lessons
-                if lesson.get('module_id') in {'00', '01', '02'}
-            ]
             pathway_comparison = {
                 'ai': {
                     'completed': sum(
@@ -260,16 +255,8 @@ def index():
                     'total': len(ai_lessons),
                 },
                 'ml': {
-                    'completed': (
-                        sum(
-                            lesson['id'] in completed_ids
-                            for lesson in foundation_lessons
-                        )
-                        + ml_overview['completed_lessons']
-                    ),
-                    'total': (
-                        len(foundation_lessons) + ml_overview['total_lessons']
-                    ),
+                    'completed': ml_overview['completed_lessons'],
+                    'total': ml_overview['total_lessons'],
                 },
             }
         return render_template('dashboard.html', config=config, user=current_user,
@@ -424,12 +411,9 @@ def machine_learning_specialization():
             user_id=current_user.id, pathway_id=pathway['id']
         ).all()
     }
-    shared_projects = {
-        item.module_id for item in CourseProject.query.filter_by(
-            user_id=current_user.id, completed=True
-        ).filter(CourseProject.module_id.in_(['01', '02'])).all()
-    }
-    prerequisites_met = {'01', '02'}.issubset(shared_projects)
+    # ML starts with its own foundation module, so a learner can choose it
+    # directly. Shared AI projects remain useful preparation but do not gate it.
+    prerequisites_met = True
     ml_project_ids = {
         item.module_id for item in MLSpecializationProject.query.filter_by(
             user_id=current_user.id, pathway_id=pathway['id'], completed=True
@@ -485,8 +469,8 @@ def machine_learning_lesson(lesson_id):
     lesson = get_machine_learning_lesson(lesson_id)
     if not lesson or lesson.get('status') != 'ready':
         abort(404)
-    # One gate for the whole pathway: shared prerequisites, prior module
-    # projects, and every earlier published lesson in order.
+    # One gate for the whole pathway: prior module projects and every earlier
+    # published lesson in order.
     if not machine_learning_lesson_is_open(current_user.id, lesson_id):
         abort(403)
 

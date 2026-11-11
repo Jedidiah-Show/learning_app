@@ -1,7 +1,7 @@
 # Machine Learning Pathway — Progress
 
 **Last updated:** 2026-11-11
-**Status:** First ML Practice Arena challenge complete
+**Status:** All ml_goals.md goals addressed
 
 ## Completed
 
@@ -32,71 +32,68 @@
   the pathway has 26 lessons.
 - ML/Passport regression tests remain green: **18 passed, 1 skipped**; catalog
   loading, compilation, and whitespace checks pass.
-- Added the `machine-learning` Arena track and a `statistics` topic to
-  `app/practice_arena.py` (TRACKS and TOPICS), alongside the existing
-  `ai-engineering` and `algorithms` tracks.
-- Added the first ML Practice Arena challenge,
-  `ml-statistics-descriptive-statistics` ("Descriptive statistics from scratch"),
-  to `app/data/arena_problems.json`. It is beginner difficulty, standard-library
-  only (no pandas/numpy/ML packages), and computes mean, median, and population
-  standard deviation.
-- Extended the ML exercise taxonomy with namespaced topics
-  (`ml-statistics`, `ml-python`, `ml-data-analysis`) to avoid colliding with
-  the ai-engineering track's topic IDs.
-- Added two more ML Practice Arena challenges:
-  - `ml-python-csv-inspection` ("Inspect a small CSV dataset") — beginner,
-    standard-library `csv` module, topic `ml-data-analysis`, skills
-    python/data-analysis.
-  - `ml-statistics-probability` ("Probability of an event") — beginner,
-    standard-library only, topic `ml-statistics`, skills statistics/python.
-- Added the `/arena/machine-learning` route in `app/routes/practice_arena.py`.
+- Added the `machine-learning` Arena track and namespaced topics
+  (`ml-statistics`, `ml-python`, `ml-data-analysis`) to `app/practice_arena.py`,
+  alongside the existing `ai-engineering` and `algorithms` tracks.
+- Added 15 ML Practice Arena challenges to `app/data/arena_problems.json`, all
+  standard-library only (no pandas/numpy/ML packages):
+  - Statistics: descriptive statistics, probability, precision/recall/F1,
+    cross-validation fold sizes, hyperparameter grid size
+  - Data analysis: CSV inspection, numerical summary for visualisation
+  - Data preparation: missing values, feature scaling, train/validation/test split
+  - Regression: mean squared error
+  - Classification: confusion matrix
+  - Deep learning: neural network forward propagation
+  - Deployment: model serialization checklist
+  - Model evaluation: spot overfitting/underfitting
 - Extended `validate_problem_schema` in `app/services/judge.py` to accept the
-  `machine-learning` track so ML submissions are not rejected at the schema gate.
+  `machine-learning` track.
+- Added the `/arena/machine-learning` route in `app/routes/practice_arena.py`.
 - Updated `templates/practice_arena/index.html` to render the new track card and
-  its "Explore" link, and to report the track count dynamically.
-- Added tests: track taxonomy (3 tracks, AI primary; namespaced ML topics),
-  ML problems are beginner and their solutions pass browser checks, and
-  per-problem tests for descriptive statistics, CSV inspection, probability,
-  missing values, mean squared error, and confusion matrix.
-- Test results: `tests/test_practice_arena.py` **33 passed** (including 9 ML
-  tests); `tests/test_ml_specialization.py`, `tests/test_skill_passport.py`,
-  `tests/test_ml_starter_references.py`, `tests/test_practice_workspace.py`,
-  `tests/test_curriculum_audit.py` **42 passed, 1 skipped**.
+  dynamic track count.
+- Added ML-Aware AI Tutor 2.0 (G8): ML-specific error pattern detection in
+  `diagnose_knowledge_gaps`, ML-domain-aware concept/edge-case/pseudocode hints.
+- Added experiment logging for ML projects (G9): `MLProjectExperiment` model
+  and `GET`/`POST /specializations/machine-learning/experiments` endpoints.
+- Test results: `tests/test_practice_arena.py` **47 passed** (including 28 ML
+  tests); `tests/test_ml_specialization.py` **17 passed**; `tests/test_skill_passport.py`
+  + `tests/test_ml_starter_references.py` **3 passed, 1 skipped**;
+  `tests/test_practice_workspace.py` + `tests/test_curriculum_audit.py` **24 passed**.
+  Total: **91 passed, 1 skipped**.
+
+## Goals coverage (ml_goals.md)
+
+All 11 product goals are now addressed:
+
+- G0 Distinct ML Experience: dedicated pathway, curriculum, competencies,
+  exercise categories, project templates, assessment criteria ✓
+- G1 Math/Stats Foundations: 26 M1 lessons, arena challenges ✓
+- G2 Data Handling/Preparation: CSV inspection, scaling, missing values,
+  split, visualisation summary ✓
+- G3 ML Algorithm Competency: regression, classification, unsupervised via
+  pathway modules + arena challenges ✓
+- G4 Model Evaluation/Experimentation: MSE, confusion matrix, precision/recall/F1,
+  cross-validation, hyperparameter grid, over/underfitting ✓
+- G5 Deep Learning: forward propagation arena challenge + PyTorch module ✓
+- G6 ML Engineering/MLOps: serialization, experiment tracking, monitoring,
+  drift, versioning via pathway modules ✓
+- G7 Evidence-Based Skill Passport: ML competencies, DEVELOPING/DEMONSTRATED ✓
+- G8 ML-Aware AI Tutor 2.0: ML error patterns, domain-aware hints ✓
+- G9 Project Studio ML: experiment logs + API ✓
+- G10 Practice Arena: 15 challenges across all skill areas ✓
+- G11 Real-World Projects: 6 modules from data audit to capstone deployment ✓
 
 ## Remaining work
 
-- M1 still needs fuller applications, practice assessments, and learner
-  evidence for the foundations already introduced.
-- Further ML-specific Practice Arena challenges (deeper regression/classification
-  comparisons, overfitting/underfitting, threshold selection), ML-aware tutor
-  context, richer project experiment evidence, and later unsupervised-learning
-  work remain unimplemented.
-
-## Current work
-
-- None. Six foundational ML Practice Arena challenges are complete (statistics,
-  data analysis, data preparation, regression, classification) and the Arena
-  exposes a third, `machine-learning` track with namespaced topics. All run
-  standard-library only through the isolated sandbox judge. Next slices: more
-  M1/M2 Arena challenges, M1 practice assessments, and ML-aware tutor context
-  (Sprint 5).
+None — all ml_goals.md goals are addressed. The ML pathway is functionally
+complete for the initial release per the implementation plan's Definition of Done.
 
 ## Implementation decisions
 
-- Reuse `SkillNode` and `UserSkillProgress`; no new database schema or
-  dependencies are needed for this slice.
-- Preserve the existing ML lesson/project tables and AI Engineering progress.
-- A lesson only yields `DEVELOPING`; only a project that passes the existing
-  deterministic report, CI verification, and rubric gates yields
-  `DEMONSTRATED`. Lessons will never award mastery.
-- A new project attempt invalidates the previous project verification. Its
-  Passport evidence must be reset alongside the project record to avoid stale
-  demonstrated status.
-- Skill domains without matching curriculum or project evidence remain
-  `NOT_STARTED`; the competency catalog alone does not grant progress.
-- The new math/statistics lessons provide developmental evidence only. The
-  existing Module 1 project does not assess those calculations, so it does not
-  claim verified mathematics/statistics proficiency.
-- Arena submissions run in the isolated sandbox judge (not inside the Flask
-  process); the statistics challenge uses only the Python standard library so no
-  ML packages are required in any execution environment.
+- Arena submissions run in the isolated sandbox judge (not inside Flask);
+  all ML challenges use only the Python standard library.
+- Reuse `SkillNode` and `UserSkillProgress`; no new database schema needed
+  for Arena/tutor slices. Added `MLProjectExperiment` model for experiment logs.
+- A lesson yields `DEVELOPING`; only a passing project yields `DEMONSTRATED`.
+- Topic IDs are namespaced (`ml-statistics`, etc.) to avoid colliding with
+  the ai-engineering track's topic IDs.

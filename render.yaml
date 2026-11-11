@@ -131,6 +131,11 @@ services:
         sync: false
       - key: LESSON_EXTRAS_TOKEN
         sync: false
+      # Leave disabled until a separately deployed, container-capable judge
+      # worker is connected. The app then rejects authoritative submissions
+      # instead of leaving them permanently queued.
+      - key: JUDGE_SUBMISSIONS_ENABLED
+        value: "false"
 
       # Cloudflare R2 (S3-compatible) uploads. Profile photos remain in
       # Postgres and are unaffected by these settings.

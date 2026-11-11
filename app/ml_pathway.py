@@ -111,32 +111,28 @@ def get_machine_learning_lesson(lesson_id):
 
 
 def shared_prerequisites_met(user_id):
-    """The shared Python and backend module projects gate the ML pathway."""
-    from app.models import CourseProject
+    """Compatibility helper for callers written before ML became standalone.
 
-    completed = {
-        row.module_id for row in CourseProject.query.filter(
-            CourseProject.user_id == user_id,
-            CourseProject.module_id.in_(['01', '02']),
-            CourseProject.completed.is_(True),
-        ).all()
-    }
-    return {'01', '02'}.issubset(completed)
+    The pathway begins with its own mathematics, statistics, and data lessons.
+    AI Engineering projects may be useful preparation, but are not an access
+    gate or credential dependency for an independently selected ML pathway.
+    """
+    return True
 
 
 def machine_learning_lesson_is_open(user_id, lesson_id):
     """Whether one pathway lesson may be read or acted on for this learner.
 
-    Mirrors the sequential rules of the specialization route: shared
-    prerequisites, then every earlier published lesson, with each earlier
-    module's project completed before the next module opens. The same check
+    Mirrors the sequential rules of the specialization route: every earlier
+    published lesson, with each earlier module's project completed before the
+    next module opens. The same check
     backs lesson pages, bookmarks, and notes so the peripheral features cannot
     reach a lesson the catalog still shows as locked.
     """
     from app.models import MLSpecializationLessonCompletion, MLSpecializationProject
 
     lesson = get_machine_learning_lesson(lesson_id)
-    if not lesson or lesson.get('status') != 'ready' or not shared_prerequisites_met(user_id):
+    if not lesson or lesson.get('status') != 'ready':
         return False
     pathway = machine_learning_pathway()
     prior_modules = [
@@ -329,16 +325,10 @@ def ml_pathway_overview(user_id):
     Deliberately read-only and independent of the shared course progress so
     the dashboard can show the pathway without touching pacing or milestones.
     """
-    from app.models import (
-        CourseProject, MLSpecializationLessonCompletion, MLSpecializationProject,
-    )
+    from app.models import MLSpecializationLessonCompletion, MLSpecializationProject
 
     pathway = machine_learning_pathway()
-    prerequisites_met = CourseProject.query.filter(
-        CourseProject.user_id == user_id,
-        CourseProject.module_id.in_(['01', '02']),
-        CourseProject.completed.is_(True),
-    ).count() >= 2
+    prerequisites_met = True
     completed = {
         row.lesson_id for row in MLSpecializationLessonCompletion.query.filter_by(
             user_id=user_id, pathway_id=PATHWAY_ID

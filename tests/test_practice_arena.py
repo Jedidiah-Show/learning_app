@@ -118,7 +118,7 @@ class ArenaTaxonomyTests(unittest.TestCase):
             problem for problem in problems.values()
             if problem['track'] == 'machine-learning'
         ]
-        self.assertEqual(len(ml), 12)
+        self.assertEqual(len(ml), 15)
         for problem in ml:
             with self.subTest(problem=problem['id']):
                 self.assertIn(problem['difficulty'], DIFFICULTIES)
@@ -231,6 +231,33 @@ class ArenaTaxonomyTests(unittest.TestCase):
         problem = problems['ml-engineering-model-serialization']
         self.assertEqual(problem['topic'], 'ml-data-analysis')
         self.assertEqual(problem['skills'], ['ml-deployment', 'python'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_cross_validation_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-evaluation-cross-validation']
+        self.assertEqual(problem['topic'], 'ml-statistics')
+        self.assertEqual(problem['skills'], ['model-evaluation', 'python'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_hyperparameter_grid_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-optimisation-hyperparameter-grid']
+        self.assertEqual(problem['topic'], 'ml-statistics')
+        self.assertEqual(problem['skills'], ['optimisation', 'python'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_visualisation_summary_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-data-analysis-visualisation-summary']
+        self.assertEqual(problem['topic'], 'ml-data-analysis')
+        self.assertEqual(problem['skills'], ['data-analysis', 'python'])
         namespace = {}
         exec(problem['solution_code'], namespace)
         exec(problem['browser_checks'], namespace)
@@ -350,6 +377,18 @@ class ArenaPageTests(ArenaTestCase):
 
 
 class ArenaApiTests(ArenaTestCase):
+    def test_submit_fails_closed_when_no_authoritative_judge_is_configured(self):
+        self.register('unavailablejudge')
+        self.app.config.update(
+            TESTING=False, CSRF_ENABLED=False, JUDGE_SUBMISSIONS_ENABLED=False,
+        )
+        response = self.client.post(
+            '/arena/api/problems/algo-binary-search/submit',
+            json={'code': 'def binary_search(numbers, target):\n    return -1\n'},
+        )
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('temporarily unavailable', response.get_json()['error'])
+
     def test_public_problem_payload_omits_solutions_and_editorial(self):
         self.register('arena')
         response = self.client.get('/arena/api/problems/algo-binary-search')
@@ -442,6 +481,114 @@ class ArenaApiTests(ArenaTestCase):
         )
         self.assertEqual(allowed.status_code, 200)
         self.assertIn('def binary_search', allowed.get_json()['hint'])
+
+    def test_ml_aware_concept_hint_includes_statistics_context(self):
+        from app.services.tutor import (
+            CodeContext, PassportState, TutorContext, generate_hint_stage,
+        )
+        context = TutorContext(
+            code=CodeContext(
+                code='def f(x): pass',
+                problem_id='ml-statistics-descriptive-statistics',
+                skills_involved=['statistics', 'python'],
+                hints=[],
+                editorial='',
+                solution_code='',
+            ),
+            passport=PassportState(),
+            error_summary='',
+        )
+        hint = generate_hint_stage(1, context)
+        self.assertIn('statistics', hint.lower())
+        self.assertIn('mean', hint.lower())
+        self.assertIn('median', hint.lower())
+        self.assertIn('standard deviation', hint.lower())
+
+    def test_ml_aware_edge_case_hint_includes_statistics_context(self):
+        from app.services.tutor import (
+            CodeContext, PassportState, TutorContext, generate_hint_stage,
+        )
+        context = TutorContext(
+            code=CodeContext(
+                code='def f(x): pass',
+                problem_id='ml-statistics-descriptive-statistics',
+                skills_involved=['statistics', 'python'],
+                hints=[],
+                editorial='',
+                solution_code='',
+            ),
+            passport=PassportState(),
+            error_summary='',
+        )
+        hint = generate_hint_stage(3, context)
+        self.assertIn('empty inputs', hint.lower())
+        self.assertIn('zero standard deviation', hint.lower())
+
+    def test_ml_aware_pseudocode_hint_includes_classification_context(self):
+        from app.services.tutor import (
+            CodeContext, PassportState, TutorContext, generate_hint_stage,
+        )
+        context = TutorContext(
+            code=CodeContext(
+                code='def f(x): pass',
+                problem_id='ml-classification-confusion-matrix',
+                skills_involved=['classification', 'python'],
+                hints=[],
+                editorial='',
+                solution_code='',
+            ),
+            passport=PassportState(),
+            error_summary='',
+        )
+        hint = generate_hint_stage(4, context)
+        self.assertIn('confusion-matrix', hint.lower())
+        self.assertIn('actual and predicted', hint.lower())
+
+    def test_diagnose_knowledge_gaps_detects_ml_patterns(self):
+        from app.services.tutor import (
+            CodeContext, PassportState, TutorContext, diagnose_knowledge_gaps,
+        )
+        context = TutorContext(
+            code=CodeContext(
+                code='def f(x): pass',
+                problem_id='ml-statistics-descriptive-statistics',
+                skills_involved=['statistics', 'python'],
+                hints=[],
+                editorial='',
+                solution_code='',
+                error_log='ZeroDivisionError: division by zero in mean',
+            ),
+            passport=PassportState(),
+            error_summary='ZeroDivisionError: division by zero in mean',
+        )
+        result = diagnose_knowledge_gaps(context)
+        self.assertTrue(
+            any('division by zero' in g.lower() for g in result['diagnosed_gaps']),
+            f"Expected ML division-by-zero gap, got: {result['diagnosed_gaps']}"
+        )
+
+    def test_diagnose_knowledge_gaps_detects_classification_patterns(self):
+        from app.services.tutor import (
+            CodeContext, PassportState, TutorContext, diagnose_knowledge_gaps,
+        )
+        context = TutorContext(
+            code=CodeContext(
+                code='def f(x): pass',
+                problem_id='ml-classification-confusion-matrix',
+                skills_involved=['classification', 'python'],
+                hints=[],
+                editorial='',
+                solution_code='',
+                error_log='precision and recall calculation failed',
+            ),
+            passport=PassportState(),
+            error_summary='precision and recall calculation failed',
+        )
+        result = diagnose_knowledge_gaps(context)
+        self.assertTrue(
+            any('evaluation metrics' in g.lower() for g in result['diagnosed_gaps']),
+            f"Expected ML evaluation-metrics gap, got: {result['diagnosed_gaps']}"
+        )
 
     def test_passport_page_api_and_download_are_user_scoped(self):
         self.register('passportlearner')

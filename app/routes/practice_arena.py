@@ -42,6 +42,14 @@ MAX_ARENA_SOURCE_LENGTH = 20000
 PAGE_SIZE = 24
 
 
+def _judge_submissions_enabled():
+    """Prevent a production queue from accepting work with no safe executor."""
+    return bool(
+        current_app.testing
+        or current_app.config.get('JUDGE_SUBMISSIONS_ENABLED', False)
+    )
+
+
 def _attempted_ids():
     rows = PracticeWorkspace.query.filter_by(user_id=current_user.id).all()
     return {row.exercise_id for row in rows}
@@ -398,6 +406,13 @@ def submit_problem(problem_id):
     raw = get_arena_problem(problem_id)
     if raw is None:
         return jsonify({'error': 'Problem not found'}), 404
+    if not _judge_submissions_enabled():
+        return jsonify({
+            'error': (
+                'Authoritative submissions are temporarily unavailable. '
+                'Practice runs remain available in your browser.'
+            ),
+        }), 503
     enforce_rate_limit('arena-submit', str(current_user.id))
 
     # Validate the problem schema before execution

@@ -40,6 +40,30 @@
     <p id="ml-project-result" class="mt-4 text-sm" role="status" aria-live="polite"></p>
   </section>
 
+  <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-6" aria-labelledby="experiment-log-heading">
+    <div class="flex flex-wrap items-start justify-between gap-3">
+      <div>
+        <h3 id="experiment-log-heading" class="text-lg font-bold">Experiment log</h3>
+        <p class="mt-1 text-sm text-slate-600">Record the evidence behind a training or evaluation decision. Dates are recorded by RUACH when you save.</p>
+      </div>
+      <button id="experiment-reset" type="button" class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold">New record</button>
+    </div>
+    <form id="experiment-form" class="mt-5 grid gap-4 sm:grid-cols-2">
+      <input type="hidden" name="experiment_id">
+      <label class="block text-sm font-semibold">Experiment name<input required maxlength="160" name="experiment_name" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal"></label>
+      <label class="block text-sm font-semibold">Dataset version<input maxlength="120" name="dataset_version" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal" placeholder="e.g. orders-2026-11-v2"></label>
+      <label class="block text-sm font-semibold">Model type<input maxlength="120" name="model_type" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal" placeholder="e.g. logistic regression"></label>
+      <label class="block text-sm font-semibold">Hyperparameters (JSON object or array)<textarea name="hyperparameters" rows="3" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-mono text-xs font-normal" placeholder='{"C": 1.0}'></textarea></label>
+      <label class="block text-sm font-semibold sm:col-span-2">Preprocessing approach<textarea maxlength="6000" name="preprocessing_approach" rows="3" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal"></textarea></label>
+      <label class="block text-sm font-semibold sm:col-span-2">Evaluation metrics (JSON object or array)<textarea name="evaluation_metrics" rows="3" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-mono text-xs font-normal" placeholder='{"f1": 0.84}'></textarea></label>
+      <label class="block text-sm font-semibold sm:col-span-2">Observations<textarea maxlength="6000" name="observations" rows="3" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal"></textarea></label>
+      <label class="block text-sm font-semibold sm:col-span-2">Conclusion<textarea maxlength="6000" name="conclusion" rows="3" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal"></textarea></label>
+      <div class="sm:col-span-2"><button class="rounded-lg bg-indigo-700 px-4 py-2 font-semibold text-white" type="submit">Save experiment</button></div>
+    </form>
+    <p id="experiment-result" class="mt-3 text-sm" role="status" aria-live="polite"></p>
+    <div id="experiment-list" class="mt-4 space-y-3"></div>
+  </section>
+
   {% if evaluation %}
   <section class="mt-5 rounded-2xl border {{ 'border-emerald-200 bg-emerald-50' if record.completed else 'border-amber-200 bg-amber-50' }} p-6">
     <h3 class="text-lg font-bold">Latest review · {{ evaluation.score }}/100{% if record.completed %} · Project complete ✓{% endif %}</h3>
@@ -82,6 +106,61 @@
       result.className = 'mt-4 text-sm text-red-700';
     }
   });
+})();
+
+(() => {
+  const form = document.getElementById('experiment-form');
+  const list = document.getElementById('experiment-list');
+  const result = document.getElementById('experiment-result');
+  const reset = document.getElementById('experiment-reset');
+  const csrf = document.querySelector('meta[name="csrf-token"]').content;
+  const base = {{ url_for('ml_specialization.list_ml_experiments')|tojson }};
+  const moduleId = {{ module.id|tojson }};
+  let experiments = [];
+  const report = (message, kind = 'text-slate-600') => { result.textContent = message; result.className = `mt-3 text-sm ${kind}`; };
+  const clear = () => { form.reset(); form.elements.experiment_id.value = ''; };
+  const jsonValue = (value, label) => {
+    if (!value.trim()) return null;
+    try { const parsed = JSON.parse(value); if (!Array.isArray(parsed) && (typeof parsed !== 'object' || parsed === null)) throw new Error(); return parsed; }
+    catch { throw new Error(`${label} must be a JSON object or array.`); }
+  };
+  const escape = (value) => String(value || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  const render = () => {
+    if (!experiments.length) { list.innerHTML = '<p class="text-sm text-slate-600">No experiments recorded yet.</p>'; return; }
+    list.innerHTML = experiments.map(e => `<article class="rounded-lg border border-slate-200 p-4"><div class="flex flex-wrap justify-between gap-3"><div><h4 class="font-semibold">${escape(e.experiment_name)}</h4><p class="text-xs text-slate-500">${escape(e.experiment_date)}</p></div><div class="flex gap-2"><button type="button" data-edit="${e.id}" class="text-sm font-semibold text-indigo-700">Edit</button><button type="button" data-delete="${e.id}" class="text-sm font-semibold text-red-700">Delete</button></div></div><p class="mt-2 text-sm text-slate-700">${escape(e.model_type || 'Model type not recorded')} · ${escape(e.dataset_version || 'Dataset version not recorded')}</p>${e.conclusion ? `<p class="mt-2 text-sm text-slate-600">${escape(e.conclusion)}</p>` : ''}</article>`).join('');
+  };
+  const load = async () => { const response = await fetch(`${base}?module_id=${encodeURIComponent(moduleId)}`); const data = await response.json(); if (!response.ok) throw new Error(data.error || 'Could not load experiments.'); experiments = data.experiments; render(); };
+  form.addEventListener('submit', async event => {
+    event.preventDefault();
+    try {
+      const fields = new FormData(form);
+      const payload = Object.fromEntries(fields.entries());
+      delete payload.experiment_id;
+      payload.module_id = moduleId;
+      payload.hyperparameters = jsonValue(payload.hyperparameters, 'Hyperparameters');
+      payload.evaluation_metrics = jsonValue(payload.evaluation_metrics, 'Evaluation metrics');
+      const id = form.elements.experiment_id.value;
+      const response = await fetch(id ? `${base}/${id}` : base, { method: id ? 'PATCH' : 'POST', headers: {'Content-Type':'application/json','X-CSRF-Token':csrf}, body: JSON.stringify(payload) });
+      const data = response.status === 204 ? {} : await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not save experiment.');
+      clear(); await load(); report('Experiment saved.', 'text-emerald-800');
+    } catch (error) { report(error.message || 'Could not save experiment.', 'text-red-700'); }
+  });
+  list.addEventListener('click', async event => {
+    const id = event.target.dataset.edit || event.target.dataset.delete;
+    if (!id) return;
+    const experiment = experiments.find(item => String(item.id) === id);
+    if (event.target.dataset.edit) {
+      for (const [key, value] of Object.entries(experiment)) if (form.elements[key]) form.elements[key].value = ['hyperparameters','evaluation_metrics'].includes(key) && value ? JSON.stringify(value, null, 2) : (value || '');
+      form.elements.experiment_id.value = id; form.elements.experiment_name.focus(); return;
+    }
+    if (!window.confirm(`Delete “${experiment.experiment_name}”?`)) return;
+    const response = await fetch(`${base}/${id}`, {method:'DELETE', headers:{'X-CSRF-Token':csrf}});
+    if (!response.ok) { const data = await response.json(); report(data.error || 'Could not delete experiment.', 'text-red-700'); return; }
+    clear(); await load(); report('Experiment deleted.', 'text-emerald-800');
+  });
+  reset.addEventListener('click', clear);
+  load().catch(error => report(error.message || 'Could not load experiments.', 'text-red-700'));
 })();
 </script>
 {% endblock %}

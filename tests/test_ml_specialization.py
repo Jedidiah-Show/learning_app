@@ -82,18 +82,15 @@ class MLSpecializationFlowTests(unittest.TestCase):
         return token.group(1).decode()
 
     def test_dashboard_card_tracks_the_pathway_without_opening_lessons(self):
-        locked = self.client.get('/')
-        self.assertEqual(locked.status_code, 200)
-        self.assertIn('Machine Learning Engineering specialization', locked.get_data(as_text=True))
-        self.assertIn('Opens after your Module 01 and Module 02 course projects', locked.get_data(as_text=True))
-
-        self._complete_shared_prerequisites()
+        opened = self.client.get('/')
+        self.assertEqual(opened.status_code, 200)
+        self.assertIn('Machine Learning Engineering specialization', opened.get_data(as_text=True))
+        self.assertIn('Continue:', opened.get_data(as_text=True))
         pathway = machine_learning_pathway()
         first = [
             lesson for module in pathway['modules'] for lesson in module['lessons']
             if lesson.get('status') == 'ready'
         ][0]
-        opened = self.client.get('/')
         self.assertIn('Continue: ' + first['title'], opened.get_data(as_text=True))
         self.assertIn('0 of 26 lessons · 0 of 6 projects complete', opened.get_data(as_text=True))
 
@@ -261,16 +258,14 @@ class MLSpecializationFlowTests(unittest.TestCase):
         capstone['pytorch_accuracy'] = .79
         self.assertFalse(_report_matches('mle.capstone-integration', capstone))
 
-    def test_prerequisites_and_sequential_quizzes_gate_progress_separately(self):
+    def test_standalone_entry_and_sequential_quizzes_gate_progress(self):
         catalog = self.client.get('/specializations/machine-learning')
         self.assertEqual(catalog.status_code, 200)
         lessons = machine_learning_pathway()['modules'][0]['lessons']
-        denied = self.client.get(
+        first = self.client.get(
             f"/specializations/machine-learning/lessons/{lessons[0]['id']}"
         )
-        self.assertEqual(denied.status_code, 403)
-
-        self._complete_shared_prerequisites()
+        self.assertEqual(first.status_code, 200)
         self.assertEqual(self.client.get(
             f"/specializations/machine-learning/lessons/{lessons[1]['id']}"
         ).status_code, 403)
@@ -639,24 +634,19 @@ class MLSpecializationFlowTests(unittest.TestCase):
         self.assertIn('6 hours a week', catalog.get_data(as_text=True))
 
     def test_lessons_page_promotes_the_second_pathway(self):
-        locked = self.client.get('/lessons')
-        self.assertEqual(locked.status_code, 200)
-        page = locked.get_data(as_text=True)
+        response = self.client.get('/lessons')
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        # The AI lesson catalog keeps an unobtrusive second-pathway card that
+        # names the ML pathway and links to it; AI course projects do not gate it.
         self.assertIn('Machine Learning Engineering', page)
-        self.assertIn('Preview the ML pathway', page)
-
-        self._complete_shared_prerequisites()
-        opened = self.client.get('/lessons').get_data(as_text=True)
-        self.assertIn('Continue:', opened)
+        self.assertIn('Second pathway', page)
+        self.assertIn('Open ML pathway', page)
+        self.assertIn('Continue: ', page)
 
     def test_bookmarks_and_notes_reach_pathway_lessons_with_the_same_gate(self):
         lessons = machine_learning_pathway()['modules'][0]['lessons']
         first_id = lessons[0]['id']
-        # Before the shared prerequisites, pathway bookmarks read as absent.
-        denied = self.client.post(f'/api/lessons/{first_id}/bookmark')
-        self.assertEqual(denied.status_code, 404)
-
-        self._complete_shared_prerequisites()
         marked = self.client.post(f'/api/lessons/{first_id}/bookmark')
         self.assertEqual(marked.status_code, 200)
         self.assertTrue(marked.get_json()['bookmarked'])
@@ -695,6 +685,121 @@ class MLSpecializationFlowTests(unittest.TestCase):
             self.assertEqual(
                 ReviewItem.query.filter_by(user_id=user.id).count(), 0
             )
+
+    def test_ml_experiment_log_create_and_list(self):
+        self._complete_shared_prerequisites()
+        module_id = 'mle.classical-ml'
+
+        # Create an experiment
+        payload = {
+            'module_id': module_id,
+            'experiment_name': 'baseline logistic regression',
+            'dataset_version': 'v1.0',
+            'preprocessing_approach': 'standardize + impute',
+            'model_type': 'logistic_regression',
+            'hyperparameters': {'C': 1.0, 'max_iter': 1000},
+            'evaluation_metrics': {'accuracy': 0.85, 'f1': 0.82},
+            'observations': 'Baseline converges quickly on scaled features.',
+            'conclusion': 'Good starting point; try regularisation next.',
+        }
+        response = self.client.post(
+            '/specializations/machine-learning/experiments',
+            json=payload,
+        )
+        self.assertEqual(response.status_code, 201, response.get_json())
+        data = response.get_json()
+        self.assertEqual(data['experiment_name'], 'baseline logistic regression')
+        self.assertIsNotNone(data['id'])
+
+        # List experiments for the module
+        listed = self.client.get(
+            f'/specializations/machine-learning/experiments?module_id={module_id}'
+        )
+        self.assertEqual(listed.status_code, 200)
+        experiments = listed.get_json()['experiments']
+        self.assertEqual(len(experiments), 1)
+        self.assertEqual(experiments[0]['experiment_name'], 'baseline logistic regression')
+        self.assertEqual(experiments[0]['dataset_version'], 'v1.0')
+        self.assertEqual(experiments[0]['hyperparameters'], {'C': 1.0, 'max_iter': 1000})
+        self.assertEqual(experiments[0]['evaluation_metrics'], {'accuracy': 0.85, 'f1': 0.82})
+        self.assertEqual(
+            experiments[0]['observations'], 'Baseline converges quickly on scaled features.'
+        )
+        self.assertEqual(
+            experiments[0]['conclusion'], 'Good starting point; try regularisation next.'
+        )
+
+    def test_ml_experiment_requires_module_and_name(self):
+        self._complete_shared_prerequisites()
+
+        response = self.client.post(
+            '/specializations/machine-learning/experiments',
+            json={'module_id': 'mle.classical-ml'},
+        )
+        self.assertEqual(response.status_code, 400)
+
+        response = self.client.post(
+            '/specializations/machine-learning/experiments',
+            json={'experiment_name': 'test'},
+        )
+        self.assertEqual(response.status_code, 400)
+
+        response = self.client.get(
+            '/specializations/machine-learning/experiments'
+        )
+        self.assertEqual(response.status_code, 400)
+
+        response = self.client.get(
+            '/specializations/machine-learning/experiments?module_id=nonexistent'
+        )
+        self.assertEqual(response.status_code, 404)
+
+    def test_ml_experiment_crud_is_bounded_and_learner_owned(self):
+        module_id = 'mle.classical-ml'
+        created = self.client.post(
+            '/specializations/machine-learning/experiments',
+            json={
+                'module_id': module_id,
+                'experiment_name': 'baseline',
+                'dataset_version': 'v1',
+                'model_type': 'logistic regression',
+                'hyperparameters': {'C': 1.0},
+                'evaluation_metrics': {'f1': 0.82},
+            },
+        )
+        self.assertEqual(created.status_code, 201, created.get_json())
+        experiment_id = created.get_json()['id']
+
+        changed = self.client.patch(
+            f'/specializations/machine-learning/experiments/{experiment_id}',
+            json={
+                'conclusion': 'Use this as the baseline.',
+                'evaluation_metrics': {'f1': 0.84},
+            },
+        )
+        self.assertEqual(changed.status_code, 200, changed.get_json())
+        self.assertEqual(changed.get_json()['evaluation_metrics'], {'f1': 0.84})
+        self.assertEqual(changed.get_json()['conclusion'], 'Use this as the baseline.')
+
+        invalid = self.client.patch(
+            f'/specializations/machine-learning/experiments/{experiment_id}',
+            json={'model_type': ['not', 'text']},
+        )
+        self.assertEqual(invalid.status_code, 400)
+        oversized = self.client.post(
+            '/specializations/machine-learning/experiments',
+            json={'module_id': module_id, 'experiment_name': 'x' * 161},
+        )
+        self.assertEqual(oversized.status_code, 400)
+
+        deleted = self.client.delete(
+            f'/specializations/machine-learning/experiments/{experiment_id}'
+        )
+        self.assertEqual(deleted.status_code, 204)
+        listed = self.client.get(
+            f'/specializations/machine-learning/experiments?module_id={module_id}'
+        )
+        self.assertEqual(listed.get_json()['experiments'], [])
 
 
 if __name__ == '__main__':

@@ -658,6 +658,39 @@ class MLSpecializationCredential(db.Model):
     )
 
 
+class MLProjectExperiment(db.Model):
+    """Lightweight experiment log for ML specialization projects.
+
+    Records one training/evaluation experiment so learners can document
+    dataset version, preprocessing, model type, hyperparameters, and
+    metrics — the core of experiment tracking (G9, Sprint 6).
+    """
+
+    __tablename__ = 'ml_project_experiment'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    pathway_id = db.Column(db.String(80), nullable=False)
+    module_id = db.Column(db.String(100), nullable=False)
+    experiment_name = db.Column(db.String(160), nullable=False)
+    experiment_date = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    dataset_version = db.Column(db.String(120))
+    preprocessing_approach = db.Column(db.Text)
+    model_type = db.Column(db.String(120))
+    hyperparameters = db.Column(db.Text)  # JSON string
+    evaluation_metrics = db.Column(db.Text)  # JSON string
+    observations = db.Column(db.Text)
+    conclusion = db.Column(db.Text)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+    __table_args__ = (
+        db.Index('idx_ml_experiment_user_module', 'user_id', 'module_id'),
+    )
+
+
 class CoursePlan(db.Model):
     """Learner-selected required capstone and independent portfolio project."""
     __tablename__ = 'course_plan'

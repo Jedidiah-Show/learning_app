@@ -12,6 +12,24 @@ class _TimeLimitExceeded(Exception):
     pass
 
 
+class _BoundedCapture(io.StringIO):
+    """Keep learner output from consuming the sandbox memory budget."""
+    def __init__(self, limit=16 * 1024):
+        super().__init__()
+        self.remaining = limit
+        self.truncated = False
+
+    def write(self, text):
+        if self.remaining <= 0:
+            self.truncated = True
+            return len(text)
+        kept = text[:self.remaining]
+        self.remaining -= len(kept)
+        if len(kept) != len(text):
+            self.truncated = True
+        return super().write(kept)
+
+
 def _raise_time_limit(signum, frame):
     raise _TimeLimitExceeded()
 
@@ -49,7 +67,7 @@ def main():
     timeout = min(max(float(payload.get("timeout", 3.0)), 0.1), 5.0)
     started = time.monotonic()
     namespace = {"__name__": "__main__"}
-    captured = io.StringIO()
+    captured = _BoundedCapture()
     assertion_results = []
     signal.signal(signal.SIGALRM, _raise_time_limit)
     signal.setitimer(signal.ITIMER_REAL, timeout)

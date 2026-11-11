@@ -531,7 +531,7 @@
     "examples": [
       {
         "input": "[2, 4, 4, 4, 5, 5, 7, 9]",
-        "output": "[-1.5, 0.5, 0.5, 0.5, 1.0, 1.0, 2.0, 3.0]",
+        "output": "[-1.5, -0.5, -0.5, -0.5, 0.0, 0.0, 1.0, 2.0]",
         "explanation": "The mean is 5 and the population standard deviation is 2, so each value is (value - 5) / 2."
       },
       {
@@ -552,7 +552,7 @@
     "estimated_minutes": 15,
     "starter_code": "def standardize(values):\n    # TODO: return [(v - mean) / std_dev for v in values].\n    # Return None for empty input or zero standard deviation.\n    pass\n",
     "solution_code": "def standardize(values):\n    if not values:\n        return None\n    count = len(values)\n    total = 0.0\n    for value in values:\n        total += value\n    mean = total / count\n    squared_difference = 0.0\n    for value in values:\n        difference = value - mean\n        squared_difference += difference * difference\n    variance = squared_difference / count\n    std_dev = variance ** 0.5\n    if std_dev == 0:\n        return None\n    return [\n        round((value - mean) / std_dev, 4)\n        for value in values\n    ]\n",
-    "browser_checks": "assert standardize([2, 4, 4, 4, 5, 5, 7, 9]) == [-1.5, 0.5, 0.5, 0.5, 1.0, 1.0, 2.0, 3.0]\nassert standardize([]) is None\nassert standardize([5, 5, 5]) is None\nresult = standardize([1, 2, 3])\nassert abs(result[0] - (-1.2247)) < 0.0001\nassert abs(result[1] - 0.0) < 0.0001\nassert abs(result[2] - 1.2247) < 0.0001\nprint('All public checks passed.')\n",
+    "browser_checks": "assert standardize([2, 4, 4, 4, 5, 5, 7, 9]) == [-1.5, -0.5, -0.5, -0.5, 0.0, 0.0, 1.0, 2.0]\nassert standardize([]) is None\nassert standardize([5, 5, 5]) is None\nresult = standardize([1, 2, 3])\nassert abs(result[0] - (-1.2247)) < 0.0001\nassert abs(result[1] - 0.0) < 0.0001\nassert abs(result[2] - 1.2247) < 0.0001\nprint('All public checks passed.')\n",
     "hints": [
       "Guard empty input and zero standard deviation first.",
       "Standardization subtracts the mean and divides by the population standard deviation.",
@@ -697,8 +697,8 @@
     "skills": ["deep-learning", "python"],
     "prerequisites": [],
     "estimated_minutes": 15,
-    "starter_code": "def forward_pass(inputs, weights, bias):\n    # TODO: compute sigmoid(dot(inputs, weights) + bias).\n    # Return None for empty or mismatched inputs.\n    pass\n",
-    "solution_code": "def forward_pass(inputs, weights, bias):\n    if not inputs or not weights or len(inputs) != len(weights):\n        return None\n    z = bias\n    for x, w in zip(inputs, weights):\n        z += x * w\n    return round(1 / (1 + 2.718281828459045 ** (-z)), 4)\n",
+    "starter_code": "def forward_pass(inputs, weights, bias=0.0):\n    # TODO: compute sigmoid(dot(inputs, weights) + bias).\n    # Return None for empty or mismatched inputs.\n    pass\n",
+    "solution_code": "def forward_pass(inputs, weights, bias=0.0):\n    if not inputs or not weights or len(inputs) != len(weights):\n        return None\n    z = bias\n    for x, w in zip(inputs, weights):\n        z += x * w\n    return round(1 / (1 + 2.718281828459045 ** (-z)), 4)\n",
     "browser_checks": "result = forward_pass([1, 2], [0.5, -0.5], 0.0)\nassert abs(result - 0.3775) < 0.0001\nassert forward_pass([], []) is None\nassert forward_pass([1], [1, 2]) is None\nassert forward_pass([0, 0], [1, 1], 0.0) == 0.5\nresult2 = forward_pass([1, 2], [1, 2], 0.0)\nassert abs(result2 - 0.9933) < 0.0001\nprint('All public checks passed.')\n",
     "hints": [
       "Guard empty or mismatched inputs first.",
@@ -740,5 +740,121 @@
       "An empty bundle means all four keys are missing."
     ],
     "editorial": "Model serialization (milestone M7) is more than saving weights: a usable bundle must also preserve preprocessing steps, the feature schema, and a version so inference can reproduce training exactly. Validating the bundle before deployment catches missing artefacts early and prevents silent prediction failures in production."
+  },
+  {
+    "id": "ml-evaluation-cross-validation",
+    "track": "machine-learning",
+    "topic": "ml-statistics",
+    "title": "K-fold cross-validation fold sizes",
+    "summary": "Compute the fold sizes for K-fold cross-validation given a dataset size and K.",
+    "statement": "Write cross_validation_fold_sizes(n, k) that returns a list of k integers representing the number of samples in each fold. Folds should be as equal as possible: the first n % k folds get one extra sample. Return None for invalid inputs (n <= 0, k <= 0, or k > n). Do not import any external package.",
+    "examples": [
+      {
+        "input": "10, 3",
+        "output": "[4, 3, 3]",
+        "explanation": "10 samples split into 3 folds: 10 % 3 = 1 fold gets 4 samples, the other 2 get 3 each."
+      },
+      {
+        "input": "5, 5",
+        "output": "[1, 1, 1, 1, 1]",
+        "explanation": "5 samples split into 5 folds: each fold gets exactly 1 sample."
+      }
+    ],
+    "constraints": [
+      "n and k are positive integers.",
+      "Return None for n <= 0, k <= 0, or k > n.",
+      "Folds are as equal as possible.",
+      "Do not import any external package."
+    ],
+    "difficulty": "beginner",
+    "skills": ["model-evaluation", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 10,
+    "starter_code": "def cross_validation_fold_sizes(n, k):\n    # TODO: return a list of k fold sizes as equal as possible.\n    # Return None for invalid inputs.\n    pass\n",
+    "solution_code": "def cross_validation_fold_sizes(n, k):\n    if n <= 0 or k <= 0 or k > n:\n        return None\n    base = n // k\n    remainder = n % k\n    return [base + 1] * remainder + [base] * (k - remainder)\n",
+    "browser_checks": "assert cross_validation_fold_sizes(10, 3) == [4, 3, 3]\nassert cross_validation_fold_sizes(5, 5) == [1, 1, 1, 1, 1]\nassert cross_validation_fold_sizes(12, 4) == [3, 3, 3, 3]\nassert cross_validation_fold_sizes(0, 3) is None\nassert cross_validation_fold_sizes(5, 0) is None\nassert cross_validation_fold_sizes(3, 5) is None\nprint('All public checks passed.')\n",
+    "hints": [
+      "Guard invalid inputs first: n <= 0, k <= 0, or k > n.",
+      "Each fold gets at least n // k samples.",
+      "The first n % k folds get one extra sample to distribute the remainder."
+    ],
+    "editorial": "K-fold cross-validation (milestone M4) splits data into k folds, trains on k-1 and validates on the remaining fold, rotating so every sample is validated exactly once. Computing fold sizes shows learners that folds need not be identical — the remainder is distributed one-per-fold — and that k cannot exceed the dataset size. This is a foundational evaluation technique that reduces variance compared to a single train/test split."
+  },
+  {
+    "id": "ml-optimisation-hyperparameter-grid",
+    "track": "machine-learning",
+    "topic": "ml-statistics",
+    "title": "Hyperparameter grid size",
+    "summary": "Compute the total number of combinations in a hyperparameter grid.",
+    "statement": "Write hyperparameter_grid_size(grid) that takes a dictionary mapping hyperparameter names to lists of candidate values and returns the total number of combinations (the product of list lengths). Return 0 for an empty grid. Return None if any value is not a list. Do not import any external package.",
+    "examples": [
+      {
+        "input": "{'C': [0.1, 1, 10], 'max_iter': [100, 200]}",
+        "output": "6",
+        "explanation": "3 values for C × 2 values for max_iter = 6 combinations."
+      },
+      {
+        "input": "{}",
+        "output": "0",
+        "explanation": "An empty grid has no combinations."
+      }
+    ],
+    "constraints": [
+      "grid maps strings to lists of values.",
+      "Return 0 for an empty grid.",
+      "Return None if any value is not a list.",
+      "Do not import any external package."
+    ],
+    "difficulty": "beginner",
+    "skills": ["optimisation", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 10,
+    "starter_code": "def hyperparameter_grid_size(grid):\n    # TODO: return the product of list lengths in the grid.\n    # Return 0 for empty grid, None if any value is not a list.\n    pass\n",
+    "solution_code": "def hyperparameter_grid_size(grid):\n    if not isinstance(grid, dict):\n        return None\n    if not grid:\n        return 0\n    total = 1\n    for values in grid.values():\n        if not isinstance(values, list):\n            return None\n        total *= len(values)\n    return total\n",
+    "browser_checks": "assert hyperparameter_grid_size({'C': [0.1, 1, 10], 'max_iter': [100, 200]}) == 6\nassert hyperparameter_grid_size({}) == 0\nassert hyperparameter_grid_size({'kernel': ['linear', 'rbf']}) == 2\nassert hyperparameter_grid_size({'C': 'not_a_list'}) is None\nprint('All public checks passed.')\n",
+    "hints": [
+      "Validate that every value is a list before computing.",
+      "The total combinations is the product of all list lengths.",
+      "An empty grid has zero combinations."
+    ],
+    "editorial": "Hyperparameter tuning (milestone M4) searches a grid of parameter combinations to find the best model. The grid size grows multiplicatively — adding one parameter with m values multiplies the search space by m — which is why grid search becomes expensive quickly and random search is often used as an alternative. Computing grid size helps learners anticipate compute cost before launching a search."
+  },
+  {
+    "id": "ml-data-analysis-visualisation-summary",
+    "track": "machine-learning",
+    "topic": "ml-data-analysis",
+    "title": "Numerical summary for visualisation",
+    "summary": "Compute min, max, and count to inform chart axis choices.",
+    "statement": "Write numerical_summary(values) that returns a dictionary with keys min, max, and count for a list of numbers. Return None for an empty list. Do not import statistics or any external package.",
+    "examples": [
+      {
+        "input": "[3, 1, 4, 1, 5]",
+        "output": "{'min': 1, 'max': 5, 'count': 5}",
+        "explanation": "Minimum is 1, maximum is 5, and there are 5 values."
+      },
+      {
+        "input": "[]",
+        "output": "None",
+        "explanation": "There are no values to summarise."
+      }
+    ],
+    "constraints": [
+      "values contains only numbers.",
+      "Return None for an empty list.",
+      "Do not import statistics or any external package."
+    ],
+    "difficulty": "beginner",
+    "skills": ["data-analysis", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 10,
+    "starter_code": "def numerical_summary(values):\n    # TODO: return {'min': ..., 'max': ..., 'count': ...}.\n    # Return None for empty input.\n    pass\n",
+    "solution_code": "def numerical_summary(values):\n    if not values:\n        return None\n    minimum = values[0]\n    maximum = values[0]\n    for value in values:\n        if value < minimum:\n            minimum = value\n        if value > maximum:\n            maximum = value\n    return {'min': minimum, 'max': maximum, 'count': len(values)}\n",
+    "browser_checks": "assert numerical_summary([3, 1, 4, 1, 5]) == {'min': 1, 'max': 5, 'count': 5}\nassert numerical_summary([]) is None\nassert numerical_summary([7]) == {'min': 7, 'max': 7, 'count': 1}\nprint('All public checks passed.')\n",
+    "hints": [
+      "Guard empty input first.",
+      "Track running minimum and maximum in a single pass.",
+      "Count is just the length of the list."
+    ],
+    "editorial": "Data visualisation (milestone M2) starts with understanding your data's range: min and max determine sensible axis limits, and count tells you how much data you have. Computing these from scratch reinforces that charts are just visual encodings of basic summaries — always compute the numbers before drawing the chart."
   }
 ]

@@ -15,19 +15,7 @@
 <section class="mt-8 rounded-2xl border {% if ml_overview.prerequisites_met %}border-violet-200 bg-violet-50{% else %}border-slate-200 bg-white{% endif %} p-6 shadow-sm">
   <p class="text-xs font-bold uppercase tracking-wider {% if ml_overview.prerequisites_met %}text-violet-700{% else %}text-slate-500{% endif %}">{% if ml_leads %}Your pathway{% else %}Optional pathway{% endif %}</p>
   <h3 class="mt-2 text-xl font-bold text-slate-900">{{ ml_overview.title }} specialization</h3>
-  {% if not ml_overview.prerequisites_met %}
-  <p class="mt-2 text-sm text-slate-600">Opens after your Module 01 and Module 02 course projects. Preview the pathway any time.</p>
-  {% if ml_leads %}
-  {% if next_lesson %}
-  <a class="mt-4 inline-flex rounded-lg bg-brand-900 px-4 py-2 font-semibold text-white transition hover:bg-brand-800" href="{{ url_for('main.lesson_detail', lesson_id=next_lesson.id) }}">Start the shared foundation →</a>
-  {% elif next_project %}
-  <a class="mt-4 inline-flex rounded-lg bg-brand-900 px-4 py-2 font-semibold text-white transition hover:bg-brand-800" href="{{ url_for('projects.project_page') }}#module-{{ next_project.module_id }}">Complete Module {{ next_project.module_number }} to unlock →</a>
-  {% else %}
-  <a class="mt-4 inline-flex rounded-lg bg-brand-900 px-4 py-2 font-semibold text-white transition hover:bg-brand-800" href="{{ url_for('main.lessons') }}">Start the shared foundation →</a>
-  {% endif %}
-  {% endif %}
-  <a class="mt-4 inline-flex rounded-lg border border-slate-300 bg-white px-4 py-2 font-semibold text-slate-700 transition hover:bg-slate-50" href="{{ url_for('main.machine_learning_specialization') }}">Preview the pathway →</a>
-  {% elif ml_overview.complete %}
+  {% if ml_overview.complete %}
   <p class="mt-2 text-sm text-violet-900">All {{ ml_overview.total_lessons }} lessons and {{ ml_overview.total_projects }} projects passed. Your specialization credential is ready to claim.</p>
   <a class="mt-4 inline-flex rounded-lg bg-violet-700 px-4 py-2 font-semibold text-white transition hover:bg-violet-600" href="{{ url_for('ml_specialization.credential_page') }}">Claim your credential →</a>
   {% else %}

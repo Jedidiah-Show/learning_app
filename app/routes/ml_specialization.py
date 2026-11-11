@@ -20,7 +20,7 @@ from app import db
 from app.ml_pathway import PATHWAY_ID, machine_learning_pathway
 from app.models import (
     CourseProject, MLSpecializationLessonCompletion,
-    MLSpecializationCredential, MLSpecializationProject,
+    MLSpecializationCredential, MLSpecializationProject, MLProjectExperiment,
 )
 from sqlalchemy.exc import IntegrityError
 from app.project_verification import VerificationError, verify_checks
@@ -33,6 +33,16 @@ ml_specialization_bp = Blueprint('ml_specialization', __name__)
 STARTER_PATH = (
     Path(__file__).parents[2] / 'starter_kits' / 'machine_learning' / 'module_1'
 )
+
+_EXPERIMENT_TEXT_LIMITS = {
+    'experiment_name': 160,
+    'dataset_version': 120,
+    'preprocessing_approach': 6000,
+    'model_type': 120,
+    'observations': 6000,
+    'conclusion': 6000,
+}
+_EXPERIMENT_JSON_LIMIT = 12000
 
 def _attempt_outcome(record, stage, detail=None):
     """Persist why this attempt did not pass, for pilot analysis.
@@ -107,14 +117,8 @@ def _previous_projects_complete(module):
 
 
 def _prerequisites_met():
-    completed = {
-        row.module_id for row in CourseProject.query.filter(
-            CourseProject.user_id == current_user.id,
-            CourseProject.module_id.in_(['01', '02']),
-            CourseProject.completed.is_(True),
-        ).all()
-    }
-    return {'01', '02'}.issubset(completed)
+    """ML has its own foundation; AI projects are recommended, never gates."""
+    return True
 
 
 def _expected_data_audit_report():
@@ -699,3 +703,128 @@ def verify_credential(public_id):
         credential=credential, pathway=machine_learning_pathway(),
         signature_ok=signature_ok,
     )
+
+
+def _experiment_payload(experiment):
+    """Serialize an experiment without exposing another learner's records."""
+    def decode(value):
+        try:
+            return json.loads(value) if value else None
+        except (TypeError, ValueError):
+            # Old or manually repaired rows remain readable; API writes always
+            # store validated JSON below.
+            return None
+
+    return {
+        'id': experiment.id,
+        'module_id': experiment.module_id,
+        'experiment_name': experiment.experiment_name,
+        'experiment_date': experiment.experiment_date.isoformat(),
+        'dataset_version': experiment.dataset_version,
+        'preprocessing_approach': experiment.preprocessing_approach,
+        'model_type': experiment.model_type,
+        'hyperparameters': decode(experiment.hyperparameters),
+        'evaluation_metrics': decode(experiment.evaluation_metrics),
+        'observations': experiment.observations,
+        'conclusion': experiment.conclusion,
+        'created_at': experiment.created_at.isoformat(),
+        'updated_at': experiment.updated_at.isoformat(),
+    }
+
+
+def _validated_experiment_data(data, *, require_module, partial=False):
+    if not isinstance(data, dict):
+        return None, ('Request body must be a JSON object', 400)
+    cleaned = {}
+    module_id = data.get('module_id')
+    if require_module or module_id is not None:
+        if not isinstance(module_id, str) or not module_id.strip():
+            return None, ('module_id is required', 400)
+        module_id = module_id.strip()
+        if _module(module_id) is None:
+            return None, ('Module not found', 404)
+        cleaned['module_id'] = module_id
+    for field, limit in _EXPERIMENT_TEXT_LIMITS.items():
+        if partial and field not in data:
+            continue
+        value = data.get(field)
+        if field == 'experiment_name' and not isinstance(value, str):
+            return None, ('experiment_name is required', 400)
+        if value is not None:
+            if not isinstance(value, str):
+                return None, (f'{field} must be text', 400)
+            value = value.strip()
+            if field == 'experiment_name' and not value:
+                return None, ('experiment_name is required', 400)
+            if len(value) > limit:
+                return None, (f'{field} must be at most {limit} characters', 400)
+        cleaned[field] = value
+    for field in ('hyperparameters', 'evaluation_metrics'):
+        if partial and field not in data:
+            continue
+        value = data.get(field)
+        if value is not None and not isinstance(value, (dict, list)):
+            return None, (f'{field} must be a JSON object or array', 400)
+        encoded = json.dumps(value, ensure_ascii=False, separators=(',', ':')) if value is not None else None
+        if encoded is not None and len(encoded) > _EXPERIMENT_JSON_LIMIT:
+            return None, (f'{field} is too large', 400)
+        cleaned[field] = encoded
+    return cleaned, None
+
+
+@ml_specialization_bp.route('/specializations/machine-learning/experiments', methods=['GET'])
+@login_required
+def list_ml_experiments():
+    """List only the signed-in learner's experiment logs for one module."""
+    module_id = request.args.get('module_id', '').strip()
+    if not module_id:
+        return jsonify({'error': 'module_id is required'}), 400
+    if _module(module_id) is None:
+        return jsonify({'error': 'Module not found'}), 404
+    rows = MLProjectExperiment.query.filter_by(
+        user_id=current_user.id, pathway_id=PATHWAY_ID, module_id=module_id,
+    ).order_by(MLProjectExperiment.experiment_date.desc(), MLProjectExperiment.id.desc()).all()
+    return jsonify({'experiments': [_experiment_payload(row) for row in rows]})
+
+
+@ml_specialization_bp.route('/specializations/machine-learning/experiments', methods=['POST'])
+@login_required
+def create_ml_experiment():
+    """Create a bounded, structured experiment record."""
+    values, error = _validated_experiment_data(get_json_object(), require_module=True)
+    if error:
+        return jsonify({'error': error[0]}), error[1]
+    experiment = MLProjectExperiment(
+        user_id=current_user.id, pathway_id=PATHWAY_ID, **values,
+    )
+    db.session.add(experiment)
+    db.session.commit()
+    return jsonify(_experiment_payload(experiment)), 201
+
+
+@ml_specialization_bp.route('/specializations/machine-learning/experiments/<int:experiment_id>', methods=['PATCH'])
+@login_required
+def update_ml_experiment(experiment_id):
+    experiment = MLProjectExperiment.query.filter_by(
+        id=experiment_id, user_id=current_user.id, pathway_id=PATHWAY_ID,
+    ).first_or_404()
+    values, error = _validated_experiment_data(
+        get_json_object(), require_module=False, partial=True,
+    )
+    if error:
+        return jsonify({'error': error[0]}), error[1]
+    for field, value in values.items():
+        setattr(experiment, field, value)
+    db.session.commit()
+    return jsonify(_experiment_payload(experiment))
+
+
+@ml_specialization_bp.route('/specializations/machine-learning/experiments/<int:experiment_id>', methods=['DELETE'])
+@login_required
+def delete_ml_experiment(experiment_id):
+    experiment = MLProjectExperiment.query.filter_by(
+        id=experiment_id, user_id=current_user.id, pathway_id=PATHWAY_ID,
+    ).first_or_404()
+    db.session.delete(experiment)
+    db.session.commit()
+    return '', 204
