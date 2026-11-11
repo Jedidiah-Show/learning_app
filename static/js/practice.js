@@ -63,7 +63,12 @@ if (root) {
         status.dataset.state = state;
     };
 
-    const currentSource = () => editor.getSource();
+    const currentSource = () => {
+        if (editor) {
+            return editor.getSource();
+        }
+        return '';
+    };
 
     const recordUsage = async (event) => {
         try {
@@ -122,8 +127,10 @@ if (root) {
     };
 
     const setEditorSource = (source) => {
-        switching = true;
-        editor.setSource(source);
+        if (editor) {
+            switching = true;
+            editor.setSource(source);
+        }
         switching = false;
     };
 
