@@ -1,12 +1,8 @@
 """Routes for the Cloud & AI Infrastructure specialization."""
 
-from datetime import datetime, timezone
-
-from flask import Blueprint, abort, current_app, flash, jsonify, redirect, render_template, request, url_for
+from flask import Blueprint, abort, render_template
 from flask_login import current_user, login_required
 
-from app import db
-from app.access import lesson_is_available
 from app.cloud_ai_infrastructure import (
     cloud_ai_infrastructure_lessons,
     cloud_ai_infrastructure_pathway,

@@ -22,6 +22,9 @@ from app.models import TutorConversation
 from app.practice import get_practice_exercise
 from app.rate_limit import enforce_rate_limit
 from app.request_data import get_json_object
+from app.services.lesson_state import (
+    learner_today, setup_checks_for_plan,
+)
 
 lessons_bp = Blueprint('lessons', __name__)
 MAX_PRACTICE_SOURCE_LENGTH = 20000
@@ -34,21 +37,6 @@ TUTOR_GREETING_RE = re.compile(
 
 MAX_VIDEO_SECONDS = 24 * 60 * 60
 VIDEO_COMPLETION_RATIO = 0.9
-
-
-def _learner_today():
-    """Current calendar date in the learner's timezone (X-Timezone header)."""
-    from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
-
-    name = (request.headers.get('X-Timezone') or '').strip()
-    tz = timezone.utc
-    if name:
-        try:
-            tz = ZoneInfo(name)
-        except (ValueError, ZoneInfoNotFoundError):
-            pass
-    now = datetime.now(tz)
-    return now.date()
 
 
 @lessons_bp.cli.command('practice-usage')
@@ -261,7 +249,7 @@ def placement_check():
     data = get_json_object()
     # The placement questions ship with the curriculum; throttle retries so
     # brute-force scoring cannot mass-complete skippable lessons.
-    enforce_rate_limit('placement', 3, 3600, str(current_user.id))
+    enforce_rate_limit('placement', str(current_user.id))
     answers = data.get('answers') if isinstance(data, dict) else None
     if not isinstance(answers, dict):
         return jsonify({'error': 'Answers must be an object keyed by question id'}), 400
@@ -396,27 +384,6 @@ def placement_check():
     })
 
 
-def _setup_checks_of(plan):
-    stored = {}
-    if plan and plan.setup_checks:
-        try:
-            decoded = json.loads(plan.setup_checks)
-        except (TypeError, ValueError):
-            decoded = None
-        if isinstance(decoded, dict):
-            stored = {
-                check['id']: bool(decoded.get(check['id']))
-                for check in SETUP_CHECKS
-            }
-    return {check['id']: bool(stored.get(check['id'])) for check in SETUP_CHECKS}
-
-
-def _stored_setup_checks(user):
-    """Per-check guided-start ticks for one learner, from their persisted plan."""
-    plan = CoursePlan.query.filter_by(user_id=user.id).first()
-    return _setup_checks_of(plan) if plan else _setup_checks_of(None)
-
-
 @lessons_bp.route('/setup-checks', methods=['GET', 'POST'])
 @login_required
 def setup_checks():
@@ -429,7 +396,7 @@ def setup_checks():
     if plan is None:
         plan = CoursePlan(user_id=current_user.id, track='standard')
         db.session.add(plan)
-    checks = _setup_checks_of(plan)
+    checks = setup_checks_for_plan(plan)
     if request.method == 'GET':
         return jsonify({'checks': checks, 'done': sum(checks.values())})
 
@@ -647,7 +614,7 @@ def complete_lesson():
         ))
     try:
         from datetime import timedelta
-        _today = _learner_today()
+        _today = learner_today()
         if current_user.last_study_date is None:
             current_user.streak = 1
             current_user.longest_streak = max(current_user.longest_streak or 0, 1)

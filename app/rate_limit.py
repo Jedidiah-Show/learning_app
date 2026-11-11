@@ -38,14 +38,27 @@ RATE_LIMIT_CONFIG = {
     'support-request-user': {'limit': 5, 'window_seconds': 86400},
     'admin-ai-json-burst': {'limit': 6, 'window_seconds': 60},
     'admin-ai-json-daily': {'limit': 100, 'window_seconds': 86400},
+    'login-ip': {'limit': 20, 'window_seconds': 300},
+    'login-account': {'limit': 8, 'window_seconds': 300},
+    'forgot-ip': {'limit': 5, 'window_seconds': 900},
+    'forgot-identifier': {'limit': 3, 'window_seconds': 900},
+    'phone-verify': {'limit': 8, 'window_seconds': 900},
+    'phone-resend': {'limit': 3, 'window_seconds': 1800},
+    'reset-password': {'limit': 20, 'window_seconds': 3600},
+    'register-ip': {'limit': 10, 'window_seconds': 3600},
+    'admin-login-ip': {'limit': 10, 'window_seconds': 300},
+    'admin-login-account': {'limit': 5, 'window_seconds': 300},
+    'placement': {'limit': 3, 'window_seconds': 3600},
 }
 
 
 class RateLimitExceeded(Exception):
-    def __init__(self, retry_after, name=None):
+    def __init__(self, retry_after, name=None, limit=None, window_seconds=None):
         super().__init__('Too many requests')
         self.retry_after = max(1, int(retry_after))
         self.name = name
+        self.limit = limit
+        self.window_seconds = window_seconds
 
 
 def _utcnow():
@@ -65,18 +78,12 @@ def identity_hash(value):
 
 
 def _bucket_key(name, identity):
-    return f'{name}:{identity or client_ip()}'[:255]
+    return f'{name}:{identity_hash(identity or client_ip())}'
 
 
 def _get_config(name, identity=None):
-    """Get rate limit config for a given bucket name, with identity-aware fallback."""
-    # Start with default general API config
-    config = dict(RATE_LIMIT_CONFIG.get('api-general', {'limit': 200, 'window_seconds': 600}))
-    # Apply specific override if this is a known endpoint
-    if name in RATE_LIMIT_CONFIG:
-        if name not in ('api-general', 'api-strict', 'api-relaxed'):
-            config = dict(RATE_LIMIT_CONFIG[name])
-    return config
+    """Get a named policy, falling back to the general API limit."""
+    return dict(RATE_LIMIT_CONFIG.get(name, RATE_LIMIT_CONFIG['api-general']))
 
 
 def _increment(bucket, window_start):
@@ -158,22 +165,15 @@ def check_rate_limit(name, identity=None, *, limit=None, window_seconds=None):
         return None
 
 
-def enforce_rate_limit(name, identity=None, *legacy_args):
-    """Enforce a configured limit, including the previous per-call form.
-
-    The current form is ``enforce_rate_limit(name, identity)``. Existing
-    endpoints may still pass ``name, limit, window_seconds, identity``.
-    """
-    limit = window_seconds = None
-    if legacy_args:
-        if len(legacy_args) != 2:
-            raise TypeError('Expected identity or limit, window_seconds, identity')
-        limit, window_seconds, identity = identity, *legacy_args
-    retry_after = check_rate_limit(
-        name, identity, limit=limit, window_seconds=window_seconds
-    )
+def enforce_rate_limit(name, identity=None):
+    """Enforce the limit configured for one named endpoint."""
+    config = _get_config(name, identity)
+    retry_after = check_rate_limit(name, identity)
     if retry_after is not None:
-        raise RateLimitExceeded(retry_after, name=name)
+        raise RateLimitExceeded(
+            retry_after, name=name, limit=config['limit'],
+            window_seconds=config['window_seconds'],
+        )
 
 
 def rate_limit_response(error):
@@ -186,16 +186,17 @@ def rate_limit_response(error):
             mimetype='text/plain',
         )
     name = getattr(error, 'name', None)
-    if name and name in RATE_LIMIT_CONFIG:
-        response.headers['X-RateLimit-Limit'] = str(RATE_LIMIT_CONFIG[name]['limit'])
-        response.headers['X-RateLimit-Window'] = str(RATE_LIMIT_CONFIG[name]['window_seconds'])
-    else:
-        response.headers['X-RateLimit-Limit'] = str(
-            current_app.config.get('RATE_LIMIT_GENERAL_LIMIT', 200)
-        )
-        response.headers['X-RateLimit-Window'] = str(
-            current_app.config.get('RATE_LIMIT_GENERAL_WINDOW', 600)
-        )
+    config = RATE_LIMIT_CONFIG.get(name, {})
+    response.headers['X-RateLimit-Limit'] = str(
+        getattr(error, 'limit', None)
+        or config.get('limit')
+        or current_app.config.get('RATE_LIMIT_GENERAL_LIMIT', 200)
+    )
+    response.headers['X-RateLimit-Window'] = str(
+        getattr(error, 'window_seconds', None)
+        or config.get('window_seconds')
+        or current_app.config.get('RATE_LIMIT_GENERAL_WINDOW', 600)
+    )
     response.headers['Retry-After'] = str(error.retry_after)
     response.headers['X-RateLimit-Remaining'] = '0'
     return response

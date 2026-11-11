@@ -26,24 +26,13 @@ from sqlalchemy.exc import IntegrityError
 from app.project_verification import VerificationError, verify_checks
 from app.request_data import get_json_object
 from app.user_preferences import get_effective_config_for_user
+from app.services.ml_project import FAILURE_STAGES
 
 
 ml_specialization_bp = Blueprint('ml_specialization', __name__)
 STARTER_PATH = (
     Path(__file__).parents[2] / 'starter_kits' / 'machine_learning' / 'module_1'
 )
-
-# Stage B instrumentation: the server-owned failure taxonomy stored on each
-# project record. Only stages produced by this route may appear in data, and
-# the labels are what the admin analytics page renders.
-FAILURE_STAGES = {
-    'report_contract': 'Report does not match the fixed dataset contract',
-    'ci_verification': 'Public automated checks could not be verified',
-    'review_unavailable': 'Automated review unavailable (submission saved)',
-    'review_invalid': 'Automated review returned an invalid result',
-    'rubric_below_threshold': 'Review completed but below the pass threshold',
-}
-
 
 def _attempt_outcome(record, stage, detail=None):
     """Persist why this attempt did not pass, for pilot analysis.

@@ -28,9 +28,9 @@ from app.models import (CalendarEvent, LessonBookmark, LessonNote, LessonComplet
                         CoursePlan, CourseProject, MLSpecializationLessonCompletion,
                         MLSpecializationProject, Quiz, QuizResult, ReviewItem,
                         StudySession, SupportRequest)
-from app.routes.lessons import _stored_setup_checks
 from app.user_preferences import get_effective_config_for_user, get_user_preferences, set_user_preferences
 from app.request_data import get_json_object
+from app.services.lesson_state import learner_today, stored_setup_checks
 
 main_bp = Blueprint('main', __name__)
 
@@ -191,7 +191,7 @@ def index():
         streak = getattr(current_user, 'streak', 0) or 0
         longest_streak = getattr(current_user, 'longest_streak', 0) or 0
         setup_checks = SETUP_CHECKS
-        setup_states = _stored_setup_checks(current_user)
+        setup_states = stored_setup_checks(current_user)
         setup_done = sum(1 for check in setup_checks if setup_states.get(check['id']))
         plan = CoursePlan.query.filter_by(user_id=current_user.id).first()
         onboarding_complete = bool(
@@ -595,7 +595,6 @@ def schedule():
 @login_required
 def progress():
     from datetime import datetime, timedelta, timezone
-    from app.routes.lessons import _learner_today
     from app.pathway_scope import (
         destination_for, is_ml, pathway_lessons, pathway_pace,
     )
@@ -605,7 +604,7 @@ def progress():
     ).all()
     dates = {item.completed_at.date() for item in completions if item.completed_at}
     streak = 0
-    cursor = _learner_today()
+    cursor = learner_today()
     if cursor not in dates:
         cursor -= timedelta(days=1)
     while cursor in dates:
@@ -812,7 +811,7 @@ def lesson_detail(lesson_id):
     return render_template('lessons/detail.html', lesson=lesson, module=lesson['_module'],
                            completed=completed,
                            setup_checks=SETUP_CHECKS,
-                           setup_states=_stored_setup_checks(current_user),
+                           setup_states=stored_setup_checks(current_user),
                            practice_exercises=practice_exercises_for_lesson(lesson_id),
                            next_lesson_id=progress['next_lesson_id'],
                            next_action=progress['next_action'],

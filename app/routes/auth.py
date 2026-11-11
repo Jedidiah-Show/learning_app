@@ -165,11 +165,9 @@ def login():
         username = request.form.get('username') or request.form.get('email')
         password = request.form.get('password')
         email = username.strip().lower() if isinstance(username, str) else username
+        enforce_rate_limit('login-ip', client_ip())
         enforce_rate_limit(
-            'login-ip', 20, 300, client_ip()
-        )
-        enforce_rate_limit(
-            'login-account', 8, 300,
+            'login-account',
             f'{client_ip()}:{identity_hash(email or username)}',
         )
         user = User.query.filter(
@@ -215,9 +213,9 @@ def forgot_password():
     raw_identifier = request.form.get('identifier')
     if raw_identifier is None:
         raw_identifier = request.form.get('email')
-    enforce_rate_limit('forgot-ip', 5, 900, client_ip())
+    enforce_rate_limit('forgot-ip', client_ip())
     enforce_rate_limit(
-        'forgot-identifier', 3, 900,
+        'forgot-identifier',
         f'{client_ip()}:{identity_hash(raw_identifier)}',
     )
     identifier_kind, identifier = _password_reset_identifier(raw_identifier)
@@ -283,8 +281,7 @@ def forgot_password():
 def reset_password(token):
     if request.method == 'POST':
         enforce_rate_limit(
-            'reset-password', 20, 3600,
-            f'{client_ip()}:{identity_hash(token)}',
+            'reset-password', f'{client_ip()}:{identity_hash(token)}'
         )
     token_hash = hashlib.sha256(token.encode('utf-8')).hexdigest()
     reset_token = PasswordResetToken.query.filter_by(
@@ -331,7 +328,7 @@ def register():
         return redirect(url_for('main.index'))
     
     if request.method == 'POST':
-        enforce_rate_limit('register-ip', 10, 3600, client_ip())
+        enforce_rate_limit('register-ip', client_ip())
         username = (request.form.get('username') or '').strip()
         email = (request.form.get('email') or '').strip().lower()
         raw_phone = (request.form.get('phone') or '').strip()
@@ -699,7 +696,7 @@ def verify_phone():
         flash('Phone verification is not available for this account.', 'error')
         return redirect(url_for('auth.profile'))
     enforce_rate_limit(
-        'phone_verify', 8, 900, identity_hash(str(current_user.id))
+        'phone-verify', identity_hash(str(current_user.id))
     )
     submitted = (request.form.get('code') or '').strip()
     if not submitted.isdigit():
@@ -778,7 +775,7 @@ def resend_phone_verification():
         flash('Phone verification is not available for this account.', 'error')
         return redirect(url_for('auth.profile'))
     enforce_rate_limit(
-        'phone_resend', 3, 1800, identity_hash(str(current_user.id))
+        'phone-resend', identity_hash(str(current_user.id))
     )
     if _issue_phone_verification_code(current_user):
         flash('A new verification code was texted to you.', 'success')

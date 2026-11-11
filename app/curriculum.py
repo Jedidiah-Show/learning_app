@@ -1,9 +1,9 @@
 """Read-only access to the versioned RUACH course bundled with the app."""
 
-from datetime import datetime, timedelta
 import json
 import re
 from pathlib import Path
+from time import monotonic
 
 from app.videos import build_lesson_video
 
@@ -237,7 +237,7 @@ def _is_cache_stale():
     global _curriculum_cache
     if _curriculum_cache['data'] is None:
         return True
-    elapsed = (datetime.utcnow() - _curriculum_cache['fetched_at']).total_seconds()
+    elapsed = monotonic() - _curriculum_cache['fetched_at']
     return elapsed > CURRICULUM_TTL_SECONDS
 
 
@@ -329,7 +329,7 @@ def _load_curriculum():
 def _refresh_curriculum():
     """Refresh the curriculum cache from disk."""
     global _curriculum_cache
-    _curriculum_cache = {'data': _load_curriculum(), 'fetched_at': datetime.utcnow()}
+    _curriculum_cache = {'data': _load_curriculum(), 'fetched_at': monotonic()}
 
 
 def curriculum():

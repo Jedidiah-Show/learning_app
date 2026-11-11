@@ -122,9 +122,8 @@ def ml_modules():
     for module in pathway['modules']:
         lessons = _ml_module_lessons(module)
         if not lessons:
-            # Every lesson is still 'planned', so the module is authored but
-            # not published. Showing it would put an empty module in the
-            # learner's nav, catalog, and denominators.
+            # Keep authored-but-unpublished modules out of learner counts and
+            # navigation until they contain at least one ready lesson.
             continue
         modules.append({
             'id': module['id'],

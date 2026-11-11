@@ -18,6 +18,7 @@ from app.models import (
     CalendarEvent, GeminiUsageBucket, PasswordResetToken, PracticeWorkspace, User,
 )
 from app.services.security import safe_fetch
+from app.rate_limit import RATE_LIMIT_CONFIG, _bucket_key, _get_config, identity_hash
 from app.user_preferences import get_user_preferences
 
 
@@ -203,6 +204,33 @@ class SecurityHardeningTests(unittest.TestCase):
             })
         self.assertEqual(response.status_code, 429)
         self.assertGreaterEqual(int(response.headers['Retry-After']), 1)
+        self.assertEqual(response.headers['X-RateLimit-Limit'], '8')
+        self.assertEqual(response.headers['X-RateLimit-Window'], '300')
+
+    def test_rate_limit_policies_and_bucket_identities_are_centralized(self):
+        self.assertEqual(_get_config('api-strict'), RATE_LIMIT_CONFIG['api-strict'])
+        self.assertEqual(_get_config('unknown-policy'), RATE_LIMIT_CONFIG['api-general'])
+        self.assertEqual(
+            _bucket_key('login-account', 'private@example.test'),
+            f'login-account:{identity_hash("private@example.test")}',
+        )
+
+    def test_admin_ai_json_uses_configured_rate_limit_buckets(self):
+        with (
+            patch.dict(os.environ, {'LESSON_EXTRAS_TOKEN': 'test-admin-token'}),
+            patch('app.routes.admin.enforce_rate_limit') as enforce,
+            patch('app.gemini.generate_json', return_value={'ok': True}),
+        ):
+            response = self.client.post(
+                '/api/admin/ai/json',
+                headers={'X-Admin-Token': 'test-admin-token'},
+                json={'prompt': 'test'},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            [call.args[0] for call in enforce.call_args_list],
+            ['admin-ai-json-burst', 'admin-ai-json-daily'],
+        )
 
     def test_oauth_tokens_are_encrypted_at_rest(self):
         self.register()
