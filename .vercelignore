@@ -1,5 +1,6 @@
 .git
 .github
+.qoder/
 .venv
 .pytest_cache
 __pycache__

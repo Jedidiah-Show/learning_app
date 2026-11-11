@@ -366,7 +366,7 @@ html.nav-collapsed body.has-sidebar .nav-utility-group .theme-toggle { width:100
 html.nav-collapsed body.has-sidebar .nav-utility-group [data-theme-label] { display:none; }
 
 .learner-streak-bar { display:flex;justify-content:flex-end;margin-bottom:1rem; }
-.learner-streak { display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid #22d3ee;border-radius:9999px;background:#ecfeff;color:#155e75;font-size:.8125rem;font-weight:600;line-height:1.25; }
+.learner-streak { display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border:1px solid #22d3ee;border-radius:9999px;background:#ecfeff;color:#083344;font-size:.8125rem;font-weight:700;line-height:1.25; }
 .learner-streak strong { font-variant-numeric:tabular-nums; }
 
 /* On phones, use a top bar and an overlay drawer so content keeps the full viewport. */

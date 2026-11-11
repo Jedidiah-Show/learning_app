@@ -207,7 +207,18 @@ implementation, so a 95% pass claim is not currently supportable.
   than repository verification. A new submission attempt clears stale CI,
   completion, and evaluation state until the new run is verified.
 - Focused evidence-display and submission-state tests: **6 passed**. These
-  follow-up changes remain local and have not been deployed.
+  follow-up changes were deployed to Vercel production from the current
+  working tree (deployment `EpWB4ThqjRBAYGdW6FK1X5ofLRz4`, READY, aliased to
+  `learning-app-psi-black.vercel.app`); no commit or push was made. The alias
+  `/readyz` smoke check returns `200`. A later Git-backed commit
+  `3a08459` now serves both hosts and is READY on Vercel; its CI run
+  `43013863218` fails only at compiled-asset freshness checks, while its test,
+  asset-build, and browser steps pass. The post-deploy log query returned no
+  logs, so it did not provide runtime-error evidence. No commit or push for
+  the local follow-up was made by this task. Added `.qoder/` to the local
+  `.vercelignore` after the deployment source listing showed a local settings
+  file; an unauthenticated request to that path returned 404. This ignore
+  change has not been redeployed.
 
 ### Completed in earlier work
 
