@@ -188,8 +188,6 @@ def index():
             completed_projects=completed_project_ids,
         )
         config = get_effective_config_for_user(current_user)
-        streak = getattr(current_user, 'streak', 0) or 0
-        longest_streak = getattr(current_user, 'longest_streak', 0) or 0
         setup_checks = SETUP_CHECKS
         setup_states = stored_setup_checks(current_user)
         setup_done = sum(1 for check in setup_checks if setup_states.get(check['id']))
@@ -277,8 +275,7 @@ def index():
         return render_template('dashboard.html', config=config, user=current_user,
                                course=curriculum(),
                                progress=progress, next_lesson=next_lesson,
-                               next_project=next_project, streak=streak,
-                               longest_streak=longest_streak, setup_checks=setup_checks,
+                               next_project=next_project, setup_checks=setup_checks,
                                setup_states=setup_states, setup_done=setup_done,
                                onboarding_complete=onboarding_complete,
                                next_module_id=next_module_id,
@@ -300,7 +297,6 @@ def index():
                                    'next_lesson_id': None, 'next_action': None,
                                },
                                next_lesson=None, next_project=None,
-                               streak=0, longest_streak=0,
                                onboarding_complete=True, next_module_id=None,
                                due_reviews=0, ml_overview=None,
                                pathway_comparison=None,

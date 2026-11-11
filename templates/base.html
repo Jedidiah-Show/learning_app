@@ -153,12 +153,6 @@
                             </span>
                             <span class="nav-label">{{ current_user.username }}</span>
                         </a>
-                        <form method="POST" action="{{ url_for('auth.logout') }}" class="nav-logout-form">
-                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-                            <button type="submit" aria-label="Log out" title="Log out" class="nav-link nav-logout-link w-full text-left px-3 py-2 text-xs font-semibold rounded-md text-slate-600 hover:text-red-600 hover:bg-red-50">
-                                <span class="nav-icon" aria-hidden="true">🚪</span><span class="nav-label">Logout</span>
-                            </button>
-                        </form>
                         </div>
                     </div>
                 </nav>{% endif %}
@@ -167,6 +161,15 @@
     
     <!-- Main Content -->
     <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 {% if current_user.is_authenticated %}lg:ml-64{% endif %} {% if request.endpoint and request.endpoint.startswith('auth.') and request.endpoint != 'auth.profile' %}auth-main{% endif %}">
+        {% if current_user.is_authenticated and not current_user.is_admin and request.endpoint != 'auth.profile' %}
+        <div class="learner-streak-bar">
+            <span class="learner-streak" aria-label="Current learning streak: {{ current_user.streak or 0 }} days">
+                <span aria-hidden="true">🔥</span>
+                <strong>{{ current_user.streak or 0 }}</strong>
+                <span>day streak</span>
+            </span>
+        </div>
+        {% endif %}
         {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
         <div class="flash-stack mb-5 space-y-2">

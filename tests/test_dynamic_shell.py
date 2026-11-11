@@ -229,6 +229,44 @@ class PathwayAwareNavTests(DynamicShellTestCase):
         self.assertIn('href="/specializations/machine-learning"', nav)
 
 
+class LearnerAccountChromeTests(DynamicShellTestCase):
+    """Learner streaks stay in the shared shell, not the admin or profile UI."""
+
+    def _set_streak(self, streak, is_admin=False):
+        with self.app.app_context():
+            user = User.query.filter_by(username='shelllearner').one()
+            user.streak = streak
+            user.is_admin = is_admin
+            db.session.commit()
+
+    def test_streak_is_shown_on_learner_pages_but_not_profile(self):
+        self._set_streak(4)
+
+        for path in ('/lessons', '/progress', '/settings'):
+            with self.subTest(path=path):
+                html = self._page(path)
+                self.assertIn('Current learning streak: 4 days', html)
+                self.assertIn('>4</strong>', html)
+
+        profile = self._page('/profile')
+        self.assertNotIn('learner-streak', profile)
+        self.assertIn('action="/logout"', profile)
+
+    def test_streak_is_not_shown_to_admins(self):
+        self._set_streak(4, is_admin=True)
+
+        html = self._page('/lessons')
+
+        self.assertNotIn('learner-streak', html)
+
+    def test_sidebar_logout_is_removed_without_removing_profile_logout(self):
+        nav = self._nav(self._page('/lessons'))
+
+        self.assertNotIn('/logout', nav)
+        self.assertNotIn('Logout', nav)
+        self.assertIn('action="/logout"', self._page('/profile'))
+
+
 class BrandRenameTests(DynamicShellTestCase):
     """The long app name now covers both disciplines wherever it renders."""
 

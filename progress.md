@@ -53,14 +53,26 @@ implementation, so a 95% pass claim is not currently supportable.
 
 ### Current validation
 
-- Full Python suite: **248 passed, 1 skipped** (17:03); existing
-  `datetime.utcnow()` and dependency deprecation warnings remain.
+- Full Python suite (post-merge, clean run): **291 passed, 1 skipped** — exit 0.
+  This run covers the merged remote state (Skill Passport, judge/sandbox
+  services, Arena) plus the credential-scope and passport follow-up fixes.
 - Full browser suite: **2 passed**, including registration/onboarding,
   persistence, keyboard navigation, mobile layout and isolated Python execution.
 - Frontend CSS/JS builds pass and reproduce committed generated assets. Alembic
-  has one head, `4d2a7f9c1b63`.
+  has one head, `f73d2c8a9b41`.
 - A responsive lesson test exposed conflicting mobile sidebar rules and
   unbounded inline setup commands; both were fixed and the browser suite passes.
+
+### Follow-up fixes (2026-11-11)
+
+- Skill Passport endpoints (`/passport`, `/api/passport`, `/passport/download`)
+  verified returning 200 for authenticated users; regression tests added
+  (`tests/test_skill_passport.py`).
+- Course credential page now scopes displayed progress to the learner's
+  destination (AI course 213 lessons / 13 modules for AI learners; pathway scope
+  for ML learners) while AI-course eligibility gate remains pinned.
+- Arena API JSON error handling fixed via `_is_api_path()` for
+  `/arena/api/*` paths.
 
 ### Completed in earlier work
 
