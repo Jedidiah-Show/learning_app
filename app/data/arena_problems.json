@@ -520,5 +520,225 @@
       "true_positive means both actual and predicted are 1; false_negative means actual 1 but predicted 0."
     ],
     "editorial": "A confusion matrix breaks accuracy down into four counts and is the foundation of precision, recall, and F1. Building it by hand shows learners that metrics are derived from these counts, not magic, and it highlights why accuracy alone can mislead when classes are imbalanced. This is a deliberate, evaluation-focused step before learners compare algorithms in later challenges."
+  },
+  {
+    "id": "ml-data-preparation-feature-scaling",
+    "track": "machine-learning",
+    "topic": "ml-data-analysis",
+    "title": "Feature scaling by standardization",
+    "summary": "Standardize a list of numbers to zero mean and unit variance.",
+    "statement": "Write standardize(values) that returns a new list where each value is standardized to have zero mean and unit variance (population standard deviation). Return None for an empty list or when the standard deviation is zero. Round each result to four decimal places. Do not import statistics or any external package.",
+    "examples": [
+      {
+        "input": "[2, 4, 4, 4, 5, 5, 7, 9]",
+        "output": "[-1.5, 0.5, 0.5, 0.5, 1.0, 1.0, 2.0, 3.0]",
+        "explanation": "The mean is 5 and the population standard deviation is 2, so each value is (value - 5) / 2."
+      },
+      {
+        "input": "[]",
+        "output": "None",
+        "explanation": "There are no values to standardize, so the function returns None."
+      }
+    ],
+    "constraints": [
+      "values contains only numbers.",
+      "Return None for an empty list or when the standard deviation is zero.",
+      "Round each result to four decimal places.",
+      "Do not import statistics or any external package."
+    ],
+    "difficulty": "beginner",
+    "skills": ["data-preparation", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def standardize(values):\n    # TODO: return [(v - mean) / std_dev for v in values].\n    # Return None for empty input or zero standard deviation.\n    pass\n",
+    "solution_code": "def standardize(values):\n    if not values:\n        return None\n    count = len(values)\n    total = 0.0\n    for value in values:\n        total += value\n    mean = total / count\n    squared_difference = 0.0\n    for value in values:\n        difference = value - mean\n        squared_difference += difference * difference\n    variance = squared_difference / count\n    std_dev = variance ** 0.5\n    if std_dev == 0:\n        return None\n    return [\n        round((value - mean) / std_dev, 4)\n        for value in values\n    ]\n",
+    "browser_checks": "assert standardize([2, 4, 4, 4, 5, 5, 7, 9]) == [-1.5, 0.5, 0.5, 0.5, 1.0, 1.0, 2.0, 3.0]\nassert standardize([]) is None\nassert standardize([5, 5, 5]) is None\nresult = standardize([1, 2, 3])\nassert abs(result[0] - (-1.2247)) < 0.0001\nassert abs(result[1] - 0.0) < 0.0001\nassert abs(result[2] - 1.2247) < 0.0001\nprint('All public checks passed.')\n",
+    "hints": [
+      "Guard empty input and zero standard deviation first.",
+      "Standardization subtracts the mean and divides by the population standard deviation.",
+      "Population variance averages squared differences over the full count."
+    ],
+    "editorial": "Feature scaling puts features on a comparable scale so that distance-based and gradient-based models are not dominated by features with large raw values. Standardization (zero mean, unit variance) is the most common approach and is safe to implement with the standard library. A zero standard deviation means all values are identical, so standardization is undefined — returning None signals this clearly rather than dividing by zero."
+  },
+  {
+    "id": "ml-data-preparation-train-validation-test-split",
+    "track": "machine-learning",
+    "topic": "ml-data-analysis",
+    "title": "Train, validation and test split",
+    "summary": "Split indices into train, validation and test sets with given proportions.",
+    "statement": "Write split_indices(n, train_ratio, validation_ratio, test_ratio) that returns a dictionary with keys train, validation, test containing index lists. The ratios must sum to 1. Raise ValueError when ratios do not sum to 1 or when any ratio is negative. Use the given seed for reproducible shuffling. Do not import random or any external package beyond what is needed for a deterministic pseudo-random shuffle — implement a simple deterministic shuffle yourself.",
+    "examples": [
+      {
+        "input": "5, 0.6, 0.2, 0.2, seed=7",
+        "output": "{'train': [3, 0, 4], 'validation': [1], 'test': [2]}",
+        "explanation": "Indices 0..4 are shuffled deterministically with seed 7, then split 60/20/20."
+      }
+    ],
+    "constraints": [
+      "n is a non-negative integer.",
+      "train_ratio, validation_ratio, test_ratio must sum to 1.",
+      "Raise ValueError for invalid ratios.",
+      "Use a deterministic shuffle so results are reproducible with the same seed.",
+      "Do not import random or any external package."
+    ],
+    "difficulty": "intermediate",
+    "skills": ["data-preparation", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 20,
+    "starter_code": "def split_indices(n, train_ratio, validation_ratio, test_ratio, seed=0):\n    # TODO: deterministically shuffle indices and split by ratio.\n    # Raise ValueError for invalid ratios.\n    pass\n",
+    "solution_code": "def split_indices(n, train_ratio, validation_ratio, test_ratio, seed=0):\n    total = train_ratio + validation_ratio + test_ratio\n    if abs(total - 1.0) > 1e-9:\n        raise ValueError('ratios must sum to 1')\n    if train_ratio < 0 or validation_ratio < 0 or test_ratio < 0:\n        raise ValueError('ratios must be non-negative')\n    indices = list(range(n))\n    # Deterministic Fisher-Yates shuffle seeded by seed.\n    state = seed\n    for i in range(n - 1, 0, -1):\n        state = (state * 1103515245 + 12345) % (2 ** 31)\n        j = state % (i + 1)\n        indices[i], indices[j] = indices[j], indices[i]\n    train_end = int(round(train_ratio * n))\n    validation_end = train_end + int(round(validation_ratio * n))\n    return {\n        'train': indices[:train_end],\n        'validation': indices[train_end:validation_end],\n        'test': indices[validation_end:],\n    }\n",
+    "browser_checks": "result = split_indices(10, 0.6, 0.2, 0.2, seed=7)\nassert set(result['train'] + result['validation'] + result['test']) == set(range(10))\nassert len(result['train']) == 6\nassert len(result['validation']) == 2\nassert len(result['test']) == 2\nresult2 = split_indices(10, 0.6, 0.2, 0.2, seed=7)\nassert result2 == result, 'same seed must reproduce the same split'\ntry:\n    split_indices(10, 0.5, 0.3, 0.3)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError('invalid ratios must raise ValueError')\nprint('All public checks passed.')\n",
+    "hints": [
+      "Validate ratios before shuffling: they must sum to 1 and be non-negative.",
+      "A deterministic Fisher-Yates shuffle uses a simple linear congruential generator.",
+      "Multiply each ratio by n to get the split sizes, then slice the shuffled indices."
+    ],
+    "editorial": "Splitting data into train, validation, and test sets is fundamental to trustworthy evaluation. The test set must stay untouched until final evaluation, while the validation set guides hyperparameter choices. Deterministic shuffling with a seed makes the split reproducible — a core engineering requirement. Implementing the shuffle yourself reinforces that reproducibility comes from explicit control, not library defaults."
+  },
+  {
+    "id": "ml-classification-precision-recall-f1",
+    "track": "machine-learning",
+    "topic": "ml-statistics",
+    "title": "Precision, recall and F1",
+    "summary": "Compute precision, recall and F1 from a binary confusion matrix.",
+    "statement": "write_prf(matrix) takes a confusion-matrix dictionary with keys true_positive, false_positive, true_negative, false_negative and returns a dictionary with keys precision, recall, f1. Precision = TP / (TP + FP); recall = TP / (TP + FN); F1 = 2 × precision × recall / (precision + recall). Return 0.0 for any metric whose denominator is zero. Round each result to four decimal places. Do not import statistics or any external package.",
+    "examples": [
+      {
+        "input": "{'true_positive': 2, 'false_positive': 1, 'true_negative': 1, 'false_negative': 1}",
+        "output": "{'precision': 0.6667, 'recall': 0.6667, 'f1': 0.6667}",
+        "explanation": "Precision = 2/(2+1) = 0.6667, recall = 2/(2+1) = 0.6667, F1 = 0.6667."
+      }
+    ],
+    "constraints": [
+      "matrix values are non-negative integers.",
+      "Return 0.0 for any metric with a zero denominator.",
+      "Round each result to four decimal places.",
+      "Do not import statistics or any external package."
+    ],
+    "difficulty": "beginner",
+    "skills": ["classification", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 10,
+    "starter_code": "def write_prf(matrix):\n    # TODO: compute precision, recall and f1 from the matrix.\n    # Return 0.0 when a denominator is zero.\n    pass\n",
+    "solution_code": "def write_prf(matrix):\n    tp = matrix['true_positive']\n    fp = matrix['false_positive']\n    fn = matrix['false_negative']\n    precision_denominator = tp + fp\n    recall_denominator = tp + fn\n    precision = tp / precision_denominator if precision_denominator else 0.0\n    recall = tp / recall_denominator if recall_denominator else 0.0\n    f1_denominator = precision + recall\n    f1 = (2 * precision * recall / f1_denominator) if f1_denominator else 0.0\n    return {\n        'precision': round(precision, 4),\n        'recall': round(recall, 4),\n        'f1': round(f1, 4),\n    }\n",
+    "browser_checks": "assert write_prf({'true_positive': 2, 'false_positive': 1, 'true_negative': 1, 'false_negative': 1}) == {'precision': 0.6667, 'recall': 0.6667, 'f1': 0.6667}\nassert write_prf({'true_positive': 0, 'false_positive': 0, 'true_negative': 5, 'false_negative': 0}) == {'precision': 0.0, 'recall': 0.0, 'f1': 0.0}\nassert write_prf({'true_positive': 5, 'false_positive': 0, 'true_negative': 0, 'false_negative': 0}) == {'precision': 1.0, 'recall': 1.0, 'f1': 1.0}\nprint('All public checks passed.')\n",
+    "hints": [
+      "Precision = TP / (TP + FP); guard division by zero.",
+      "Recall = TP / (TP + FN); guard division by zero.",
+      "F1 is the harmonic mean of precision and recall; guard division by zero."
+    ],
+    "editorial": "Precision, recall and F1 are the standard classification metrics when accuracy alone is misleading — especially with imbalanced classes. Computing them from the confusion matrix shows learners exactly how each metric weights false positives and false negatives differently, which is the basis for choosing the right metric for a problem (milestone M4)."
+  },
+  {
+    "id": "ml-evaluation-overfitting-underfitting",
+    "track": "machine-learning",
+    "topic": "ml-statistics",
+    "title": "Spot overfitting and underfitting",
+    "summary": "Classify a model's behaviour from training and validation error curves.",
+    "statement": "Write diagnose(train_error, validation_error) that returns one of 'underfitting', 'overfitting', or 'healthy'. Both errors are floats. Return 'underfitting' when both errors are high (above 0.30). Return 'overfitting' when training error is low (below 0.15) and validation error is high (above 0.30). Otherwise return 'healthy'. Do not import any external package.",
+    "examples": [
+      {
+        "input": "0.35, 0.38",
+        "output": "'underfitting'",
+        "explanation": "Both errors are high, so the model underfits."
+      },
+      {
+        "input": "0.05, 0.45",
+        "output": "'overfitting'",
+        "explanation": "Training error is low but validation error is high, so the model overfits."
+      }
+    ],
+    "constraints": [
+      "train_error and validation_error are floats between 0 and 1.",
+      "Return exactly one of 'underfitting', 'overfitting', 'healthy'.",
+      "Do not import any external package."
+    ],
+    "difficulty": "beginner",
+    "skills": ["model-evaluation", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 10,
+    "starter_code": "def diagnose(train_error, validation_error):\n    # TODO: return 'underfitting', 'overfitting' or 'healthy'.\n    pass\n",
+    "solution_code": "def diagnose(train_error, validation_error):\n    if train_error > 0.30 and validation_error > 0.30:\n        return 'underfitting'\n    if train_error < 0.15 and validation_error > 0.30:\n        return 'overfitting'\n    return 'healthy'\n",
+    "browser_checks": "assert diagnose(0.35, 0.38) == 'underfitting'\nassert diagnose(0.05, 0.45) == 'overfitting'\nassert diagnose(0.10, 0.12) == 'healthy'\nassert diagnose(0.20, 0.25) == 'healthy'\nprint('All public checks passed.')\n",
+    "hints": [
+      "Underfitting: both training and validation errors are high.",
+      "Overfitting: training error is low but validation error is high.",
+      "Otherwise the model is healthy."
+    ],
+    "editorial": "Overfitting and underfitting are the central tension in machine learning (milestone M3). Diagnosing them from training versus validation error is the first practical skill: high errors on both sides means the model is too simple, while low training error with high validation error means it has memorized the training data. Thresholds here are illustrative; real work inspects learning curves across model complexity."
+  },
+  {
+    "id": "ml-deep-learning-forward-propagation",
+    "track": "machine-learning",
+    "topic": "ml-statistics",
+    "title": "Neural network forward propagation",
+    "summary": "Compute a single-layer neural network forward pass with a sigmoid activation.",
+    "statement": "Write forward_pass(inputs, weights, bias) that computes the sigmoid of the dot product of inputs and weights plus bias. inputs and weights are equal-length lists of numbers. bias is a number. Return the result rounded to four decimal places. Sigmoid(x) = 1 / (1 + e^(-x)). Return None for empty or mismatched inputs. Do not import math or any external package — compute e^(-x) with the ** operator.",
+    "examples": [
+      {
+        "input": "[1, 2], [0.5, -0.5], 0.0",
+        "output": "0.3775",
+        "explanation": "The dot product is 1×0.5 + 2×(-0.5) = -0.5. With bias 0, z = -0.5, and sigmoid(-0.5) = 1 / (1 + e^0.5) ≈ 0.3775."
+      },
+      {
+        "input": "[0, 0], [1, 1], 0.0",
+        "output": "0.5",
+        "explanation": "The dot product is 0, so z = 0 and sigmoid(0) = 0.5."
+      }
+    ],
+    "constraints": [
+      "inputs and weights contain only numbers and are equal length.",
+      "bias is a number.",
+      "Return None for empty or mismatched inputs.",
+      "Round the result to four decimal places.",
+      "Do not import math or any external package."
+    ],
+    "difficulty": "intermediate",
+    "skills": ["deep-learning", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def forward_pass(inputs, weights, bias):\n    # TODO: compute sigmoid(dot(inputs, weights) + bias).\n    # Return None for empty or mismatched inputs.\n    pass\n",
+    "solution_code": "def forward_pass(inputs, weights, bias):\n    if not inputs or not weights or len(inputs) != len(weights):\n        return None\n    z = bias\n    for x, w in zip(inputs, weights):\n        z += x * w\n    return round(1 / (1 + 2.718281828459045 ** (-z)), 4)\n",
+    "browser_checks": "result = forward_pass([1, 2], [0.5, -0.5], 0.0)\nassert abs(result - 0.3775) < 0.0001\nassert forward_pass([], []) is None\nassert forward_pass([1], [1, 2]) is None\nassert forward_pass([0, 0], [1, 1], 0.0) == 0.5\nresult2 = forward_pass([1, 2], [1, 2], 0.0)\nassert abs(result2 - 0.9933) < 0.0001\nprint('All public checks passed.')\n",
+    "hints": [
+      "Guard empty or mismatched inputs first.",
+      "The dot product sums x × w over all pairs, then add the bias.",
+      "Sigmoid(x) = 1 / (1 + e^(-x)); use 2.718281828459045 ** (-x) for e^(-x)."
+    ],
+    "editorial": "Forward propagation is the core computation of a neural network (milestone M6): each neuron takes a weighted sum of its inputs, adds a bias, and passes the result through an activation function. Implementing it from scratch shows learners that a neural network layer is just arithmetic — dot product, bias, activation — and that the sigmoid squashes any real value into the (0, 1) range, which is useful for binary classification probabilities."
+  },
+  {
+    "id": "ml-engineering-model-serialization",
+    "track": "machine-learning",
+    "topic": "ml-data-analysis",
+    "title": "Model serialization checklist",
+    "summary": "Validate that a serialized model bundle contains the required artefacts.",
+    "statement": "Write validate_model_bundle(bundle) that takes a dictionary and returns a list of missing required keys. Required keys are 'model_weights', 'preprocessing', 'feature_columns', and 'version'. Return the missing keys in sorted order. Return an empty list when all keys are present. bundle is a dictionary; do not import any external package.",
+    "examples": [
+      {
+        "input": "{'model_weights': [1, 2], 'version': '1.0'}",
+        "output": "['feature_columns', 'preprocessing']",
+        "explanation": "The bundle is missing feature_columns and preprocessing, returned sorted."
+      }
+    ],
+    "constraints": [
+      "bundle is a dictionary.",
+      "Return missing keys in sorted order.",
+      "Return an empty list when all required keys are present.",
+      "Do not import any external package."
+    ],
+    "difficulty": "beginner",
+    "skills": ["ml-deployment", "python"],
+    "prerequisites": [],
+    "estimated_minutes": 10,
+    "starter_code": "def validate_model_bundle(bundle):\n    # TODO: return sorted list of missing required keys.\n    pass\n",
+    "solution_code": "def validate_model_bundle(bundle):\n    required = {'model_weights', 'preprocessing', 'feature_columns', 'version'}\n    missing = [key for key in required if key not in bundle]\n    return sorted(missing)\n",
+    "browser_checks": "assert validate_model_bundle({'model_weights': [1, 2], 'version': '1.0'}) == ['feature_columns', 'preprocessing']\nassert validate_model_bundle({'model_weights': [1], 'preprocessing': 'scale', 'feature_columns': ['a'], 'version': '1'}) == []\nassert validate_model_bundle({}) == ['feature_columns', 'model_weights', 'preprocessing', 'version']\nprint('All public checks passed.')\n",
+    "hints": [
+      "The required keys are model_weights, preprocessing, feature_columns and version.",
+      "Collect keys absent from the bundle and return them sorted.",
+      "An empty bundle means all four keys are missing."
+    ],
+    "editorial": "Model serialization (milestone M7) is more than saving weights: a usable bundle must also preserve preprocessing steps, the feature schema, and a version so inference can reproduce training exactly. Validating the bundle before deployment catches missing artefacts early and prevents silent prediction failures in production."
   }
 ]

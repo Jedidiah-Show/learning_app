@@ -112,16 +112,16 @@ class ArenaTaxonomyTests(unittest.TestCase):
                 exec(problem['solution_code'], namespace)
                 exec(problem['browser_checks'], namespace)
 
-    def test_machine_learning_problems_are_beginner_and_pass_checks(self):
+    def test_machine_learning_problems_are_published_and_pass_checks(self):
         problems = all_arena_problems()
         ml = [
             problem for problem in problems.values()
             if problem['track'] == 'machine-learning'
         ]
-        self.assertEqual(len(ml), 6)
+        self.assertEqual(len(ml), 12)
         for problem in ml:
             with self.subTest(problem=problem['id']):
-                self.assertEqual(problem['difficulty'], 'beginner')
+                self.assertIn(problem['difficulty'], DIFFICULTIES)
                 self.assertTrue(problem['skills'])
                 namespace = {}
                 exec(problem['solution_code'], namespace)
@@ -177,6 +177,60 @@ class ArenaTaxonomyTests(unittest.TestCase):
         problem = problems['ml-classification-confusion-matrix']
         self.assertEqual(problem['topic'], 'ml-statistics')
         self.assertEqual(problem['skills'], ['classification', 'python'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_feature_scaling_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-data-preparation-feature-scaling']
+        self.assertEqual(problem['topic'], 'ml-data-analysis')
+        self.assertEqual(problem['skills'], ['data-preparation', 'python'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_train_validation_test_split_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-data-preparation-train-validation-test-split']
+        self.assertEqual(problem['topic'], 'ml-data-analysis')
+        self.assertEqual(problem['skills'], ['data-preparation', 'python'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_precision_recall_f1_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-classification-precision-recall-f1']
+        self.assertEqual(problem['topic'], 'ml-statistics')
+        self.assertEqual(problem['skills'], ['classification', 'python'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_overfitting_underfitting_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-evaluation-overfitting-underfitting']
+        self.assertEqual(problem['topic'], 'ml-statistics')
+        self.assertEqual(problem['skills'], ['model-evaluation', 'python'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_forward_propagation_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-deep-learning-forward-propagation']
+        self.assertEqual(problem['topic'], 'ml-statistics')
+        self.assertEqual(problem['skills'], ['deep-learning', 'python'])
+        namespace = {}
+        exec(problem['solution_code'], namespace)
+        exec(problem['browser_checks'], namespace)
+
+    def test_machine_learning_model_serialization_problem(self):
+        problems = all_arena_problems()
+        problem = problems['ml-engineering-model-serialization']
+        self.assertEqual(problem['topic'], 'ml-data-analysis')
+        self.assertEqual(problem['skills'], ['ml-deployment', 'python'])
         namespace = {}
         exec(problem['solution_code'], namespace)
         exec(problem['browser_checks'], namespace)

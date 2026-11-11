@@ -56,8 +56,9 @@
   its "Explore" link, and to report the track count dynamically.
 - Added tests: track taxonomy (3 tracks, AI primary; namespaced ML topics),
   ML problems are beginner and their solutions pass browser checks, and
-  per-problem tests for descriptive statistics, CSV inspection, and probability.
-- Test results: `tests/test_practice_arena.py` **30 passed** (including 6 ML
+  per-problem tests for descriptive statistics, CSV inspection, probability,
+  missing values, mean squared error, and confusion matrix.
+- Test results: `tests/test_practice_arena.py` **33 passed** (including 9 ML
   tests); `tests/test_ml_specialization.py`, `tests/test_skill_passport.py`,
   `tests/test_ml_starter_references.py`, `tests/test_practice_workspace.py`,
   `tests/test_curriculum_audit.py` **42 passed, 1 skipped**.
@@ -66,18 +67,19 @@
 
 - M1 still needs fuller applications, practice assessments, and learner
   evidence for the foundations already introduced.
-- Further ML-specific Practice Arena challenges (regression, classification,
-  evaluation, deep learning, ML engineering), ML-aware tutor context, richer
-  project experiment evidence, and later unsupervised-learning work remain
-  unimplemented.
+- Further ML-specific Practice Arena challenges (deeper regression/classification
+  comparisons, overfitting/underfitting, threshold selection), ML-aware tutor
+  context, richer project experiment evidence, and later unsupervised-learning
+  work remain unimplemented.
 
 ## Current work
 
-- None. Three foundational ML Practice Arena challenges are complete and the
-  Arena exposes a third, `machine-learning` track with namespaced topics.
-  Next slices: more M1/M2 Arena challenges (regression/classification
-  concepts, data preparation), M1 practice assessments, and ML-aware tutor
-  context.
+- None. Six foundational ML Practice Arena challenges are complete (statistics,
+  data analysis, data preparation, regression, classification) and the Arena
+  exposes a third, `machine-learning` track with namespaced topics. All run
+  standard-library only through the isolated sandbox judge. Next slices: more
+  M1/M2 Arena challenges, M1 practice assessments, and ML-aware tutor context
+  (Sprint 5).
 
 ## Implementation decisions
 
