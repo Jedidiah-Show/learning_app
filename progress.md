@@ -175,6 +175,28 @@ implementation, so a 95% pass claim is not currently supportable.
 - Completed the cyan rebrand consistency: learner-streak badge and the
   reading-progress gradient are now cyan (brand) instead of green/orange.
 
+### Practice editor fix (2026-11-11)
+
+- Removed `--minify` from `npm run build:js` in `package.json`. esbuild's
+  minifier was incorrectly eliminating `createPythonEditor` from the bundled
+  output (bundle shrank from 62.7KB to 31.1KB with the editor factory entirely
+  missing), which broke the code editor in both the practice workspace and the
+  practice arena. Rebuilt `static/js/practice.bundle.js` and
+  `static/js/arena.bundle.js` plus lazy chunks from fixed source; both bundles
+  now contain `createPythonEditor` (7 references each). Old chunks
+  `chunk-CE7CTLA7.js` and `dist-E5TFO7AF.js` were replaced by
+  `chunk-NCOOGUYM.js` and `dist-VWBRKAMX.js` with different content hashes.
+- Added CSS for `#arena-editor` with `background:#1e1e1e` to match the VS Code
+  Dark+ editor theme. The container had no background color, so the editor's
+  light text (`#d4d4d4`) was invisible on the light page background, making
+  the practice arena unreadable.
+- Fixed the service worker (`static/sw.js`) stale CSS cache: renamed cache
+  to `ruach-v6`, removed CSS from precache, added network-first fetch for
+  `.css` files so contrast changes take effect immediately without requiring
+  manual cache clearing.
+- Updated `static/manifest/site.webmanifest` colors to cyan
+  (`#083344` / `#06b6d4`).
+
 ### Skill Passport and Project Studio follow-up (2026-11-11)
 
 - Added Passport schema preflight to the page, API, and download routes.
