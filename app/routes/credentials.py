@@ -13,6 +13,7 @@ from app import db
 from app.curriculum import curriculum
 from app.learning import course_progress
 from app.models import Credential
+from app.pathway_scope import destination_for
 
 
 credentials_bp = Blueprint('credentials', __name__)
@@ -58,11 +59,17 @@ def index():
     # The AI Engineering credential stays gated on the full AI course: a
     # learner on the ML pathway must never claim it after the shared
     # foundation alone, so the scope is pinned rather than pathway-derived.
-    progress = course_progress(current_user, destination='ai')
+    # The eligibility snapshot uses the AI course scope; the numbers shown to
+    # the learner use their own destination so ML learners never see AI course
+    # denominators (all 213 lessons and 13 modules) for their credential.
+    eligibility = course_progress(current_user, destination='ai')
+    progress = course_progress(
+        current_user, destination=destination_for(current_user),
+    )
     credential = _active_credential(current_user.id)
     return render_template(
-        'credential.html', progress=progress, credential=credential,
-        course=curriculum(),
+        'credential.html', progress=progress, eligibility=eligibility,
+        credential=credential, course=curriculum(),
     )
 
 

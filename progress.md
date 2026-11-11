@@ -269,3 +269,24 @@ implementation, so a 95% pass claim is not currently supportable.
 Remaining for the Practice Arena milestone: complete M1 exit criteria evidence
 (research, filters, mobile a11y), finish M2 run/keyboard/autosave browser
 coverage, expand content bank toward the 50 reviewed problems target.
+
+#### Practice Arena, credential scope and passport follow-ups (2026-11-11)
+
+- `git pull` from origin/main merged cleanly after committing local state;
+  resolved the `progress.md` modify/delete conflict in favour of local content,
+  and integrated remote work that added the Skill Passport blueprint, judge
+  services, sandbox runner, and related migrations (single migration head
+  `f73d2c8a9b41`).
+- Added `app/_is_api_path()` and used it for CSRF, error handlers, login
+  unauthorized handling and rate-limit JSON responses so the new
+  `/arena/api/*` routes receive JSON errors (CSRF failures, 404, 401, 429)
+  instead of HTML error pages.
+- Arena now published as `/arena` (two tracks, catalogue filters, standalone
+  workspace, 70 problems) plus `scripts/validate_arena_content.py`; regression
+  suite `tests/test_practice_arena.py` (18 tests).
+- Credential page now displays the learner's own pathway-scoped progress
+  (`course_progress` with the confirmed destination) while keeping the AI course
+  eligibility gate pinned at 213 lessons / 13 modules. ML-destination learners
+  therefore no longer see AI course denominators on the course credential page.
+- Added `tests/test_credentials.py` and `tests/test_skill_passport.py` to lock
+  in credential scope and passport endpoints.
