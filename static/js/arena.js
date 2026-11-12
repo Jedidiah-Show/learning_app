@@ -238,8 +238,40 @@ if (root) {
         }, 45000);
     };
 
-    const runChecks = () => {
+    const runChecks = async () => {
         if (!problem) return;
+        const serverCode = `${currentSource()}\n\n${customChecks.value}`;
+        let serverResult = null;
+        try {
+            const response = await fetch(runUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': csrfToken,
+                },
+                body: JSON.stringify({code: serverCode}),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (response.ok) serverResult = data;
+        } catch (error) {
+            serverResult = null;
+        }
+        if (serverResult) {
+            const verdict = serverResult.verdict || 'INTERNAL_ERROR';
+            clearTimeout(runTimeout);
+            runButton.disabled = false;
+            if (verdict === 'COMPLETED') {
+                setOutput(serverResult.output || 'Checks passed (no output).', 'done');
+            } else {
+                setOutput(
+                    serverResult.error_details
+                        ? `Runtime error: ${serverResult.error_details}`
+                        : 'The server runtime reported an error.',
+                    'error',
+                );
+            }
+            return;
+        }
         if (!runnerReady) {
             queuedRun = true;
             runButton.disabled = true;

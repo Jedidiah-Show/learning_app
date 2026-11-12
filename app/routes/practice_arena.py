@@ -30,6 +30,7 @@ from app.rate_limit import enforce_rate_limit
 from app.request_data import get_json_object
 from app.services.judge import (
     _validate_code_syntax,
+    execute_in_sandbox,
     validate_problem_schema,
 )
 
@@ -413,6 +414,13 @@ def submit_problem(problem_id):
                 'Practice runs remain available in your browser.'
             ),
         }), 503
+    if not raw.get('judge_tests'):
+        return jsonify({
+            'error': (
+                'Verified grading is not available for this exercise yet. '
+                'Use the browser checks to practise.'
+            ),
+        }), 409
     enforce_rate_limit('arena-submit', str(current_user.id))
 
     # Validate the problem schema before execution
@@ -460,6 +468,59 @@ def submit_problem(problem_id):
         'verdict': submission.verdict,
         'status': 'queued',
     }), 202
+
+@practice_arena_bp.route('/api/problems/<problem_id>/run', methods=['POST'])
+@login_required
+def run_problem(problem_id):
+    """Run learner code in the isolated sandbox for interactive feedback.
+
+    Uses the same containerized execution engine as authoritative judging
+    (``mode="run"``) but skips the private test suite and returns captured
+    output instead of a verdict. Clients use this as the fast-path run
+    mechanism and fall back to the in-browser runtime when it is unavailable.
+    """
+    raw = get_arena_problem(problem_id)
+    if raw is None:
+        return jsonify({'error': 'Problem not found'}), 404
+    if not _judge_submissions_enabled():
+        return jsonify({
+            'error': (
+                'Interactive server runs are temporarily unavailable. '
+                'The in-browser runtime will be used instead.'
+            ),
+        }), 503
+    if request.content_length is not None and request.content_length > MAX_ARENA_SOURCE_LENGTH + 1024:
+        return jsonify({'error': 'Code is too large'}), 413
+    data = get_json_object()
+    if not isinstance(data, dict) or 'code' not in data:
+        return jsonify({'error': 'Code is required in request body'}), 400
+    code = data['code']
+    if not isinstance(code, str) or not code.strip():
+        return jsonify({'error': 'Code must be non-empty text'}), 400
+    if len(code) > MAX_ARENA_SOURCE_LENGTH:
+        return jsonify({'error': 'Code is too large'}), 413
+
+    try:
+        _validate_code_syntax(code)
+    except ValueError as error:
+        return jsonify({'error': str(error)}), 400
+
+    enforce_rate_limit('arena-run', str(current_user.id))
+
+    result = execute_in_sandbox(
+        code,
+        '',
+        timeout_sec=15.0,
+        memory_mb=512,
+        mode='run',
+    )
+    return jsonify({
+        'verdict': result.verdict,
+        'output': result.output,
+        'error_details': result.error_details,
+        'execution_time_ms': result.execution_time_ms,
+        'memory_kb': result.memory_kb,
+    })
 @practice_arena_bp.route('/api/submissions/<submission_id>')
 @login_required
 def submission_status(submission_id):

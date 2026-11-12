@@ -399,8 +399,49 @@ class ArenaApiTests(ArenaTestCase):
         self.assertNotIn('solution_code', data['problem'])
         self.assertNotIn('editorial', data['problem'])
         self.assertNotIn('browser_checks', data['problem'])
+        self.assertNotIn('judge_tests', data['problem'])
         self.assertNotIn('hints', data['problem'])
         self.assertEqual(data['status'], 'not-started')
+
+    def test_legacy_exercise_without_private_suite_is_not_gradeable(self):
+        self.register('legacylearner')
+        self.app.config.update(TESTING=False, CSRF_ENABLED=False, JUDGE_SUBMISSIONS_ENABLED=True)
+        response = self.client.post(
+            '/arena/api/problems/first-python-greeting/submit',
+            json={'code': 'def greet():\n    return "hello"\n'},
+        )
+        self.assertEqual(response.status_code, 409)
+        self.assertIn('Verified grading is not available', response.get_json()['error'])
+
+    def test_worker_passes_the_private_suite_not_the_public_checks(self):
+        from app.practice_arena import get_arena_problem
+
+        self.register('suitelearner')
+        with self.app.app_context():
+            user = User.query.filter_by(username='suitelearner').one()
+            db.session.add(Submission(
+                id='judge-suite-submission',
+                user_id=user.id,
+                problem_id='algo-binary-search',
+                code_snapshot='def binary_search(numbers, target): return -1',
+                verdict='PENDING',
+            ))
+            db.session.commit()
+            problem = get_arena_problem('algo-binary-search')
+
+        from app.services.judge import JudgeResult
+        from app.services.judge_worker import process_next_submission
+
+        result = JudgeResult()
+        result.verdict = 'WRONG_ANSWER'
+        with patch(
+            'app.services.judge_worker.execute_in_sandbox',
+            return_value=result,
+        ) as execute:
+            self.assertTrue(process_next_submission(self.app))
+
+        _, test_suite = execute.call_args.args
+        self.assertEqual(test_suite, problem['judge_tests'])
 
     def test_submit_queues_code_and_rejects_invalid_source(self):
         self.register('grader')
@@ -421,6 +462,37 @@ class ArenaApiTests(ArenaTestCase):
                 Submission, queued.get_json()['submission_id'],
             )
             self.assertEqual(record.verdict, 'PENDING')
+
+    def test_run_fails_closed_when_no_authoritative_judge_is_configured(self):
+        self.register('unavailablejudge')
+        self.app.config.update(
+            TESTING=False, CSRF_ENABLED=False, JUDGE_SUBMISSIONS_ENABLED=False,
+        )
+        response = self.client.post(
+            '/arena/api/problems/algo-binary-search/run',
+            json={'code': 'def binary_search(numbers, target):\n    return -1\n'},
+        )
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('unavailable', response.get_json()['error'])
+
+    def test_run_returns_sandbox_result_for_valid_code(self):
+        self.register('arena')
+        response = self.client.post(
+            '/arena/api/problems/algo-binary-search/run',
+            json={'code': 'def binary_search(numbers, target):\n    return -1\n'},
+        )
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        for key in ('verdict', 'output', 'error_details', 'execution_time_ms', 'memory_kb'):
+            self.assertIn(key, payload)
+
+    def test_run_rejects_invalid_source(self):
+        self.register('arena')
+        invalid = self.client.post(
+            '/arena/api/problems/algo-binary-search/run',
+            json={'code': 'def broken(:'},
+        )
+        self.assertEqual(invalid.status_code, 400)
 
     def test_worker_records_verdict_and_verified_skill_evidence(self):
         from app.services.judge import JudgeResult

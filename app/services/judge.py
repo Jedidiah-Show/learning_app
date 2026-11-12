@@ -19,7 +19,8 @@ from uuid import uuid4
 SANDBOX_IMAGE = "ruach-python-sandbox:latest"
 MAX_TIMEOUT_SECONDS = 15.0
 MAX_MEMORY_MB = 512
-# allowed packages that can be installed in the sandbox
+# Third-party modules installed in the sandbox image and permitted by the
+# runner's import guard. Keep this list in sync with sandbox/Dockerfile.
 ALLOWED_PACKAGES = {
     "numpy",
     "pandas",
@@ -27,10 +28,7 @@ ALLOWED_PACKAGES = {
     "scipy",
     "sympy",
     "networkx",
-    "pytest",
-    "torch",
-    "tensorflow",
-    "scikit-learn",
+    "sklearn",
 }
 
 
@@ -43,7 +41,7 @@ class JudgeResult:
     """Result of a sandboxed code execution."""
 
     __slots__ = ("verdict", "tests_passed", "total_tests", "execution_time_ms",
-                 "memory_kb", "error_details")
+                 "memory_kb", "error_details", "output")
 
     def __init__(self) -> None:
         self.verdict: str = "RUNTIME_ERROR"
@@ -52,6 +50,7 @@ class JudgeResult:
         self.execution_time_ms: int = 0
         self.memory_kb: int = 0
         self.error_details: str = ""
+        self.output: str = ""
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -61,6 +60,7 @@ class JudgeResult:
             "execution_time_ms": self.execution_time_ms,
             "memory_kb": self.memory_kb,
             "error_details": self.error_details,
+            "output": self.output,
         }
 
 
@@ -104,31 +104,40 @@ def execute_in_sandbox(
     test_code: str,
     timeout_sec: float = 3.0,
     memory_mb: int = MAX_MEMORY_MB,
+    mode: str = "judge",
 ) -> JudgeResult:
-    """Execute Python code safely inside an isolated container.
+    """Execute Python code inside an isolated container.
 
     Args:
         code: The Python source code to execute.
-        test_code: Trusted Python assertions, held on the server.
+        test_code: Trusted Python assertions, held on the server. Required
+            for judged submissions; ignored for interactive ``run`` mode.
         timeout_sec: Maximum seconds allowed for submitted code and tests.
         memory_mb: Maximum memory in megabytes.
+        mode: ``"judge"`` runs the submission plus private test suite and
+            returns a verdict; ``"run"`` executes code only and returns
+            captured stdout/stderr for interactive feedback.
 
     Returns:
         JudgeResult with verdict, test metrics, and resource usage.
     """
     if not isinstance(code, str) or not code.strip():
         raise ValueError("Submission code must be non-empty text")
-    if not isinstance(test_code, str) or not test_code.strip():
+    if mode != "run" and (not isinstance(test_code, str) or not test_code.strip()):
         raise ValueError("A server-side test suite is required")
     timeout_sec = min(max(float(timeout_sec), 0.1), MAX_TIMEOUT_SECONDS)
     memory_mb = min(max(int(memory_mb), 32), MAX_MEMORY_MB)
-    payload = {"code": code, "test_code": test_code, "timeout": timeout_sec}
+    payload = {
+        "code": code,
+        "test_code": test_code,
+        "timeout": timeout_sec,
+        "memory_mb": memory_mb,
+        "allowed_packages": sorted(ALLOWED_PACKAGES),
+        "mode": mode,
+    }
 
     container_name = f"ruach-judge-{uuid4().hex}"
-    docker_cmd = _build_docker_command(
-        timeout_sec, memory_mb, container_name,
-        frozenset(ALLOWED_PACKAGES),
-    )
+    docker_cmd = _build_docker_command(timeout_sec, memory_mb, container_name)
 
     result = JudgeResult()
     try:
@@ -155,6 +164,8 @@ def execute_in_sandbox(
                 )
                 result.memory_kb = output.get("memory_kb", 0)
                 result.error_details = output.get("error_details", "")
+                if mode == "run":
+                    result.output = output.get("output") or ""
             except (json.JSONDecodeError, ValueError):
                 # Docker ran but didn't produce valid JSON output
                 result.verdict = "RUNTIME_ERROR"
@@ -218,7 +229,8 @@ def validate_problem_schema(problem: Dict[str, Any]) -> None:
     required = {
         "id", "track", "topic", "title", "statement",
         "difficulty", "skills", "prerequisites", "starter_code",
-        "solution_code", "browser_checks", "hints", "editorial",
+        "solution_code", "browser_checks", "judge_tests", "hints",
+        "editorial",
     }
     missing = required - set(problem.keys())
     if missing:
@@ -237,6 +249,7 @@ def validate_problem_schema(problem: Dict[str, Any]) -> None:
     # Validate starter_code and solution_code can compile
     _validate_code_syntax(problem["starter_code"])
     _validate_code_syntax(problem["solution_code"])
+    _validate_code_syntax(problem["judge_tests"])
 
     # Validate hints is a list
     if not isinstance(problem["hints"], list):

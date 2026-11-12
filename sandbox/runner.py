@@ -56,15 +56,51 @@ class _RecordAssertions(ast.NodeTransformer):
         )
 
 
+def _import_roots(tree):
+    """Yield the top-level module name of every import in ``tree``."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.Import):
+            for alias in node.names:
+                yield alias.name.split('.', 1)[0]
+        elif isinstance(node, ast.ImportFrom):
+            if node.level:
+                # Relative imports are meaningless inside a standalone script.
+                continue
+            if node.module:
+                yield node.module.split('.', 1)[0]
+
+
+def _check_imports(tree, allowed_packages):
+    """Reject imports outside the standard library and the allowlist.
+
+    This is a defence-in-depth check, not the security boundary: the container
+    constraints (no network, read-only root, non-root user) still apply. It
+    exists so the documented package allowlist is actually enforced instead of
+    being an unused constant.
+    """
+    allowed = set(allowed_packages or ())
+    stdlib = set(getattr(sys, 'stdlib_module_names', ()))
+    for root in _import_roots(tree):
+        if root in stdlib or root in allowed:
+            continue
+        raise PermissionError(
+            f"Import of '{root}' is not permitted in the judge sandbox"
+        )
+
+
 def main():
+    payload = json.load(sys.stdin)
+    mode = payload.get("mode") or "judge"
+    code = payload["code"]
+    test_code = payload.get("test_code") or ""
+    allowed_packages = payload.get("allowed_packages") or []
+    timeout = min(max(float(payload.get("timeout") or 3.0), 0.1), 15.0)
+    memory_mb = float(payload.get("memory_mb") or 512)
+
     resource.setrlimit(resource.RLIMIT_CPU, (5, 5))
-    resource.setrlimit(resource.RLIMIT_AS, (256 * 1024 * 1024,) * 2)
+    resource.setrlimit(resource.RLIMIT_AS, (int(memory_mb * 1024 * 1024),) * 2)
     resource.setrlimit(resource.RLIMIT_FSIZE, (0, 0))
 
-    payload = json.load(sys.stdin)
-    code = payload["code"]
-    test_code = payload["test_code"]
-    timeout = min(max(float(payload.get("timeout", 3.0)), 0.1), 5.0)
     started = time.monotonic()
     namespace = {"__name__": "__main__"}
     captured = _BoundedCapture()
@@ -73,46 +109,61 @@ def main():
     signal.setitimer(signal.ITIMER_REAL, timeout)
     try:
         with contextlib.redirect_stdout(captured), contextlib.redirect_stderr(captured):
-            exec(compile(code, "<submission>", "exec"), namespace)
-            test_namespace = dict(namespace)
-            test_namespace["_ruach_record_success"] = (
-                lambda: assertion_results.append(True)
-            )
-            test_namespace["_ruach_record_failure"] = (
-                lambda: assertion_results.append(False)
-            )
-            test_tree = ast.parse(test_code, filename="<tests>")
-            test_tree = _RecordAssertions().visit(test_tree)
-            ast.fix_missing_locations(test_tree)
-            exec(compile(test_tree, "<tests>", "exec"), test_namespace)
-        total_tests = len(assertion_results)
-        tests_passed = sum(assertion_results)
-        if total_tests == 0:
-            result = {
-                "verdict": "INTERNAL_ERROR",
-                "tests_passed": 0,
-                "total_tests": 0,
-                "error_details": "The trusted test suite contains no assertions",
-            }
-        elif tests_passed == total_tests:
-            result = {
-                "verdict": "ACCEPTED",
-                "tests_passed": tests_passed,
-                "total_tests": total_tests,
-                "error_details": "",
-            }
+            submission_tree = ast.parse(code, filename="<submission>")
+            _check_imports(submission_tree, allowed_packages)
+            exec(compile(submission_tree, "<submission>", "exec"), namespace)
+            if mode == "judge":
+                test_tree = ast.parse(test_code, filename="<tests>")
+                _check_imports(test_tree, allowed_packages)
+                test_namespace = dict(namespace)
+                test_namespace["_ruach_record_success"] = (
+                    lambda: assertion_results.append(True)
+                )
+                test_namespace["_ruach_record_failure"] = (
+                    lambda: assertion_results.append(False)
+                )
+                test_tree = _RecordAssertions().visit(test_tree)
+                ast.fix_missing_locations(test_tree)
+                exec(compile(test_tree, "<tests>", "exec"), test_namespace)
+
+        if mode == "judge":
+            total_tests = len(assertion_results)
+            tests_passed = sum(assertion_results)
+            if total_tests == 0:
+                result = {
+                    "verdict": "INTERNAL_ERROR",
+                    "tests_passed": 0,
+                    "total_tests": 0,
+                    "error_details": "The trusted test suite contains no assertions",
+                }
+            elif tests_passed == total_tests:
+                result = {
+                    "verdict": "ACCEPTED",
+                    "tests_passed": tests_passed,
+                    "total_tests": total_tests,
+                    "error_details": "",
+                }
+            else:
+                result = {
+                    "verdict": "WRONG_ANSWER",
+                    "tests_passed": tests_passed,
+                    "total_tests": total_tests,
+                    "error_details": "One or more checks failed",
+                }
         else:
             result = {
-                "verdict": "WRONG_ANSWER",
-                "tests_passed": tests_passed,
-                "total_tests": total_tests,
-                "error_details": "One or more checks failed",
+                "verdict": "COMPLETED",
+                "tests_passed": 0,
+                "total_tests": 0,
+                "output": captured.getvalue().strip(),
+                "error_details": "",
             }
     except _TimeLimitExceeded:
         result = {
             "verdict": "TIME_LIMIT_EXCEEDED",
             "tests_passed": sum(assertion_results),
             "total_tests": len(assertion_results),
+            "output": captured.getvalue().strip(),
             "error_details": "Execution time limit exceeded",
         }
     except MemoryError:
@@ -120,6 +171,7 @@ def main():
             "verdict": "MEMORY_LIMIT_EXCEEDED",
             "tests_passed": sum(assertion_results),
             "total_tests": len(assertion_results),
+            "output": captured.getvalue().strip(),
             "error_details": "Memory limit exceeded",
         }
     except BaseException as error:
@@ -127,6 +179,7 @@ def main():
             "verdict": "RUNTIME_ERROR",
             "tests_passed": sum(assertion_results),
             "total_tests": len(assertion_results),
+            "output": captured.getvalue().strip(),
             "error_details": type(error).__name__,
         }
     finally:

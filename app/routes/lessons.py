@@ -22,6 +22,7 @@ from app.models import TutorConversation
 from app.practice import get_practice_exercise
 from app.rate_limit import enforce_rate_limit
 from app.request_data import get_json_object
+from app.services.judge import execute_in_sandbox
 from app.services.lesson_state import (
     learner_today, setup_checks_for_plan,
 )
@@ -497,6 +498,48 @@ def practice_workspace(lesson_id, exercise_id):
         workspace.source = source
         db.session.commit()
     return jsonify({'status': 'saved', 'updated_at': workspace.updated_at.isoformat()})
+
+
+@lessons_bp.route('/practice/<lesson_id>/<exercise_id>/run', methods=['POST'])
+@login_required
+def practice_run(lesson_id, exercise_id):
+    """Run learner practice code in the isolated sandbox; return captured output."""
+    lesson = get_lesson(lesson_id)
+    exercise = get_practice_exercise(exercise_id)
+    if not lesson or not exercise or exercise['lesson_id'] != lesson_id:
+        return jsonify({'error': 'Practice exercise not found'}), 404
+    if not lesson_is_available(current_user, lesson_id):
+        return jsonify({'error': 'Lesson is locked'}), 403
+    if (
+        request.content_length is not None
+        and request.content_length > MAX_PRACTICE_SOURCE_LENGTH + 1024
+    ):
+        return jsonify({'error': 'Practice source is too large'}), 413
+    data = get_json_object()
+    code = data.get('code') if data else None
+    if not isinstance(code, str) or not code.strip():
+        return jsonify({'error': 'Code must be non-empty text'}), 400
+    if len(code) > MAX_PRACTICE_SOURCE_LENGTH:
+        return jsonify({
+            'error': f'Source must be at most {MAX_PRACTICE_SOURCE_LENGTH} characters',
+        }), 413
+    run_code = f"{code}\n\n{exercise['checks_code']}" if exercise['checks_code'] else code
+    if not run_code.strip():
+        return jsonify({'error': 'Practice source is required'}), 400
+    result = execute_in_sandbox(
+        run_code,
+        '',
+        timeout_sec=15.0,
+        memory_mb=512,
+        mode='run',
+    )
+    return jsonify({
+        'verdict': result.verdict,
+        'output': result.output,
+        'error_details': result.error_details,
+        'execution_time_ms': result.execution_time_ms,
+        'memory_kb': result.memory_kb,
+    })
 
 
 @lessons_bp.route('/<lesson_id>/bookmark', methods=['POST'])
@@ -1007,18 +1050,3 @@ def list_practice_exercises():
         'filters': get_available_filters(exercises)
     })
 
-
-@lessons_bp.route('/tasks/<lesson_id>', methods=['GET', 'POST'])
-@login_required
-def lesson_tasks(lesson_id):
-    lesson = get_lesson(lesson_id) if isinstance(lesson_id, str) else None
-    if not lesson:
-        return jsonify({'error': 'Lesson not found'}), 404
-    if not lesson_is_available(current_user, lesson_id):
-        return jsonify({'error': 'Lesson is locked'}), 403
-    if request.method == 'GET':
-        # For now, tasks are stored client-side; return empty structure for compatibility
-        return jsonify({'tasks': []})
-    data = get_json_object() or {}
-    tasks = data.get('tasks', [])
-    return jsonify({'status': 'saved', 'tasks': tasks})
