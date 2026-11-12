@@ -23061,7 +23061,12 @@ if (root) {
     status.textContent = message;
     status.dataset.state = state;
   };
-  const currentSource = () => editor.getSource();
+  const currentSource = () => {
+    if (editor) {
+      return editor.getSource();
+    }
+    return "";
+  };
   const recordUsage = async (event) => {
     try {
       const response = await fetch(usageUrl, {
@@ -23117,8 +23122,10 @@ if (root) {
     }, 700);
   };
   const setEditorSource = (source) => {
-    switching = true;
-    editor.setSource(source);
+    if (editor) {
+      switching = true;
+      editor.setSource(source);
+    }
     switching = false;
   };
   const loadExercise = async (exercise) => {

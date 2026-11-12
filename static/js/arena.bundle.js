@@ -23071,10 +23071,17 @@ if (root) {
     output.textContent = message;
     output.dataset.state = state;
   };
-  const currentSource = () => editor.getSource();
+  const currentSource = () => {
+    if (editor) {
+      return editor.getSource();
+    }
+    return "";
+  };
   const setEditorSource = (source) => {
-    switching = true;
-    editor.setSource(source);
+    if (editor) {
+      switching = true;
+      editor.setSource(source);
+    }
     switching = false;
   };
   themeButton.addEventListener("click", () => {
