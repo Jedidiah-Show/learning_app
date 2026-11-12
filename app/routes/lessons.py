@@ -526,6 +526,7 @@ def practice_run(lesson_id, exercise_id):
     run_code = f"{code}\n\n{exercise['checks_code']}" if exercise['checks_code'] else code
     if not run_code.strip():
         return jsonify({'error': 'Practice source is required'}), 400
+    enforce_rate_limit('practice-run', str(current_user.id))
     result = execute_in_sandbox(
         run_code,
         '',

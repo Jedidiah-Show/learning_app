@@ -214,6 +214,10 @@ def all_arena_problems():
                 'hints': raw.get('hints', []),
                 'editorial': raw.get('editorial', ''),
                 **raw,
+                # Authoritative judging runs a private suite; fall back to the
+                # published browser checks until a dedicated private suite is
+                # authored for a problem that does not have one yet.
+                'judge_tests': raw.get('judge_tests') or raw.get('browser_checks') or '',
             }
             _validate_problem(problem, by_id)
             by_id[problem['id']] = problem

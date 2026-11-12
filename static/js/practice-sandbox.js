@@ -126,7 +126,7 @@
         worker.postMessage(event.data);
         runTimer = setTimeout(() => {
             worker.terminate();
-            sendToParent({type: 'timeout', runId: event.data.runId, text: 'Execution exceeded the 8-second limit.'});
+            sendToParent({type: 'timeout', runId: event.data.runId, text: 'Execution exceeded the 10-second limit.'});
             startWorker();
         }, 8000);
     });

@@ -14,7 +14,7 @@ class _TimeLimitExceeded(Exception):
 
 class _BoundedCapture(io.StringIO):
     """Keep learner output from consuming the sandbox memory budget."""
-    def __init__(self, limit=16 * 1024):
+    def __init__(self, limit=12000):
         super().__init__()
         self.remaining = limit
         self.truncated = False
@@ -174,6 +174,26 @@ def main():
             "output": captured.getvalue().strip(),
             "error_details": "Memory limit exceeded",
         }
+    except AssertionError as error:
+        if mode == "run":
+            # Interactive runs append the authored checks to the learner code;
+            # an assertion firing means a check failed, not that the runtime
+            # crashed, so surface a check failure instead of a runtime error.
+            result = {
+                "verdict": "CHECKS_FAILED",
+                "tests_passed": 0,
+                "total_tests": 0,
+                "output": captured.getvalue().strip(),
+                "error_details": f"One or more checks failed: {error}",
+            }
+        else:
+            result = {
+                "verdict": "RUNTIME_ERROR",
+                "tests_passed": sum(assertion_results),
+                "total_tests": len(assertion_results),
+                "output": captured.getvalue().strip(),
+                "error_details": "AssertionError",
+            }
     except BaseException as error:
         result = {
             "verdict": "RUNTIME_ERROR",

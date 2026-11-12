@@ -229,10 +229,13 @@ if (root) {
         }
         if (serverResult) {
             const verdict = serverResult.verdict || 'INTERNAL_ERROR';
+            hasAttemptedExercise = true;
             clearTimeout(runTimeout);
             runButton.disabled = false;
             if (verdict === 'COMPLETED') {
                 setRunOutput(serverResult.output || 'Checks passed (no output).', false);
+            } else if (verdict === 'CHECKS_FAILED') {
+                setRunOutput(serverResult.error_details || 'One or more checks failed.', true);
             } else {
                 setRunOutput(
                     serverResult.error_details

@@ -87,7 +87,8 @@
              data-save-url="{{ url_for('practice_arena.save_workspace', problem_id=problem.id) }}"
              data-submit-url="{{ url_for('practice_arena.submit_problem', problem_id=problem.id) }}"
              data-hint-url="{{ url_for('practice_arena.problem_hint', problem_id=problem.id) }}"
-             data-editorial-url="{{ url_for('practice_arena.reveal_editorial', problem_id=problem.id) }}">
+             data-editorial-url="{{ url_for('practice_arena.reveal_editorial', problem_id=problem.id) }}"
+             data-run-url="{{ url_for('practice_arena.run_problem', problem_id=problem.id) }}">
       <div class="flex flex-wrap items-center justify-between gap-2">
         <div>
           <h2 id="workspace-title" class="text-lg font-bold text-slate-900 dark:text-white">Code workspace</h2>

@@ -23071,6 +23071,7 @@ if (root) {
   const submitUrl = root.dataset.submitUrl;
   const hintUrl = root.dataset.hintUrl;
   const editorialUrl = root.dataset.editorialUrl;
+  const runUrl = root.dataset.runUrl;
   const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || "";
   const editorHost = document.getElementById("arena-editor");
   const saveStatus = document.getElementById("arena-save-status");
@@ -23319,6 +23320,8 @@ ${customChecks.value}`;
       runButton.disabled = false;
       if (verdict === "COMPLETED") {
         setOutput(serverResult.output || "Checks passed (no output).", "done");
+      } else if (verdict === "CHECKS_FAILED") {
+        setOutput(serverResult.error_details || "One or more checks failed.", "error");
       } else {
         setOutput(
           serverResult.error_details ? `Runtime error: ${serverResult.error_details}` : "The server runtime reported an error.",
@@ -23395,7 +23398,7 @@ ${customChecks.value}`
       setOutput(error.message || "Server judging is unavailable.", "error");
     } finally {
       submitButton.disabled = false;
-      runButton.disabled = !runnerReady;
+      runButton.disabled = false;
     }
   };
   const revealEditorial = async () => {

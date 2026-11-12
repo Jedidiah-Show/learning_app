@@ -38,7 +38,7 @@ def process_next_submission(app) -> bool:
                 raise ValueError('Problem test suite is unavailable')
             result = execute_in_sandbox(
                 submission.code_snapshot,
-                problem['browser_checks'],
+                problem['judge_tests'],
                 timeout_sec=3.0,
             )
             submission.verdict = result.verdict
