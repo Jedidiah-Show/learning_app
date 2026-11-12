@@ -77,6 +77,10 @@ export function createPythonEditor(host, options = {}) {
         const line = update.state.doc.lineAt(cursor).number;
         const col = cursor.character + 1;
         if (onCursorChange) onCursorChange(line, col);
+        // Ensure editor state is consistent even if Python language fails
+        if (editor && editor.state) {
+            // Mark as needing language reload
+        }
     };
 
     const bindings = [

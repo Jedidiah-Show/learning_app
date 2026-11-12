@@ -22931,6 +22931,8 @@ function createPythonEditor(host, options = {}) {
     const line = update.state.doc.lineAt(cursor).number;
     const col = cursor.character + 1;
     if (onCursorChange) onCursorChange(line, col);
+    if (editor && editor.state) {
+    }
   };
   const bindings = [
     ...defaultKeymap.filter((binding) => binding.key !== "Mod-Enter"),
