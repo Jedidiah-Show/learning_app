@@ -48,7 +48,7 @@ if (root) {
     } catch (e) {
         console.error('Failed to create editor', e);
         if (editorHost) {
-            editorHost.innerHTML = '<div style="padding:12px;color:#f87171;">Failed to load code editor. Please refresh.</div>';
+            editorHost.innerHTML = `<div style="padding:12px;color:#f87171;">Failed to load code editor. Please refresh.<br><small>${String(e && e.message || e)}</small></div>`;
         }
     }
     let savedSource = '';
@@ -90,6 +90,7 @@ if (root) {
     };
 
     themeButton.addEventListener('click', () => {
+        if (!editor) return;
         lightTheme = !lightTheme;
         editor.setTheme(lightTheme ? 'light' : 'dark');
         themeButton.setAttribute('aria-pressed', String(lightTheme));
@@ -215,7 +216,7 @@ if (root) {
             setSaveStatus(data.updated_at ? 'Saved work loaded' : 'Starter code loaded', 'saved');
             runButton.disabled = !runnerReady;
             submitButton.disabled = false;
-            void editor.languageReady;
+            if (editor) void editor.languageReady;
         } catch (error) {
             setSaveStatus(error.message || 'Could not load this problem.', 'error');
             setOutput('The problem could not be loaded. Reload the page to try again.', 'error');

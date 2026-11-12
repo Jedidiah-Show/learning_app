@@ -2,7 +2,7 @@ import {defaultKeymap, history, historyKeymap, indentWithTab} from '@codemirror/
 import {EditorState, Compartment} from '@codemirror/state';
 import {autocompletion, closeBrackets} from '@codemirror/autocomplete';
 import {EditorView, keymap, lineNumbers, highlightActiveLine, highlightActiveLineGutter, highlightSpecialChars, drawSelection} from '@codemirror/view';
-import {foldGutter, foldKeymap, matchBrackets} from '@codemirror/language';
+import {bracketMatching, foldGutter, foldKeymap} from '@codemirror/language';
 
 export const PYTHON_EDITOR_FONT = '"JetBrains Mono", "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
 
@@ -74,13 +74,9 @@ export function createPythonEditor(host, options = {}) {
             onChange(update.state.doc.toString());
         }
         const cursor = update.state.selection.main;
-        const line = update.state.doc.lineAt(cursor).number;
-        const col = cursor.character + 1;
-        if (onCursorChange) onCursorChange(line, col);
-        // Ensure editor state is consistent even if Python language fails
-        if (editor && editor.state) {
-            // Mark as needing language reload
-        }
+        const line = update.state.doc.lineAt(cursor.head);
+        const col = cursor.head - line.from + 1;
+        if (onCursorChange) onCursorChange(line.number, col);
     };
 
     const bindings = [
@@ -102,7 +98,7 @@ export function createPythonEditor(host, options = {}) {
                 history(),
                 closeBrackets(),
                 autocompletion(),
-                matchBrackets(),
+                bracketMatching(),
                 foldGutter(),
                 highlightActiveLine(),
                 highlightActiveLineGutter(),
@@ -117,10 +113,16 @@ export function createPythonEditor(host, options = {}) {
     });
 
     const languageReady = (async () => {
-        const languageModule = await import('@codemirror/lang-python');
-        editor.dispatch({
-            effects: languageCompartment.reconfigure(languageModule.python()),
-        });
+        try {
+            const languageModule = await import('@codemirror/lang-python');
+            editor.dispatch({
+                effects: languageCompartment.reconfigure(languageModule.python()),
+            });
+        } catch (error) {
+            // Syntax highlighting is a progressive enhancement: the editor must
+            // remain fully usable even if the language module fails to load.
+            console.warn('Python language module failed to load; continuing without highlighting.', error);
+        }
     })();
     return {
         editor,

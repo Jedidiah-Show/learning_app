@@ -16295,6 +16295,29 @@ function foldGutter(config2 = {}) {
     codeFolding()
   ];
 }
+function defaultRenderMatch(match) {
+  let decorations2 = [];
+  let mark = match.matched ? matchingMark : nonmatchingMark;
+  decorations2.push(mark.range(match.start.from, match.start.to));
+  if (match.end)
+    decorations2.push(mark.range(match.end.from, match.end.to));
+  return decorations2;
+}
+function bracketDeco(state) {
+  let decorations2 = [];
+  let config2 = state.facet(bracketMatchingConfig);
+  for (let range of state.selection.ranges) {
+    if (!range.empty)
+      continue;
+    let match = matchBrackets(state, range.head, -1, config2) || range.head > 0 && matchBrackets(state, range.head - 1, 1, config2) || config2.afterCursor && (matchBrackets(state, range.head, 1, config2) || range.head < state.doc.length && matchBrackets(state, range.head + 1, -1, config2));
+    if (match)
+      decorations2 = decorations2.concat(config2.renderMatch(match, state));
+  }
+  return Decoration.set(decorations2, true);
+}
+function bracketMatching(config2 = {}) {
+  return [bracketMatchingConfig.of(config2), bracketMatchingUnique];
+}
 function matchingNodes(node, dir, brackets) {
   let byProp = node.prop(dir < 0 ? NodeProp.openedBy : NodeProp.closedBy);
   if (byProp)
@@ -16423,7 +16446,7 @@ function createTokenType(extra, tagStr) {
   typeArray.push(type);
   return type.id;
 }
-var _a, languageDataProp, sublanguageProp, Language, LRLanguage, DocInput, currentContext, ParseContext, LanguageState, requestIdle, isInputPending, parseWorker, language, LanguageSupport, indentService, indentUnit, IndentContext, indentNodeProp, TreeIndentContext, foldService, foldNodeProp, foldEffect, unfoldEffect, foldState, foldCode, unfoldCode, foldAll, unfoldAll, foldKeymap, defaultConfig, foldConfig, foldWidget, PreparedFoldWidget, foldGutterDefaults, FoldMarker, baseTheme$12, HighlightStyle, defaultHighlightStyle, DefaultScanDist, DefaultBrackets, bracketMatchingHandle, noTokens, typeArray, warned, byTag, defaultTable, marks;
+var _a, languageDataProp, sublanguageProp, Language, LRLanguage, DocInput, currentContext, ParseContext, LanguageState, requestIdle, isInputPending, parseWorker, language, LanguageSupport, indentService, indentUnit, IndentContext, indentNodeProp, TreeIndentContext, foldService, foldNodeProp, foldEffect, unfoldEffect, foldState, foldCode, unfoldCode, foldAll, unfoldAll, foldKeymap, defaultConfig, foldConfig, foldWidget, PreparedFoldWidget, foldGutterDefaults, FoldMarker, baseTheme$12, HighlightStyle, defaultHighlightStyle, baseTheme2, DefaultScanDist, DefaultBrackets, bracketMatchingConfig, matchingMark, nonmatchingMark, bracketMatcher, bracketMatchingUnique, bracketMatchingHandle, noTokens, typeArray, warned, byTag, defaultTable, marks;
 var init_dist5 = __esm({
   "node_modules/@codemirror/language/dist/index.js"() {
     init_dist3();
@@ -17389,8 +17412,47 @@ var init_dist5 = __esm({
         color: "#f00"
       }
     ]);
+    baseTheme2 = /* @__PURE__ */ EditorView.baseTheme({
+      "&.cm-focused .cm-matchingBracket": { backgroundColor: "#328c8252" },
+      "&.cm-focused .cm-nonmatchingBracket": { backgroundColor: "#bb555544" }
+    });
     DefaultScanDist = 1e4;
     DefaultBrackets = "()[]{}";
+    bracketMatchingConfig = /* @__PURE__ */ Facet.define({
+      combine(configs) {
+        return combineConfig(configs, {
+          afterCursor: true,
+          brackets: DefaultBrackets,
+          maxScanDistance: DefaultScanDist,
+          renderMatch: defaultRenderMatch
+        });
+      }
+    });
+    matchingMark = /* @__PURE__ */ Decoration.mark({ class: "cm-matchingBracket" });
+    nonmatchingMark = /* @__PURE__ */ Decoration.mark({ class: "cm-nonmatchingBracket" });
+    bracketMatcher = /* @__PURE__ */ ViewPlugin.fromClass(class {
+      constructor(view) {
+        this.paused = false;
+        this.decorations = bracketDeco(view.state);
+      }
+      update(update) {
+        if (update.docChanged || update.selectionSet || this.paused) {
+          if (update.view.composing) {
+            this.decorations = this.decorations.map(update.changes);
+            this.paused = true;
+          } else {
+            this.decorations = bracketDeco(update.state);
+            this.paused = false;
+          }
+        }
+      }
+    }, {
+      decorations: (v) => v.decorations
+    });
+    bracketMatchingUnique = [
+      bracketMatcher,
+      baseTheme2
+    ];
     bracketMatchingHandle = /* @__PURE__ */ new NodeProp();
     noTokens = /* @__PURE__ */ Object.create(null);
     typeArray = [NodeType.none];
@@ -17759,7 +17821,7 @@ function snippet(template) {
       let active = new ActiveSnippet(ranges, 0);
       let effects = spec.effects = [setActive.of(active)];
       if (editor.state.field(snippetState, false) === void 0)
-        effects.push(StateEffect.appendConfig.of([snippetState, addSnippetKeymap, snippetPointerHandler, baseTheme2]));
+        effects.push(StateEffect.appendConfig.of([snippetState, addSnippetKeymap, snippetPointerHandler, baseTheme3]));
     }
     editor.dispatch(editor.state.update(spec));
   };
@@ -17943,10 +18005,10 @@ function autocompletion(config2 = {}) {
     completionConfig.of(config2),
     completionPlugin,
     completionKeymapExt,
-    baseTheme2
+    baseTheme3
   ];
 }
-var CompletionContext, Option, pickedCompletion, SourceCache, startCompletionEffect, closeCompletionEffect, FuzzyMatcher, StrictMatcher, completionConfig, setSelectedEffect, CompletionTooltip, CompletionDialog, CompletionState, baseAttrs, noAttrs2, none3, ActiveSource, ActiveResult, setActiveEffect, completionState, createTooltip, acceptCompletion, startCompletion, closeCompletion, RunningQuery, MaxUpdateCount, MinAbortTime, completionPlugin, windows, commitCharacters, baseTheme2, FieldPos, FieldRange, Snippet, fieldMarker, fieldRange, ActiveSnippet, setActive, moveToField, snippetState, clearSnippet, nextSnippetField, prevSnippetField, defaultSnippetKeymap, snippetKeymap, addSnippetKeymap, snippetPointerHandler, defaults2, closeBracketEffect, closedBracket, bracketState, definedClosing, android, inputHandler2, completionKeymap, completionKeymapExt;
+var CompletionContext, Option, pickedCompletion, SourceCache, startCompletionEffect, closeCompletionEffect, FuzzyMatcher, StrictMatcher, completionConfig, setSelectedEffect, CompletionTooltip, CompletionDialog, CompletionState, baseAttrs, noAttrs2, none3, ActiveSource, ActiveResult, setActiveEffect, completionState, createTooltip, acceptCompletion, startCompletion, closeCompletion, RunningQuery, MaxUpdateCount, MinAbortTime, completionPlugin, windows, commitCharacters, baseTheme3, FieldPos, FieldRange, Snippet, fieldMarker, fieldRange, ActiveSnippet, setActive, moveToField, snippetState, clearSnippet, nextSnippetField, prevSnippetField, defaultSnippetKeymap, snippetKeymap, addSnippetKeymap, snippetPointerHandler, defaults2, closeBracketEffect, closedBracket, bracketState, definedClosing, android, inputHandler2, completionKeymap, completionKeymapExt;
 var init_dist6 = __esm({
   "node_modules/@codemirror/autocomplete/dist/index.js"() {
     init_dist();
@@ -18853,7 +18915,7 @@ var init_dist6 = __esm({
         return false;
       }
     }));
-    baseTheme2 = /* @__PURE__ */ EditorView.baseTheme({
+    baseTheme3 = /* @__PURE__ */ EditorView.baseTheme({
       ".cm-tooltip.cm-tooltip-autocomplete": {
         "& > ul": {
           fontFamily: "monospace",
@@ -22928,11 +22990,9 @@ function createPythonEditor(host, options = {}) {
       onChange(update.state.doc.toString());
     }
     const cursor = update.state.selection.main;
-    const line = update.state.doc.lineAt(cursor).number;
-    const col = cursor.character + 1;
-    if (onCursorChange) onCursorChange(line, col);
-    if (editor && editor.state) {
-    }
+    const line = update.state.doc.lineAt(cursor.head);
+    const col = cursor.head - line.from + 1;
+    if (onCursorChange) onCursorChange(line.number, col);
   };
   const bindings = [
     ...defaultKeymap.filter((binding) => binding.key !== "Mod-Enter"),
@@ -22958,7 +23018,7 @@ function createPythonEditor(host, options = {}) {
         history(),
         closeBrackets(),
         autocompletion(),
-        matchBrackets(),
+        bracketMatching(),
         foldGutter(),
         highlightActiveLine(),
         highlightActiveLineGutter(),
@@ -22972,10 +23032,14 @@ function createPythonEditor(host, options = {}) {
     parent: host
   });
   const languageReady = (async () => {
-    const languageModule = await Promise.resolve().then(() => (init_dist9(), dist_exports));
-    editor.dispatch({
-      effects: languageCompartment.reconfigure(languageModule.python())
-    });
+    try {
+      const languageModule = await Promise.resolve().then(() => (init_dist9(), dist_exports));
+      editor.dispatch({
+        effects: languageCompartment.reconfigure(languageModule.python())
+      });
+    } catch (error) {
+      console.warn("Python language module failed to load; continuing without highlighting.", error);
+    }
   })();
   return {
     editor,
@@ -23046,7 +23110,7 @@ if (root) {
   } catch (e) {
     console.error("Failed to create editor", e);
     if (editorHost) {
-      editorHost.innerHTML = '<div style="padding:12px;color:#f87171;">Failed to load code editor. Please refresh.</div>';
+      editorHost.innerHTML = `<div style="padding:12px;color:#f87171;">Failed to load code editor. Please refresh.<br><small>${String(e && e.message || e)}</small></div>`;
     }
   }
   let switching = false;
@@ -23163,7 +23227,9 @@ if (root) {
       runButton.disabled = !runnerReady;
     }
   };
-  const resizeEditor = () => requestAnimationFrame(() => editor.requestMeasure());
+  const resizeEditor = () => requestAnimationFrame(() => {
+    if (editor) editor.requestMeasure();
+  });
   const openPanel = () => {
     panel.hidden = false;
     panel.classList.remove("is-collapsed");

@@ -42,7 +42,7 @@ if (root) {
     } catch (e) {
         console.error('Failed to create editor', e);
         if (editorHost) {
-            editorHost.innerHTML = '<div style="padding:12px;color:#f87171;">Failed to load code editor. Please refresh.</div>';
+            editorHost.innerHTML = `<div style="padding:12px;color:#f87171;">Failed to load code editor. Please refresh.<br><small>${String(e && e.message || e)}</small></div>`;
         }
     }
     let switching = false;
@@ -168,7 +168,7 @@ if (root) {
         }
     };
 
-    const resizeEditor = () => requestAnimationFrame(() => editor.requestMeasure());
+    const resizeEditor = () => requestAnimationFrame(() => { if (editor) editor.requestMeasure(); });
 
     const openPanel = () => {
         panel.hidden = false;
