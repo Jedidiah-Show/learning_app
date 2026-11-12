@@ -161,7 +161,7 @@ def machine_learning_lesson_is_open(user_id, lesson_id):
     return all(item['id'] in completed for item in ready_lessons[:position])
 
 
-def record_pathway_review(user_id, lesson):
+def record_pathway_review(user_id, lesson, pathway_id=PATHWAY_ID):
     """Schedule a missed pathway knowledge check into spaced review.
 
     The specialization keeps its own quiz format (one fixed check per lesson),
@@ -175,7 +175,7 @@ def record_pathway_review(user_id, lesson):
     from app.models import ReviewItem
 
     quiz = lesson['quiz']
-    quiz_id = f'{PATHWAY_ID}:{lesson["id"]}'
+    quiz_id = f'{pathway_id}:{lesson["id"]}'
     now = datetime.now(timezone.utc)
     item = ReviewItem.query.filter_by(
         user_id=user_id, quiz_id=quiz_id, question_id=lesson['id']
@@ -183,11 +183,11 @@ def record_pathway_review(user_id, lesson):
     if item is None:
         item = ReviewItem(
             user_id=user_id, quiz_id=quiz_id, question_id=lesson['id'],
-            subject_id=PATHWAY_ID, question=quiz['question'],
+            subject_id=pathway_id, question=quiz['question'],
             options=_json.dumps(quiz['choices'], ensure_ascii=False),
             correct_index=quiz['answer'], explanation=quiz['explanation'],
             due_at=now, interval_days=1, repetitions=0, active=True,
-            pathway_id=PATHWAY_ID,
+            pathway_id=pathway_id,
         )
         db.session.add(item)
     else:
@@ -199,7 +199,7 @@ def record_pathway_review(user_id, lesson):
         item.interval_days = 1
         item.repetitions = 0
         item.active = True
-        item.pathway_id = PATHWAY_ID
+        item.pathway_id = pathway_id
     db.session.commit()
     return item
 

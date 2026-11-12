@@ -123,23 +123,20 @@ class DashboardCurriculumGridTests(DynamicShellTestCase):
         self._set_destination('ml')
         html = self._page()
 
-        self.assertIn('9 modules · 76 lessons', html)
-        for title in FOUNDATION_TITLES + ML_TITLES:
+        self.assertIn('6 modules · 26 lessons', html)
+        for title in ML_TITLES:
             self.assertIn(title, html)
         for title in AI_ONLY_TITLES:
             self.assertNotIn(title, html)
 
     def test_grid_badges_disambiguate_the_colliding_module_numbers(self):
-        # The foundation numbers 0-2 and the pathway's 1-4 would otherwise both
-        # render as "Module 1"/"Module 2" in the same grid.
+        # ML pathway modules are explicitly badged in the curriculum grid.
         self._set_destination('ml')
         html = self._page()
 
-        self.assertIn('Shared foundation · Module 0', html)
-        self.assertIn('Shared foundation · Module 1', html)
-        self.assertIn('Shared foundation · Module 2', html)
         self.assertIn('ML pathway · Module 1', html)
         self.assertIn('ML pathway · Module 4', html)
+        self.assertIn('ML pathway · Module 6', html)
 
     def test_ai_and_unset_destinations_keep_the_full_course(self):
         for destination in ('ai', None):
@@ -175,7 +172,7 @@ class DashboardCurriculumGridTests(DynamicShellTestCase):
 
         html = self._page()
 
-        self.assertIn('9 modules · 76 lessons', html)
+        self.assertIn('6 modules · 26 lessons', html)
         for title in AI_ONLY_TITLES:
             self.assertNotIn(title, html)
         # The foundation pointer is spent, so no generic "continue" card is left

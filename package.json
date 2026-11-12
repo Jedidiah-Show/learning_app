@@ -3,7 +3,7 @@
   "scripts": {
     "build:css": "tailwindcss -i ./static/css/tailwind.src.css -o ./static/css/tailwind.css --minify",
     "build:js": "esbuild static/js/practice.js --bundle --format=esm --target=es2020 --outdir=static/js --entry-names=practice.bundle && esbuild static/js/arena.js --bundle --format=esm --target=es2020 --outdir=static/js --entry-names=arena.bundle",
-    "build:arena": "esbuild static/js/arena.js --bundle --minify --format=esm --target=es2020 --splitting --outdir=static/js --entry-names=arena.bundle",
+    "build:arena": "esbuild static/js/arena.js --bundle --format=esm --target=es2020 --outdir=static/js --entry-names=arena.bundle",
     "test:browser": "playwright test"
   },
   "engines": {

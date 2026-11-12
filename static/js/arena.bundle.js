@@ -23080,6 +23080,8 @@ if (root) {
   const statusPosition = document.getElementById("arena-statusbar-position");
   const runButton = document.getElementById("arena-run");
   const submitButton = document.getElementById("arena-submit");
+  const copyOutputButton = document.getElementById("arena-copy-output");
+  const autoRunCheckbox = document.getElementById("arena-auto-run");
   const customChecks = document.getElementById("arena-custom-checks");
   const hintOutput = document.getElementById("arena-hint-output");
   const themeButton = document.getElementById("arena-theme");
@@ -23130,6 +23132,7 @@ if (root) {
   let nextRunId = 0;
   let runTimeout = null;
   let lightTheme = false;
+  let lastAutoRun = 0;
   const setSaveStatus = (message, state = "") => {
     saveStatus.textContent = message;
     saveStatus.dataset.state = state;
@@ -23242,6 +23245,13 @@ if (root) {
         }
         savedSource = source;
         setSaveStatus("Saved", "saved");
+        if (autoRunCheckbox && autoRunCheckbox.checked) {
+          const now = Date.now();
+          if (now - lastAutoRun > 2500 && !runButton.disabled) {
+            lastAutoRun = now;
+            void runChecks();
+          }
+        }
         if (currentSource() !== savedSource) queueSave();
         return true;
       } catch (error) {
@@ -23376,13 +23386,56 @@ ${customChecks.value}`
       if (!response.ok) {
         throw new Error(data.error || "Server judging is unavailable.");
       }
-      let result = data;
-      for (let attempt = 0; result.verdict === "PENDING" || result.verdict === "RUNNING"; attempt += 1) {
-        if (attempt >= 60) throw new Error("The judge is taking longer than expected. Check your submission status shortly.");
-        await new Promise((resolve) => setTimeout(resolve, 1e3));
-        const statusResponse = await fetch(`/arena/api/submissions/${encodeURIComponent(data.submission_id)}`);
-        result = await statusResponse.json();
-        if (!statusResponse.ok) throw new Error(result.error || "Could not load submission status.");
+      let result = null;
+      if (window.EventSource && data.submission_id) {
+        result = await new Promise((resolve) => {
+          const streamUrl = `/arena/api/submissions/${encodeURIComponent(data.submission_id)}/stream`;
+          let es = null;
+          let timeout = null;
+          const cleanup = () => {
+            if (timeout) clearTimeout(timeout);
+            if (es) {
+              es.close();
+              es = null;
+            }
+          };
+          timeout = setTimeout(() => {
+            cleanup();
+            resolve(null);
+          }, 3e4);
+          try {
+            es = new EventSource(streamUrl);
+            es.onmessage = (event) => {
+              try {
+                const parsed = JSON.parse(event.data);
+                if (parsed && parsed.verdict && parsed.verdict !== "PENDING" && parsed.verdict !== "RUNNING") {
+                  cleanup();
+                  resolve(parsed);
+                }
+              } catch (_) {
+                cleanup();
+                resolve(null);
+              }
+            };
+            es.onerror = () => {
+              cleanup();
+              resolve(null);
+            };
+          } catch (_) {
+            cleanup();
+            resolve(null);
+          }
+        });
+      }
+      if (!result) {
+        result = data;
+        for (let attempt = 0; result.verdict === "PENDING" || result.verdict === "RUNNING"; attempt += 1) {
+          if (attempt >= 60) throw new Error("The judge is taking longer than expected. Check your submission status shortly.");
+          await new Promise((resolve) => setTimeout(resolve, 1e3));
+          const statusResponse = await fetch(`/arena/api/submissions/${encodeURIComponent(data.submission_id)}`);
+          result = await statusResponse.json();
+          if (!statusResponse.ok) throw new Error(result.error || "Could not load submission status.");
+        }
       }
       const verdict = result.verdict || "INTERNAL_ERROR";
       setOutput(
@@ -23456,6 +23509,49 @@ ${customChecks.value}`
       }
     });
   });
+  if (autoRunCheckbox) {
+    try {
+      autoRunCheckbox.checked = localStorage.getItem("ruachai-arena-auto-run") === "1";
+    } catch (error) {
+    }
+    autoRunCheckbox.addEventListener("change", () => {
+      try {
+        localStorage.setItem("ruachai-arena-auto-run", autoRunCheckbox.checked ? "1" : "0");
+      } catch (error) {
+      }
+    });
+  }
+  if (copyOutputButton) {
+    copyOutputButton.addEventListener("click", async () => {
+      const text = output ? output.textContent : "";
+      if (!text || !text.trim()) {
+        setOutput("Nothing to copy yet \u2014 run your code first.", "idle");
+        return;
+      }
+      try {
+        if (navigator.clipboard && window.isSecureContext) {
+          await navigator.clipboard.writeText(text);
+        } else {
+          const scratch = document.createElement("textarea");
+          scratch.value = text;
+          scratch.setAttribute("readonly", "");
+          scratch.style.position = "fixed";
+          scratch.style.opacity = "0";
+          document.body.append(scratch);
+          scratch.select();
+          document.execCommand("copy");
+          scratch.remove();
+        }
+        copyOutputButton.textContent = "Copied \u2713";
+      } catch (error) {
+        copyOutputButton.textContent = "Copy failed";
+      } finally {
+        window.setTimeout(() => {
+          copyOutputButton.textContent = "Copy output";
+        }, 1500);
+      }
+    });
+  }
   document.addEventListener("visibilitychange", () => {
     if (document.visibilityState === "hidden") void saveWorkspace();
   });

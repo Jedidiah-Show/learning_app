@@ -34,14 +34,28 @@ def process_next_submission(app) -> bool:
         from app.practice_arena import get_arena_problem
         problem = get_arena_problem(submission.problem_id)
         try:
-            if problem is None:
-                raise ValueError('Problem test suite is unavailable')
-            result = execute_in_sandbox(
-                submission.code_snapshot,
-                problem['judge_tests'],
-                timeout_sec=3.0,
-            )
+            mode = getattr(submission, 'mode', 'judge') or 'judge'
+            if mode == 'run':
+                result = execute_in_sandbox(
+                    submission.code_snapshot,
+                    '',
+                    timeout_sec=15.0,
+                    memory_mb=512,
+                    mode='run',
+                )
+            else:
+                if problem is None:
+                    raise ValueError('Problem test suite is unavailable')
+                tests = problem.get('judge_tests') or problem.get('browser_checks') or ''
+                if not tests:
+                    raise ValueError('Problem test suite is unavailable')
+                result = execute_in_sandbox(
+                    submission.code_snapshot,
+                    tests,
+                    timeout_sec=3.0,
+                )
             submission.verdict = result.verdict
+            submission.output = getattr(result, 'output', '') or ''
             submission.execution_time_ms = result.execution_time_ms
             submission.memory_kb = result.memory_kb
             submission.tests_passed = result.tests_passed

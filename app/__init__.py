@@ -219,6 +219,30 @@ def current_pathway_destination():
     return destination
 
 
+def current_review_due_count():
+    """Count of spaced-review items due now, cached per request.
+
+    Feeds the Review Center badge in the shared shell.  Hidden from admins,
+    who do not see learner streaks either; failure-tolerant like the pathway
+    read above so a hiccup never takes the shell down.
+    """
+    if hasattr(g, 'review_due_count'):
+        return g.review_due_count
+    count = 0
+    if getattr(current_user, 'is_authenticated', False) and not getattr(current_user, 'is_admin', False):
+        try:
+            from datetime import datetime, timezone
+            from app.models import ReviewItem
+            count = ReviewItem.query.filter_by(
+                user_id=current_user.id, active=True
+            ).filter(ReviewItem.due_at <= datetime.now(timezone.utc)).count()
+        except Exception:
+            current_app.logger.exception('Could not read review-due count')
+            count = 0
+    g.review_due_count = count
+    return count
+
+
 def create_app(config_override=None):
     flask_options = {
         'template_folder': '../templates',
@@ -259,6 +283,19 @@ def create_app(config_override=None):
     app.config['JUDGE_SUBMISSIONS_ENABLED'] = (
         os.environ.get('JUDGE_SUBMISSIONS_ENABLED', '').strip().lower()
         in {'1', 'true', 'yes'}
+    )
+    # Self-hosted Piston code execution engine (see docs/PISTON_SETUP.md).
+    # Empty by default; when set, interactive Python runs use Piston first and
+    # only fall back to the Docker judge / browser runtime when it is down.
+    app.config['PISTON_URL'] = os.environ.get('PISTON_URL', '').strip().rstrip('/')
+    app.config['PISTON_PYTHON_VERSION'] = os.environ.get(
+        'PISTON_PYTHON_VERSION', ''
+    ).strip()
+    app.config['PISTON_RUN_TIMEOUT_MS'] = int(
+        os.environ.get('PISTON_RUN_TIMEOUT_MS', '10000')
+    )
+    app.config['PISTON_RUN_MEMORY_LIMIT_MB'] = int(
+        os.environ.get('PISTON_RUN_MEMORY_LIMIT_MB', '256')
     )
     if production and not app.config['TOKEN_ENCRYPTION_KEY']:
         # Deriving the Fernet key from SECRET_KEY would silently invalidate
@@ -485,12 +522,14 @@ def create_app(config_override=None):
     from app.routes.passport import passport_bp
     from app.routes.ml_specialization import ml_specialization_bp
     from app.routes.cloud_ai_infrastructure import cloud_ai_infrastructure_bp
+    from app.routes.pathway_practice import pathway_practice_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_portal_bp, url_prefix='/admin')
     app.register_blueprint(progress_bp, url_prefix='/api/progress')
     app.register_blueprint(lessons_bp, url_prefix='/api/lessons')
+    app.register_blueprint(pathway_practice_bp, url_prefix='/api/pathways')
     app.register_blueprint(quizzes_bp, url_prefix='/api/quizzes')
     app.register_blueprint(calendar_bp, url_prefix='/api/calendar')
     app.register_blueprint(admin_bp, url_prefix='/api/admin')
@@ -607,6 +646,23 @@ def create_app(config_override=None):
                 url_for('main.lessons'), 'See the lesson order',
                 url_for('projects.project_page'), 'Check module projects',
             )
+        if request.path.startswith('/specializations/machine-learning/lessons/'):
+            lesson_id = request.path.rstrip('/').rsplit('/', 1)[-1]
+            from app.ml_pathway import get_machine_learning_lesson
+            lesson = get_machine_learning_lesson(lesson_id)
+            title = 'That pathway lesson is locked'
+            message = (
+                'Work through the earlier ML pathway lessons and module '
+                'projects before this one opens. Pathway lessons unlock in '
+                'order, and module projects are never skipped.'
+            )
+            if lesson:
+                title = f'“{lesson["title"]}” is locked'
+            return _error_page(
+                403, title, message,
+                url_for('main.machine_learning_specialization'), 'See the pathway',
+                url_for('projects.project_page'), 'Check module projects',
+            )
         return _error_page(
             403, 'This page is locked', message,
             url_for('main.index'), 'Back to your dashboard',
@@ -624,6 +680,18 @@ def create_app(config_override=None):
             404, 'We could not find that page', message,
             url_for('main.index'), 'Go to your dashboard',
             url_for('main.lessons'), 'Browse all lessons',
+        )
+
+    @app.errorhandler(500)
+    def internal_error(error):
+        current_app.logger.error('Unhandled error on %s: %s', request.path, error)
+        if _is_api_path(request.path):
+            return jsonify({'error': 'Something went wrong on our side. Please try again.'}), 500
+        return _error_page(
+            500, 'Something broke on our side',
+            'Your progress is safe — nothing has been lost. Try again in a moment; if it keeps happening, tell support and include the page you were on.',
+            url_for('main.index'), 'Back to your dashboard',
+            url_for('main.support'), 'Tell support',
         )
 
     @app.after_request
@@ -694,6 +762,8 @@ def create_app(config_override=None):
             # Every template can now branch on the learner's pathway, which is
             # what makes the nav shell and the dashboard dynamic.
             'pathway_destination': current_pathway_destination(),
+            # Review Center badge: items due now, per learner, hidden from admins.
+            'review_due_count': current_review_due_count(),
             'google_calendar_oauth_configured': bool(
                 app.config.get('GOOGLE_CLIENT_ID')
                 and app.config.get('GOOGLE_CLIENT_SECRET')

@@ -142,6 +142,7 @@ def search():
     from app.pathway_scope import destination_for, is_ml, pathway_modules
     query = request.args.get('q', '').strip().lower()[:100]
     module_filter = request.args.get('module', '').strip()
+    bookmarked_only = request.args.get('bookmarked') == '1'
     destination = destination_for(current_user)
     # Both the module filter and the index follow the pathway: an ML learner
     # searches the foundation plus their pathway, never the AI continuation.
@@ -149,9 +150,42 @@ def search():
     index = list(_lesson_search_index())
     if is_ml(destination):
         index.extend(_pathway_search_index())
+    bookmarked_ids = None
+    if bookmarked_only:
+        from app.models import LessonBookmark
+        bookmarked_ids = {
+            lesson_id for (lesson_id,) in db.session.query(
+                LessonBookmark.lesson_id
+            ).filter_by(user_id=current_user.id).all()
+        }
+        index = [
+            entry for entry in index if entry[0]['id'] in bookmarked_ids
+        ]
     if not query:
+        # A bookmarked-only filter with no query lists the saved lessons.
+        if bookmarked_only:
+            results = []
+            for lesson, text, searchable in index:
+                if module_filter and lesson.get('module_id') != module_filter:
+                    continue
+                results.append({
+                    'id': lesson['id'],
+                    'title': lesson['title'],
+                    'module': lesson.get('_module', {}).get('title') or lesson.get('module_title'),
+                    'module_number': lesson.get('_module', {}).get('number') or lesson.get('module_number'),
+                    'ordinal': lesson.get('_ordinal'),
+                    'module_id': lesson.get('module_id'),
+                    'source': lesson.get('source'),
+                    'snippet': ' '.join(str(lesson.get('goal') or '').split()),
+                })
+                if len(results) >= 50:
+                    break
+            return render_template('search.html', query='', results=results,
+                                   modules=modules, module_filter=module_filter,
+                                   bookmarked_only=True)
         return render_template('search.html', query='', results=[],
-                               modules=modules, module_filter=module_filter)
+                               modules=modules, module_filter=module_filter,
+                               bookmarked_only=False)
     results = []
     for lesson, text, searchable in index:
         if module_filter and lesson.get('module_id') != module_filter:
@@ -172,7 +206,48 @@ def search():
         if len(results) >= 50:
             break
     return render_template('search.html', query=query, results=results,
-                           modules=modules, module_filter=module_filter)
+                           modules=modules, module_filter=module_filter,
+                           bookmarked_only=bookmarked_only)
+
+
+@main_bp.route('/api/search')
+@login_required
+def search_api():
+    """JSON counterpart to /search: powers the ⌘/Ctrl+K command palette."""
+    from app.pathway_scope import destination_for, is_ml
+    from flask import url_for
+    query = request.args.get('q', '').strip().lower()[:100]
+    try:
+        limit = min(max(int(request.args.get('limit', 8)), 1), 12)
+    except (TypeError, ValueError):
+        limit = 8
+    if len(query) < 2:
+        return jsonify({'results': []})
+    destination = destination_for(current_user)
+    index = list(_lesson_search_index())
+    if is_ml(destination):
+        index.extend(_pathway_search_index())
+    results = []
+    for lesson, text, searchable in index:
+        if query in searchable:
+            module = lesson.get('_module') or {}
+            source = lesson.get('source')
+            if source == 'ml':
+                url = url_for('main.machine_learning_lesson', lesson_id=lesson['id'])
+            else:
+                url = url_for('main.lesson_detail', lesson_id=lesson['id'])
+            results.append({
+                'id': lesson['id'],
+                'title': lesson['title'],
+                'module_number': module.get('number') or lesson.get('module_number'),
+                'ordinal': lesson.get('_ordinal'),
+                'badge': module.get('badge') or lesson.get('badge'),
+                'source': source,
+                'url': url,
+            })
+        if len(results) >= limit:
+            break
+    return jsonify({'results': results})
 
 
 @main_bp.route('/')
@@ -259,6 +334,10 @@ def index():
                     'total': ml_overview['total_lessons'],
                 },
             }
+        # Lean read for the streak-triggered leaderboard nudge: just the flag.
+        # Assumed opted in when the plan row is unreadable so we never nag
+        # someone who already shared their rank.
+        leaderboard_opted_in = bool(plan.leaderboard_opt_in) if plan else True
         return render_template('dashboard.html', config=config, user=current_user,
                                course=curriculum(),
                                progress=progress, next_lesson=next_lesson,
@@ -269,7 +348,8 @@ def index():
                                due_reviews=due_reviews,
                                ml_overview=ml_overview,
                                pathway_comparison=pathway_comparison,
-                               pathway_destination=pathway_destination)
+                               pathway_destination=pathway_destination,
+                               leaderboard_opted_in=leaderboard_opted_in)
     except Exception:
         current_app.logger.exception('Dashboard error')
         # The template dereferences progress even in the error branch, so the
@@ -513,11 +593,13 @@ def machine_learning_lesson(lesson_id):
     note = LessonNote.query.filter_by(
         user_id=current_user.id, lesson_id=lesson_id
     ).first()
+    from app.practice import pathway_exercises_for_lesson
     return render_template(
         'specializations/machine_learning_lesson.html',
         lesson=lesson, completed=existing,
         bookmarked=bookmark is not None,
         lesson_note=note.content if note else '',
+        practice_exercises=pathway_exercises_for_lesson(lesson_id),
     )
 
 

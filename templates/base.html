@@ -4,7 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token }}">
-    <meta name="theme-color" content="#06b6d4">
+    <meta name="theme-color" content="#06b6d4" media="(prefers-color-scheme: light)">
+    <meta name="theme-color" content="#0D1420" media="(prefers-color-scheme: dark)">
     <meta name="description" content="RUACH AI & ML Engineering — rooted in faith. Built for tomorrow.">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -25,6 +26,11 @@
             if (savedNavigation === 'collapsed'
                 || (!savedNavigation && matchMedia('(max-width: 760px)').matches)) {
                 document.documentElement.classList.add('nav-collapsed');
+            }
+            // Re-apply the learner's drag-resized sidebar width before first paint.
+            const savedWidth = parseInt(localStorage.getItem('ruachai-sidebar-width'), 10);
+            if (Number.isFinite(savedWidth) && savedWidth >= 240) {
+                document.documentElement.style.setProperty('--nav-width', `${savedWidth}px`);
             }
             if (localStorage.getItem('ruachai-lesson-mode') !== 'full') {
                 document.documentElement.classList.add('beginner-mode');
@@ -106,8 +112,8 @@
                     <a aria-label="Quizzes" title="Quizzes" href="{{ url_for('main.quizzes') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.quizzes' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🎯</span><span class="nav-label">Quizzes</span>
                     </a>
-                    <a aria-label="Review center" title="Review center" href="{{ url_for('main.review') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.review' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🧠</span><span class="nav-label">Review Center</span>
+                    <a aria-label="Review center{% if review_due_count %}, {{ review_due_count }} due for review{% endif %}" title="Review center" href="{{ url_for('main.review') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.review' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">🧠</span><span class="nav-label">Review Center</span>{% if review_due_count %}<span class="nav-badge" aria-hidden="true">{{ review_due_count }}</span>{% endif %}
                     </a>
                     <a aria-label="Skill Passport" title="Skill Passport" href="{{ url_for('passport.passport') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint and request.endpoint.startswith('passport.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🛂</span><span class="nav-label">Skill Passport</span>
@@ -146,6 +152,9 @@
             {% endif %}
     </header>
     
+    <!-- Offline banner: bundles still work; authenticated HTML is never cached -->
+    <div id="offline-banner" class="offline-banner" role="status" hidden>You&rsquo;re offline — bundles and static pages still work; your progress saves when you reconnect.</div>
+
     <!-- Main Content -->
     <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 {% if current_user.is_authenticated %}lg:ml-64{% endif %} {% if request.endpoint and request.endpoint.startswith('auth.') and request.endpoint != 'auth.profile' %}auth-main{% endif %}">
         {% if current_user.is_authenticated %}
@@ -157,6 +166,7 @@
                     <strong>{{ current_user.streak or 0 }}</strong>
                 </span>
                 {% endif %}
+                <button type="button" id="pwa-install" class="pwa-install" hidden>Install app</button>
                 <button type="button" class="theme-toggle flex-shrink-0" data-theme-toggle aria-label="Switch to dark mode">
                     <span data-theme-icon aria-hidden="true">🌙</span>
                     <span data-theme-label class="hidden">Dark mode</span>
@@ -188,10 +198,25 @@
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 py-4 mt-8 app-footer {% if current_user.is_authenticated %}lg:ml-64{% endif %}">
         <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
-            RUACH AI & ML Engineering <span class="text-slate-300">·</span> Rooted in faith. Built for tomorrow.
+            RUACH AI &amp; ML Engineering <span class="text-slate-300">·</span> Rooted in faith. Built for tomorrow.
+            <span class="app-footer-links"><a href="{{ url_for('main.support') }}">Tech Support &amp; Ideas</a><a href="{{ url_for('community.index') }}">Community</a><a href="{{ url_for('credentials.index') }}">Credential</a></span>
         </div>
     </footer>
-    
+
+    {% if current_user.is_authenticated %}
+    <!-- Command palette: ⌘/Ctrl+K; same catalog as /search -->
+    <div id="command-palette" class="palette-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="command-palette-title">
+        <div class="palette-panel">
+            <h2 id="command-palette-title" class="sr-only">Quick navigation</h2>
+            <label class="sr-only" for="palette-input">Search lessons, modules, and destinations</label>
+            <input id="palette-input" class="palette-input" type="text" autocomplete="off" spellcheck="false" placeholder="Search lessons, projects, review…" aria-controls="palette-results">
+            <ul id="palette-results" class="palette-results" role="listbox" aria-label="Results"></ul>
+            <p id="palette-status" class="palette-hint" role="status">Type to search · ↑↓ navigate · Enter opens · Esc closes</p>
+        </div>
+    </div>
+    <script src="{{ url_for('static', filename='js/palette.js') }}"></script>
+    {% endif %}
+
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
         if ('serviceWorker' in navigator) {

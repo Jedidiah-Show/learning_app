@@ -4,8 +4,11 @@ Mounted at ``/arena`` so the existing lesson practice library can keep
 ``/practice`` (see ``app.routes.main.practice_catalog``).
 """
 
+import json
+import time
+
 from flask import (
-    Blueprint, abort, current_app, jsonify, render_template, request, url_for,
+    Blueprint, Response, abort, current_app, jsonify, render_template, request, url_for,
 )
 from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
@@ -507,6 +510,27 @@ def run_problem(problem_id):
 
     enforce_rate_limit('arena-run', str(current_user.id))
 
+    if data.get('async') or data.get('stream'):
+        from uuid import uuid4
+        run_id = uuid4().hex
+        submission = Submission(
+            id=run_id,
+            user_id=current_user.id,
+            problem_id=problem_id,
+            language='python',
+            code_snapshot=code,
+            mode='run',
+            verdict='PENDING',
+            submitted_at=utcnow(),
+        )
+        db.session.add(submission)
+        db.session.commit()
+        return jsonify({
+            'run_id': run_id,
+            'status': 'queued',
+            'stream_url': url_for('practice_arena.stream_execution', run_id=run_id),
+        }), 202
+
     result = execute_in_sandbox(
         code,
         '',
@@ -514,6 +538,13 @@ def run_problem(problem_id):
         memory_mb=512,
         mode='run',
     )
+    if result.verdict == 'INTERNAL_ERROR' and 'unavailable' in (result.error_details or '').lower():
+        return jsonify({
+            'error': (
+                'Interactive server runs are temporarily unavailable. '
+                'The in-browser runtime will be used instead.'
+            ),
+        }), 503
     return jsonify({
         'verdict': result.verdict,
         'output': result.output,
@@ -521,11 +552,60 @@ def run_problem(problem_id):
         'execution_time_ms': result.execution_time_ms,
         'memory_kb': result.memory_kb,
     })
+
+
+@practice_arena_bp.route('/api/runs/<run_id>/stream')
+@practice_arena_bp.route('/api/submissions/<run_id>/stream')
+@login_required
+def stream_execution(run_id):
+    """Server-Sent Events (SSE) streaming endpoint for asynchronous runs and submissions."""
+    submission = db.session.get(Submission, run_id)
+    if submission is None:
+        abort(404)
+    if submission.user_id != current_user.id:
+        return jsonify({'error': 'Access denied'}), 403
+
+    app = current_app._get_current_object()
+
+    def generate():
+        with app.app_context():
+            last_verdict = None
+            start_time = time.monotonic()
+            while time.monotonic() - start_time < 30.0:
+                sub = db.session.get(Submission, run_id)
+                if sub is None:
+                    break
+                if sub.verdict != last_verdict:
+                    last_verdict = sub.verdict
+                    payload = {
+                        'run_id': sub.id,
+                        'verdict': sub.verdict,
+                        'output': sub.output or '',
+                        'error_details': sub.error_details or '',
+                        'execution_time_ms': sub.execution_time_ms,
+                        'memory_kb': sub.memory_kb,
+                        'tests_passed': sub.tests_passed,
+                        'total_tests': sub.total_tests,
+                    }
+                    yield f"data: {json.dumps(payload)}\n\n"
+                    if sub.verdict not in ('PENDING', 'RUNNING'):
+                        break
+                db.session.expire(sub)
+                time.sleep(0.1)
+
+    response = Response(generate(), mimetype='text/event-stream')
+    response.headers['Cache-Control'] = 'no-cache, no-transform'
+    response.headers['X-Accel-Buffering'] = 'no'
+    return response
+
+
 @practice_arena_bp.route('/api/submissions/<submission_id>')
 @login_required
 def submission_status(submission_id):
     """Fetch verdict, run time, memory, and test results for a submission."""
-    submission = Submission.query.get_or_404(submission_id)
+    submission = db.session.get(Submission, submission_id)
+    if submission is None:
+        abort(404)
 
     # Ensure the learner can only view their own submissions
     if submission.user_id != current_user.id:

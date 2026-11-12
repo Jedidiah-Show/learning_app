@@ -55,8 +55,9 @@ if (root) {
     let runnerLoadTimeout = null;
     let hasAttemptedExercise = false;
 
+    const urlPrefix = root.dataset.urlPrefix || '/api/lessons/practice';
     const workspaceUrl = (exercise) =>
-        `/api/lessons/practice/${encodeURIComponent(lessonId)}/${encodeURIComponent(exercise.id)}`;
+        `${urlPrefix}/${encodeURIComponent(lessonId)}/${encodeURIComponent(exercise.id)}`;
 
     const setStatus = (message, state = '') => {
         status.textContent = message;
@@ -211,7 +212,10 @@ if (root) {
 
     const runExercise = async () => {
         if (!selectedExercise) return;
-        const serverCode = `${currentSource()}\n\n${selectedExercise.checks_code}`;
+        // The server appends the authored checks itself; sending them here
+        // too would execute every check twice. The browser fallback below
+        // still appends them locally for the Pyodide path.
+        const serverCode = currentSource();
         let serverResult = null;
         try {
             const response = await fetch(`${workspaceUrl(selectedExercise)}/run`, {
@@ -230,6 +234,9 @@ if (root) {
         if (serverResult) {
             const verdict = serverResult.verdict || 'INTERNAL_ERROR';
             hasAttemptedExercise = true;
+            // The server run path is the primary one whenever the sandbox is
+            // enabled; the worked solution must not stay locked behind it.
+            solutionButton.disabled = !selectedExercise.solution_code;
             clearTimeout(runTimeout);
             runButton.disabled = false;
             if (verdict === 'COMPLETED') {

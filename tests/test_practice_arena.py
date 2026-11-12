@@ -60,6 +60,23 @@ class ArenaTestCase(unittest.TestCase):
 
 
 class ArenaTaxonomyTests(unittest.TestCase):
+    def test_all_arena_problems_defensive_deep_copy(self):
+        p1 = all_arena_problems()
+        key = next(iter(p1))
+        p1[key]['hints'].append('mutated_hint')
+        p2 = all_arena_problems()
+        self.assertNotIn('mutated_hint', p2[key]['hints'])
+
+    def test_get_arena_problem_supplies_fallback_judge_tests(self):
+        from app.practice_arena import get_arena_problem
+        for problem_id, original in all_arena_problems().items():
+            problem = get_arena_problem(problem_id)
+            self.assertIsNotNone(problem)
+            self.assertIn('judge_tests', problem)
+            self.assertIsInstance(problem['judge_tests'], str)
+            if original.get('source') == 'arena':
+                self.assertTrue(problem['judge_tests'])
+
     def test_three_tracks_are_present_and_ai_is_primary(self):
         self.assertEqual(
             [track['id'] for track in TRACKS],
@@ -477,14 +494,40 @@ class ArenaApiTests(ArenaTestCase):
 
     def test_run_returns_sandbox_result_for_valid_code(self):
         self.register('arena')
-        response = self.client.post(
-            '/arena/api/problems/algo-binary-search/run',
-            json={'code': 'def binary_search(numbers, target):\n    return -1\n'},
+        from app.services.judge import JudgeResult
+        mock_result = JudgeResult(
+            verdict='COMPLETED',
+            output='Execution succeeded',
+            error_details='',
+            execution_time_ms=10,
+            memory_kb=1024,
         )
+        with patch('app.routes.practice_arena.execute_in_sandbox', return_value=mock_result):
+            response = self.client.post(
+                '/arena/api/problems/algo-binary-search/run',
+                json={'code': 'def binary_search(numbers, target):\n    return -1\n'},
+            )
         self.assertEqual(response.status_code, 200)
         payload = response.get_json()
         for key in ('verdict', 'output', 'error_details', 'execution_time_ms', 'memory_kb'):
             self.assertIn(key, payload)
+        self.assertEqual(payload['verdict'], 'COMPLETED')
+        self.assertEqual(payload['output'], 'Execution succeeded')
+
+    def test_run_returns_503_when_sandbox_runtime_is_unavailable(self):
+        self.register('arenafallback')
+        from app.services.judge import JudgeResult
+        mock_result = JudgeResult(
+            verdict='INTERNAL_ERROR',
+            error_details='Sandbox runtime is unavailable',
+        )
+        with patch('app.routes.practice_arena.execute_in_sandbox', return_value=mock_result):
+            response = self.client.post(
+                '/arena/api/problems/algo-binary-search/run',
+                json={'code': 'def binary_search(numbers, target):\n    return -1\n'},
+            )
+        self.assertEqual(response.status_code, 503)
+        self.assertIn('unavailable', response.get_json()['error'])
 
     def test_run_rejects_invalid_source(self):
         self.register('arena')
@@ -493,6 +536,41 @@ class ArenaApiTests(ArenaTestCase):
             json={'code': 'def broken(:'},
         )
         self.assertEqual(invalid.status_code, 400)
+
+    def test_async_run_queues_and_streams_sse_events(self):
+        from app.services.judge import JudgeResult
+        from app.services.judge_worker import process_next_submission
+
+        self.register('streamlearner')
+        queued = self.client.post(
+            '/arena/api/problems/algo-binary-search/run',
+            json={
+                'code': 'def binary_search(numbers, target): return -1',
+                'async': True,
+            },
+        )
+        self.assertEqual(queued.status_code, 202)
+        data = queued.get_json()
+        self.assertEqual(data['status'], 'queued')
+        self.assertIn('stream_url', data)
+        run_id = data['run_id']
+
+        mock_result = JudgeResult(
+            verdict='COMPLETED',
+            output='Found target at -1',
+            execution_time_ms=18,
+            memory_kb=1024,
+        )
+        with patch('app.services.judge_worker.execute_in_sandbox', return_value=mock_result):
+            self.assertTrue(process_next_submission(self.app))
+
+        stream_resp = self.client.get(data['stream_url'])
+        self.assertEqual(stream_resp.status_code, 200)
+        self.assertIn('text/event-stream', stream_resp.mimetype)
+        stream_text = stream_resp.get_data(as_text=True)
+        self.assertIn('data: ', stream_text)
+        self.assertIn('COMPLETED', stream_text)
+        self.assertIn('Found target at -1', stream_text)
 
     def test_worker_records_verdict_and_verified_skill_evidence(self):
         from app.services.judge import JudgeResult

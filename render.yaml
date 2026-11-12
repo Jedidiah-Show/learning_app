@@ -137,6 +137,18 @@ services:
       - key: JUDGE_SUBMISSIONS_ENABLED
         value: "false"
 
+      # Self-hosted Piston code execution engine for interactive practice
+      # runs (docs/PISTON_SETUP.md). Empty = disabled; the app then uses the
+      # Docker judge when enabled, else the Pyodide browser runtime.
+      - key: PISTON_URL
+        sync: false
+      - key: PISTON_PYTHON_VERSION
+        value: ""
+      - key: PISTON_RUN_TIMEOUT_MS
+        value: "10000"
+      - key: PISTON_RUN_MEMORY_LIMIT_MB
+        value: "256"
+
       # Cloudflare R2 (S3-compatible) uploads. Profile photos remain in
       # Postgres and are unaffected by these settings.
       - key: STORAGE_BACKEND

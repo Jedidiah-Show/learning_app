@@ -61,6 +61,7 @@ class ProfilePhotoTests(unittest.TestCase):
         self.assertEqual(photo_response.status_code, 200)
         self.assertEqual(photo_response.mimetype, 'image/png')
         self.assertEqual(photo_response.data, image)
+        self.assertEqual(photo_response.headers.get('Cache-Control'), 'public, max-age=86400')
 
     def test_profile_page_keeps_profile_link_in_navigation_and_shows_upload_control(self):
         response = self.client.get('/profile')

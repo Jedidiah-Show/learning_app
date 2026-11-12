@@ -5,10 +5,12 @@
   <p class="text-xs font-bold uppercase tracking-widest text-gold-700">{{ header.kicker }}</p>
   <h2 class="mt-2 text-3xl font-bold text-slate-900">{{ header.title }}</h2>
   <p class="mt-2 max-w-3xl text-slate-600">{{ header.blurb }}</p>
-  <!-- ML/AI filter toggle -->
-  <div class="mt-2 rounded-xl border border-slate-200 bg-white p-3 flex flex-wrap gap-2">
-    <button id="filter-ai" type="button" class="px-3 py-1.5 text-sm font-medium" data-filter="ai">AI-only lessons</button>
-    <button id="filter-ml" type="button" class="px-3 py-1.5 text-sm font-medium" data-filter="ml">ML lessons</button>
+  <!-- Module filter -->
+  <div class="mt-2 rounded-xl border border-slate-200 bg-white p-3 flex flex-wrap items-center gap-2" role="group" aria-label="Filter modules by pathway">
+    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Show</span>
+    <button id="filter-all" type="button" class="module-filter-btn" data-module-filter="all" aria-pressed="true">All modules</button>
+    <button id="filter-ai" type="button" class="module-filter-btn" data-module-filter="ai" aria-pressed="false">AI &amp; foundation</button>
+    <button id="filter-ml" type="button" class="module-filter-btn" data-module-filter="ml" aria-pressed="false">ML pathway</button>
   </div>
 
   {% if pathway_destination == 'ml' %}
@@ -86,9 +88,10 @@
   {% endif %}
 </section>
 {% endif %}
-<div class="space-y-5">
+<div class="space-y-5" id="module-list">
+<p id="module-filter-empty" class="rounded-xl border border-dashed bg-white p-6 text-sm text-slate-600" hidden>No ML pathway modules appear in this catalog for your current plan. The shared foundation lives here, and the ML pathway is one click away on the ML Pathway page.</p>
 {% for module in modules %}
-  <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+  <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white" data-module-source="{{ module.source or 'ai' }}">
     <div class="border-b border-slate-100 bg-slate-50 px-5 py-4">
       <p class="text-xs font-bold uppercase text-indigo-600">{% if module.badge %}{{ module.badge }}{% else %}Module {{ module.number }}{% endif %}</p>
       <h3 class="text-lg font-bold text-slate-900">{{ module.title }}</h3>
@@ -257,5 +260,30 @@ document.querySelector('[data-open-placement]')?.addEventListener('click', () =>
   placement.open = true;
   placement.scrollIntoView({behavior: 'smooth', block: 'start'});
 });
+</script>
+<script>
+// Module filter: AI + foundation vs the ML pathway. Purely presentational.
+(() => {
+  const buttons = document.querySelectorAll('[data-module-filter]');
+  const sections = document.querySelectorAll('[data-module-source]');
+  const empty = document.getElementById('module-filter-empty');
+  if (!buttons.length || !sections.length) return;
+  const apply = (mode) => {
+    let shown = 0;
+    sections.forEach((section) => {
+      const source = section.dataset.moduleSource || 'ai';
+      const visible = mode === 'all' || source === mode;
+      section.hidden = !visible;
+      if (visible) shown += 1;
+    });
+    buttons.forEach((button) => {
+      button.setAttribute('aria-pressed', String(button.dataset.moduleFilter === mode));
+    });
+    if (empty) empty.hidden = shown !== 0;
+  };
+  buttons.forEach((button) => {
+    button.addEventListener('click', () => apply(button.dataset.moduleFilter));
+  });
+})();
 </script>
 {% endblock %}

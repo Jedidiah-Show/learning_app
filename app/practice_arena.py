@@ -8,6 +8,7 @@ server-side verdict.
 
 from functools import lru_cache
 import ast
+import copy
 import json
 from pathlib import Path
 
@@ -130,6 +131,7 @@ def _legacy_problem(exercise):
         'starter_code': exercise['starter_code'],
         'solution_code': exercise.get('solution_code', ''),
         'browser_checks': exercise['checks_code'],
+        'judge_tests': exercise.get('judge_tests') or '',
         'hints': [],
         'editorial': '',
     }
@@ -190,7 +192,7 @@ def _validate_problem(problem, seen_ids):
 
 
 @lru_cache(maxsize=1)
-def all_arena_problems():
+def _raw_arena_problems():
     """Return every published Arena problem keyed by id, in curriculum order."""
     by_id = {}
     for exercise in all_practice_exercises().values():
@@ -237,6 +239,11 @@ def all_arena_problems():
     return by_id
 
 
+def all_arena_problems():
+    """Return a defensive deep copy of all published problems."""
+    return copy.deepcopy(_raw_arena_problems())
+
+
 def _assert_acyclic(by_id):
     state = {}
 
@@ -255,7 +262,13 @@ def _assert_acyclic(by_id):
 
 
 def get_arena_problem(problem_id):
-    return all_arena_problems().get(str(problem_id))
+    problem = _raw_arena_problems().get(str(problem_id))
+    if problem is None:
+        return None
+    copied = copy.deepcopy(problem)
+    if 'judge_tests' not in copied or copied['judge_tests'] is None:
+        copied['judge_tests'] = ''
+    return copied
 
 
 def topic_by_id(topic_id):

@@ -1,4 +1,4 @@
-<div data-practice-workspace data-lesson-id="{{ lesson.id }}" data-usage-url="{{ url_for('lessons.record_practice_usage') }}">
+<div data-practice-workspace data-lesson-id="{{ lesson.id }}" data-usage-url="{{ url_for('lessons.record_practice_usage') }}" data-url-prefix="{{ practice_url_prefix | default('/api/lessons/practice') }}">
     <script id="practice-exercises" type="application/json">{{ practice_exercises|tojson }}</script>
     <p class="practice-note">Pilot notice: daily aggregate counts of workspace opens, runs, and errors are recorded. These counts do not include learner IDs, lesson IDs, or code; workspace source is saved to your account.</p>
     <button id="practice-launcher" class="practice-launcher" type="button">Open practice workspace</button>

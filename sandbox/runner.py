@@ -1,11 +1,40 @@
 import ast
+import asyncio
 import contextlib
+import inspect
 import io
 import json
 import resource
 import signal
 import sys
 import time
+
+
+def _parse(source, filename):
+    """Parse with top-level await allowed, matching the in-browser runtime."""
+    return compile(
+        source, filename, 'exec',
+        ast.PyCF_ONLY_AST | ast.PyCF_ALLOW_TOP_LEVEL_AWAIT,
+    )
+
+
+def _eval_code(code_obj, namespace):
+    """Evaluate code compiled with the top-level-await flag.
+
+    Regular exec-style code returns ``None``; a code object compiled from
+    top-level ``await`` returns a coroutine that must be awaited.
+    """
+    outcome = eval(code_obj, namespace)
+    if inspect.isawaitable(outcome):
+        return asyncio.run(outcome)
+    return outcome
+
+
+def _run(source, filename, namespace):
+    return _eval_code(
+        compile(source, filename, 'exec', ast.PyCF_ALLOW_TOP_LEVEL_AWAIT),
+        namespace,
+    )
 
 
 class _TimeLimitExceeded(Exception):
@@ -97,8 +126,12 @@ def main():
     timeout = min(max(float(payload.get("timeout") or 3.0), 0.1), 15.0)
     memory_mb = float(payload.get("memory_mb") or 512)
 
-    resource.setrlimit(resource.RLIMIT_CPU, (5, 5))
-    resource.setrlimit(resource.RLIMIT_AS, (int(memory_mb * 1024 * 1024),) * 2)
+    cpu_limit = max(int(timeout) + 5, 5)
+    resource.setrlimit(resource.RLIMIT_CPU, (cpu_limit, cpu_limit))
+    # Virtual address space (RLIMIT_AS) must accommodate scientific library VMA mappings
+    # while cgroup limits (Docker --memory) bound resident physical RSS.
+    as_limit = max(int(memory_mb * 1024 * 1024 * 4), 2 * 1024 * 1024 * 1024)
+    resource.setrlimit(resource.RLIMIT_AS, (as_limit, as_limit))
     resource.setrlimit(resource.RLIMIT_FSIZE, (0, 0))
 
     started = time.monotonic()
@@ -109,11 +142,11 @@ def main():
     signal.setitimer(signal.ITIMER_REAL, timeout)
     try:
         with contextlib.redirect_stdout(captured), contextlib.redirect_stderr(captured):
-            submission_tree = ast.parse(code, filename="<submission>")
+            submission_tree = _parse(code, "<submission>")
             _check_imports(submission_tree, allowed_packages)
-            exec(compile(submission_tree, "<submission>", "exec"), namespace)
+            _run(code, "<submission>", namespace)
             if mode == "judge":
-                test_tree = ast.parse(test_code, filename="<tests>")
+                test_tree = _parse(test_code, "<tests>")
                 _check_imports(test_tree, allowed_packages)
                 test_namespace = dict(namespace)
                 test_namespace["_ruach_record_success"] = (
@@ -124,7 +157,13 @@ def main():
                 )
                 test_tree = _RecordAssertions().visit(test_tree)
                 ast.fix_missing_locations(test_tree)
-                exec(compile(test_tree, "<tests>", "exec"), test_namespace)
+                _eval_code(
+                    compile(
+                        test_tree, "<tests>", 'exec',
+                        ast.PyCF_ALLOW_TOP_LEVEL_AWAIT,
+                    ),
+                    test_namespace,
+                )
 
         if mode == "judge":
             total_tests = len(assertion_results)

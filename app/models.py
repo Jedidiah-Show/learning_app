@@ -103,7 +103,8 @@ class UserProfilePhoto(db.Model):
     user_id = db.Column(
         db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), primary_key=True
     )
-    data = db.Column(db.LargeBinary, nullable=False)
+    data = db.Column(db.LargeBinary, nullable=True)
+    storage_key = db.Column(db.String(255), nullable=True)
     mime_type = db.Column(db.String(32), nullable=False)
     updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
 
@@ -138,6 +139,7 @@ class LessonCompletion(db.Model):
     __table_args__ = (
         db.UniqueConstraint('user_id', 'lesson_id', name='unique_user_lesson_completion'),
         db.Index('idx_lessoncomp_user_subject_day', 'user_id', 'subject_id', 'day_number'),
+        db.Index('idx_lessoncomp_completed_user', 'completed', 'user_id'),
     )
 
 
@@ -232,7 +234,7 @@ class Submission(db.Model):
         db.Enum('PENDING', 'ACCEPTED', 'WRONG_ANSWER',
                 'TIME_LIMIT_EXCEEDED', 'MEMORY_LIMIT_EXCEEDED',
                 'RUNTIME_ERROR', 'COMPILE_ERROR', 'RUNNING',
-                'INTERNAL_ERROR', native_enum=False),
+                'INTERNAL_ERROR', 'COMPLETED', native_enum=False),
         default='PENDING', nullable=False
     )
     execution_time_ms = db.Column(db.Integer)
@@ -240,6 +242,8 @@ class Submission(db.Model):
     tests_passed = db.Column(db.Integer, default=0)
     total_tests = db.Column(db.Integer, default=0)
     error_details = db.Column(db.Text)
+    output = db.Column(db.Text)
+    mode = db.Column(db.String(16), default='judge')
     submitted_at = db.Column(db.DateTime(timezone=True), default=utcnow)
     started_at = db.Column(db.DateTime(timezone=True))
     completed_at = db.Column(db.DateTime(timezone=True))
@@ -578,6 +582,7 @@ class CourseProject(db.Model):
     updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
     __table_args__ = (
         db.UniqueConstraint('user_id', 'module_id', name='unique_user_course_module_project'),
+        db.Index('idx_courseproject_completed_user', 'completed', 'user_id'),
     )
 
     def get_project(self):
@@ -723,6 +728,9 @@ class CoursePlan(db.Model):
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = db.Column(
         db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+    __table_args__ = (
+        db.Index('idx_course_plan_leaderboard_opt_in', 'leaderboard_opt_in'),
     )
 
 

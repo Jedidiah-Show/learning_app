@@ -23122,7 +23122,8 @@ if (root) {
   let runnerStarted = false;
   let runnerLoadTimeout = null;
   let hasAttemptedExercise = false;
-  const workspaceUrl = (exercise) => `/api/lessons/practice/${encodeURIComponent(lessonId)}/${encodeURIComponent(exercise.id)}`;
+  const urlPrefix = root.dataset.urlPrefix || "/api/lessons/practice";
+  const workspaceUrl = (exercise) => `${urlPrefix}/${encodeURIComponent(lessonId)}/${encodeURIComponent(exercise.id)}`;
   const setStatus = (message, state = "") => {
     status.textContent = message;
     status.dataset.state = state;
@@ -23267,9 +23268,7 @@ if (root) {
   };
   const runExercise = async () => {
     if (!selectedExercise) return;
-    const serverCode = `${currentSource()}
-
-${selectedExercise.checks_code}`;
+    const serverCode = currentSource();
     let serverResult = null;
     try {
       const response = await fetch(`${workspaceUrl(selectedExercise)}/run`, {
@@ -23288,6 +23287,7 @@ ${selectedExercise.checks_code}`;
     if (serverResult) {
       const verdict = serverResult.verdict || "INTERNAL_ERROR";
       hasAttemptedExercise = true;
+      solutionButton.disabled = !selectedExercise.solution_code;
       clearTimeout(runTimeout);
       runButton.disabled = false;
       if (verdict === "COMPLETED") {

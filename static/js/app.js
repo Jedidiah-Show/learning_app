@@ -121,12 +121,13 @@
 })();
 
 // Nav sidebar width drag-resize (desktop only; header/main/footer widths).
+// The width is stored on a CSS variable so the pre-paint inline script in the
+// <head> can re-apply it before the first frame renders, and persisted on
+// pointerup so the learner's choice survives reloads.
 (() => {
     const handle = document.getElementById('nav-resize-handle');
     const header = document.querySelector('body.has-sidebar > header');
-    const main = document.querySelector('body.has-sidebar > main');
-    const footer = document.querySelector('body.has-sidebar > footer');
-    if (!handle || !header || !main || !footer) return;
+    if (!handle || !header) return;
 
     let active = false;
     let startX = 0;
@@ -136,11 +137,7 @@
 
     const apply = (width) => {
         const next = clamp(width);
-        header.style.width = `${next}px`;
-        main.style.marginLeft = `${next}px`;
-        main.style.width = `calc(100% - ${next}px)`;
-        footer.style.marginLeft = `${next}px`;
-        footer.style.width = `calc(100% - ${next}px)`;
+        document.documentElement.style.setProperty('--nav-width', `${next}px`);
     };
 
     const start = (event) => {
@@ -160,6 +157,15 @@
     const stop = () => {
         active = false;
         handle.classList.remove('is-resizing');
+        try {
+            const stored = document.documentElement.style.getPropertyValue('--nav-width');
+            const width = parseInt(stored, 10);
+            if (Number.isFinite(width) && width >= 240) {
+                localStorage.setItem('ruachai-sidebar-width', String(width));
+            }
+        } catch (error) {
+            // A later reload simply falls back to the default width.
+        }
     };
 
     handle.addEventListener('pointerdown', start);
@@ -198,35 +204,10 @@
         window.addEventListener('resize', update);
     }
 
-    const taskList = document.querySelector('[data-lesson-tasks]');
-    if (taskList) {
-        const key = `ruachai-tasks-${taskList.dataset.lessonId}`;
-        let saved = [];
-        try {
-            const parsed = JSON.parse(localStorage.getItem(key) || '[]');
-            if (Array.isArray(parsed)) saved = parsed.map(String);
-        } catch (error) {
-            saved = [];
-        }
-        const boxes = taskList.querySelectorAll('input[type="checkbox"]');
-        boxes.forEach((box) => {
-            if (saved.includes(box.dataset.taskIndex)) {
-                box.checked = true;
-                box.closest('li')?.classList.add('is-done');
-            }
-            box.addEventListener('change', () => {
-                box.closest('li')?.classList.toggle('is-done', box.checked);
-                const done = [...boxes]
-                    .filter((item) => item.checked)
-                    .map((item) => item.dataset.taskIndex);
-                try {
-                    localStorage.setItem(key, JSON.stringify(done));
-                } catch (error) {
-                    // Progress still shows for this visit.
-                }
-            });
-        });
-    }
+// Lesson task checkboxes are owned by the lesson page itself, which syncs
+// them to the learner's account via /api/lessons/tasks. They deliberately do
+// not persist to localStorage here, so account state and device state cannot
+// drift apart.
 
     document.querySelectorAll('[data-open-practice]').forEach((link) => {
         link.addEventListener('click', (event) => {
@@ -430,7 +411,98 @@
     sections.forEach(setup);
 })();
 
-// Format time
-function formatDate(dateString) {
-    return new Date(dateString).toLocaleDateString();
-}
+// Offline indicator: bundles and already-visited shell assets are cached, but
+// authenticated HTML is never cached, so say so plainly when the network drops.
+(() => {
+    const banner = document.getElementById('offline-banner');
+    if (!banner) return;
+    const update = () => {
+        banner.hidden = navigator.onLine;
+    };
+    window.addEventListener('online', update);
+    window.addEventListener('offline', update);
+    update();
+})();
+
+// PWA install prompt: shown only when the browser reports the app installable
+// and the learner has not dismissed it.
+(() => {
+    const installButton = document.getElementById('pwa-install');
+    if (!installButton) return;
+    let deferredPrompt = null;
+    let dismissed = false;
+    try {
+        dismissed = localStorage.getItem('ruachai-install-dismissed') === '1';
+    } catch (error) {
+        dismissed = false;
+    }
+    const standalone = window.matchMedia('(display-mode: standalone)').matches
+        || window.navigator.standalone === true;
+    if (dismissed || standalone) return;
+    window.addEventListener('beforeinstallprompt', (event) => {
+        event.preventDefault();
+        deferredPrompt = event;
+        installButton.hidden = false;
+    });
+    installButton.addEventListener('click', async () => {
+        if (!deferredPrompt) return;
+        installButton.disabled = true;
+        try {
+            deferredPrompt.prompt();
+            const choice = await deferredPrompt.userChoice;
+            deferredPrompt = null;
+            installButton.hidden = true;
+            if (choice && choice.outcome === 'dismissed') {
+                try { localStorage.setItem('ruachai-install-dismissed', '1'); } catch (error) {}
+            }
+        } finally {
+            installButton.disabled = false;
+        }
+    });
+    window.addEventListener('appinstalled', () => {
+        installButton.hidden = true;
+    });
+})();
+
+// Dashboard leaderboard nudge: one-tap opt-in, remembered dismissal.
+(() => {
+    const nudge = document.querySelector('[data-leaderboard-nudge]');
+    if (!nudge) return;
+    const dismissed = (() => {
+        try { return localStorage.getItem('ruachai-leaderboard-nudge-dismissed') === '1'; } catch (error) { return false; }
+    })();
+    if (dismissed) {
+        nudge.remove();
+        return;
+    }
+    const enableButton = nudge.querySelector('[data-leaderboard-enable]');
+    const dismissButton = nudge.querySelector('[data-leaderboard-dismiss]');
+    const status = nudge.querySelector('[data-leaderboard-nudge-status]');
+    if (enableButton) {
+        enableButton.addEventListener('click', async () => {
+            enableButton.disabled = true;
+            if (status) status.textContent = 'Updating…';
+            try {
+                const response = await fetch('/api/leaderboard/visibility', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({opt_in: true}),
+                });
+                const data = await response.json().catch(() => ({}));
+                if (!response.ok) throw new Error(data.error || 'Could not update leaderboard visibility.');
+                if (status) status.textContent = data.opted_in ? 'You are on the leaderboard. Rankings refresh on your next visit.' : 'Visibility updated.';
+                if (enableButton) enableButton.remove();
+                if (dismissButton) dismissButton.remove();
+            } catch (error) {
+                if (status) status.textContent = error.message || 'Could not update. Try again shortly.';
+                enableButton.disabled = false;
+            }
+        });
+    }
+    if (dismissButton) {
+        dismissButton.addEventListener('click', () => {
+            try { localStorage.setItem('ruachai-leaderboard-nudge-dismissed', '1'); } catch (error) {}
+            nudge.remove();
+        });
+    }
+})();

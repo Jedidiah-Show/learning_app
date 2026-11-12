@@ -22,7 +22,7 @@ from app.models import TutorConversation
 from app.practice import get_practice_exercise
 from app.rate_limit import enforce_rate_limit
 from app.request_data import get_json_object
-from app.services.judge import execute_in_sandbox
+
 from app.services.lesson_state import (
     learner_today, setup_checks_for_plan,
 )
@@ -523,23 +523,34 @@ def practice_run(lesson_id, exercise_id):
         return jsonify({
             'error': f'Source must be at most {MAX_PRACTICE_SOURCE_LENGTH} characters',
         }), 413
-    run_code = f"{code}\n\n{exercise['checks_code']}" if exercise['checks_code'] else code
-    if not run_code.strip():
-        return jsonify({'error': 'Practice source is required'}), 400
     enforce_rate_limit('practice-run', str(current_user.id))
-    result = execute_in_sandbox(
-        run_code,
-        '',
-        timeout_sec=15.0,
-        memory_mb=512,
-        mode='run',
+    from app.services.interactive_run import (
+        interactive_run_available,
+        run_learner_code,
     )
+    if not interactive_run_available():
+        return jsonify({
+            'error': (
+                'Interactive server runs are temporarily unavailable. '
+                'The in-browser runtime will be used instead.'
+            ),
+        }), 503
+    result = run_learner_code(
+        code, exercise['checks_code'], timeout_sec=15.0, memory_mb=512,
+    )
+    if result is None:
+        return jsonify({
+            'error': (
+                'Interactive server runs are temporarily unavailable. '
+                'The in-browser runtime will be used instead.'
+            ),
+        }), 503
     return jsonify({
-        'verdict': result.verdict,
-        'output': result.output,
-        'error_details': result.error_details,
-        'execution_time_ms': result.execution_time_ms,
-        'memory_kb': result.memory_kb,
+        'verdict': result.get('verdict'),
+        'output': result.get('output'),
+        'error_details': result.get('error_details'),
+        'execution_time_ms': result.get('execution_time_ms'),
+        'memory_kb': result.get('memory_kb'),
     })
 
 

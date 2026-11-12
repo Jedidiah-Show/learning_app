@@ -43,14 +43,23 @@ class JudgeResult:
     __slots__ = ("verdict", "tests_passed", "total_tests", "execution_time_ms",
                  "memory_kb", "error_details", "output")
 
-    def __init__(self) -> None:
-        self.verdict: str = "RUNTIME_ERROR"
-        self.tests_passed: int = 0
-        self.total_tests: int = 0
-        self.execution_time_ms: int = 0
-        self.memory_kb: int = 0
-        self.error_details: str = ""
-        self.output: str = ""
+    def __init__(
+        self,
+        verdict: str = "RUNTIME_ERROR",
+        tests_passed: int = 0,
+        total_tests: int = 0,
+        execution_time_ms: int = 0,
+        memory_kb: int = 0,
+        error_details: str = "",
+        output: str = "",
+    ) -> None:
+        self.verdict: str = verdict
+        self.tests_passed: int = tests_passed
+        self.total_tests: int = total_tests
+        self.execution_time_ms: int = execution_time_ms
+        self.memory_kb: int = memory_kb
+        self.error_details: str = error_details
+        self.output: str = output
 
     def to_dict(self) -> Dict[str, Any]:
         return {

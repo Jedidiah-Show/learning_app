@@ -635,9 +635,9 @@
     "0.04": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://fastapi.tiangolo.com/"
         ]
@@ -646,9 +646,9 @@
     "1.01": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://developers.openai.com/api/docs"
         ]
@@ -657,9 +657,9 @@
     "1.09": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://developers.openai.com/api/docs"
         ]
@@ -668,9 +668,9 @@
     "1.10": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.pydantic.dev/latest/"
         ]
@@ -679,9 +679,9 @@
     "1.12": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.docker.com/build/building/best-practices/"
         ]
@@ -690,9 +690,9 @@
     "2.12": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://developers.openai.com/api/docs"
         ]
@@ -701,9 +701,9 @@
     "3.05": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://developers.openai.com/api/docs"
         ]
@@ -712,9 +712,9 @@
     "3.11": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://fastapi.tiangolo.com/"
         ]
@@ -723,9 +723,9 @@
     "3.13": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://developers.openai.com/api/docs"
         ]
@@ -734,9 +734,9 @@
     "6.17": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.langchain.com/oss/python/langgraph/overview"
         ]
@@ -745,9 +745,9 @@
     "7.01": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.langchain.com/oss/python/langgraph/overview"
         ]
@@ -756,9 +756,9 @@
     "7.02": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://python.langchain.com/docs/"
         ]
@@ -767,9 +767,9 @@
     "7.03": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.langchain.com/oss/python/langgraph/overview"
         ]
@@ -778,9 +778,9 @@
     "7.06": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://developers.openai.com/api/docs"
         ]
@@ -789,9 +789,9 @@
     "7.07": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.langchain.com/oss/python/langgraph/overview"
         ]
@@ -800,9 +800,9 @@
     "7.08": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.langchain.com/oss/python/langgraph/overview"
         ]
@@ -811,9 +811,9 @@
     "7.09": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.langchain.com/oss/python/langgraph/overview"
         ]
@@ -822,9 +822,9 @@
     "7.10": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.langchain.com/oss/python/langgraph/overview"
         ]
@@ -833,9 +833,9 @@
     "7.11": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.langchain.com/oss/python/langgraph/overview"
         ]
@@ -844,9 +844,9 @@
     "7.12": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.langchain.com/oss/python/langgraph/overview"
         ]
@@ -855,9 +855,9 @@
     "7.13": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.langchain.com/oss/python/langgraph/overview"
         ]
@@ -866,9 +866,9 @@
     "8.02": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://modelcontextprotocol.io/specification/2026-07-28"
         ]
@@ -888,9 +888,9 @@
     "8.05": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://modelcontextprotocol.io/specification/2026-07-28"
         ]
@@ -899,9 +899,9 @@
     "8.06": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://modelcontextprotocol.io/specification/2026-07-28"
         ]
@@ -910,9 +910,9 @@
     "8.07": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://modelcontextprotocol.io/specification/2026-07-28"
         ]
@@ -921,9 +921,9 @@
     "8.08": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://modelcontextprotocol.io/specification/2026-07-28"
         ]
@@ -932,9 +932,9 @@
     "8.09": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://modelcontextprotocol.io/specification/2026-07-28"
         ]
@@ -948,9 +948,9 @@
     "8.10": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://modelcontextprotocol.io/specification/2026-07-28"
         ]
@@ -964,9 +964,9 @@
     "8.11": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://modelcontextprotocol.io/specification/2026-07-28"
         ]
@@ -975,9 +975,9 @@
     "9.05": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.docker.com/build/building/best-practices/"
         ]
@@ -986,9 +986,9 @@
     "10.05": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.docker.com/build/building/best-practices/"
         ]
@@ -997,9 +997,9 @@
     "10.10": {
       "maintenance": {
         "kind": "version-sensitive",
-        "review_status": "review-needed",
+        "review_status": "reviewed",
         "review_interval_days": 90,
-        "reviewed_on": null,
+        "reviewed_on": "2026-11-12",
         "references": [
           "https://docs.docker.com/build/building/best-practices/"
         ]

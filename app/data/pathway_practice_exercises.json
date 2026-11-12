@@ -1,0 +1,402 @@
+[
+  {
+    "id": "mle-summarize-distribution",
+    "lesson_id": "mle.math.01",
+    "title": "Summarize a distribution",
+    "instructions": "Implement summarize(values) returning a dict with keys mean, median, variance, and stdev (population statistics, matching the lesson example 2, 3, 3, 4, 8). Use the statistics module; do not round.",
+    "starter_code": "import statistics\n\ndef summarize(values):\n    # return {\"mean\": ..., \"median\": ..., \"variance\": ..., \"stdev\": ...}\n    pass\n",
+    "checks_code": "result = summarize([2, 3, 3, 4, 8])\nassert result[\"mean\"] == 4\nassert result[\"median\"] == 3\nassert round(result[\"variance\"], 6) == round(4.4, 6)\nassert round(result[\"stdev\"], 6) == round(2.0976176963403033, 6)\nassert summarize([5])[\"mean\"] == 5\nprint(\"Checks passed.\")",
+    "solution_code": "import statistics\n\ndef summarize(values):\n    return {\n        \"mean\": statistics.fmean(values),\n        \"median\": statistics.median(values),\n        \"variance\": statistics.pvariance(values),\n        \"stdev\": statistics.pstdev(values),\n    }\n",
+    "estimated_minutes": 15,
+    "difficulty": "beginner",
+    "skills": [
+      "python",
+      "machine-learning",
+      "statistics"
+    ],
+    "prerequisites": []
+  },
+  {
+    "id": "mle-precision-recall",
+    "lesson_id": "mle.math.02",
+    "title": "Score flags by base rate",
+    "instructions": "Implement precision_recall(flags, actual) where flags and actual are equal-length lists of booleans/0-1. Return (precision, recall) as floats; return (0.0, 0.0) when the model flags nothing.",
+    "starter_code": "def precision_recall(flags, actual):\n    tp = fp = fn = 0\n    # count true/false positives and false negatives\n    pass\n",
+    "checks_code": "flags = [1] * 80 + [0] * 20 + [1] * 180 + [0] * 720\nactual = [1] * 100 + [0] * 900\np, r = precision_recall(flags, actual)\nassert round(p, 4) == 0.3077\nassert round(r, 4) == 0.8\nzero = precision_recall([0] * 10, [0] * 10)\nassert zero == (0.0, 0.0)\nprint(\"Checks passed.\")",
+    "solution_code": "def precision_recall(flags, actual):\n    tp = sum(1 for f, a in zip(flags, actual) if f and a)\n    fp = sum(1 for f, a in zip(flags, actual) if f and not a)\n    fn = sum(1 for f, a in zip(flags, actual) if not f and a)\n    flagged = tp + fp\n    if flagged == 0:\n        return 0.0, 0.0\n    precision = tp / flagged\n    recall = tp / (tp + fn) if (tp + fn) else 0.0\n    return precision, recall\n",
+    "estimated_minutes": 20,
+    "difficulty": "beginner",
+    "skills": [
+      "python",
+      "machine-learning",
+      "statistics"
+    ],
+    "prerequisites": [
+      "mle-summarize-distribution"
+    ]
+  },
+  {
+    "id": "mle-dot-product",
+    "lesson_id": "mle.math.03",
+    "title": "Compute a dot product safely",
+    "instructions": "Implement dot(a, b) returning the dot product of two equal-length numeric lists. Raise ValueError with the message \"length mismatch\" when the lengths differ or either list is empty.",
+    "starter_code": "def dot(a, b):\n    pass\n",
+    "checks_code": "assert dot([1, 2, 3], [4, 5, 6]) == 32\nassert dot([0.5, 2.0], [4.0, 1.5]) == 5.0\nfor a, b in [([1], [1, 2]), ([], [])]:\n    try:\n        dot(a, b)\n        assert False, \"expected ValueError\"\n    except ValueError as exc:\n        assert str(exc) == \"length mismatch\"\nprint(\"Checks passed.\")",
+    "solution_code": "def dot(a, b):\n    if not a or not b or len(a) != len(b):\n        raise ValueError(\"length mismatch\")\n    return sum(x * y for x, y in zip(a, b))\n",
+    "estimated_minutes": 15,
+    "difficulty": "beginner",
+    "skills": [
+      "python",
+      "machine-learning",
+      "linear-algebra"
+    ],
+    "prerequisites": []
+  },
+  {
+    "id": "mle-matrix-multiply",
+    "lesson_id": "mle.math.06",
+    "title": "Multiply small matrices",
+    "instructions": "Implement matmul(a, b) for matrices as lists of lists. Raise ValueError(\"inner dimensions must match\") when the columns of a differ from the rows of b. Do not use numpy.",
+    "starter_code": "def matmul(a, b):\n    pass\n",
+    "checks_code": "assert matmul([[1, 2], [3, 4]], [[5, 6], [7, 8]]) == [[19, 22], [43, 50]]\nassert matmul([[1, 0, 0]], [[1], [2], [3]]) == [[1]]\ntry:\n    matmul([[1, 2]], [[1, 2]])\n    assert False, \"expected ValueError\"\nexcept ValueError as exc:\n    assert str(exc) == \"inner dimensions must match\"\nprint(\"Checks passed.\")",
+    "solution_code": "def matmul(a, b):\n    rows_a, inner = len(a), len(a[0])\n    if any(len(row) != inner for row in a):\n        raise ValueError(\"inner dimensions must match\")\n    if not b or len(b[0]) == 0:\n        return [[] for _ in range(rows_a)]\n    cols_b = len(b[0])\n    if len(b) != inner or any(len(row) != cols_b for row in b):\n        raise ValueError(\"inner dimensions must match\")\n    return [[sum(a[i][k] * b[k][j] for k in range(inner)) for j in range(cols_b)] for i in range(rows_a)]\n",
+    "estimated_minutes": 20,
+    "difficulty": "intermediate",
+    "skills": [
+      "python",
+      "machine-learning",
+      "linear-algebra"
+    ],
+    "prerequisites": [
+      "mle-dot-product"
+    ]
+  },
+  {
+    "id": "mle-confidence-interval",
+    "lesson_id": "mle.math.08",
+    "title": "Estimate a mean with a confidence interval",
+    "instructions": "Implement mean_ci(values, z=1.96) returning (lower, upper): sample mean plus/minus z times the population standard deviation divided by the square root of n. Use statistics.NormalDist to sanity-check the critical value, and round the bounds to 4 decimals.",
+    "starter_code": "import math\nimport statistics\n\ndef mean_ci(values, z=1.96):\n    pass\n",
+    "checks_code": "lo, hi = mean_ci([12, 15, 14, 10, 12, 11, 13, 14])\nassert lo == 11.5328\nassert hi == 13.7172\nassert lo < statistics.fmean([12, 15, 14, 10, 12, 11, 13, 14]) < hi\nprint(\"Checks passed.\")",
+    "solution_code": "import math\nimport statistics\n\ndef mean_ci(values, z=1.96):\n    n = len(values)\n    mean = statistics.fmean(values)\n    spread = statistics.pstdev(values) / math.sqrt(n)\n    return round(mean - z * spread, 4), round(mean + z * spread, 4)\n",
+    "estimated_minutes": 20,
+    "difficulty": "intermediate",
+    "skills": [
+      "python",
+      "machine-learning",
+      "statistics"
+    ],
+    "prerequisites": [
+      "mle-summarize-distribution"
+    ]
+  },
+  {
+    "id": "mle-validate-records",
+    "lesson_id": "mle.data.02",
+    "title": "Validate tabular records",
+    "instructions": "Implement validate_records(records) for a list of dicts like {\"sku\": str, \"units\": number, \"price\": number}. Return a list of issue strings \"row {i}: ...\" for every record where units or price is missing, not numeric, or negative, or sku is missing/empty; valid records produce no issue.",
+    "starter_code": "def validate_records(records):\n    issues = []\n    for i, rec in enumerate(records):\n        # append issue strings\n        pass\n    return issues\n",
+    "checks_code": "good = [{\"sku\": \"a\", \"units\": 2, \"price\": 9.5}, {\"sku\": \"b\", \"units\": 0, \"price\": 1}]\nassert validate_records(good) == []\nbad = [{\"sku\": \"\", \"units\": 2, \"price\": 9.5}, {\"sku\": \"b\", \"units\": \"2\", \"price\": 1}, {\"sku\": \"c\", \"price\": 3}, {\"sku\": \"d\", \"units\": 1, \"price\": -5}]\nissues = validate_records(bad)\nassert any(\"row 0\" in i and \"sku\" in i for i in issues)\nassert any(\"row 1\" in i and \"units\" in i for i in issues)\nassert any(\"row 2\" in i and \"units\" in i for i in issues)\nassert any(\"row 3\" in i and \"price\" in i for i in issues)\nprint(\"Checks passed.\")",
+    "solution_code": "def validate_records(records):\n    issues = []\n    for i, rec in enumerate(records):\n        if not isinstance(rec.get(\"sku\"), str) or not rec[\"sku\"].strip():\n            issues.append(f\"row {i}: sku must be a non-empty string\")\n        for field in (\"units\", \"price\"):\n            value = rec.get(field)\n            if not isinstance(value, (int, float)) or isinstance(value, bool):\n                issues.append(f\"row {i}: {field} must be numeric\")\n            elif value < 0:\n                issues.append(f\"row {i}: {field} must not be negative\")\n    return issues\n",
+    "estimated_minutes": 20,
+    "difficulty": "beginner",
+    "skills": [
+      "python",
+      "machine-learning",
+      "data-preparation"
+    ],
+    "prerequisites": []
+  },
+  {
+    "id": "mle-deterministic-split",
+    "lesson_id": "mle.data.03",
+    "title": "Make a split you can trust twice",
+    "instructions": "Implement split_indices(n, val_fraction, seed) returning (train, val): assign each index to validation when the first 8 hex chars of md5(f\"{seed}-{index}\") are smaller than the first 8 hex chars of md5(str(seed)) adjusted... keep it simple: use a key = md5(f\"{seed}-{index}\").hexdigest() and take the k smallest keys as validation, where k = max(0, round(n * val_fraction)).",
+    "starter_code": "import hashlib\n\ndef split_indices(n, val_fraction, seed):\n    keys = [(hashlib.md5(f\"{seed}-{i}\".encode()).hexdigest(), i) for i in range(n)]\n    k = max(0, round(n * val_fraction))\n    val = sorted(idx for _, idx in sorted(keys)[:k])\n    train = [i for i in range(n) if i not in val]\n    # return (train, val) with train sorted\n    pass\n",
+    "checks_code": "train, val = split_indices(100, 0.2, 42)\nassert len(val) == 20 and len(train) == 80\nassert set(train) | set(val) == set(range(100))\nassert not (set(train) & set(val))\ntrain2, val2 = split_indices(100, 0.2, 42)\nassert train == train2 and val == val2\nassert split_indices(10, 0.5, 1) != split_indices(10, 0.5, 2)\nprint(\"Checks passed.\")",
+    "solution_code": "import hashlib\n\ndef split_indices(n, val_fraction, seed):\n    keys = [(hashlib.md5(f\"{seed}-{i}\".encode()).hexdigest(), i) for i in range(n)]\n    k = max(0, round(n * val_fraction))\n    val = sorted(idx for _, idx in sorted(keys)[:k])\n    val_set = set(val)\n    train = [i for i in range(n) if i not in val_set]\n    return train, val\n",
+    "estimated_minutes": 25,
+    "difficulty": "intermediate",
+    "skills": [
+      "python",
+      "machine-learning",
+      "data-preparation"
+    ],
+    "prerequisites": [
+      "mle-validate-records"
+    ]
+  },
+  {
+    "id": "mle-leakage-check",
+    "lesson_id": "mle.data.04",
+    "title": "Spot a suspicious feature",
+    "instructions": "Implement suspicious_features(records, target): given a list of flat dict rows, return sorted names of features (every key except target) whose values equal the target value in every row. That is the signature of a leaked or duplicate column.",
+    "starter_code": "def suspicious_features(records, target):\n    pass\n",
+    "checks_code": "rows = [{\"price\": 3, \"copy\": 3, \"noise\": 9, \"ok\": 1},\n        {\"price\": 7, \"copy\": 7, \"noise\": 1, \"ok\": 2}]\nassert suspicious_features(rows, \"price\") == [\"copy\"]\nassert suspicious_features(rows, \"others\") == []\nprint(\"Checks passed.\")",
+    "solution_code": "def suspicious_features(records, target):\n    if not records:\n        return []\n    suspects = []\n    for key in records[0]:\n        if key == target:\n            continue\n        if all(row.get(key) == row.get(target) for row in records):\n            suspects.append(key)\n    return sorted(suspects)\n",
+    "estimated_minutes": 20,
+    "difficulty": "intermediate",
+    "skills": [
+      "python",
+      "machine-learning",
+      "data-preparation",
+      "responsible-ml"
+    ],
+    "prerequisites": [
+      "mle-validate-records"
+    ]
+  },
+  {
+    "id": "mle-majority-baseline",
+    "lesson_id": "mle.classical.01",
+    "title": "Beat the boring baseline",
+    "instructions": "Implement baseline_accuracy(labels): the accuracy of always predicting the most frequent class in the list. Raise ValueError(\"empty labels\") when the list is empty.",
+    "starter_code": "from collections import Counter\n\ndef baseline_accuracy(labels):\n    pass\n",
+    "checks_code": "assert baseline_accuracy([1, 0, 0, 0]) == 0.75\nassert baseline_accuracy([\"yes\", \"no\", \"yes\", \"yes\", \"no\"]) == 0.6\ntry:\n    baseline_accuracy([])\n    assert False, \"expected ValueError\"\nexcept ValueError as exc:\n    assert str(exc) == \"empty labels\"\nprint(\"Checks passed.\")",
+    "solution_code": "from collections import Counter\n\ndef baseline_accuracy(labels):\n    if not labels:\n        raise ValueError(\"empty labels\")\n    counts = Counter(labels)\n    return counts.most_common(1)[0][1] / len(labels)\n",
+    "estimated_minutes": 15,
+    "difficulty": "beginner",
+    "skills": [
+      "python",
+      "machine-learning",
+      "model-evaluation"
+    ],
+    "prerequisites": []
+  },
+  {
+    "id": "mle-classification-metrics",
+    "lesson_id": "mle.classical.03",
+    "title": "Compute precision, recall, and F1",
+    "instructions": "Implement metrics(tp, fp, fn) returning a dict with precision, recall, and f1 rounded to 4 decimals. Return 0.0 for any metric whose denominator would be zero.",
+    "starter_code": "def metrics(tp, fp, fn):\n    pass\n",
+    "checks_code": "m = metrics(80, 180, 20)\nassert m[\"precision\"] == 0.3077\nassert m[\"recall\"] == 0.8\nassert m[\"f1\"] == 0.4444\nassert metrics(0, 5, 3)[\"f1\"] == 0.0\nprint(\"Checks passed.\")",
+    "solution_code": "def metrics(tp, fp, fn):\n    precision = tp / (tp + fp) if (tp + fp) else 0.0\n    recall = tp / (tp + fn) if (tp + fn) else 0.0\n    if precision + recall == 0:\n        f1 = 0.0\n    else:\n        f1 = 2 * precision * recall / (precision + recall)\n    return {\"precision\": round(precision, 4), \"recall\": round(recall, 4), \"f1\": round(f1, 4)}\n",
+    "estimated_minutes": 20,
+    "difficulty": "intermediate",
+    "skills": [
+      "python",
+      "machine-learning",
+      "model-evaluation"
+    ],
+    "prerequisites": [
+      "mle-precision-recall"
+    ]
+  },
+  {
+    "id": "mle-drift-monitor",
+    "lesson_id": "mle.production.02",
+    "title": "Detect a shifted feature",
+    "instructions": "Implement max_rate_change(reference, current): given two lists of categorical values, return the largest absolute difference between the observed category frequencies (as fractions), rounded to 4 decimals. Categories appearing in only one list count as frequency 0 there.",
+    "starter_code": "from collections import Counter\n\ndef max_rate_change(reference, current):\n    pass\n",
+    "checks_code": "assert max_rate_change([\"a\"] * 50 + [\"b\"] * 50, [\"a\"] * 80 + [\"b\"] * 20) == 0.3\nassert max_rate_change([\"x\", \"y\"], [\"x\", \"y\"]) == 0.0\nassert max_rate_change([\"a\", \"a\", \"b\"], [\"b\", \"b\", \"b\"]) == round(2/3, 4)\nprint(\"Checks passed.\")",
+    "solution_code": "from collections import Counter\n\ndef max_rate_change(reference, current):\n    ref_total, cur_total = len(reference), len(current)\n    categories = set(reference) | set(current)\n    greatest = 0.0\n    for category in categories:\n        ref = Counter(reference).get(category, 0) / ref_total\n        cur = Counter(current).get(category, 0) / cur_total\n        greatest = max(greatest, abs(ref - cur))\n    return round(greatest, 4)\n",
+    "estimated_minutes": 25,
+    "difficulty": "advanced",
+    "skills": [
+      "python",
+      "machine-learning",
+      "mlops",
+      "monitoring"
+    ],
+    "prerequisites": [
+      "mle-summarize-distribution"
+    ]
+  },
+  {
+    "id": "cai-parse-permission",
+    "lesson_id": "cai.00.01",
+    "title": "Decode Linux permission strings",
+    "instructions": "Implement parse_mode(symbolic) for strings like \"rw-r-----\" or \"rwxr-xr-x\": return the octal permission bits as an int (e.g. 640). Raise ValueError(\"invalid mode\") for anything not matching nine [rwx-] characters.",
+    "starter_code": "def parse_mode(symbolic):\n    pass\n",
+    "checks_code": "assert parse_mode(\"rw-r-----\") == 640\nassert parse_mode(\"rwxr-xr-x\") == 755\nassert parse_mode(\"---------\") == 0\ntry:\n    parse_mode(\"rw-\")\n    assert False, \"expected ValueError\"\nexcept ValueError as exc:\n    assert str(exc) == \"invalid mode\"\nprint(\"Checks passed.\")",
+    "solution_code": "class _Row:\n    pass\n\ndef _bits(chunk):\n    table = {\"r\": 4, \"w\": 2, \"x\": 1}\n    value = 0\n    for ch in chunk:\n        if ch == \"-\":\n            continue\n        if ch not in table:\n            raise ValueError(\"invalid mode\")\n        value += table[ch]\n    return value\n\ndef parse_mode(symbolic):\n    if len(symbolic) != 9 or any(ch not in \"rwx-\" for ch in symbolic):\n        raise ValueError(\"invalid mode\")\n    return _bits(symbolic[:3]) * 100 + _bits(symbolic[3:6]) * 10 + _bits(symbolic[6:9])\n",
+    "estimated_minutes": 20,
+    "difficulty": "beginner",
+    "skills": [
+      "python",
+      "infrastructure",
+      "linux"
+    ],
+    "prerequisites": []
+  },
+  {
+    "id": "cai-log-error-rate",
+    "lesson_id": "cai.00.02",
+    "title": "Measure an error rate from logs",
+    "instructions": "Implement error_rate(lines): given raw log lines, return the fraction (rounded to 4 decimals) of lines containing \"ERROR\" (case-insensitive). Return 0.0 for an empty list.",
+    "starter_code": "def error_rate(lines):\n    pass\n",
+    "checks_code": "logs = [\"INFO ok\", \"ERROR db down\", \"INFO retry\", \"ERROR db still down\"]\nassert error_rate(logs) == 0.5\nassert error_rate([]) == 0.0\nassert error_rate([\"ERROR one\", \"ERROR two\"]) == 1.0\nassert error_rate([\"ok\"]) == 0.0\nprint(\"Checks passed.\")",
+    "solution_code": "def error_rate(lines):\n    if not lines:\n        return 0.0\n    errors = sum(1 for line in lines if \"ERROR\" in line.upper())\n    return round(errors / len(lines), 4)\n",
+    "estimated_minutes": 15,
+    "difficulty": "beginner",
+    "skills": [
+      "python",
+      "infrastructure",
+      "linux",
+      "observability"
+    ],
+    "prerequisites": []
+  },
+  {
+    "id": "cai-classify-status",
+    "lesson_id": "cai.01.01",
+    "title": "Decide which HTTP failures deserve a retry",
+    "instructions": "Implement classify_status(code) returning one of \"2xx\", \"3xx\", \"4xx\", \"5xx\" (raise ValueError(\"invalid status\") for codes outside 100-599), and is_retryable(code) returning True only for 429 and 5xx (never 4xx, even 429-adjacent oddities like 408).",
+    "starter_code": "def classify_status(code):\n    pass\n\ndef is_retryable(code):\n    pass\n",
+    "checks_code": "assert classify_status(204) == \"2xx\"\nassert classify_status(301) == \"3xx\"\nassert classify_status(422) == \"4xx\"\nassert classify_status(503) == \"5xx\"\ntry:\n    classify_status(99)\n    assert False, \"expected ValueError\"\nexcept ValueError as exc:\n    assert str(exc) == \"invalid status\"\nassert is_retryable(429) and is_retryable(500) and is_retryable(503)\nassert not is_retryable(200) and not is_retryable(404) and not is_retryable(408)\nprint(\"Checks passed.\")",
+    "solution_code": "def classify_status(code):\n    if not isinstance(code, int) or code < 100 or code > 599:\n        raise ValueError(\"invalid status\")\n    return f\"{code // 100}xx\"\n\ndef is_retryable(code):\n    return code == 429 or 500 <= code <= 599\n",
+    "estimated_minutes": 15,
+    "difficulty": "beginner",
+    "skills": [
+      "python",
+      "infrastructure",
+      "networking"
+    ],
+    "prerequisites": []
+  },
+  {
+    "id": "cai-security-group",
+    "lesson_id": "cai.01.02",
+    "title": "Evaluate an allowlist firewall",
+    "instructions": "Implement is_allowed(rules, source_ip, port): rules are dicts like {\"cidr\": \"10.0.0.0/8\", \"port\": 443}. Return True when any rule contains source_ip (use ipaddress) and matches port exactly.",
+    "starter_code": "import ipaddress\n\ndef is_allowed(rules, source_ip, port):\n    pass\n",
+    "checks_code": "rules = [{\"cidr\": \"10.0.0.0/8\", \"port\": 443}, {\"cidr\": \"0.0.0.0/0\", \"port\": 80}]\nassert is_allowed(rules, \"10.1.2.3\", 443)\nassert not is_allowed(rules, \"10.1.2.3\", 22)\nassert is_allowed(rules, \"192.168.1.4\", 80)\nassert not is_allowed(rules, \"192.168.1.4\", 443)\nprint(\"Checks passed.\")",
+    "solution_code": "import ipaddress\n\ndef is_allowed(rules, source_ip, port):\n    ip = ipaddress.ip_address(source_ip)\n    for rule in rules:\n        try:\n            network = ipaddress.ip_network(rule[\"cidr\"])\n        except ValueError:\n            continue\n        if ip in network and rule.get(\"port\") == port:\n            return True\n    return False\n",
+    "estimated_minutes": 20,
+    "difficulty": "intermediate",
+    "skills": [
+      "python",
+      "infrastructure",
+      "networking",
+      "security"
+    ],
+    "prerequisites": [
+      "cai-classify-status"
+    ]
+  },
+  {
+    "id": "cai-dockerfile-lint",
+    "lesson_id": "cai.02.01",
+    "title": "Lint a Dockerfile for root usage",
+    "instructions": "Implement lint_dockerfile(lines): scan a list of Dockerfile lines (comments and blanks ignored) and return a list of issue strings for: no USER directive anywhere, USER set to root, and no HEALTHCHECK directive. Order issues as: user, root, healthcheck.",
+    "starter_code": "def lint_dockerfile(lines):\n    issues = []\n    directives = [line.strip() for line in lines if line.strip() and not line.strip().startswith(\"#\")]\n    upper = [d.upper().split() for d in directives]\n    # detect USER and HEALTHCHECK\n    pass\n",
+    "checks_code": "good = [\"FROM python:3.12-slim\", \"RUN pip install flask\", \"USER 65532\", \"HEALTHCHECK CMD curl -f http://localhost/ || exit 1\", \"CMD [\\\"python\\\", \\\"app.py\\\"]\"]\nassert lint_dockerfile(good) == []\nno_user = [\"FROM python:3.12-slim\", \"CMD [\\\"python\\\", \\\"app.py\\\"]\"]\nissues = lint_dockerfile(no_user)\nassert issues[0].startswith(\"user\") and any(\"healthcheck\" in i for i in issues)\nissues = lint_dockerfile([\"FROM python:3.12-slim\", \"USER root\", \"HEALTHCHECK NONE\"])\nassert any(\"root\" in i for i in issues)\nprint(\"Checks passed.\")",
+    "solution_code": "def lint_dockerfile(lines):\n    issues = []\n    directives = [line.strip() for line in lines if line.strip() and not line.strip().startswith(\"#\")]\n    upper = [d.split()[0].upper() for d in directives]\n    user_lines = [d for d in directives if d.split()[0].upper() == \"USER\"]\n    if not user_lines:\n        issues.append(\"user: no USER directive; the container runs as root by default\")\n    elif any(d.split()[1].lower() == \"root\" for d in user_lines if len(d.split()) > 1):\n        issues.append(\"root: USER directive pins the container to uid 0\")\n    if \"HEALTHCHECK\" not in upper:\n        issues.append(\"healthcheck: no HEALTHCHECK directive; orchestrators cannot detect a broken app\")\n    return issues\n",
+    "estimated_minutes": 20,
+    "difficulty": "intermediate",
+    "skills": [
+      "python",
+      "infrastructure",
+      "containers",
+      "security"
+    ],
+    "prerequisites": []
+  },
+  {
+    "id": "cai-validate-manifest",
+    "lesson_id": "cai.02.02",
+    "title": "Validate a Kubernetes Deployment manifest",
+    "instructions": "Implement validate_manifest(manifest): a dict representing a Deployment. Return a list of issue strings, empty when valid: issues for spec.replicas < 1, missing readinessProbe, missing resources (requests or limits), and missing livenessProbe.",
+    "starter_code": "def validate_manifest(manifest):\n    issues = []\n    spec = manifest.get(\"spec\", {})\n    containers = spec.get(\"template\", {}).get(\"spec\", {}).get(\"containers\", [])\n    # inspect replicas, probes, resources\n    pass\n",
+    "checks_code": "good = {\"spec\": {\"replicas\": 2, \"template\": {\"spec\": {\"containers\": [{\"name\": \"api\", \"readinessProbe\": {\"httpGet\": {\"path\": \"/healthz\"}}, \"livenessProbe\": {\"httpGet\": {\"path\": \"/healthz\"}}, \"resources\": {\"requests\": {\"cpu\": \"250m\"}, \"limits\": {\"cpu\": \"1\"}}}]}}}}\nassert validate_manifest(good) == []\nshallow = {\"spec\": {\"replicas\": 1, \"template\": {\"spec\": {\"containers\": [{\"name\": \"api\"}]}}}}\nissues = validate_manifest(shallow)\nassert len(issues) >= 3\nprint(\"Checks passed.\")",
+    "solution_code": "def validate_manifest(manifest):\n    issues = []\n    spec = manifest.get(\"spec\", {})\n    if spec.get(\"replicas\", 0) < 1:\n        issues.append(\"replicas must be at least 1\")\n    containers = spec.get(\"template\", {}).get(\"spec\", {}).get(\"containers\", [])\n    if not containers:\n        issues.append(\"at least one container is required\")\n        return issues\n    container = containers[0]\n    for probe in (\"readinessProbe\", \"livenessProbe\"):\n        if not container.get(probe):\n            issues.append(f\"missing {probe}\")\n    resources = container.get(\"resources\") or {}\n    if not resources.get(\"requests\") or not resources.get(\"limits\"):\n        issues.append(\"missing resources requests/limits\")\n    return issues\n",
+    "estimated_minutes": 25,
+    "difficulty": "intermediate",
+    "skills": [
+      "python",
+      "infrastructure",
+      "kubernetes"
+    ],
+    "prerequisites": []
+  },
+  {
+    "id": "cai-parse-plan",
+    "lesson_id": "cai.03.01",
+    "title": "Parse a terraform plan summary",
+    "instructions": "Implement parse_plan(output): given the text of a terraform plan, find the sentence \"Plan: X to add, Y to change, Z to destroy.\" and return (X, Y, Z). Return (0, 0, 0) when no such sentence exists, and raise ValueError(\"invalid counts\") if any count is negative.",
+    "starter_code": "def parse_plan(output):\n    marker = \"Plan:\"\n    idx = output.find(marker)\n    # slice the sentence and parse the numbers\n    pass\n",
+    "checks_code": "text = \"Terraform will perform the following actions:\\n  # aws_instance.web will be created\\nPlan: 3 to add, 1 to change, 0 to destroy.\\n\"\nassert parse_plan(text) == (3, 1, 0)\nassert parse_plan(\"nothing to do\") == (0, 0, 0)\ntry:\n    parse_plan(\"Plan: -1 to add, 0 to change, 0 to destroy.\")\n    assert False, \"expected ValueError\"\nexcept ValueError as exc:\n    assert str(exc) == \"invalid counts\"\nprint(\"Checks passed.\")",
+    "solution_code": "def parse_plan(output):\n    marker = \"Plan:\"\n    idx = output.find(marker)\n    if idx == -1:\n        return (0, 0, 0)\n    segment = output[idx + len(marker):]\n    end = segment.find(\".\")\n    parts = segment[:end].split(\",\") if end != -1 else segment.split(\",\")\n    counts = []\n    for part in parts:\n        tokens = part.split()\n        number = int(tokens[0])\n        counts.append(number)\n    if any(count < 0 for count in counts):\n        raise ValueError(\"invalid counts\")\n    return tuple(counts)\n",
+    "estimated_minutes": 20,
+    "difficulty": "intermediate",
+    "skills": [
+      "python",
+      "infrastructure",
+      "terraform"
+    ],
+    "prerequisites": []
+  },
+  {
+    "id": "cai-deploy-decision",
+    "lesson_id": "cai.03.02",
+    "title": "Gate a deploy on staging metrics",
+    "instructions": "Implement decide(error_rate, p95_ms, max_error_rate, max_p95_ms) returning \"promote\" or \"hold\": promote only when both error_rate and p95_ms are within their budgets; return \"rollback\" instead of \"hold\" when error_rate exceeds the budget by more than 2x.",
+    "starter_code": "def decide(error_rate, p95_ms, max_error_rate, max_p95_ms):\n    pass\n",
+    "checks_code": "assert decide(0.01, 400, 0.02, 800) == \"promote\"\nassert decide(0.05, 400, 0.02, 800) == \"rollback\"\nassert decide(0.03, 400, 0.02, 800) == \"hold\"\nassert decide(0.01, 900, 0.02, 800) == \"hold\"\nprint(\"Checks passed.\")",
+    "solution_code": "def decide(error_rate, p95_ms, max_error_rate, max_p95_ms):\n    if error_rate > 2 * max_error_rate:\n        return \"rollback\"\n    if error_rate <= max_error_rate and p95_ms <= max_p95_ms:\n        return \"promote\"\n    return \"hold\"\n",
+    "estimated_minutes": 15,
+    "difficulty": "intermediate",
+    "skills": [
+      "python",
+      "infrastructure",
+      "ci-cd"
+    ],
+    "prerequisites": []
+  },
+  {
+    "id": "cai-burn-rate",
+    "lesson_id": "cai.03.03",
+    "title": "Compute an SLO burn rate",
+    "instructions": "Implement burn_rate(error_rate, allowed_error_rate) returning the ratio (rounded to 2 decimals), and should_page(ratio, threshold=6.0) returning True when the burn rate exceeds the threshold.",
+    "starter_code": "def burn_rate(error_rate, allowed_error_rate):\n    pass\n\ndef should_page(ratio, threshold=6.0):\n    pass\n",
+    "checks_code": "assert burn_rate(0.06, 0.01) == 6.0\nassert burn_rate(0.005, 0.01) == 0.5\nassert should_page(6.1) and should_page(12.0)\nassert not should_page(2.0) and not should_page(6.0)\nprint(\"Checks passed.\")",
+    "solution_code": "def burn_rate(error_rate, allowed_error_rate):\n    if allowed_error_rate <= 0:\n        raise ValueError(\"allowed_error_rate must be positive\")\n    return round(error_rate / allowed_error_rate, 2)\n\ndef should_page(ratio, threshold=6.0):\n    return ratio > threshold\n",
+    "estimated_minutes": 20,
+    "difficulty": "advanced",
+    "skills": [
+      "python",
+      "infrastructure",
+      "observability"
+    ],
+    "prerequisites": [
+      "cai-log-error-rate"
+    ]
+  },
+  {
+    "id": "cai-cidr-overlap",
+    "lesson_id": "cai.04.01",
+    "title": "Detect overlapping subnets",
+    "instructions": "Implement overlaps(cidr_a, cidr_b) using the ipaddress module: True when the two networks overlap in any way (containment counts). Raise ValueError(\"invalid cidr\") when either CIDR cannot be parsed.",
+    "starter_code": "import ipaddress\n\ndef overlaps(cidr_a, cidr_b):\n    pass\n",
+    "checks_code": "assert overlaps(\"10.0.0.0/16\", \"10.0.1.0/24\")\nassert overlaps(\"10.0.0.0/24\", \"10.0.0.0/16\")\nassert not overlaps(\"10.0.0.0/16\", \"172.16.0.0/16\")\ntry:\n    overlaps(\"10.0.0.0/33\", \"10.0.0.0/16\")\n    assert False, \"expected ValueError\"\nexcept ValueError as exc:\n    assert str(exc) == \"invalid cidr\"\nprint(\"Checks passed.\")",
+    "solution_code": "import ipaddress\n\ndef overlaps(cidr_a, cidr_b):\n    try:\n        a = ipaddress.ip_network(cidr_a)\n        b = ipaddress.ip_network(cidr_b)\n    except ValueError:\n        raise ValueError(\"invalid cidr\")\n    return a.overlaps(b)\n",
+    "estimated_minutes": 20,
+    "difficulty": "advanced",
+    "skills": [
+      "python",
+      "infrastructure",
+      "cloud",
+      "networking"
+    ],
+    "prerequisites": [
+      "cai-security-group"
+    ]
+  },
+  {
+    "id": "cai-vram-estimate",
+    "lesson_id": "cai.04.02",
+    "title": "Size the GPU for a model",
+    "instructions": "Implement minimum_vram_gb(params_billion, bytes_per_param=2, kv_overhead=0.35): estimate VRAM needed as weights plus KV-cache/framework overhead, returned in GB rounded to 1 decimal.",
+    "starter_code": "def minimum_vram_gb(params_billion, bytes_per_param=2, kv_overhead=0.35):\n    pass\n",
+    "checks_code": "assert minimum_vram_gb(7) == 18.9\nassert minimum_vram_gb(7, 4) == 37.8\nassert minimum_vram_gb(0.5, 2, 0.0) == 1.0\nprint(\"Checks passed.\")",
+    "solution_code": "def minimum_vram_gb(params_billion, bytes_per_param=2, kv_overhead=0.35):\n    weights_gb = params_billion * bytes_per_param\n    return round(weights_gb * (1 + kv_overhead), 1)\n",
+    "estimated_minutes": 15,
+    "difficulty": "intermediate",
+    "skills": [
+      "python",
+      "infrastructure",
+      "gpu"
+    ],
+    "prerequisites": []
+  }
+]

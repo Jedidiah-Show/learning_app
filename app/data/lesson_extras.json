@@ -115,28 +115,35 @@
     "intro": "A broad curriculum fails when it becomes an unordered playlist.",
     "concepts": [
       {
-        "example": "",
+        "example": "Trying Module 6 without Module 2 built leaves the agent with no service to call: no endpoint, no validated schema, no tests — the tool calls fail for reasons that have nothing to do with the agent. Build Module 2's service first and Module 6 becomes wiring a known-good backend, not archaeology.",
         "plain": "The dependency spine Modules 1 and 2 build Python and backend foundations, because every later feature needs a request, validation, storage, and tests. Modules 3 and 4 add model behaviour, prompting, structured output, streaming, and reliability. Module 5 adds retrieval; Modules 6 to 8 add agents, orchestration, and MCP; Modules 9 to 11 cover production, deployment, and system design; Module 12 integrates them. Skipping the backend or production modules does not save time, because their gaps reappear as incident work during the capstone. One product through-line Choose a capstone domain by Module 2 and keep using the same repository. Each module then adds a capability to one product: extraction to the intake path, RAG to the knowledge path, tools to actions, MCP to integration, evaluation to the release gate, and deployment to the delivery path. Reuse is not laziness; it exposes the integration problems that isolated demos hide. Write down the scope boundary so the capstone stays achievable alongside the lessons. Cadence, gates, and evidence A workable pace is five to seven hours a week for roughly twenty weeks, with at least half the time spent building. Each module ends with a small artefact, a passing self-check, an evaluation number, and a short decision record. Gate progress on demonstrated capability, not on finishing a page count: if you cannot explain and reproduce the artefact, repeat the relevant task. Two buffer weeks are part of the plan, not evidence of failure.",
         "title": "The dependency spine Modules 1 and 2 build Python and backend foundations, becau"
       }
     ],
-    "answers": []
+    "answers": [
+      "Agents, orchestration, and MCP assume HTTP, tool calling, and state, and production modules assume a working application to observe; Modules 1 and 2 supply those Python and backend foundations. Skipping them does not save time — the missing pieces reappear as incident work during the capstone.",
+      "Module 2 (Backend Engineering) is where the first network-facing service gets built (a FastAPI API with validation and storage). It assumes Module 1: typed Python, virtual environments, locked dependencies, and a tested understanding of HTTP calls.",
+      "Keeping one capstone domain means every module adds a reusable capability to the same product and repository instead of producing throwaway demos. Integration problems surface early, where they are cheap, and the capstone is assembled continuously rather than started from scratch at the end.",
+      "A working artefact (service, evaluation report, diagram, or decision record), corrected self-check answers, at least one real evaluation or test result, and a short decision record. Gate on demonstrated capability — if you cannot explain and reproduce the artefact, repeat the task rather than mark the module done.",
+      "Five to seven hours a week for roughly twenty weeks never survives contact with real life unchanged. Two buffer weeks absorb provider outages, travel, and surprise integration work, so normal variance does not turn into permanent catch-up debt or a reason to abandon the plan.",
+      "When the measured result does not justify the added complexity — as in the example, where a multi-agent rewrite added latency without improving accuracy — or when a buffer week is consumed by an operational event, narrow scope and spend the time on what the evidence supports, recording the rejected alternative."
+    ]
   },
   "0.06": {
     "intro": "The fastest way to stop feeling lost is to run a program you can see, change, and break.",
     "concepts": [
       {
-        "example": "",
+        "example": "name = 'Ada'\nprint(f'Hello, {name}!')\nprint('done') — running the script top to bottom prints the greeting, then 'done'; change one line and the second run shows the changed line executing next.",
         "plain": "Python runs a script from top to bottom. Each line can calculate a value, call a function, or make a decision. print() writes a value to the terminal so you can see what happened. A variable is just a name attached to a value; it is not a box with a fixed type.",
         "title": "A program is a list of instructions"
       },
       {
-        "example": "",
+        "example": "print(f'Total: {9.5 * 3:.2f}') prints Total: 28.50. Without the f prefix you see the literal braces, and concatenating 9.5 + ' tickets' raises TypeError because + does not mix floats and strings.",
         "plain": "Text lives inside quotes and numbers do not. The + operator joins strings, but it does not mix strings and numbers automatically. An f-string starts with f and puts expressions inside braces: f\"Total: {total:.2f}\". The .2f part asks for two decimal places.",
         "title": "Strings, numbers, and f-strings"
       },
       {
-        "example": "",
+        "example": "print('Hi) raises SyntaxError: unterminated string literal at the reported line; a typo'd greet raises NameError: name 'greet' is not defined. Read the last line, then the line number, then the source line — fix one thing and run again.",
         "plain": "A SyntaxError means Python could not understand the file; a NameError means a name was used before it existed; a TypeError means two values could not be combined. Read the last line of the traceback first, then the line number, then the source line. Change one thing and run again.",
         "title": "Errors are feedback, not failure"
       }
@@ -154,17 +161,17 @@
     "intro": "AI APIs return lists of choices and dictionaries of fields.",
     "concepts": [
       {
-        "example": "",
+        "example": "models = ['small', 'medium', 'large']; print(models[0], models[-1], models[1:]) prints small large ['medium', 'large']; models.insert(0, 'tiny') adds a debug model first while preserving order — duplicates allowed, indexing from zero.",
         "plain": "A list is written with square brackets: [\"read\", \"write\", \"delete\"]. Indexing starts at zero, and a slice such as items[1:3] returns a new list. Use a list when order or duplicates matter.",
         "title": "Lists keep order"
       },
       {
-        "example": "",
+        "example": "data = {'model': 'gpt-4.1-mini', 'temperature': 0.2}; data.get('seed') returns None instead of raising, and data['seed'] = 42 records the seed explicitly; a list cannot be a dictionary key.",
         "plain": "A dictionary maps keys to values: {\"name\": \"Atlas\", \"price\": 0.5}. Access a known key with data[\"name\"]; use data.get(\"price\", 0.0) when the field may be absent. Keys must be hashable, so a list cannot be a key.",
         "title": "Dictionaries look up by key"
       },
       {
-        "example": "",
+        "example": "[m['name'] for m in models] builds a fresh list of names in one expression; for m in models: print(m['name']) is the same work as a loop you can step through in a debugger — pick the readable one.",
         "plain": "A for loop visits each item: for model in models: print(model[\"name\"]). A comprehension builds a new collection in one expression: [model[\"name\"] for model in models]. Both are fine; choose the one a reviewer can read.",
         "title": "Loops turn one item into many"
       }
@@ -182,17 +189,17 @@
     "intro": "Functions are how you stop copying code and start making decisions testable.",
     "concepts": [
       {
-        "example": "",
+        "example": "print(total_cost(20, 0.002)) — return the value (0.04) instead of printing, and a test can assert abs(total_cost(20, 0.002) - 0.04) < 1e-9; a print-only function forces the test to capture stdout.",
         "plain": "def total_cost(tickets, price): names the function and its inputs. The return statement hands a result back to the caller. A function that only prints is hard to test; return the value and let the caller decide how to display it.",
         "title": "A function is a named contract"
       },
       {
-        "example": "",
+        "example": "def window(limit=10): takes a safe default, but every caller passes tickets and price explicitly; the same function then works in a script, a test, and a web request with no module-level LIMIT or PRICE.",
         "plain": "Parameters exist only while the function runs. Pass values in rather than reading globals, so the same function works in a script, a test, and a web request. Default values are useful for safe options, but never use a mutable default such as [] because it is shared between calls.",
         "title": "Parameters are local names"
       },
       {
-        "example": "",
+        "example": "if tickets < 0 or not isinstance(price, (int, float)): raise ValueError('tickets must be non-negative and price numeric') — a wrong answer returned quietly would corrupt every downstream total.",
         "plain": "Validate values before doing arithmetic: negative tickets, a non-numeric price, or a missing argument should raise ValueError or TypeError with a message that names the problem. A wrong answer returned silently is harder to debug than an exception.",
         "title": "Fail loudly at the boundary"
       }
@@ -210,17 +217,17 @@
     "intro": "Most AI work starts with data on disk and configuration from the environment.",
     "concepts": [
       {
-        "example": "",
+        "example": "path = Path('reports') / 'eval.json'; if not path.exists(): raise SystemExit('missing eval.json'); print(path.read_text(encoding='utf-8')) — the same code works on Linux, macOS, and Windows.",
         "plain": "pathlib.Path joins paths, checks existence, and reads text without manually concatenating slashes. Always pass encoding=\"utf-8\" so the same file works on every machine. A relative path depends on the current working directory, which is why command-line tools should show the resolved path in an error.",
         "title": "Paths are objects, not strings"
       },
       {
-        "example": "",
+        "example": "json.loads('{\"tickets\": 20}') returns {'tickets': 20}; json.loads('{bad') raises JSONDecodeError; and decoded payloads still need payload.get('tickets') checks before use.",
         "plain": "json.loads(text) returns Python dictionaries, lists, strings, numbers, booleans, and None. It raises JSONDecodeError when the text is malformed. A successful decode does not prove the fields you need exist, so check the top-level type and required keys before using them.",
         "title": "JSON is text with rules"
       },
       {
-        "example": "",
+        "example": "if len(sys.argv) != 2: sys.exit('usage: python summarize.py report.json'); path = Path(sys.argv[1]); print(f'read {len(records)} records from {path}').",
         "plain": "sys.argv[1] is the first argument after the script name. If it is missing, print a usage message and exit non-zero. A good script accepts a path, validates it, reports the number of records it read, and writes output to a predictable place.",
         "title": "Command-line scripts need a contract"
       }
@@ -238,17 +245,17 @@
     "intro": "AI projects change quickly: prompts, evaluation sets, and dependencies all move.",
     "concepts": [
       {
-        "example": "",
+        "example": "git init; write notes.md; git add notes.md; git commit -m 'Add study notes' — git log shows the snapshot and git status is clean, which is exactly how CI decides the tree is reproducible.",
         "plain": "git init creates a local repository. git status shows what changed, git add stages a file, and git commit records a snapshot with a message. A commit is not a backup of your whole computer; it is a reviewable diff plus the reason for it.",
         "title": "A repository is a history of decisions"
       },
       {
-        "example": "",
+        "example": "'Add JSON report reader' beats 'update stuff'; the body carries why ('dashboard expects .json reports; verified by the round-trip test in tests/test_report.py') — future readers get decisions, not diffs.",
         "plain": "Start with a short imperative subject such as \"Add JSON reader\" and keep it under about 72 characters. Use the body to explain why the change was needed, what trade-off you made, and how you verified it. \"Update stuff\" forces the next reader to reverse-engineer your intent.",
         "title": "Commit messages are for future readers"
       },
       {
-        "example": "",
+        "example": ".gitignore with .env, .venv/, __pycache__/ before the first commit; a committed key stays in history even after removal, so rotate it with the provider and never rewrite shared history.",
         "plain": "A .gitignore lists files Git should not track: .env, .venv/, __pycache__/, and large model weights. Deleting a secret in a later commit does not remove it from history; rotate the credential and rewrite history only with a deliberate plan.",
         "title": "Never commit secrets or generated files"
       }
@@ -266,17 +273,17 @@
     "intro": "Almost every AI feature is a network client.",
     "concepts": [
       {
-        "example": "",
+        "example": "requests.get('https://api.example.com/v1/models', headers={'Authorization': 'Bearer ...'}, timeout=10) — GET reads state; credentials live in headers, never in the URL query string.",
         "plain": "An HTTP request has a method, a URL, headers, and sometimes a body. A response has a status code, headers, and a body. Use GET for reads and POST for actions that create or change data. Put credentials in headers, never in the URL query string where logs record them.",
         "title": "A request is a typed message"
       },
       {
-        "example": "",
+        "example": "200 answers the success; 401 means the token is wrong or missing; 404 means the resource is absent; 422 means the body failed validation (fix the request); 503/429 mean back off and retry.",
         "plain": "2xx means the request succeeded; 3xx redirects; 4xx means the caller needs to change something; 5xx means the server failed. A 401 or 403 is a configuration problem, 404 is a missing resource, 422 is invalid input, and 429 asks you to slow down. Do not retry every non-2xx response.",
         "title": "Status codes are a contract"
       },
       {
-        "example": "",
+        "example": "requests.get(url, timeout=(3.05, 27)); on 429/5xx retry with jittered backoff up to a cap; on 400/401/403/422 fix the request; non-idempotent writes need an idempotency key before any retry.",
         "plain": "Set a connect timeout and a read timeout. Retry only transient failures such as 429, 500, 502, 503, 504, and network timeouts, with a cap and jitter. A non-idempotent write needs an idempotency key before it can be retried safely.",
         "title": "Timeouts and retries are part of the design"
       }
@@ -518,12 +525,19 @@
     "intro": "Every model API, tool call, config file, and evaluation report speaks JSON, but Python's json module makes losses easy: tuples become arrays, datetimes fail, NaN is written as invalid JSON, and floats lose decimal digits.",
     "concepts": [
       {
-        "example": "",
+        "example": "json.dumps({'ids': (1, 2), 'at': datetime.now(timezone.utc)}) — the tuple becomes [1, 2] silently and datetime raises TypeError with no default; with a default=encode you control every unrepresentable type, and json.loads(text) back gives you strings and lists to validate.",
         "plain": "A narrower type system JSON has objects, arrays, strings, numbers, booleans, and null. Python adds tuples, sets, bytes, datetime, Decimal, and non-string dictionary keys, none of which encode without help; json.dumps raises TypeError for most of them and silently turns a tuple into a list. Numbers carry no integer or float distinction, so a 64-bit identifier can lose precision in a JavaScript client. Duplicate object keys are legal in the grammar but the result is undefined, and NaN and Infinity are Python extensions that strict parsers reject. Encoding is a decision, not a default json.dumps is intentionally conservative: it escapes non-ASCII unless ensure_ascii=False, keeps insertion order, and emits NaN unless allow_nan=False. Supply a default function for Decimal, datetime, UUID, and sets, converting datetimes to UTC ISO 8601 and Decimal to a string when money is involved. Use sort_keys for reviewable diffs, indent for humans, and compact separators for wire payloads. Decode with parse_float=Decimal when precision matters and parse_constant to reject non-finite values at the door. Pick the right container format json.load reads a whole document into memory; a 400 MB export can consume several gigabytes as Python objects, so check Content-Length and cap accepted size. JSON Lines, one object per line, supports append-only logs, line-by-line processing, and partial recovery after a crash; it is the usual format for evaluation runs and fine-tuning data. For deeply nested payloads use raw_decode to read successive documents, and never use eval to parse input that you did not generate.",
         "title": "A narrower type system JSON has objects, arrays, strings, numbers, booleans, and"
       }
     ],
-    "answers": []
+    "answers": [
+      "Tuples encode as arrays (silently losing the tuple type), sets have no encoder (TypeError), datetimes and UUIDs fail without a default function, and Decimal needs an explicit decision. Non-string dictionary keys and bytes also have no natural JSON equivalent and raise TypeError.",
+      "JSON numbers carry no integer/float distinction, so a 64-bit identifier falls outside the exactly-representable range of IEEE 754 doubles once it exceeds 2^53. A JavaScript client that parses the literal can get a different number than the server stored.",
+      "allow_nan=False makes json.dumps raise ValueError at the moment an NaN or Infinity would be written, instead of emitting Python-extension literals that strict parsers (like JavaScript’s JSON.parse) reject. The failure appears at dump time, at the boundary, not in the consumer later.",
+      "JSON Lines is one JSON value per line, so it supports append-only writes, streaming line-by-line processing without loading the whole file, and partial recovery after a crash. It is the usual choice for evaluation runs, logs, and fine-tuning data; a single array document suits small, whole-at-once payloads.",
+      "parse_float=Decimal decodes every JSON number as an exact Decimal with the digits written in the file, so a round trip preserves the value. Plain float decoding introduces binary floating-point error immediately, making exact comparisons and money handling unreliable.",
+      "The producer can change, a schema can drift, or the input can come from a different system entirely. Validating after decode (checking required fields, types, and allowed values) protects the rest of the pipeline regardless of who wrote the bytes, and turns data errors into typed, located errors instead of corrupt state."
+    ]
   },
   "1.10": {
     "answers": [
@@ -557,45 +571,73 @@
     "intro": "The same application must run in development, staging, and production without code edits, and the differences are mostly endpoints and credentials.",
     "concepts": [
       {
-        "example": "",
+        "example": "class Settings(BaseSettings) with app_env: str = Field(pattern='^(dev|staging|prod)$') and api_key: SecretStr loads from the environment first, exits with a line-numbered Settings error before binding a port, and prints app_env with the key masked as SecretStr('**********').",
         "plain": "Configuration lives outside the code The same image should run in dev, staging, and production; only the environment changes. Environment variables are the common interface because shells, systemd, Docker, and every cloud runtime can set them. A .env file is a local convenience that Pydantic Settings or python-dotenv loads, not a deployment mechanism. Precedence matters: real environment variables should override the file, so a container setting is never silently replaced by a stale local file. Never commit .env, and keep .env.example as documentation. Validate at startup, not at first use os.environ['API_KEY'] raises KeyError at the moment of access, which may be inside a request handler hours after deploy. Load every setting once into a typed object, check required fields, regexes for environment names, and numeric bounds for timeouts and pool sizes. On failure, report all problems and exit non-zero before the server binds a port. Defaults are acceptable for safe values such as a 10-second timeout; they are dangerous for secrets, database URLs, and endpoints, where a wrong default sends traffic somewhere real. Secrets need stricter handling An API key is configuration with a blast radius: leaking it costs money and access. Use SecretStr so repr, logs, and tracebacks show asterisks, and call get_secret_value() only where the client is constructed. Prefer a secret manager or the platform's encrypted store over .env in production, scope credentials per environment and per service, and rotate them on a schedule you have tested. Do not bake secrets into images, pass them as build arguments, or print the whole settings object at startup.",
         "title": "Configuration lives outside the code The same image should run in dev, staging"
       }
     ],
-    "answers": []
+    "answers": [
+      "A .env file is a local convenience loaded by Pydantic Settings or python-dotenv, not a deployment mechanism — it depends on a file path and a working directory, is easy to commit by accident, and drifts between machines. Production configuration belongs in the platform or secret store, with environment variables as the common interface.",
+      "If a required API base URL is missing and you fall back to a default, the service silently targets some real system (staging or production) instead of failing fast. The lesson’s example: an unset staging shell defaulted to the public production URL and re-embedded 14,000 production documents.",
+      "Safe defaults are fine for non-secret, forgiving values such as a 10-second timeout. Required values, secrets, database URLs, and endpoints must fail closed when absent — a wrong default there sends traffic somewhere real, whereas a wrong timeout is caught immediately.",
+      "SecretStr masks the value in repr, logs, and tracebacks (they show asterisks), which keeps keys out of diagnostics and errors. It still becomes fully visible wherever you call get_secret_value() — typically when constructing the client — and anywhere the process environment itself is printed or dumped.",
+      "Settings load once into a typed object at startup, validation runs before the server binds a port, and on failure the process prints every invalid field and exits non-zero. A bad deployment fails deploy time instead of the first customer request, and the error list names all problems at once.",
+      "Use different credentials and scoped secrets per environment (for example a staging database URL and a production one), and prove it by cold-starting each environment with an empty shell and confirming which endpoints and identities resolve — the staging run must never hold production credentials."
+    ]
   },
   "1.12": {
     "intro": "Python installs packages into whichever interpreter is active, so a global upgrade for one tutorial can break three services that expected an older Pydantic.",
     "concepts": [
       {
-        "example": "",
+        "example": "sys.path shows .venv/lib/python3.11/site-packages ahead of the OS paths; .venv/bin/python -c 'import pydantic; print(pydantic.VERSION)' prints the project's 2.9.x even if the system Python ships an older one.",
         "plain": "Isolation is a directory on sys.path A virtual environment is a folder containing a symlink to a base interpreter, its own pyvenv.cfg, and a site-packages directory that appears early on sys.path. Activation only edits PATH and VIRTUAL_ENV for the current shell; it does not change the code. Calling .venv/bin/python -m pip or .venv/bin/python -m pytest is deterministic, while a bare python in a cron job or IDE may resolve elsewhere. Check sys.prefix != sys.base_prefix before blaming the package. Create, pin, and rebuild Create one environment per repository with python3.11 -m venv .venv, upgrade pip once, and add .venv/ to .gitignore. Record the interpreter version in .python-version and declare dependencies in pyproject.toml; a lockfile pins exact versions and hashes for every platform you support. In CI and Docker, build a fresh environment from the lock rather than copying a developer folder, because a venv contains absolute paths and native wheels tied to the machine that built it. A venv isolates but does not pin Two projects can each have a venv and still drift if both install pydantic>=2 on different days. Lockfiles, constraints, and hashed installs turn that drift into a reviewable diff. Use pip check or uv pip check to catch conflicting requirements, and run the test suite inside the same environment that deployment uses. Do not install project packages globally, do not mix conda and venv casually, and avoid --system-site-packages unless a system package genuinely cannot be installed.",
         "title": "Isolation is a directory on sys"
       }
     ],
-    "answers": []
+    "answers": [
+      "Activation puts the project’s .venv/bin directory first on PATH and sets VIRTUAL_ENV, so bare `python` and `pip` resolve to that interpreter. It is not required to run anything — you can always invoke .venv/bin/python directly, and tools like uv do that without activating.",
+      "Two projects can share a .venv shape but still drift because a fresh install resolves the newest allowed versions at install time; different creation dates or unpinned ranges produce different trees. The shared cause is resolving loosely instead of installing from each project’s own lockfile.",
+      "A .venv records absolute paths in pyvenv.cfg and scripts, and contains platform- and even Python-patch-version-specific binaries and links. Copied elsewhere or into an image, it breaks in confusing ways and ships a resolved set of packages instead of the declared, reviewable one.",
+      "pyvenv.cfg records the home Python installation the venv was created from (home path, include-system-site-packages flag, and the base prefix). The `home` path is machine-specific, so pointing another machine at it fails or silently uses the wrong base interpreter.",
+      "--system-site-packages is justified when a base image provides large pre-installed scientific packages you do not want duplicated. It adds the risk that system packages leak into the project and cause version conflicts that are invisible to a fresh-lockfile install.",
+      "pip check verifies that every installed package’s requirements are satisfied by the versions actually present, flagging conflicting requirements in one command. Combine it with installing from the frozen lockfile (uv sync --frozen / pip install --require-hashes) and running the test suite inside the built artefact."
+    ]
   },
   "1.13": {
     "intro": "An AI service inherits hundreds of transitive packages from an SDK, an HTTP client, and a test stack.",
     "concepts": [
       {
-        "example": "",
+        "example": "pyproject.toml declares httpx>=0.27,<0.29; uv.lock freezes httpx 0.28.1 and every transitive package with hashes; uv sync --frozen installs exactly that tree — staging and production finally run the same code, week after week.",
         "plain": "Direct, transitive, and locked A direct dependency is a package your code imports or a tool your build invokes. A transitive dependency is anything those packages require, often dozens deep. pyproject.toml declares intent with version ranges; a lockfile records the exact resolved version and hash of every package in the graph. AI SDKs are unusually heavy: one client can pull httpx, pydantic, tokenizers, and a telemetry stack. Most of your runtime is then unreviewed. Constraints and resolution Python version constraints follow PEP 440, not npm's caret syntax. A lower bound such as httpx>=0.27 states a minimum but permits any future major release; a compatible-release specifier like ~=0.27.3 permits patch updates only. The resolver must choose one version per package that satisfies every constraint simultaneously. Conflicts usually come from two direct dependencies with incompatible upper bounds. Read the resolution error, then loosen one direct constraint or upgrade the package that pins the shared dependency. Supply chain and blast radius Every package you add runs with your credentials in CI and production, so dependency choice is a security decision. Typosquatting, dependency confusion against private indexes, and compromised maintainer accounts are real attacks. Prefer widely used packages with active releases, check the licence against your policy, and avoid a library for something the standard library already does. Hashes in the lockfile prove the artefact you install is the one you reviewed. A new transitive package deserves the same scrutiny as a new direct one.",
         "title": "Direct, transitive, and locked A direct dependency is a package your code import"
       }
     ],
-    "answers": []
+    "answers": [
+      "A lower bound only states the minimum the resolver may choose; it is free to pick any newer release, so CI and production can install different code weeks apart. Reproducibility requires an exact, frozen set of versions — a lockfile — not an open-ended range.",
+      "pyproject.toml declares intent: the direct dependencies and the ranges you are willing to accept. uv.lock records the resolved reality: every direct and transitive package at an exact version, plus hashes, so any machine reproduces the same tree.",
+      "The resolver builds a graph of all version constraints from every package in play and selects, for each shared transitive package, a single version that satisfies every constraint simultaneously, backtracking when a choice fails. When constraints conflict it reports the conflict instead of silently mixing versions.",
+      "Development plugins (pytest-asyncio, coverage, linters) run at development and CI time, not in the request path; they add supply-chain surface and install weight for no runtime benefit. A development dependency group keeps production installs minimal and focused on runtime needs.",
+      "A pin plus hash defends against a compromised or replaced upstream distribution: even if an attacker publishes the same version number again, the digest will not match the recorded hash and the install fails instead of running substituted code.",
+      "Adding an upper bound on a transitive dependency is justified when a known breaking change or security issue lands upstream and the direct dependencys your tools require have not published a compatible release yet — pin tight, document why, and revisit once the graph allows a clean upgrade."
+    ]
   },
   "1.14": {
     "intro": "Model calls spend almost all their time waiting on a network, so a service that handles them one at a time wastes capacity.",
     "concepts": [
       {
-        "example": "",
+        "example": "await asyncio.gather(*[fetch(u) for u in urls]) — while each socket read is pending, the single loop thread serves the other 199 coroutines; a time.sleep(0.2) in one coroutine freezes them all.",
         "plain": "One thread, many waiting requests The event loop is a single-threaded scheduler holding a queue of ready callbacks. When a coroutine awaits network I/O, it registers a callback and yields, and the loop runs another request until the socket is ready. Concurrency comes from overlapping waits, not from doing two things at once. Two hundred pending model calls can share one thread because each is idle most of its lifetime. CPU-bound work has no await point, so it occupies the thread completely and queues everything behind it. The blocking trap Any synchronous call inside a coroutine blocks the loop: requests.get, time.sleep, a large pandas operation, or a tokenizer that releases the GIL only intermittently. One blocked loop means every request misses its deadline, which looks like a provider outage. Use async-native clients such as httpx.AsyncClient, and move unavoidable blocking work to a worker thread with asyncio.to_thread or a process pool. Enable asyncio debug mode in staging, where slow callbacks are logged with their stack. Bounded fan-out and backpressure Fan-out needs a ceiling. Two hundred simultaneous requests exhaust connection pools, trigger 429 responses, and multiply the cost of a retry storm. A semaphore around each call caps in-flight work, while a queue absorbs bursts beyond capacity. Size the cap from the provider's requests-per-second limit, your connection pool, and the latency budget. TaskGroup gives structured lifetimes; a semaphore gives backpressure. Use both, add a deadline for the whole batch, and record queue wait separately from model latency.",
         "title": "One thread, many waiting requests The event loop is a single-threaded scheduler"
       }
     ],
-    "answers": []
+    "answers": [
+      "requests.get is synchronous: it blocks the calling thread until the response arrives. Inside a coroutine on a single event-loop thread, every other pending task stops being served for the whole 190 ms, so one slow call stalls all requests in flight.",
+      "While a coroutine awaits a socket read, the event loop registers interest in that file descriptor and runs other ready coroutines. When the OS signals the socket is readable, the loop resumes the suspended coroutine with the data.",
+      "A thread pool is better when the blocking library cannot be rewritten or calls into C extensions that hold the GIL anyway — you offload the blocking call to a worker thread and keep the loop responsive. Rewriting as async is worthwhile when the library is I/O-bound, maintained, and a true async version exists.",
+      "All 200 calls fired at once overwhelmed the provider: requests were rejected with 429 and the connection pool closed, so retries and queuing dominated while concurrency beyond the server limit bought nothing. Sixteen workers matched the provider’s published 20 requests per second, finishing in 3.1 seconds with zero retries.",
+      "If one task in a TaskGroup raises, the group cancels all sibling tasks and waits for them to finish unwinding, then propagates an ExceptionGroup (or the original error in a plain context). No sibling is left running in the background after the failure.",
+      "Compute a conservative ceiling from the documented requests-per-second limit divided by realistic average request duration, then keep a safety factor below it. For example, a 20 rps limit with ~190 ms calls allows roughly 16 concurrent calls safely — matching the example, where 32 only saved 200 ms while doubling rate-limit errors."
+    ]
   },
   "1.15": {
     "answers": [

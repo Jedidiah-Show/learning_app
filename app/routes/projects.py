@@ -512,7 +512,8 @@ def get_module_project(module_id):
             )
             try:
                 generated = generate_json(
-                    prompt, model=_config().get('ai', {}).get('model_tier', 'flash')
+                    prompt, model=_config().get('ai', {}).get('model_tier', 'flash'),
+                    use_cache=True,
                 )
                 if (
                     not isinstance(generated, dict)
@@ -651,7 +652,7 @@ def submit_module_project(module_id):
         f"Demo URL: {demo_url or 'not provided'}"
     )
     try:
-        evaluation = generate_json(prompt, model=config.get('ai', {}).get('model_tier', 'flash'))
+        evaluation = generate_json(prompt, model=config.get('ai', {}).get('model_tier', 'flash'), use_cache=True)
         evaluation_source = 'ai'
     except GeminiError as error:
         current_app.logger.warning('AI project evaluation failed for %s: %s', module_id, error)

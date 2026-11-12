@@ -790,8 +790,23 @@ def profile_photo(user_id):
     if user_id != current_user.id and not current_user.is_admin:
         abort(404)
     photo = UserProfilePhoto.query.filter_by(user_id=user_id).first_or_404()
-    response = Response(photo.data, mimetype=photo.mime_type)
-    response.headers['Cache-Control'] = 'private, no-cache, max-age=0'
+    data = photo.data
+    mime_type = photo.mime_type
+    if photo.storage_key:
+        try:
+            from app.storage import get_storage
+            storage = get_storage()
+            if storage.exists(photo.storage_key):
+                direct_url = storage.url_for(photo.storage_key)
+                if direct_url:
+                    return redirect(direct_url, 302)
+                data, mime_type = storage.read(photo.storage_key)
+        except Exception:
+            data = photo.data
+    if not data:
+        abort(404)
+    response = Response(data, mimetype=mime_type or photo.mime_type)
+    response.headers['Cache-Control'] = 'public, max-age=86400'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
 
@@ -925,10 +940,25 @@ def update_account():
         if photo is None:
             photo = UserProfilePhoto(user_id=current_user.id)
             db.session.add(photo)
+        ext = 'png' if 'png' in photo_mime_type else 'jpg'
+        storage_key = f'profile_photos/{current_user.id}.{ext}'
+        try:
+            from app.storage import get_storage
+            get_storage().save(storage_key, photo_data, photo_mime_type)
+            photo.storage_key = storage_key
+        except Exception:
+            current_app.logger.warning('Could not write photo to object storage; falling back to DB BLOB')
         photo.data = photo_data
         photo.mime_type = photo_mime_type
         current_user.profile_photo = profile_photo
     elif remove_profile_photo:
+        photo = UserProfilePhoto.query.filter_by(user_id=current_user.id).first()
+        if photo and photo.storage_key:
+            try:
+                from app.storage import get_storage
+                get_storage().delete(photo.storage_key)
+            except Exception:
+                pass
         UserProfilePhoto.query.filter_by(user_id=current_user.id).delete()
         current_user.profile_photo = None
     elif profile_photo_changed and profile_photo is not None:

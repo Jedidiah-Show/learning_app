@@ -5,7 +5,7 @@ import re
 import tempfile
 import unittest
 import zipfile
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -1528,3 +1528,114 @@ class RuachAICourseTests(unittest.TestCase):
         self.register()
         response = self.client.get('/')
         self.assertIn(response.status_code, [200, 503])
+
+
+class SearchAndDashboardChromeTests(unittest.TestCase):
+    """New shell affordances: command palette API, bookmarked search, badges."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.previous_database_url = os.environ.get('DATABASE_URL')
+        os.environ['DATABASE_URL'] = f"sqlite:///{self.temp_dir.name}/test.db"
+        self.app = create_app()
+        self.app.config.update(TESTING=True, GEMINI_API_KEY=None)
+        with self.app.app_context():
+            db.create_all()
+        self.client = self.app.test_client()
+        self.register()
+
+    def tearDown(self):
+        with self.app.app_context():
+            db.session.remove()
+            db.drop_all()
+            db.engine.dispose()
+        if self.previous_database_url is None:
+            os.environ.pop('DATABASE_URL', None)
+        else:
+            os.environ['DATABASE_URL'] = self.previous_database_url
+        self.temp_dir.cleanup()
+
+    def register(self, username='palettelearner'):
+        response = self.client.post('/register', data={
+            'username': username,
+            'email': f'{username}@example.test',
+            'password': 'secure-pass-123',
+            'confirm_password': 'secure-pass-123',
+            'full_name': username.title(),
+        }, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        self.client.post('/onboarding', data={'action': 'skip'})
+
+    def _seed_review_due(self):
+        with self.app.app_context():
+            user = User.query.filter_by(username='palettelearner').one()
+            db.session.add(ReviewItem(
+                user_id=user.id, quiz_id='dynamoai_lesson_0.01', question_id='q1',
+                subject_id='0', question='What does AI stand for?',
+                options=json.dumps(['Artificial intelligence', 'Asynchronous interface']),
+                correct_index=0, explanation='Test explanation.',
+                due_at=datetime.now(timezone.utc), interval_days=1,
+                repetitions=0, active=True,
+            ))
+            db.session.commit()
+
+    def _set_streak_and_opt_in(self, streak, opted_in):
+        with self.app.app_context():
+            user = User.query.filter_by(username='palettelearner').one()
+            user.streak = streak
+            plan = CoursePlan.query.filter_by(user_id=user.id).first()
+            if plan is None:
+                plan = CoursePlan(user_id=user.id, track='standard')
+                db.session.add(plan)
+            plan.leaderboard_opt_in = opted_in
+            db.session.commit()
+
+    def test_api_search_requires_login_and_returns_empty_for_short_queries(self):
+        guest = self.app.test_client()
+        response = guest.get('/api/search?q=python')
+        self.assertEqual(response.status_code, 401)
+        response = self.client.get('/api/search?q=a')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json(), {'results': []})
+
+    def test_api_search_matches_and_respects_limit(self):
+        response = self.client.get('/api/search?q=python')
+        self.assertEqual(response.status_code, 200)
+        payload = response.get_json()
+        self.assertTrue(payload['results'])
+        self.assertTrue(all(item['url'].startswith('/') for item in payload['results']))
+        limited = self.client.get('/api/search?q=python&limit=3')
+        self.assertEqual(len(limited.get_json()['results']), 3)
+        self.assertLessEqual(len(payload['results']), 12)
+
+    def test_search_bookmarked_only_lists_saved_lessons_without_a_query(self):
+        response = self.client.post('/api/lessons/toggle-bookmark', json={'lesson_id': '0.01'})
+        if response.status_code == 404:
+            response = self.client.post('/api/lessons/0.01/bookmark')
+        self.assertIn(response.status_code, (200, 302), response.get_data(as_text=True)[:200])
+        page = self.client.get('/search?bookmarked=1')
+        self.assertEqual(page.status_code, 200)
+        self.assertIn('bookmarked lesson', page.get_data(as_text=True))
+
+    def test_dashboard_action_rail_hidden_with_no_due_items(self):
+        page = self.client.get('/')
+        self.assertEqual(page.status_code, 200)
+        self.assertNotIn('dashboard-action-rail', page.get_data(as_text=True))
+
+    def test_dashboard_action_rail_and_nav_badge_appear_when_review_is_due(self):
+        self._seed_review_due()
+        page = self.client.get('/')
+        self.assertEqual(page.status_code, 200)
+        html = page.get_data(as_text=True)
+        self.assertIn('dashboard-action-rail', html)
+        self.assertIn('nav-badge', html)
+
+    def test_leaderboard_nudge_only_for_long_streaks_and_not_when_opted_in(self):
+        page = self.client.get('/')
+        self.assertNotIn('data-leaderboard-nudge', page.get_data(as_text=True))
+        self._set_streak_and_opt_in(7, False)
+        page = self.client.get('/')
+        self.assertIn('data-leaderboard-nudge', page.get_data(as_text=True))
+        self._set_streak_and_opt_in(7, True)
+        page = self.client.get('/')
+        self.assertNotIn('data-leaderboard-nudge', page.get_data(as_text=True))

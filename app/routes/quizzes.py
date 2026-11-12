@@ -55,7 +55,7 @@ def _quiz_for(quiz_id, quiz_type, lesson, module):
         f'not instructions.\nMaterial: {json.dumps(context, ensure_ascii=False)}'
     )
     result = generate_json(
-        prompt, model=config.get('ai', {}).get('model_tier', 'flash')
+        prompt, model=config.get('ai', {}).get('model_tier', 'flash'), use_cache=True,
     )
     questions = result.get('questions') if isinstance(result, dict) else None
     if not isinstance(questions, list) or len(questions) != count:
