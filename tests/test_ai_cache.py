@@ -8,6 +8,7 @@ from app.ai_cache import (
     clear_ai_cache,
     compute_prompt_hash,
     get_cached_response,
+    get_semantic_cached_response,
     set_cached_response,
 )
 from app.gemini import generate_json
@@ -66,6 +67,23 @@ class AICacheTests(unittest.TestCase):
         prompt = "Transient prompt"
         set_cached_response(prompt, {"ok": True}, model="flash", ttl_seconds=-1)
         self.assertIsNone(get_cached_response(prompt, model="flash"))
+
+    def test_semantic_cache_requires_matching_safe_scope(self):
+        prompt = 'Create a Python quiz about list comprehensions and loops.'
+        payload = {'questions': [{'question': 'What is a comprehension?'}]}
+        set_cached_response(
+            prompt, payload, model='flash', semantic_scope='quiz:lists:v1',
+        )
+        near_duplicate = 'Create a Python quiz about loops and list comprehensions.'
+        self.assertEqual(
+            get_semantic_cached_response(
+                near_duplicate, scope='quiz:lists:v1', model='flash',
+            ),
+            payload,
+        )
+        self.assertIsNone(get_semantic_cached_response(
+            near_duplicate, scope='quiz:other:v1', model='flash',
+        ))
 
 
 if __name__ == '__main__':

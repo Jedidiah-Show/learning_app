@@ -69,6 +69,8 @@ def lesson(lesson_id):
                 db.session.add(MLSpecializationLessonCompletion(
                     user_id=current_user.id, pathway_id=PATHWAY_ID, lesson_id=lesson_id,
                 ))
+                from app.leaderboard import refresh_leaderboard_score
+                refresh_leaderboard_score(current_user.id, commit=False)
                 db.session.commit()
             flash('Lesson complete. Your pathway progress has been saved.', 'success')
             return redirect(url_for('cloud_ai_infrastructure.index'))

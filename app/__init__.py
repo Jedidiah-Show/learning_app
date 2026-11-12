@@ -284,19 +284,6 @@ def create_app(config_override=None):
         os.environ.get('JUDGE_SUBMISSIONS_ENABLED', '').strip().lower()
         in {'1', 'true', 'yes'}
     )
-    # Self-hosted Piston code execution engine (see docs/PISTON_SETUP.md).
-    # Empty by default; when set, interactive Python runs use Piston first and
-    # only fall back to the Docker judge / browser runtime when it is down.
-    app.config['PISTON_URL'] = os.environ.get('PISTON_URL', '').strip().rstrip('/')
-    app.config['PISTON_PYTHON_VERSION'] = os.environ.get(
-        'PISTON_PYTHON_VERSION', ''
-    ).strip()
-    app.config['PISTON_RUN_TIMEOUT_MS'] = int(
-        os.environ.get('PISTON_RUN_TIMEOUT_MS', '10000')
-    )
-    app.config['PISTON_RUN_MEMORY_LIMIT_MB'] = int(
-        os.environ.get('PISTON_RUN_MEMORY_LIMIT_MB', '256')
-    )
     if production and not app.config['TOKEN_ENCRYPTION_KEY']:
         # Deriving the Fernet key from SECRET_KEY would silently invalidate
         # every stored OAuth refresh token whenever SECRET_KEY rotates.
@@ -405,6 +392,10 @@ def create_app(config_override=None):
     app.config['S3_PUBLIC_BASE_URL'] = (
         os.environ.get('S3_PUBLIC_BASE_URL') or ''
     ).rstrip('/')
+    app.config['AI_CACHE_ENABLED'] = os.environ.get(
+        'AI_CACHE_ENABLED', 'false'
+    ).strip().lower() in {'1', 'true', 'yes'}
+    app.config['REDIS_URL'] = os.environ.get('REDIS_URL', '').strip()
     if production and app.config['STORAGE_BACKEND'] != 's3':
         app.logger.warning(
             'STORAGE_BACKEND is %r; production uploads should use the S3 '
@@ -516,6 +507,7 @@ def create_app(config_override=None):
     from app.routes.projects import projects_bp
     from app.routes.community import community_bp
     from app.routes.leaderboard import leaderboard_bp
+    from app.leaderboard import rebuild_leaderboard_scores
     from app.routes.integrations import integrations_bp
     from app.routes.credentials import credentials_bp
     from app.routes.practice_arena import practice_arena_bp
@@ -536,6 +528,7 @@ def create_app(config_override=None):
     app.register_blueprint(projects_bp)
     app.register_blueprint(community_bp)
     app.register_blueprint(leaderboard_bp)
+    app.cli.add_command(rebuild_leaderboard_scores)
     app.register_blueprint(integrations_bp, url_prefix='/api/integrations')
     app.register_blueprint(credentials_bp)
     app.register_blueprint(ml_specialization_bp)

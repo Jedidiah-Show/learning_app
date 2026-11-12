@@ -14,6 +14,7 @@ Werkzeug==3.0.6
 pytest==8.4.2
 gunicorn==23.0.0
 boto3==1.40.0
+redis==5.2.1
 # Botocore requires python-dateutil < 3; pin it because test-only packages may
 # otherwise resolve a newer incompatible release in shared environments.
 python-dateutil==2.9.0.post0

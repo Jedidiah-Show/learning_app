@@ -1,3 +1,5 @@
+import click
+
 from flask import (
     Blueprint, current_app, render_template, request, redirect, url_for,
     flash, jsonify, session, Response, abort,
@@ -28,6 +30,40 @@ from urllib.parse import urljoin, urlsplit
 
 auth_bp = Blueprint('auth', __name__)
 ALLOWED_PHOTO_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'webp'}
+
+
+@auth_bp.cli.command('migrate-profile-photos')
+@click.option('--dry-run', is_flag=True, help='Report BLOBs without uploading them.')
+def migrate_profile_photos(dry_run):
+    """Copy legacy profile-photo BLOBs to configured object storage.
+
+    This is intentionally an explicit operational command: it prevents an
+    Alembic deployment from deleting existing learner photos before R2/S3 is
+    configured and the copy has succeeded.
+    """
+    from app.storage import get_storage
+
+    photos = UserProfilePhoto.query.filter(
+        UserProfilePhoto.data.isnot(None),
+        UserProfilePhoto.storage_key.is_(None),
+    ).order_by(UserProfilePhoto.user_id).all()
+    if dry_run:
+        click.echo(f'{len(photos)} legacy profile photo(s) need migration')
+        return
+    storage = get_storage()
+    migrated = 0
+    for photo in photos:
+        extension = 'png' if photo.mime_type == 'image/png' else 'jpg'
+        key = f'profile_photos/{photo.user_id}/{uuid.uuid4().hex}.{extension}'
+        storage.save(
+            key, photo.data, photo.mime_type,
+            cache_control='public, max-age=86400',
+        )
+        photo.storage_key = key
+        photo.data = None
+        migrated += 1
+    db.session.commit()
+    click.echo(f'Migrated {migrated} profile photo(s) to object storage')
 
 
 def _allowed_photo_file(filename):
@@ -849,6 +885,7 @@ def update_account():
     photo_file_uploaded = False
     photo_data = None
     photo_mime_type = None
+    new_storage_key = None
     if photo_file and photo_file.filename:
         if not _allowed_photo_file(photo_file.filename):
             flash('Profile photo must be a PNG, JPG, JPEG, GIF, or WebP image.', 'error')
@@ -861,9 +898,7 @@ def update_account():
         if not photo_mime_type:
             flash('Choose a valid PNG, JPG, GIF, or WebP image.', 'error')
             return redirect(url_for('auth.profile'))
-        profile_photo = url_for(
-            'auth.profile_photo', user_id=current_user.id, v=uuid.uuid4().hex
-        )
+        profile_photo = url_for('auth.profile_photo', user_id=current_user.id)
         photo_file_uploaded = True
     elif remove_profile_photo:
         profile_photo = None
@@ -941,14 +976,24 @@ def update_account():
             photo = UserProfilePhoto(user_id=current_user.id)
             db.session.add(photo)
         ext = 'png' if 'png' in photo_mime_type else 'jpg'
-        storage_key = f'profile_photos/{current_user.id}.{ext}'
+        new_storage_key = f'profile_photos/{current_user.id}/{uuid.uuid4().hex}.{ext}'
         try:
             from app.storage import get_storage
-            get_storage().save(storage_key, photo_data, photo_mime_type)
-            photo.storage_key = storage_key
+            get_storage().save(
+                new_storage_key, photo_data, photo_mime_type,
+                cache_control='public, max-age=86400',
+            )
         except Exception:
-            current_app.logger.warning('Could not write photo to object storage; falling back to DB BLOB')
-        photo.data = photo_data
+            current_app.logger.exception('Could not write profile photo to object storage')
+            if request.is_json:
+                return {'error': 'Could not save profile photo. Try again later.'}, 503
+            flash('Could not save profile photo. Try again later.', 'error')
+            return redirect(url_for('auth.profile'))
+        old_storage_key = photo.storage_key
+        photo.storage_key = new_storage_key
+        # BLOBs are read only as a legacy migration fallback; new uploads must
+        # never duplicate image bytes in PostgreSQL.
+        photo.data = None
         photo.mime_type = photo_mime_type
         current_user.profile_photo = profile_photo
     elif remove_profile_photo:
@@ -979,6 +1024,15 @@ def update_account():
             return {'error': 'Email or phone number already exists'}, 400
         flash('Email or phone number already exists', 'error')
         return redirect(url_for('auth.profile'))
+
+    # New bytes are durable before the DB transaction. Clean up a superseded
+    # object only after commit so a failed transaction cannot lose the photo.
+    if photo_file_uploaded and old_storage_key and old_storage_key != new_storage_key:
+        try:
+            from app.storage import get_storage
+            get_storage().delete(old_storage_key)
+        except Exception:
+            current_app.logger.warning('Could not remove superseded profile photo')
 
     if email_changed or phone_changed or password_changed:
         _set_auth_session(current_user)

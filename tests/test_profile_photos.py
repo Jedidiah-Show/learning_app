@@ -54,7 +54,8 @@ class ProfilePhotoTests(unittest.TestCase):
             user = User.query.filter_by(username='photo-learner').one()
             photo_url = user.profile_photo
             stored = UserProfilePhoto.query.filter_by(user_id=user.id).one()
-            self.assertEqual(stored.data, image)
+            self.assertIsNone(stored.data)
+            self.assertTrue(stored.storage_key.startswith('profile_photos/'))
             self.assertEqual(stored.mime_type, 'image/png')
 
         photo_response = self.client.get(urlsplit(photo_url).path)

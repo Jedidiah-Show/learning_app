@@ -35,7 +35,8 @@
       "A number is even when number % 2 == 0.",
       "Add to the total only inside the if block."
     ],
-    "editorial": "The loop visits one element at a time. The accumulator starts at zero, the condition selects even numbers, and the final return hands the total back to the caller. This pattern (initialize, iterate, conditionally update, return) appears in almost every data-processing task."
+    "editorial": "The loop visits one element at a time. The accumulator starts at zero, the condition selects even numbers, and the final return hands the total back to the caller. This pattern (initialize, iterate, conditionally update, return) appears in almost every data-processing task.",
+    "judge_tests": "assert total_even([2, 7, 10, 13, 16]) == 28\nassert total_even([1, 3, 5]) == 0\nassert total_even([-4, 2, 8, -1]) == 6\nassert total_even([0]) == 0\nassert total_even([10, -10, 3, 4]) == 4\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "algo-count-word-frequency",
@@ -51,11 +52,7 @@
         "explanation": "Both spellings of AI collapse to the same lowercase key."
       }
     ],
-    "constraints": [
-      "words is a list of strings.",
-      "Keys must be lowercase.",
-      "Return a dict."
-    ],
+    "constraints": ["words is a list of strings.", "Keys must be lowercase.", "Return a dict."],
     "difficulty": "beginner",
     "skills": ["dictionaries", "loops", "python"],
     "prerequisites": [],
@@ -68,7 +65,8 @@
       "dict.get(key, 0) gives you a safe default.",
       "Add one to the previous count and store it back under the same key."
     ],
-    "editorial": "A dictionary is the natural frequency table. Using counts.get(key, 0) avoids a separate membership check and keeps the update atomic and readable. Normalising keys before counting is what makes the operation case-insensitive."
+    "editorial": "A dictionary is the natural frequency table. Using counts.get(key, 0) avoids a separate membership check and keeps the update atomic and readable. Normalising keys before counting is what makes the operation case-insensitive.",
+    "judge_tests": "assert word_frequencies(['One', 'TWO', 'one', 'Two', 'three']) == {'one': 2, 'two': 2, 'three': 1}\nassert word_frequencies(['a']) == {'a': 1}\nassert word_frequencies(['Mixed', 'case', 'MIXED']) == {'mixed': 2, 'case': 1}\nassert len(word_frequencies(['x'] * 7)) == 1\nassert word_frequencies(['x'] * 7)['x'] == 7\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "algo-reverse-words",
@@ -106,7 +104,8 @@
       "reversed(words) yields the items from last to first.",
       "str.join() puts the separator between items."
     ],
-    "editorial": "Splitting without an argument handles arbitrary whitespace for you. Reversing the resulting list and joining is clearer than manual index arithmetic, and it returns an empty string naturally when the list is empty."
+    "editorial": "Splitting without an argument handles arbitrary whitespace for you. Reversing the resulting list and joining is clearer than manual index arithmetic, and it returns an empty string naturally when the list is empty.",
+    "judge_tests": "assert reverse_words('alpha beta gamma') == 'gamma beta alpha'\nassert reverse_words('single') == 'single'\nassert reverse_words('a  b\\tc\\nd') == 'd c b a'\nassert reverse_words('') == ''\nassert reverse_words('  padded   words  here  ') == 'here words padded'\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "algo-sort-records-by-score",
@@ -139,7 +138,8 @@
       "A tuple key applies the first element first.",
       "Negate the score to get descending order without reverse=True."
     ],
-    "editorial": "Python sorts tuples lexicographically, so (-score, name) expresses both rules in one key. Negating the numeric field is a compact way to invert only that field. sorted() also protects the caller's list from mutation, which matters when the same records are used elsewhere."
+    "editorial": "Python sorts tuples lexicographically, so (-score, name) expresses both rules in one key. Negating the numeric field is a compact way to invert only that field. sorted() also protects the caller's list from mutation, which matters when the same records are used elsewhere.",
+    "judge_tests": "records = [{'name': 'Zed', 'score': 10}, {'name': 'Amy', 'score': 10}, {'name': 'Bo', 'score': 30}, {'name': 'Cy', 'score': 20}]\noriginal = [dict(item) for item in records]\nranked = rank_records(records)\nassert [item['name'] for item in ranked] == ['Bo', 'Cy', 'Amy', 'Zed']\nassert records == original, 'rank_records must not mutate its input'\nassert rank_records([{'name': 'Solo', 'score': 1}]) == [{'name': 'Solo', 'score': 1}]\ntied = [{'name': 'B', 'score': 5}, {'name': 'A', 'score': 5}, {'name': 'C', 'score': 5}]\nassert [item['name'] for item in rank_records(tied)] == ['A', 'B', 'C']\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "algo-binary-search",
@@ -177,7 +177,8 @@
       "The loop continues while low <= high.",
       "After comparing the middle value, discard the half that cannot contain the target."
     ],
-    "editorial": "Each iteration removes half of the remaining candidates, which is why the running time is O(log n). The subtle part is the boundary update: low = middle + 1 and high = middle - 1 guarantee progress and avoid an infinite loop. An empty list works because high starts below low."
+    "editorial": "Each iteration removes half of the remaining candidates, which is why the running time is O(log n). The subtle part is the boundary update: low = middle + 1 and high = middle - 1 guarantee progress and avoid an infinite loop. An empty list works because high starts below low.",
+    "judge_tests": "assert binary_search([1, 3, 5, 7, 9, 11], 7) == 3\nassert binary_search([1, 3, 5, 7, 9, 11], 1) == 0\nassert binary_search([1, 3, 5, 7, 9, 11], 11) == 5\nassert binary_search([2, 2, 2, 2], 2) in (0, 1, 2, 3)\nassert binary_search([10, 20], 15) == -1\nassert binary_search([-9, -3, 0, 4, 8], -9) == 0\nassert binary_search([-9, -3, 0, 4, 8], 8) == 4\nassert binary_search([1], 2) == -1\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "algo-factorial-recursive",
@@ -215,7 +216,8 @@
       "The base case stops the recursion: factorial(0) is 1.",
       "The recursive call must use n - 1 so the problem gets smaller."
     ],
-    "editorial": "A recursive function needs a case that returns without calling itself and a case that moves toward that base case. Here n == 0 stops the chain, while n * factorial(n - 1) expresses the mathematical definition directly. Without the shrinking argument the call stack would never terminate."
+    "editorial": "A recursive function needs a case that returns without calling itself and a case that moves toward that base case. Here n == 0 stops the chain, while n * factorial(n - 1) expresses the mathematical definition directly. Without the shrinking argument the call stack would never terminate.",
+    "judge_tests": "assert factorial(2) == 2\nassert factorial(3) == 6\nassert factorial(6) == 720\nassert factorial(10) == 3628800\ntry:\n    factorial(-5)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError('negative input must raise ValueError')\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "algo-balanced-brackets",
@@ -236,11 +238,7 @@
         "explanation": "The closing square bracket arrives while a round bracket is still open."
       }
     ],
-    "constraints": [
-      "text is a string.",
-      "Only bracket characters affect the result.",
-      "Return a bool."
-    ],
+    "constraints": ["text is a string.", "Only bracket characters affect the result.", "Return a bool."],
     "difficulty": "intermediate",
     "skills": ["stacks", "strings", "python"],
     "prerequisites": ["algo-reverse-words"],
@@ -253,7 +251,8 @@
       "A closer must match the most recently opened bracket.",
       "At the end, the stack must be empty."
     ],
-    "editorial": "The stack mirrors nesting: the most recent opener is the first one that must close. Returning False on an empty stack or a mismatched top catches both over-closing and wrong ordering. Checking that the stack is empty at the end catches unclosed openers. The algorithm is O(n) time and O(n) space in the worst case."
+    "editorial": "The stack mirrors nesting: the most recent opener is the first one that must close. Returning False on an empty stack or a mismatched top catches both over-closing and wrong ordering. Checking that the stack is empty at the end catches unclosed openers. The algorithm is O(n) time and O(n) space in the worst case.",
+    "judge_tests": "assert balanced_brackets('[({})]') is True\nassert balanced_brackets('([{{[()]}}])') is True\nassert balanced_brackets('abc)def(') is False\nassert balanced_brackets('(]') is False\nassert balanced_brackets('}') is False\nassert balanced_brackets('a(b]c') is False\nassert balanced_brackets('no brackets at all') is True\nassert balanced_brackets('(()') is False\nassert balanced_brackets('())') is False\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "algo-fibonacci",
@@ -269,11 +268,7 @@
         "explanation": "The sequence starts 0, 1, 1, 2, 3, 5, 8, 13, 21, 34, 55."
       }
     ],
-    "constraints": [
-      "n is an integer.",
-      "Negative input raises ValueError.",
-      "Must run comfortably for n = 35."
-    ],
+    "constraints": ["n is an integer.", "Negative input raises ValueError.", "Must run comfortably for n = 35."],
     "difficulty": "intermediate",
     "skills": ["recursion", "dynamic-programming", "complexity", "python"],
     "prerequisites": ["algo-factorial-recursive"],
@@ -286,7 +281,8 @@
       "Iteration from 0 to n keeps the work linear.",
       "Tuple assignment lets you update both values without a temporary variable."
     ],
-    "editorial": "The naive recursive definition recomputes the same values exponentially many times. Storing only the last two numbers is enough because each term depends on its two predecessors. The loop performs n constant-time updates, giving O(n) time and O(1) extra space. This is the same subproblem-reuse idea behind dynamic programming."
+    "editorial": "The naive recursive definition recomputes the same values exponentially many times. Storing only the last two numbers is enough because each term depends on its two predecessors. The loop performs n constant-time updates, giving O(n) time and O(1) extra space. This is the same subproblem-reuse idea behind dynamic programming.",
+    "judge_tests": "assert fibonacci(2) == 1\nassert fibonacci(7) == 13\nassert fibonacci(15) == 610\nassert fibonacci(20) == 6765\ntry:\n    fibonacci(-3)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError('negative input must raise ValueError')\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-statistics-descriptive-statistics",
@@ -326,7 +322,8 @@
       "Sort a copy of the list to find the median: the middle value, or the average of the two middle values.",
       "Population standard deviation averages the squared differences over the full count, then takes the square root."
     ],
-    "editorial": "Start by handling the empty input so the rest of the function can divide safely. The mean is the running total divided by the count. For the median, sort the values and take the middle one; with an even count, average the two middle values. For the population standard deviation, square each difference from the mean, average those squares over the full count (not count minus one), and take the square root. Rounding keeps the result stable and presentable without hiding the underlying arithmetic."
+    "editorial": "Start by handling the empty input so the rest of the function can divide safely. The mean is the running total divided by the count. For the median, sort the values and take the middle one; with an even count, average the two middle values. For the population standard deviation, square each difference from the mean, average those squares over the full count (not count minus one), and take the square root. Rounding keeps the result stable and presentable without hiding the underlying arithmetic.",
+    "judge_tests": "result = descriptive_statistics([1, 2, 3, 4, 5])\nassert result == {'mean': 3.0, 'median': 3.0, 'std_dev': 1.4142}\neven = descriptive_statistics([10, 20, 30, 40])\nassert even['mean'] == 25.0 and even['median'] == 25.0\nodd = descriptive_statistics([3, 1, 2])\nassert odd['median'] == 2 and odd['mean'] == 2.0\nsingle = descriptive_statistics([-4])\nassert single == {'mean': -4.0, 'median': -4.0, 'std_dev': 0.0}\nspread = descriptive_statistics([0, 0, 0, 8])\nassert spread['mean'] == 2.0\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-python-csv-inspection",
@@ -365,7 +362,8 @@
       "csv.reader works with any file-like object; io.StringIO turns a string into one.",
       "The first row returned by csv.reader is the header; every row after it is a data row."
     ],
-    "editorial": "CSV inspection is the first step of any data-analysis workflow: confirm the schema (column names) and the volume (row count) before cleaning or modelling. The csv module handles quoting, commas inside fields, and line endings correctly, which string splitting does not. Wrapping the text in io.StringIO lets csv.reader consume it like a file. Returning None on malformed or empty input keeps the function predictable for callers."
+    "editorial": "CSV inspection is the first step of any data-analysis workflow: confirm the schema (column names) and the volume (row count) before cleaning or modelling. The csv module handles quoting, commas inside fields, and line endings correctly, which string splitting does not. Wrapping the text in io.StringIO lets csv.reader consume it like a file. Returning None on malformed or empty input keeps the function predictable for callers.",
+    "judge_tests": "header_only = inspect_csv('a,b,c')\nassert header_only == {'columns': ['a', 'b', 'c'], 'row_count': 0}\nresult = inspect_csv('id,name\\n1,Ada\\n2,Lin\\n3,Kai\\n4,Bo')\nassert result == {'columns': ['id', 'name'], 'row_count': 4}\nassert inspect_csv('single_column\\nonce\\ntwice') == {'columns': ['single_column'], 'row_count': 2}\nassert inspect_csv('\\n\\n') is None\nassert inspect_csv(None) is None\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-statistics-probability",
@@ -405,7 +403,8 @@
       "Probability is favourable outcomes divided by total outcomes.",
       "round(value, 4) keeps the result stable without hiding the calculation."
     ],
-    "editorial": "Probability measures how likely an event is under a model of equally likely outcomes: count the favourable outcomes and divide by the total number of outcomes. This is the same idea behind baseline accuracy in classification, but it also reminds learners that probability is conditional on the assumed model — if outcomes are not actually equally likely, the calculation misleads."
+    "editorial": "Probability measures how likely an event is under a model of equally likely outcomes: count the favourable outcomes and divide by the total number of outcomes. This is the same idea behind baseline accuracy in classification, but it also reminds learners that probability is conditional on the assumed model — if outcomes are not actually equally likely, the calculation misleads.",
+    "judge_tests": "assert probability_of_event(['a', 'b', 'c', 'd'], ['a', 'b']) == 0.5\nassert probability_of_event(['x'], ['x']) == 1.0\nassert probability_of_event(['x', 'y', 'z'], []) == 0.0\nassert probability_of_event([0, 1, 2, 3, 4, 5, 6, 7, 8], [0, 2, 4, 6, 8]) == 0.5556\nassert probability_of_event([True, False], [True]) == 0.5\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-data-preparation-missing-values",
@@ -447,7 +446,8 @@
       "If there are no present values, replace each None with 0.",
       "Build a new list so the input is not mutated."
     ],
-    "editorial": "Missing values are one of the most common data-quality problems. Replacing them with the mean (mean imputation) is a simple, standard-library-first approach that preserves the dataset size. The key engineering points are to compute the mean only from present values, round consistently, and return a new list rather than mutating the caller's data. This is a small but representative data-preparation step before modelling."
+    "editorial": "Missing values are one of the most common data-quality problems. Replacing them with the mean (mean imputation) is a simple, standard-library-first approach that preserves the dataset size. The key engineering points are to compute the mean only from present values, round consistently, and return a new list rather than mutating the caller's data. This is a small but representative data-preparation step before modelling.",
+    "judge_tests": "assert handle_missing_values([None, 2, None, 4]) == [3.0, 2, 3.0, 4]\nassert handle_missing_values([1, None]) == [1, 1.0]\nassert handle_missing_values([None]) == [0]\nassert handle_missing_values([1.5, None, 2.5]) == [1.5, 2.0, 2.5]\nsource = [1, None, 3]\nhandle_missing_values(source)\nassert source == [1, None, 3], 'input list must not be mutated'\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-regression-mean-squared-error",
@@ -482,7 +482,8 @@
       "Mean squared error is the average of all squared errors.",
       "zip() walks both lists in parallel."
     ],
-    "editorial": "Mean squared error is the workhorse regression metric: it penalises larger errors more than smaller ones because errors are squared. Computing it from scratch reinforces that a metric is just a deterministic calculation over actual and predicted values, and it prepares learners for comparing models in later evaluation challenges. Guarding mismatched inputs is the defensive practice that keeps metric code trustworthy."
+    "editorial": "Mean squared error is the workhorse regression metric: it penalises larger errors more than smaller ones because errors are squared. Computing it from scratch reinforces that a metric is just a deterministic calculation over actual and predicted values, and it prepares learners for comparing models in later evaluation challenges. Guarding mismatched inputs is the defensive practice that keeps metric code trustworthy.",
+    "judge_tests": "assert mean_squared_error([0, 0], [3, 4]) == 12.5\nassert mean_squared_error([1], [1]) == 0.0\nassert mean_squared_error([2, 4], [4, 2]) == 4.0\nassert mean_squared_error([1, 2], []) is None\nassert mean_squared_error([], [1]) is None\nassert mean_squared_error([1, 2, 3], [1, 2]) is None\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-classification-confusion-matrix",
@@ -519,7 +520,8 @@
       "Walk both lists in parallel with zip() and classify each pair.",
       "true_positive means both actual and predicted are 1; false_negative means actual 1 but predicted 0."
     ],
-    "editorial": "A confusion matrix breaks accuracy down into four counts and is the foundation of precision, recall, and F1. Building it by hand shows learners that metrics are derived from these counts, not magic, and it highlights why accuracy alone can mislead when classes are imbalanced. This is a deliberate, evaluation-focused step before learners compare algorithms in later challenges."
+    "editorial": "A confusion matrix breaks accuracy down into four counts and is the foundation of precision, recall, and F1. Building it by hand shows learners that metrics are derived from these counts, not magic, and it highlights why accuracy alone can mislead when classes are imbalanced. This is a deliberate, evaluation-focused step before learners compare algorithms in later challenges.",
+    "judge_tests": "assert confusion_matrix([1, 1, 0, 0], [1, 0, 1, 0]) == {\n    'true_positive': 1, 'false_positive': 1,\n    'true_negative': 1, 'false_negative': 1,\n}\nassert confusion_matrix([1], [1])['true_positive'] == 1\nassert confusion_matrix([0], [1])['false_positive'] == 1\nassert confusion_matrix([1, 0, 1], [1]) is None\nassert confusion_matrix([1, 1, 1], [1, 1, 1])['true_positive'] == 3\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-data-preparation-feature-scaling",
@@ -558,7 +560,8 @@
       "Standardization subtracts the mean and divides by the population standard deviation.",
       "Population variance averages squared differences over the full count."
     ],
-    "editorial": "Feature scaling puts features on a comparable scale so that distance-based and gradient-based models are not dominated by features with large raw values. Standardization (zero mean, unit variance) is the most common approach and is safe to implement with the standard library. A zero standard deviation means all values are identical, so standardization is undefined — returning None signals this clearly rather than dividing by zero."
+    "editorial": "Feature scaling puts features on a comparable scale so that distance-based and gradient-based models are not dominated by features with large raw values. Standardization (zero mean, unit variance) is the most common approach and is safe to implement with the standard library. A zero standard deviation means all values are identical, so standardization is undefined — returning None signals this clearly rather than dividing by zero.",
+    "judge_tests": "assert standardize([0, 0, 0, 10]) is not None\nresult = standardize([10, 20, 30])\nassert result is not None and abs(sum(result)) < 1e-3\nassert standardize([7, 7, 7, 7]) is None\nassert standardize([]) is None\npair = standardize([1, 3])\nassert pair == [-1.0, 1.0]\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-data-preparation-train-validation-test-split",
@@ -593,7 +596,8 @@
       "A deterministic Fisher-Yates shuffle uses a simple linear congruential generator.",
       "Multiply each ratio by n to get the split sizes, then slice the shuffled indices."
     ],
-    "editorial": "Splitting data into train, validation, and test sets is fundamental to trustworthy evaluation. The test set must stay untouched until final evaluation, while the validation set guides hyperparameter choices. Deterministic shuffling with a seed makes the split reproducible — a core engineering requirement. Implementing the shuffle yourself reinforces that reproducibility comes from explicit control, not library defaults."
+    "editorial": "Splitting data into train, validation, and test sets is fundamental to trustworthy evaluation. The test set must stay untouched until final evaluation, while the validation set guides hyperparameter choices. Deterministic shuffling with a seed makes the split reproducible — a core engineering requirement. Implementing the shuffle yourself reinforces that reproducibility comes from explicit control, not library defaults.",
+    "judge_tests": "result = split_indices(20, 0.5, 0.25, 0.25, seed=3)\nassert len(result['train']) == 10\nassert len(result['validation']) == 5\nassert len(result['test']) == 5\nassert sorted(result['train'] + result['validation'] + result['test']) == list(range(20))\nagain = split_indices(20, 0.5, 0.25, 0.25, seed=3)\nassert again == result, 'same seed must reproduce the same split'\nother = split_indices(20, 0.5, 0.25, 0.25, seed=4)\nassert other != result, 'different seeds should usually shuffle differently'\ntry:\n    split_indices(10, 0.7, 0.2, 0.2)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError('ratios not summing to 1 must raise ValueError')\ntry:\n    split_indices(10, -0.1, 0.6, 0.5)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError('negative ratios must raise ValueError')\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-classification-precision-recall-f1",
@@ -627,7 +631,8 @@
       "Recall = TP / (TP + FN); guard division by zero.",
       "F1 is the harmonic mean of precision and recall; guard division by zero."
     ],
-    "editorial": "Precision, recall and F1 are the standard classification metrics when accuracy alone is misleading — especially with imbalanced classes. Computing them from the confusion matrix shows learners exactly how each metric weights false positives and false negatives differently, which is the basis for choosing the right metric for a problem (milestone M4)."
+    "editorial": "Precision, recall and F1 are the standard classification metrics when accuracy alone is misleading — especially with imbalanced classes. Computing them from the confusion matrix shows learners exactly how each metric weights false positives and false negatives differently, which is the basis for choosing the right metric for a problem (milestone M4).",
+    "judge_tests": "assert write_prf({'true_positive': 4, 'false_positive': 0, 'true_negative': 2, 'false_negative': 0}) == {'precision': 1.0, 'recall': 1.0, 'f1': 1.0}\nassert write_prf({'true_positive': 0, 'false_positive': 3, 'true_negative': 2, 'false_negative': 0}) == {'precision': 0.0, 'recall': 0.0, 'f1': 0.0}\nperfect_recall = write_prf({'true_positive': 3, 'false_positive': 1, 'true_negative': 4, 'false_negative': 0})\nassert perfect_recall['recall'] == 1.0\nassert perfect_recall['precision'] == 0.75\nzero = write_prf({'true_positive': 0, 'false_positive': 0, 'true_negative': 0, 'false_negative': 0})\nassert zero == {'precision': 0.0, 'recall': 0.0, 'f1': 0.0}\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-evaluation-overfitting-underfitting",
@@ -665,7 +670,8 @@
       "Overfitting: training error is low but validation error is high.",
       "Otherwise the model is healthy."
     ],
-    "editorial": "Overfitting and underfitting are the central tension in machine learning (milestone M3). Diagnosing them from training versus validation error is the first practical skill: high errors on both sides means the model is too simple, while low training error with high validation error means it has memorized the training data. Thresholds here are illustrative; real work inspects learning curves across model complexity."
+    "editorial": "Overfitting and underfitting are the central tension in machine learning (milestone M3). Diagnosing them from training versus validation error is the first practical skill: high errors on both sides means the model is too simple, while low training error with high validation error means it has memorized the training data. Thresholds here are illustrative; real work inspects learning curves across model complexity.",
+    "judge_tests": "assert diagnose(0.45, 0.44) == 'underfitting'\nassert diagnose(0.02, 0.5) == 'overfitting'\nassert diagnose(0.25, 0.35) == 'healthy'\nassert diagnose(0.30, 0.31) == 'healthy'\nassert diagnose(0.14, 0.29) == 'healthy'\nassert diagnose(0.14, 0.31) == 'overfitting'\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-deep-learning-forward-propagation",
@@ -705,7 +711,8 @@
       "The dot product sums x × w over all pairs, then add the bias.",
       "Sigmoid(x) = 1 / (1 + e^(-x)); use 2.718281828459045 ** (-x) for e^(-x)."
     ],
-    "editorial": "Forward propagation is the core computation of a neural network (milestone M6): each neuron takes a weighted sum of its inputs, adds a bias, and passes the result through an activation function. Implementing it from scratch shows learners that a neural network layer is just arithmetic — dot product, bias, activation — and that the sigmoid squashes any real value into the (0, 1) range, which is useful for binary classification probabilities."
+    "editorial": "Forward propagation is the core computation of a neural network (milestone M6): each neuron takes a weighted sum of its inputs, adds a bias, and passes the result through an activation function. Implementing it from scratch shows learners that a neural network layer is just arithmetic — dot product, bias, activation — and that the sigmoid squashes any real value into the (0, 1) range, which is useful for binary classification probabilities.",
+    "judge_tests": "flat = forward_pass([0, 0], [5, 5], 0.0)\nassert flat == 0.5\nnegative = forward_pass([1], [0], 0.0)\nassert abs(negative - 0.5) < 0.0001\nbig = forward_pass([10, 10], [1, 1], 0.0)\nassert abs(big - 1.0) < 0.0001\nuneven = forward_pass([1, 0], [0, 1], 0.0)\nassert abs(uneven - 0.5) < 0.0001\nassert forward_pass([1, 2, 3], [1, 2]) is None\nmism = forward_pass([], [1])\nassert mism is None\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-engineering-model-serialization",
@@ -739,7 +746,8 @@
       "Collect keys absent from the bundle and return them sorted.",
       "An empty bundle means all four keys are missing."
     ],
-    "editorial": "Model serialization (milestone M7) is more than saving weights: a usable bundle must also preserve preprocessing steps, the feature schema, and a version so inference can reproduce training exactly. Validating the bundle before deployment catches missing artefacts early and prevents silent prediction failures in production."
+    "editorial": "Model serialization (milestone M7) is more than saving weights: a usable bundle must also preserve preprocessing steps, the feature schema, and a version so inference can reproduce training exactly. Validating the bundle before deployment catches missing artefacts early and prevents silent prediction failures in production.",
+    "judge_tests": "assert validate_model_bundle({'model_weights': [], 'preprocessing': 'none', 'feature_columns': [], 'version': '1'}) == []\nassert validate_model_bundle({'version': '2'}) == ['feature_columns', 'model_weights', 'preprocessing']\nassert validate_model_bundle({'feature_columns': ['a']}) == ['model_weights', 'preprocessing', 'version']\nextra = validate_model_bundle({'model_weights': 1, 'preprocessing': 2, 'feature_columns': 3, 'version': 4, 'bonus': True})\nassert extra == []\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-evaluation-cross-validation",
@@ -778,7 +786,8 @@
       "Each fold gets at least n // k samples.",
       "The first n % k folds get one extra sample to distribute the remainder."
     ],
-    "editorial": "K-fold cross-validation (milestone M4) splits data into k folds, trains on k-1 and validates on the remaining fold, rotating so every sample is validated exactly once. Computing fold sizes shows learners that folds need not be identical — the remainder is distributed one-per-fold — and that k cannot exceed the dataset size. This is a foundational evaluation technique that reduces variance compared to a single train/test split."
+    "editorial": "K-fold cross-validation (milestone M4) splits data into k folds, trains on k-1 and validates on the remaining fold, rotating so every sample is validated exactly once. Computing fold sizes shows learners that folds need not be identical — the remainder is distributed one-per-fold — and that k cannot exceed the dataset size. This is a foundational evaluation technique that reduces variance compared to a single train/test split.",
+    "judge_tests": "assert cross_validation_fold_sizes(9, 3) == [3, 3, 3]\nassert cross_validation_fold_sizes(7, 3) == [3, 2, 2]\nassert cross_validation_fold_sizes(1, 1) == [1]\nassert cross_validation_fold_sizes(8, 16) is None\nassert cross_validation_fold_sizes(-1, 2) is None\nassert cross_validation_fold_sizes(10, -1) is None\nassert sum(cross_validation_fold_sizes(100, 7)) == 100\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-optimisation-hyperparameter-grid",
@@ -817,7 +826,8 @@
       "The total combinations is the product of all list lengths.",
       "An empty grid has zero combinations."
     ],
-    "editorial": "Hyperparameter tuning (milestone M4) searches a grid of parameter combinations to find the best model. The grid size grows multiplicatively — adding one parameter with m values multiplies the search space by m — which is why grid search becomes expensive quickly and random search is often used as an alternative. Computing grid size helps learners anticipate compute cost before launching a search."
+    "editorial": "Hyperparameter tuning (milestone M4) searches a grid of parameter combinations to find the best model. The grid size grows multiplicatively — adding one parameter with m values multiplies the search space by m — which is why grid search becomes expensive quickly and random search is often used as an alternative. Computing grid size helps learners anticipate compute cost before launching a search.",
+    "judge_tests": "assert hyperparameter_grid_size({'a': [1, 2, 3], 'b': [1, 2], 'c': [1, 2, 3, 4]}) == 24\nassert hyperparameter_grid_size({'only': []}) == 0\nassert hyperparameter_grid_size({'a': [1]}) == 1\nassert hyperparameter_grid_size({'a': 'nope', 'b': [1]}) is None\nassert hyperparameter_grid_size('not a dict') is None\nassert hyperparameter_grid_size({'x': [1, 2], 'y': 'oops'}) is None\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ml-data-analysis-visualisation-summary",
@@ -855,6 +865,111 @@
       "Track running minimum and maximum in a single pass.",
       "Count is just the length of the list."
     ],
-    "editorial": "Data visualisation (milestone M2) starts with understanding your data's range: min and max determine sensible axis limits, and count tells you how much data you have. Computing these from scratch reinforces that charts are just visual encodings of basic summaries — always compute the numbers before drawing the chart."
+    "editorial": "Data visualisation (milestone M2) starts with understanding your data's range: min and max determine sensible axis limits, and count tells you how much data you have. Computing these from scratch reinforces that charts are just visual encodings of basic summaries — always compute the numbers before drawing the chart.",
+    "judge_tests": "assert numerical_summary([-5, -1, -9]) == {'min': -9, 'max': -1, 'count': 3}\nassert numerical_summary([2.5, 1.5]) == {'min': 1.5, 'max': 2.5, 'count': 2}\nassert numerical_summary([42]) == {'min': 42, 'max': 42, 'count': 1}\nassert numerical_summary([5, 3, 8, 1, 9, 2]) == {'min': 1, 'max': 9, 'count': 6}\nassert numerical_summary([3, -100, 50]) == {'min': -100, 'max': 50, 'count': 3}\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "lab-troubleshoot-vector-index",
+    "track": "ai-engineering",
+    "topic": "rag-retrieval",
+    "title": "Troubleshooting Lab: Broken Vector Index & Similarity Drift",
+    "summary": "Diagnose dimension mismatch and unnormalized embeddings causing cosine similarity corruption in vector retrieval.",
+    "statement": "An embedding search service in production is returning irrelevant results with cosine similarities exceeding 1.0 or failing with dimension errors. Investigation reveals that vectors ingested from multiple sources have mismatched dimensions (some 768, some 1536) and are missing L2 normalization before dot-product scoring.\n\nWrite .\n\nRequirements:\n1. Filter out records whose vector dimension does not match .\n2. Handle query vectors whose dimension does not match  by returning an empty list .\n3. Compute L2 norm for both query and item vectors: . If norm == 0, skip the vector.\n4. Normalize vectors to unit length: .\n5. Compute cosine similarity as the dot product of normalized vectors.\n6. Return a list of tuples  sorted in descending order of similarity, truncated to . Round scores to 4 decimal places.",
+    "examples": [
+      {
+        "input": "records=[{\"id\": \"doc1\", \"vector\": [3.0, 4.0]}], query_vector=[3.0, 4.0], target_dim=2, top_k=1",
+        "output": "[(\"doc1\", 1.0)]",
+        "explanation": "Identical vectors normalized to unit length yield a cosine similarity of 1.0."
+      }
+    ],
+    "constraints": [
+      "records is a list of dicts with \"id\" (str) and \"vector\" (list of floats).",
+      "query_vector is a list of floats.",
+      "Do not use external libraries; use Python standard library.",
+      "Return list of (id, score) tuples sorted descending by score."
+    ],
+    "difficulty": "intermediate",
+    "skills": ["rag", "vector-databases", "embeddings", "debugging"],
+    "prerequisites": [],
+    "estimated_minutes": 25,
+    "starter_code": "def rebuild_and_search_index(records, query_vector, target_dim=1536, top_k=3):\n    # BUGGY CODE: Does not check dimension match and fails to normalize vectors\n    results = []\n    for rec in records:\n        score = sum(a * b for a, b in zip(rec[\"vector\"], query_vector))\n        results.append((rec[\"id\"], round(score, 4)))\n    results.sort(key=lambda x: x[1], reverse=True)\n    return results[:top_k]\n",
+    "solution_code": "def rebuild_and_search_index(records, query_vector, target_dim=1536, top_k=3):\n    if len(query_vector) != target_dim:\n        return []\n    q_norm = sum(x * x for x in query_vector) ** 0.5\n    if q_norm == 0:\n        return []\n    norm_q = [x / q_norm for x in query_vector]\n\n    scored = []\n    for rec in records:\n        v = rec.get(\"vector\", [])\n        if len(v) != target_dim:\n            continue\n        v_norm = sum(x * x for x in v) ** 0.5\n        if v_norm == 0:\n            continue\n        norm_v = [x / v_norm for x in v]\n        similarity = sum(a * b for a, b in zip(norm_q, norm_v))\n        scored.append((rec[\"id\"], round(similarity, 4)))\n\n    scored.sort(key=lambda item: (-item[1], item[0]))\n    return scored[:top_k]\n",
+    "browser_checks": "records = [\n    {\"id\": \"a\", \"vector\": [3.0, 4.0]},\n    {\"id\": \"b\", \"vector\": [1.0, 0.0]},\n    {\"id\": \"bad_dim\", \"vector\": [1.0, 2.0, 3.0]},\n]\nq = [6.0, 8.0]\nres = rebuild_and_search_index(records, q, target_dim=2, top_k=2)\nassert len(res) == 2\nassert res[0][0] == \"a\" and abs(res[0][1] - 1.0) < 1e-4\nassert res[1][0] == \"b\" and abs(res[1][1] - 0.6) < 1e-4\nassert rebuild_and_search_index(records, [1.0], target_dim=2) == []\nprint(\"Vector index troubleshooting checks passed.\")\n",
+    "judge_tests": "records = [\n    {\"id\": \"zero\", \"vector\": [0.0, 0.0]},\n    {\"id\": \"doc1\", \"vector\": [0.0, 1.0]},\n    {\"id\": \"doc2\", \"vector\": [1.0, 1.0]},\n    {\"id\": \"mismatch\", \"vector\": [1.0, 0.0, 0.0]},\n]\nq = [0.0, 5.0]\nres = rebuild_and_search_index(records, q, target_dim=2, top_k=5)\nassert len(res) == 2\nassert res[0] == (\"doc1\", 1.0)\nassert res[1][0] == \"doc2\"\nassert rebuild_and_search_index([], q, target_dim=2) == []\nassert rebuild_and_search_index(records, [0.0, 0.0], target_dim=2) == []\nprint(\"Private vector index verification passed.\")\n",
+    "hints": [
+      "Verify vector lengths against target_dim before any arithmetic.",
+      "Calculate Euclidean magnitude: sqrt(sum(x^2)). Guard against division by zero.",
+      "Unit vectors have dot product equal to cosine similarity in [-1, 1]."
+    ],
+    "editorial": "When ingesting embeddings from multiple providers or model versions, dimension mismatch will corrupt indexing. Unnormalized dot product magnifies vector length rather than angular direction. Enforcing dimension checks at ingestion and applying L2 normalization guarantees consistent cosine distance."
+  },
+  {
+    "id": "lab-troubleshoot-rag-chunking",
+    "track": "ai-engineering",
+    "topic": "rag-retrieval",
+    "title": "Troubleshooting Lab: RAG Chunking & Overlap Misconfiguration",
+    "summary": "Diagnose infinite looping, boundary clipping, and overlap misconfiguration in a text chunking pipeline.",
+    "statement": "An ingestion service for legal contracts crashed with an Out-Of-Memory error. Debugging reveals that when , the sliding window step size  becomes non-positive (<= 0), causing an infinite loop. Furthermore, chunks are sliced arbitrarily mid-word instead of preserving word boundaries.\n\nWrite .\n\nRequirements:\n1. If  or , raise .\n2. If , raise .\n3. If  is empty or only whitespace, return an empty list .\n4. Clean and normalize input text by stripping leading/trailing whitespace.\n5. Split the document into chunks where each chunk has at most  characters, advancing by .\n6. If the slice boundary falls inside a word, snap backward to the nearest whitespace boundary within the chunk (if one exists after ), so words are not cut in half.\n7. Return a list of dicts: .\n8. Ensure the loop advances monotonically to prevent any possible infinite recursion.",
+    "examples": [
+      {
+        "input": "text=\"Quick brown fox jumps over the lazy dog.\", chunk_size=20, chunk_overlap=5",
+        "output": "[{\"index\": 0, \"text\": \"Quick brown fox\", \"start\": 0, \"end\": 15}, ...]",
+        "explanation": "Chunks preserve whole words and advance forward without looping."
+      }
+    ],
+    "constraints": [
+      "text is a string.",
+      "Raise ValueError on invalid overlap or chunk size.",
+      "Return a list of chunk dictionaries."
+    ],
+    "difficulty": "intermediate",
+    "skills": ["rag", "chunking", "text-processing", "debugging"],
+    "prerequisites": [],
+    "estimated_minutes": 25,
+    "starter_code": "def safe_chunk_document(text, chunk_size=200, chunk_overlap=40):\n    # BUGGY CODE: Infinite loop when overlap >= chunk_size and cuts words in half\n    chunks = []\n    start = 0\n    index = 0\n    while start < len(text):\n        end = start + chunk_size\n        chunk = text[start:end]\n        chunks.append({\"index\": index, \"text\": chunk, \"start\": start, \"end\": end})\n        start += (chunk_size - chunk_overlap)\n        index += 1\n    return chunks\n",
+    "solution_code": "def safe_chunk_document(text, chunk_size=200, chunk_overlap=40):\n    if chunk_size <= 0:\n        raise ValueError(\"chunk_size must be positive\")\n    if chunk_overlap < 0 or chunk_overlap >= chunk_size:\n        raise ValueError(\"chunk_overlap must be less than chunk_size and non-negative\")\n    cleaned = text.strip()\n    if not cleaned:\n        return []\n\n    chunks = []\n    step = chunk_size - chunk_overlap\n    start = 0\n    index = 0\n    n = len(cleaned)\n\n    while start < n:\n        target_end = min(start + chunk_size, n)\n        actual_end = target_end\n        if target_end < n and not cleaned[target_end].isspace():\n            last_space = cleaned.rfind(\" \", start, target_end)\n            if last_space > start:\n                actual_end = last_space\n        chunk_str = cleaned[start:actual_end].strip()\n        if chunk_str:\n            chunks.append({\n                \"index\": index,\n                \"text\": chunk_str,\n                \"start\": start,\n                \"end\": actual_end,\n            })\n            index += 1\n        if actual_end >= n:\n            break\n        next_start = start + step\n        if next_start <= start:\n            next_start = start + 1\n        if next_start >= n:\n            break\n        start = next_start\n\n    return chunks\n",
+    "browser_checks": "try:\n    safe_chunk_document(\"hello\", chunk_size=50, chunk_overlap=50)\n    assert False, \"Expected ValueError\"\nexcept ValueError:\n    pass\n\ntxt = \"Machine learning systems require reliable data pipelines and automated testing.\"\nchunks = safe_chunk_document(txt, chunk_size=30, chunk_overlap=10)\nassert len(chunks) >= 2\nassert all(c[\"end\"] <= len(txt) for c in chunks)\nassert all(c[\"index\"] == i for i, c in enumerate(chunks))\nprint(\"RAG chunking troubleshooting checks passed.\")\n",
+    "judge_tests": "try:\n    safe_chunk_document(\"abc\", chunk_size=10, chunk_overlap=15)\n    assert False\nexcept ValueError:\n    pass\nassert safe_chunk_document(\"\", chunk_size=50, chunk_overlap=10) == []\nassert safe_chunk_document(\"   \", chunk_size=50, chunk_overlap=10) == []\nlong_text = \"Alpha Beta Gamma Delta Epsilon Zeta Eta Theta Iota Kappa Lambda Mu\"\nc = safe_chunk_document(long_text, chunk_size=25, chunk_overlap=5)\nassert len(c) >= 3\nfor item in c:\n    assert len(item[\"text\"]) <= 25\n    assert not item[\"text\"].startswith(\" \") and not item[\"text\"].endswith(\" \")\nprint(\"Private RAG chunking tests passed.\")\n",
+    "hints": [
+      "Always validate that 0 <= chunk_overlap < chunk_size before entering any chunking loop.",
+      "Use rfind(\" \", start, end) to find the nearest word boundary before cutting.",
+      "Ensure the loop pointer advances by at least 1 character on every step."
+    ],
+    "editorial": "Sliding window chunking is the backbone of RAG ingest. Allowing overlap >= chunk_size creates zero or negative strides, locking workers in infinite while loops. Slicing on exact character offsets without whitespace snapping corrupts semantic tokens and vocabulary embeddings at boundaries."
+  },
+  {
+    "id": "lab-troubleshoot-docker-network",
+    "track": "ai-engineering",
+    "topic": "deployment",
+    "title": "Troubleshooting Lab: Container Bridge Network & Service Discovery Failure",
+    "summary": "Diagnose container-to-container connection failures caused by localhost loopback binding and bridge DNS resolution.",
+    "statement": "An AI inference backend fails to connect to its Redis cache and vector database when deployed inside a multi-container Docker compose network. The application logs report  pointing to . Inside Docker bridge networks,  points to the container itself, not other containers on the bridge network.\n\nWrite  and .\n\nRequirements:\n1. :\n   - When ,  or  is valid.\n   - When , if  URL/host is configured as  or , replace the host with  (the Docker DNS service name).\n   - Check : if an environment override exists (e.g. ), use it; if that override is  or  under bridge mode, replace with .\n   - Return a valid connection string: .\n2. :\n   -  is a dict of service definitions: .\n   - Flag any service binding its server process to  instead of .\n   - Return a dict . If any service uses loopback host binding or references localhost in inter-service environment variables,  is False with descriptive issue strings.",
+    "examples": [
+      {
+        "input": "service=\"app\", target=\"redis\", port=6379, env={\"REDIS_HOST\": \"127.0.0.1\"}, network_mode=\"bridge\"",
+        "output": "\"redis:6379\"",
+        "explanation": "In bridge mode, loopback 127.0.0.1 is rewritten to container service name \"redis\"."
+      }
+    ],
+    "constraints": [
+      "service_name and target_service are strings.",
+      "port is an integer.",
+      "network_mode is either \"bridge\" or \"host\".",
+      "Return connection string and audit dict."
+    ],
+    "difficulty": "intermediate",
+    "skills": ["docker", "deployment", "networking", "debugging"],
+    "prerequisites": [],
+    "estimated_minutes": 25,
+    "starter_code": "def resolve_service_endpoint(service_name, target_service, port, env_config, network_mode=\"bridge\"):\n    host = env_config.get(f\"{target_service.upper()}_HOST\", \"localhost\")\n    return f\"{host}:{port}\"\n\ndef audit_compose_config(services):\n    return {\"valid\": True, \"issues\": []}\n",
+    "solution_code": "def resolve_service_endpoint(service_name, target_service, port, env_config, network_mode=\"bridge\"):\n    key = f\"{target_service.upper()}_HOST\"\n    host = env_config.get(key, target_service)\n    if network_mode == \"bridge\":\n        if host in (\"localhost\", \"127.0.0.1\", \"::1\"):\n            host = target_service\n    elif network_mode == \"host\":\n        if host == target_service:\n            host = \"localhost\"\n    return f\"{host}:{port}\"\n\ndef audit_compose_config(services):\n    issues = []\n    for s_name, s_def in services.items():\n        env = s_def.get(\"environment\", {})\n        for env_k, env_v in env.items():\n            val = str(env_v)\n            if (\"localhost\" in val or \"127.0.0.1\" in val) and any(peer in env_k.lower() for peer in services if peer != s_name):\n                issues.append(f\"{s_name}: environment {env_k} references loopback ({val}) instead of container service name\")\n        bind = str(env.get(\"HOST\", \"\"))\n        if bind in (\"127.0.0.1\", \"localhost\"):\n            issues.append(f\"{s_name}: server process bound to {bind}; must bind to 0.0.0.0 to accept bridge traffic\")\n    return {\"valid\": len(issues) == 0, \"issues\": issues}\n",
+    "browser_checks": "res = resolve_service_endpoint(\"api\", \"redis\", 6379, {\"REDIS_HOST\": \"127.0.0.1\"}, network_mode=\"bridge\")\nassert res == \"redis:6379\"\nres_host = resolve_service_endpoint(\"api\", \"redis\", 6379, {\"REDIS_HOST\": \"127.0.0.1\"}, network_mode=\"host\")\nassert res_host == \"127.0.0.1:6379\"\n\naudit = audit_compose_config({\n    \"web\": {\"environment\": {\"HOST\": \"127.0.0.1\", \"DB_HOST\": \"localhost\"}},\n    \"db\": {\"environment\": {\"HOST\": \"0.0.0.0\"}},\n})\nassert not audit[\"valid\"]\nassert len(audit[\"issues\"]) >= 2\nprint(\"Docker network troubleshooting checks passed.\")\n",
+    "judge_tests": "assert resolve_service_endpoint(\"api\", \"postgres\", 5432, {}, network_mode=\"bridge\") == \"postgres:5432\"\nassert resolve_service_endpoint(\"api\", \"qdrant\", 6333, {\"QDRANT_HOST\": \"localhost\"}, network_mode=\"bridge\") == \"qdrant:6333\"\naudit_clean = audit_compose_config({\n    \"web\": {\"environment\": {\"HOST\": \"0.0.0.0\", \"DB_HOST\": \"db\"}},\n    \"db\": {\"environment\": {\"HOST\": \"0.0.0.0\"}},\n})\nassert audit_clean[\"valid\"]\nassert len(audit_clean[\"issues\"]) == 0\nprint(\"Private docker network verification passed.\")\n",
+    "hints": [
+      "Inside Docker containers, 127.0.0.1 is the network loopback for that container alone.",
+      "Services on a user-defined bridge network resolve each other by service name via Docker embedded DNS.",
+      "A service must listen on 0.0.0.0 to accept packets arriving through the container network interface."
+    ],
+    "editorial": "A classic Docker networking failure is deploying multiple containers on a bridge network while retaining local development endpoints like localhost:5432. Each container has its own network namespace, so localhost never reaches sibling containers. Furthermore, binding an application server to 127.0.0.1 drops all bridge network traffic before it reaches the socket."
   }
 ]

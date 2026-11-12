@@ -5,7 +5,7 @@ from io import BytesIO
 from zipfile import ZIP_DEFLATED, ZipFile
 from urllib.parse import urlsplit
 
-from flask import Blueprint, current_app, jsonify, render_template, send_file
+from flask import Blueprint, current_app, jsonify, render_template, request, send_file
 from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
 
@@ -623,6 +623,8 @@ def submit_module_project(module_id):
     record.checks_verified = False
     record.completed = False
     record.evaluation = None
+    from app.leaderboard import refresh_leaderboard_score
+    refresh_leaderboard_score(current_user.id, commit=False)
     db.session.commit()
     try:
         verification = verify_checks(
@@ -751,6 +753,7 @@ def submit_module_project(module_id):
             current_user.id, module_id, project_skills=project_skills,
             commit=False,
         )
+    refresh_leaderboard_score(current_user.id, commit=False)
     db.session.commit()
     return jsonify({
         'completed': record.completed,
@@ -828,3 +831,59 @@ def portfolio_page():
 def _config():
     from app.user_preferences import get_effective_config_for_user
     return get_effective_config_for_user(current_user)
+
+
+@projects_bp.route('/api/webhooks/github', methods=['POST'])
+def github_webhook():
+    """Receive automated GitHub checks and push events to verify projects directly."""
+    secret = current_app.config.get('GITHUB_WEBHOOK_SECRET') or os.environ.get('GITHUB_WEBHOOK_SECRET')
+    sig_header = request.headers.get('X-Hub-Signature-256', '')
+    payload_bytes = request.get_data()
+
+    from app.project_verification import verify_github_webhook_signature, process_github_webhook_event
+
+    if secret and not verify_github_webhook_signature(payload_bytes, sig_header, secret):
+        return jsonify({'error': 'Invalid signature'}), 401
+
+    event_type = request.headers.get('X-GitHub-Event', 'ping')
+    try:
+        data = request.get_json(force=True) if payload_bytes else {}
+    except Exception:
+        return jsonify({'error': 'Invalid JSON'}), 400
+
+    parsed = process_github_webhook_event(event_type, data)
+    if parsed.get('status') == 'pong':
+        return jsonify({'status': 'pong'}), 200
+
+    repo_url = parsed.get('repository_url')
+    if not repo_url or not parsed.get('verified'):
+        return jsonify({'status': 'ignored', 'reason': 'unsupported or unverified event'}), 200
+
+    repo_clean = repo_url.rstrip('/').lower().removesuffix('.git')
+    projects = CourseProject.query.filter(
+        CourseProject.repository_url.isnot(None),
+        CourseProject.checks_verified.is_(False),
+    ).all()
+
+    matched = []
+    affected_user_ids = set()
+    for project in projects:
+        proj_clean = (project.repository_url or '').rstrip('/').lower().removesuffix('.git')
+        if proj_clean == repo_clean:
+            project.checks_verified = True
+            if parsed.get('checks_url'):
+                project.checks_url = parsed['checks_url']
+            eval_data = project.get_evaluation()
+            if eval_data and eval_data.get('score', 0) and eval_data.get('score', 0) >= 70:
+                project.completed = True
+            matched.append(project.id)
+            affected_user_ids.add(project.user_id)
+
+    if matched:
+        from app.leaderboard import refresh_leaderboard_score
+        for user_id in affected_user_ids:
+            refresh_leaderboard_score(user_id, commit=False)
+        db.session.commit()
+        return jsonify({'status': 'verified', 'projects_updated': matched}), 200
+
+    return jsonify({'status': 'no_matching_pending_project'}), 200

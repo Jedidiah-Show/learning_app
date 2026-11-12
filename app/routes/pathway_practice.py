@@ -1,25 +1,21 @@
 """Browser-runnable practice exercises for the specialization pathways.
 
 Mirrors the DynamoAI lesson practice workspace (load/save/run) but gates
-access through pathway rules instead of the course's sequential unlock, and
-shares the interactive run path (Piston, else the Docker judge, else a 503
-telling the client to fall back to Pyodide).
+access through pathway rules instead of the course's sequential unlock.
+Server-side runs use the same contract as course lessons: the Docker judge
+when enabled, else a 503 telling the client to fall back to Pyodide.
 """
 
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify, request, current_app, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
 
 from app import db
-from app.models import PracticeWorkspace
+from app.models import PracticeWorkspace, Submission, utcnow
 from app.practice import get_pathway_practice_exercise
 from app.request_data import get_json_object
 from app.rate_limit import enforce_rate_limit
 from app.routes.lessons import MAX_PRACTICE_SOURCE_LENGTH
-from app.services.interactive_run import (
-    interactive_run_available,
-    run_learner_code,
-)
 
 pathway_practice_bp = Blueprint('pathway_practice', __name__)
 
@@ -46,6 +42,14 @@ def _pathway_lesson_available(user, lesson_id):
             return None
         return lesson
     return None
+
+
+def _interactive_run_available():
+    """Attempt server-side execution only when an engine is usable."""
+    return bool(
+        current_app.testing
+        or current_app.config.get('JUDGE_SUBMISSIONS_ENABLED', False)
+    )
 
 
 def _exercise_for(lesson_id, exercise_id):
@@ -118,7 +122,7 @@ def pathway_practice_run(lesson_id, exercise_id):
     exercise = _exercise_for(lesson_id, exercise_id)
     if not lesson or not exercise:
         return jsonify({'error': 'Practice exercise not found'}), 404
-    if not interactive_run_available():
+    if not _interactive_run_available():
         return jsonify({
             'error': (
                 'Interactive server runs are temporarily unavailable. '
@@ -139,14 +143,22 @@ def pathway_practice_run(lesson_id, exercise_id):
             'error': f'Source must be at most {MAX_PATHWAY_SOURCE_LENGTH} characters',
         }), 413
     enforce_rate_limit('practice-run', str(current_user.id))
-    result = run_learner_code(
-        code, exercise['checks_code'], timeout_sec=15.0, memory_mb=512,
-    )
-    if result is None:
-        return jsonify({
-            'error': (
-                'Interactive server runs are temporarily unavailable. '
-                'The in-browser runtime will be used instead.'
-            ),
-        }), 503
-    return jsonify(result)
+    run_code = f'{code}\n\n{exercise["checks_code"]}'
+    from uuid import uuid4
+    run_id = uuid4().hex
+    db.session.add(Submission(
+        id=run_id,
+        user_id=current_user.id,
+        problem_id=f'run:{exercise_id}'[:64],
+        language='python',
+        code_snapshot=run_code,
+        mode='run',
+        verdict='PENDING',
+        submitted_at=utcnow(),
+    ))
+    db.session.commit()
+    return jsonify({
+        'run_id': run_id,
+        'status': 'queued',
+        'stream_url': url_for('practice_arena.stream_execution', run_id=run_id),
+    }), 202

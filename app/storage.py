@@ -44,7 +44,7 @@ class LocalStorage:
             raise StorageError('Invalid storage key')
         return path
 
-    def save(self, key, data, content_type=None):
+    def save(self, key, data, content_type=None, cache_control=None):
         path = self._path(key)
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
@@ -111,7 +111,7 @@ class S3Storage:
         )
         return self._client
 
-    def save(self, key, data, content_type=None):
+    def save(self, key, data, content_type=None, cache_control=None):
         key = _clean_key(key)
         kwargs = {
             'Bucket': self.bucket,
@@ -120,6 +120,8 @@ class S3Storage:
         }
         if content_type:
             kwargs['ContentType'] = content_type
+        if cache_control:
+            kwargs['CacheControl'] = cache_control
         self._get_client().put_object(**kwargs)
         return key
 

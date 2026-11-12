@@ -13,7 +13,8 @@
       "foundations",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert greet(\"Grace\") == \"Hello, Grace!\"\nassert greet(\"Ada Lovelace\") == \"Hello, Ada Lovelace!\"\nassert greet(\"\") == \"Hello, !\"\nassert greet(\"RUACH\") == \"Hello, RUACH!\"\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-cheapest-by-provider",
@@ -31,7 +32,8 @@
     ],
     "prerequisites": [
       "python-inventory-value"
-    ]
+    ],
+    "judge_tests": "rows = [\n    {\"name\": \"Kappa-2\", \"provider\": \"Cobalt\", \"price\": \"2.50\"},\n    {\"name\": \"Kappa-1\", \"provider\": \"Cobalt\", \"price\": \"1.10\"},\n    {\"name\": \"Orbit-L\", \"provider\": \"Northwind\", \"price\": \"4.00\"},\n    {\"name\": \"Orbit-S\", \"provider\": \"Northwind\", \"price\": \"0.90\"},\n]\nassert cheapest_by_provider(rows) == {\"Cobalt\": \"Kappa-1\", \"Northwind\": \"Orbit-S\"}\nties = [\n    {\"name\": \"Beta\", \"provider\": \"Cobalt\", \"price\": \"1.50\"},\n    {\"name\": \"Alpha\", \"provider\": \"Cobalt\", \"price\": \"1.50\"},\n]\nassert cheapest_by_provider(ties) == {\"Cobalt\": \"Alpha\"}\nmixed = [{\"name\": \"Solo\", \"provider\": \"OnlyOne\", \"price\": \"0.05\"}]\nassert cheapest_by_provider(mixed) == {\"OnlyOne\": \"Solo\"}\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-score-case",
@@ -49,7 +51,8 @@
     ],
     "prerequisites": [
       "python-safe-divide"
-    ]
+    ],
+    "judge_tests": "out = score_case({\"id\": \"c7\", \"prompt\": \"ship?\"}, lambda prompt: \"0.42\")\nassert out == {\"id\": \"c7\", \"score\": 0.42, \"error\": None}\nhigh = score_case({\"id\": \"c8\", \"prompt\": \"ship?\"}, lambda prompt: \"1.5\")\nassert high == {\"id\": \"c8\", \"score\": None, \"error\": \"ValueError\"}\nboom = score_case({\"id\": \"c9\", \"prompt\": \"ship?\"}, lambda prompt: 1 / 0)\nassert boom == {\"id\": \"c9\", \"score\": None, \"error\": \"ZeroDivisionError\"}\nno_prompt = score_case({\"id\": \"c10\"}, lambda prompt: \"0.5\")\nassert no_prompt == {\"id\": \"c10\", \"score\": None, \"error\": \"KeyError\"}\nboundary = score_case({\"prompt\": \"x\"}, lambda prompt: \"0\")\nassert boundary == {\"id\": \"?\", \"score\": 0.0, \"error\": None}\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-model-client",
@@ -64,7 +67,8 @@
     "skills": [
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "calls = []\nclient = ModelClient(\"https://api.test/\", lambda url: calls.append(url) or {\"ok\": 1})\nassert client.base_url == \"https://api.test\"\nassert client.get(\"a\") == {\"ok\": 1}\nassert client.get(\"//a//b\") == {\"ok\": 1}\nassert calls[-1] == \"https://api.test/a//b\"\nassert calls[0] == \"https://api.test/a\"\nplain = ModelClient(\"https://host.test\", lambda url: url)\nassert plain.get(\"\") == \"https://host.test/\"\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-validate-offer",
@@ -79,7 +83,8 @@
     "skills": [
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "low = validate_offer({\"name\": \"Starter\", \"price\": \"0\"})\nassert low == {\"name\": \"Starter\", \"price\": 0.0}\nhigh = validate_offer({\"name\": \" Max \", \"price\": 1000})\nassert high == {\"name\": \"Max\", \"price\": 1000.0}\nassert validate_offer({\"name\": \" Floaty \", \"price\": \"12.5\"}) == {\"name\": \"Floaty\", \"price\": 12.5}\nnan = float(\"nan\")\nfor invalid in [\n    {\"name\": \"   \", \"price\": \"1\"},\n    {\"name\": \"X\", \"price\": \"inf\"},\n    {\"name\": \"X\", \"price\": nan},\n    {\"name\": \"X\", \"price\": False},\n]:\n    try:\n        validate_offer(invalid)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid offers must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-bounded-retry",
@@ -99,7 +104,8 @@
     "prerequisites": [
       "python-http-status",
       "python-model-client"
-    ]
+    ],
+    "judge_tests": "calls = []\nok = request_with_retry(lambda: calls.append(1) or {\"status\": 200})\nassert ok == {\"status\": 200}\nassert len(calls) == 1\ncalls.clear()\nseries = iter([{\"status\": 500}, {\"status\": 502}, {\"status\": 200}])\nrecovered = request_with_retry(lambda: calls.append(1) or next(series))\nassert recovered == {\"status\": 200}\nassert len(calls) == 3\ncalls.clear()\nexhausted = request_with_retry(lambda: calls.append(1) or {\"status\": 504}, attempts=4)\nassert exhausted == {\"status\": 504}\nassert len(calls) == 4\ntry:\n    request_with_retry(lambda: {\"status\": 200}, attempts=2.0)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"non-integer attempts must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-package-layout",
@@ -115,7 +121,8 @@
       "packaging",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert missing_package_files([\n    \"./src/model_catalog/__init__.py\",\n    \"./src/model_catalog/__main__.py\",\n    \"./src/model_catalog/catalog.py\",\n]) == [\"src/model_catalog/loader.py\"]\nassert missing_package_files([\n    \"src/model_catalog/loader.py\",\n    \"src/model_catalog/catalog.py\",\n    \"src/model_catalog/__main__.py\",\n    \"src/model_catalog/__init__.py\",\n]) == []\nassert missing_package_files([\"docs/notes.txt\", \"src/model_catalog/catalog.py\"]) == sorted(\n    REQUIRED_FILES - {\"src/model_catalog/catalog.py\"}\n)\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-http-client-contract",
@@ -134,7 +141,8 @@
     ],
     "prerequisites": [
       "python-bounded-retry"
-    ]
+    ],
+    "judge_tests": "calls = []\nseries = iter([{\"status\": 429}, {\"status\": 500}, {\"status\": 200}])\ndef transport(url, timeout_s):\n    calls.append((url, timeout_s))\n    return next(series)\nassert fetch_with_retry(transport, \"https://t.test\", timeout_s=3, attempts=3) == {\"status\": 200}\nassert len(calls) == 3\ncalls.clear()\nretry_series = iter([{\"status\": 429}])\ndef single_transport(url, timeout_s):\n    calls.append((url, timeout_s))\n    return next(retry_series)\nonce = fetch_with_retry(single_transport, \"https://t.test\", timeout_s=3, attempts=1)\nassert once == {\"status\": 429}\nassert len(calls) == 1\ncalls.clear()\ngood = fetch_with_retry(lambda url, timeout_s: calls.append((url, timeout_s)) or {\"status\": 204}, \"https://t.test\")[\"status\"]\nassert good == 204\nassert len(calls) == 1\nfor bad in [{\"timeout_s\": -1}, {\"attempts\": 1.5}, {\"timeout_s\": True}]:\n    try:\n        fetch_with_retry(lambda url, timeout_s: {\"status\": 200}, \"https://t.test\", **bad)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid options must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-typed-settings",
@@ -150,7 +158,8 @@
       "configuration",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "env = {\n    \"MODEL_BASE_URL\": \"https://api.test/\",\n    \"MODEL_API_KEY\": \"secret-key-value\",\n    \"APP_ENV\": \"staging\",\n}\nsettings = load_settings(env)\nassert settings[\"app_env\"] == \"staging\"\nassert settings[\"model_base_url\"] == \"https://api.test\"\nassert settings[\"request_timeout_s\"] == 10.0\nassert \"model_api_key\" not in safe_summary(settings)\nassert \"secret-key-value\" not in repr(safe_summary(settings))\nassert safe_summary(settings)[\"request_timeout_s\"] == 10.0\ntry:\n    load_settings({**env, \"REQUEST_TIMEOUT_S\": \"121\"})\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"timeouts above 120 must be rejected\")\ntry:\n    load_settings({**env, \"APP_ENV\": \" qa \"})\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"unknown environments must be rejected\")\ntry:\n    load_settings({\"APP_ENV\": \"prod\"})\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"missing required settings must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-venv-audit",
@@ -166,7 +175,8 @@
       "dependencies",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "required = {\"pytest\": \"8.3.3\", \"httpx\": \"0.27.2\"}\nassert audit_environment(\"/proj/.venv/bin/python\", \"/usr\", {\"pytest\": \"8.3.3\", \"httpx\": \"0.27.2\"}, required) == []\nassert audit_environment(\"/usr/bin/python\", \"/usr\", {\"pytest\": \"8.3.3\", \"httpx\": \"0.27.2\"}, required) == [\"no active venv\"]\nassert audit_environment(\"/usr/bin/python\", \"/usr\", {}, required) == [\"no active venv\", \"httpx: missing\", \"pytest: missing\"]\nversioned = audit_environment(\"/other/bin/python\", \"/usr\", {\"pytest\": \"1.0.0\"}, required)\nassert versioned == [\"httpx: missing\", \"pytest: expected 8.3.3, found 1.0.0\"]\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-dependency-audit",
@@ -183,7 +193,8 @@
       "python",
       "security"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "result = audit_dependencies(\n    [\"requests\", \"my_pkg\"],\n    [\"requests\", \"my-pkg\"],\n    [\"requests\"],\n)\nassert result == {\"missing_from_lock\": [], \"unused_direct\": [\"my_pkg\"]}\nassert audit_dependencies([\"B-Pkg\", \"a_pkg\"], [], []) == {\n    \"missing_from_lock\": [\"a_pkg\", \"b_pkg\"],\n    \"unused_direct\": [\"a_pkg\", \"b_pkg\"],\n}\nassert audit_dependencies([], [\"locked-only\"], [\"imported\"]) == {\"missing_from_lock\": [], \"unused_direct\": []}\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-bounded-async-map",
@@ -199,7 +210,8 @@
       "async",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "import asyncio\n\nasync def _hidden():\n    async def worker(value):\n        await asyncio.sleep(0)\n        return value + 100\n    out = await async_map_bounded([10, 20, 30], worker, limit=2)\n    assert out == [110, 120, 130]\n    single = await async_map_bounded([1, 2], worker, limit=1)\n    assert single == [101, 102]\n    empty = await async_map_bounded([], worker, limit=3)\n    assert empty == []\n    for limit in (True, 0, 4.5, -2):\n        try:\n            await async_map_bounded([1], worker, limit)\n        except ValueError:\n            pass\n        else:\n            raise AssertionError(\"invalid limits must be rejected\")\n\nasyncio.run(_hidden())\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-taskgroup-deadline",
@@ -218,7 +230,8 @@
     ],
     "prerequisites": [
       "python-bounded-async-map"
-    ]
+    ],
+    "judge_tests": "import asyncio\n\nasync def _hidden():\n    async def usage(user_id):\n        await asyncio.sleep(0)\n        return {\"u\": user_id}\n    async def plan(user_id):\n        await asyncio.sleep(0)\n        return f\"plan-for-{user_id}\"\n    result = await usage_summary(\"learner-42\", usage, plan)\n    assert result == {\"tokens\": {\"u\": \"learner-42\"}, \"plan\": \"plan-for-learner-42\"}\n    other = await usage_summary(\"learner-7\", usage, plan)\n    assert other[\"plan\"] == \"plan-for-learner-7\"\n\nasyncio.run(_hidden())\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-mocked-http-contract",
@@ -237,7 +250,8 @@
     ],
     "prerequisites": [
       "python-http-client-contract"
-    ]
+    ],
+    "judge_tests": "class FakeResponse:\n    def __init__(self, status, content_type, body):\n        self.status_code = status\n        self.headers = {\"Content-Type\": content_type}\n        self.body = body\n    def json(self):\n        return self.body\n\nassert fetch_json(lambda url: FakeResponse(201, \"application/json\", {\"made\": True}), \"https://api.test\") == {\"made\": True}\nspaced = fetch_json(lambda url: FakeResponse(200, \"Application/JSON; charset=utf-8\", [1]), \"https://api.test\")\nassert spaced == [1]\nfor response in [\n    FakeResponse(301, \"application/json\", {}),\n    FakeResponse(404, \"application/json\", {}),\n    FakeResponse(200, \"text/html\", {}),\n]:\n    try:\n        fetch_json(lambda url: response, \"https://api.test\")\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"non-JSON or non-2xx responses must raise ValueError\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-staged-secret-scan",
@@ -254,7 +268,8 @@
       "security",
       "testing"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "files = {\n    \"b.env\": \"export API_KEY='abcdefgh12345'\\n\",\n    \"a.py\": \"    api_key = 'topsecretvalue'\\nother = 1\\n\",\n    \"c.txt\": \"secret_key = 'x'\\n\",\n    \"d.md\": \"# secret_key = 'commentedout00'\\n\",\n}\nfound = find_secret_lines(files)\nassert (\"a.py\", 1) in found\nassert (\"b.env\", 1) in found\nassert (\"c.txt\", 1) not in found\nassert (\"d.md\", 1) not in found\nassert found == sorted(found)\nassert find_secret_lines({}) == []\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-safe-model-summary",
@@ -269,7 +284,8 @@
     "skills": [
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "model = {\"name\": \"Atlas-L\", \"provider\": \"Northwind\", \"context_window\": 128000, \"extra\": \"kept-out\"}\nsummary = summarize_model(model)\nassert summary == {\"name\": \"Atlas-L\", \"provider\": \"Northwind\", \"context_window\": 128000}\nassert \"extra\" not in summary\nassert summary is not model\nmissing = summarize_model({\"name\": \"Solo\", \"provider\": \"Cobalt\"})\nassert missing[\"context_window\"] is None\nexplicit_none = summarize_model({\"name\": \"Solo\", \"provider\": \"Cobalt\", \"context_window\": None})\nassert explicit_none[\"context_window\"] is None\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-independent-dataclass-state",
@@ -284,7 +300,8 @@
     "skills": [
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "left = Summary(\"Northwind\")\nright = Summary(\"Cobalt\")\nleft.add_model(\"Atlas-S\")\nleft.add_model(\"Atlas-L\")\nright.add_model(\"Kestrel-8\")\nassert left.model_names == [\"Atlas-S\", \"Atlas-L\"]\nassert right.model_names == [\"Kestrel-8\"]\nthird = Summary(\"Northwind\")\nassert third.model_names == []\nthird.add_model(\"New-Model\")\nassert left.model_names == [\"Atlas-S\", \"Atlas-L\"]\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-json-safe-roundtrip",
@@ -299,7 +316,8 @@
     "skills": [
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "encoded = encode_report({\"b\": 1, \"a\": 2, \"nested\": {\"z\": True, \"y\": None}})\nassert encoded == '{\"a\":2,\"b\":1,\"nested\":{\"y\":null,\"z\":true}}'\nroundtripped = json.loads(encoded)\nassert roundtripped[\"nested\"] == {\"y\": None, \"z\": True}\nfor payload in [{\"x\": float(\"inf\")}, {\"x\": float(\"-inf\")}, {\"x\": float(\"nan\")}]:\n    try:\n        encode_report(payload)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"non-finite numbers must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "backend-normalize-http-headers",
@@ -316,7 +334,8 @@
       "backend",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert normalize_headers([('  X-One  ', '  A  '), ('x-one', 'B')]) == {'x-one': 'B'}\nassert normalize_headers([('ACCEPT', 'application/json'), ('Accept', 'text/plain')]) == {'accept': 'text/plain'}\nassert normalize_headers([('Keep-Alive', 'timeout=5')]) == {'keep-alive': 'timeout=5'}\nblank = [('', 'value')]\ntry:\n    normalize_headers(blank)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"blank header names must be rejected\")\nassert normalize_headers([]) == {}\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "rag-rank-chunks",
@@ -333,7 +352,8 @@
       "rag",
       "retrieval"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "chunks = [\n    {'id': 'm', 'text': 'apples and oranges'},\n    {'id': 'n', 'text': 'apples apples apples'},\n    {'id': 'o', 'text': 'oranges and pears'},\n]\nranked = rank_chunks('apples oranges', chunks, 3)\nassert [c['id'] for c in ranked][:2] == ['m', 'n'] or [c['id'] for c in ranked][0] == 'm'\nassert len(ranked) == 3\none = rank_chunks('apples oranges', chunks, 1)\nassert len(one) == 1\nassert rank_chunks('nothing matches', chunks, 5) == []\nassert rank_chunks('apples', chunks, True) == []\nassert rank_chunks('apples', chunks, -1) == []\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "agent-enforce-tool-budget",
@@ -351,7 +371,8 @@
       "reliability",
       "tool-calling"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert run_steps(['search', 'lookup', 'search'], {'search', 'lookup'}, 2) == ['search', 'lookup']\nassert run_steps(['a', 'b', 'c'], {'a', 'b', 'c'}, 10) == ['a', 'b', 'c']\nassert run_steps([], {'search'}, 3) == []\nassert run_steps(['search'], {'search'}, True) == []\nassert run_steps(['email'], set(), 1) == []\nassert run_steps(['search', 'search', 'search'], {'search'}, 2) == ['search', 'search']\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "mcp-validate-tool-call",
@@ -369,7 +390,8 @@
       "security",
       "tool-calling"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "call = validate_tool_call({'name': 'find', 'arguments': {'q': 'x'}}, {'find'})\nassert call == {'name': 'find', 'arguments': {'q': 'x'}}\nassert call is not None\ntry:\n    validate_tool_call({'name': 'drop', 'arguments': {}}, {'find'})\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"unlisted tools must be rejected\")\ntry:\n    validate_tool_call({'name': 'find', 'arguments': \"not-a-dict\"}, {'find'})\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"non-dictionary arguments must be rejected\")\ntry:\n    validate_tool_call({'arguments': {}}, {'find'})\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"missing tool name must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "production-capped-retry-delays",
@@ -386,7 +408,8 @@
       "reliability",
       "security"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert retry_delays(1, 2, 5) == [2]\nassert retry_delays(4, 1, 3) == [1, 2, 3, 3]\nassert retry_delays(5, 2, 100) == [2, 4, 8, 16, 32]\nassert retry_delays(2, 0.5, 1) == [0.5, 1]\nfor bad in [(-1, 1, 5), (1, -1, 5), (1, 5, 4), (True, 1, 5)]:\n    try:\n        retry_delays(*bad)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid retry policies must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "deployment-validate-container-config",
@@ -404,7 +427,8 @@
       "python",
       "security"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "valid = {'image': 'app:1.2.3', 'port': 8080, 'healthcheck': ['curl', '-f', 'http://localhost/health']}\nassert validate_service(valid) is valid\nfor bad in [\n    {'image': '   ', 'port': 80, 'healthcheck': ['ok']},\n    {'image': 'app', 'port': 0, 'healthcheck': ['ok']},\n    {'image': 'app', 'port': 65536, 'healthcheck': ['ok']},\n    {'image': 'app', 'port': '80', 'healthcheck': ['ok']},\n    {'image': 'app', 'port': 80, 'healthcheck': []},\n    {'image': 'app', 'port': 80, 'healthcheck': [1]},\n]:\n    try:\n        validate_service(bad)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid service configs must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "system-design-route-by-budget",
@@ -422,7 +446,8 @@
       "reliability",
       "system-design"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "providers = [\n    {'name': 'Zed', 'cost': 0.02, 'enabled': True},\n    {'name': 'Yankee', 'cost': 0.02, 'enabled': True},\n    {'name': 'Expensive', 'cost': 0.09, 'enabled': True},\n    {'name': 'CheapButDisabled', 'cost': 0.001, 'enabled': False},\n]\nchosen = choose_provider(providers, 0.05)\nassert chosen['name'] == 'Yankee'\nassert choose_provider(providers, 0.0001) is None\nassert choose_provider([], 1.0) is None\neligible = choose_provider([{'name': 'Solo', 'cost': 1, 'enabled': True}], 1)\nassert eligible['name'] == 'Solo'\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "capstone-requirement-checklist",
@@ -439,7 +464,8 @@
       "python",
       "testing"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert acceptance_checklist(['a', 'A', 'b', '  b  ', 'c']) == ['a', 'b', 'c']\nassert acceptance_checklist(['   multiple   spaces   inside   ']) == ['multiple spaces inside']\nassert acceptance_checklist(['', '   ', '\t', 'kept']) == ['kept']\nassert acceptance_checklist(['One', 'ONE', 'one', 'two']) == ['One', 'two']\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "multimodal-media-validation",
@@ -456,7 +482,8 @@
       "llm",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert validate_media({\"modality\": \"image\", \"bytes\": 10}) is None\nassert validate_media({\"modality\": \"text\", \"bytes\": 0}) is None\nassert validate_media({\"modality\": \"audio\", \"bytes\": 10, \"duration_seconds\": 30}) is None\nassert validate_media({\"modality\": \"video\", \"bytes\": 10, \"duration_seconds\": 60}) is None\nassert validate_media({\"modality\": \"audio\", \"bytes\": 10, \"duration_seconds\": 0}) == \"invalid_duration\"\nassert validate_media({\"modality\": \"audio\", \"bytes\": 10}) == \"invalid_duration\"\nassert validate_media({\"modality\": \"video\", \"bytes\": 10, \"duration_seconds\": \"10\"}) == \"invalid_duration\"\nassert validate_media({\"modality\": \"image\", \"bytes\": -1}) == \"invalid_size\"\nassert validate_media({\"modality\": \"image\", \"bytes\": True}) == \"invalid_size\"\nassert validate_media({\"modality\": \"pdf\", \"bytes\": 10}) == \"unsupported_modality\"\nassert validate_media({\"modality\": \"audio\", \"bytes\": 10, \"duration_seconds\": True}) == \"invalid_duration\"\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "model-deployment-decision",
@@ -473,7 +500,8 @@
       "llm",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert choose_deployment({\"local_only\": True, \"ops_capacity\": True}) == \"self_hosted\"\nassert choose_deployment({\"local_only\": True, \"ops_capacity\": False}) == \"needs_review\"\nassert choose_deployment({\"local_only\": False, \"hosted_meets_latency\": True}) == \"hosted\"\nassert choose_deployment({\"local_only\": False, \"hosted_meets_latency\": False}) == \"needs_review\"\nassert choose_deployment({}) == \"needs_review\"\nassert choose_deployment({\"local_only\": False, \"hosted_meets_latency\": True, \"ops_capacity\": True}) == \"hosted\"\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "document-evidence-check",
@@ -490,7 +518,8 @@
       "llm",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "text_value = \"Refund window: 30 days from purchase.\"\nassert valid_extraction({\"value\": \"30 days\", \"start\": 15, \"end\": 22}, text_value) is True\nassert valid_extraction({\"value\": \"30 days\", \"start\": 15, \"end\": 30}, text_value) is False\nassert valid_extraction({\"value\": \"30 DAYS\", \"start\": 15, \"end\": 22}, text_value) is False\nassert valid_extraction({\"value\": \"30 days\", \"start\": 22, \"end\": 15}, text_value) is False\nassert valid_extraction({\"value\": \"30 days\", \"start\": -1, \"end\": 5}, text_value) is False\nassert valid_extraction({\"value\": \"30 days\", \"start\": True, \"end\": 22}, text_value) is False\nassert valid_extraction({\"value\": 30, \"start\": 15, \"end\": 22}, text_value) is False\nassert valid_extraction({\"value\": \"Refund\", \"start\": 0, \"end\": 6}, text_value) is True\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "mcp-protocol-era-selection",
@@ -507,7 +536,8 @@
       "python",
       "tool-calling"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert protocol_mode(\"2026-07-28\") == \"stateless\"\nassert protocol_mode(\"2025-11-25\") == \"handshake\"\nassert protocol_mode(\"2025-06-18\") == \"handshake\"\nassert protocol_mode(\"2024-11-05\") == \"handshake\"\nassert protocol_mode(\"2025-01-01\") == \"unsupported\"\nassert protocol_mode(\"2026-07-27\") == \"unsupported\"\nassert protocol_mode(\"\") == \"unsupported\"\nassert protocol_mode(20260728) == \"unsupported\"\nassert protocol_mode(\"2025-13-99\") == \"unsupported\"\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ai-deletion-plan",
@@ -524,7 +554,8 @@
       "reliability",
       "security"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert deletion_targets({}) == [\"source\", \"chunks\", \"embeddings\", \"answer_cache\", \"logs\"]\nassert deletion_targets({\"evaluation_copy\": False}) == [\"source\", \"chunks\", \"embeddings\", \"answer_cache\", \"logs\"]\nassert deletion_targets({\"evaluation_copy\": True}) == [\"source\", \"chunks\", \"embeddings\", \"answer_cache\", \"logs\", \"eval_data\"]\nassert deletion_targets({\"evaluation_copy\": \"yes\"}) == [\"source\", \"chunks\", \"embeddings\", \"answer_cache\", \"logs\"]\nassert deletion_targets({\"evaluation_copy\": 1}) == [\"source\", \"chunks\", \"embeddings\", \"answer_cache\", \"logs\"]\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "ai-risk-control-map",
@@ -541,7 +572,8 @@
       "reliability",
       "security"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "controls = controls_for([\"unbounded_cost\", \"prompt_injection\", \"prompt_injection\"])\nassert controls == [\"request_budget\", \"tool_allowlist\"]\nassert controls_for([\"unsafe_output\", \"cross_tenant_retrieval\"]) == [\"output_validation\", \"tenant_filter\"]\nassert controls_for([\"prompt_injection\", \"cross_tenant_retrieval\", \"unsafe_output\", \"unbounded_cost\"]) == [\n    \"tool_allowlist\", \"tenant_filter\", \"output_validation\", \"request_budget\",\n]\nassert controls_for([\"not_a_real_risk\"]) == []\nassert controls_for([\"unknown_1\", \"unsafe_output\", \"unknown_2\"]) == [\"output_validation\"]\nassert controls_for([]) == []\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "orchestration-evidence-choice",
@@ -558,7 +590,8 @@
       "python",
       "testing"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert choose_architecture({\"fixed_path\": True, \"specialist_gain\": 1.0, \"added_latency_cost\": 0.0, \"safety_passed\": True}) == \"workflow\"\nassert choose_architecture({\"fixed_path\": False, \"specialist_gain\": 1.0, \"added_latency_cost\": 0.0, \"safety_passed\": True}) == \"multi_agent\"\nassert choose_architecture({\"fixed_path\": False, \"specialist_gain\": 0.5, \"added_latency_cost\": 0.5, \"safety_passed\": True}) == \"one_agent\"\nassert choose_architecture({\"fixed_path\": False, \"specialist_gain\": 0.5, \"added_latency_cost\": 0.5, \"safety_passed\": False}) == \"one_agent\"\nassert choose_architecture({\"fixed_path\": False}) == \"one_agent\"\nassert choose_architecture({\"fixed_path\": False, \"safety_passed\": True, \"specialist_gain\": 0, \"added_latency_cost\": 0}) == \"one_agent\"\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "backend-idempotent-job",
@@ -577,7 +610,8 @@
       "python",
       "reliability"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "jobs = {}\nassert create_or_reuse(\"job-a\", jobs) == (\"created\", \"job-job-a\")\nassert create_or_reuse(\"job-a\", jobs) == (\"existing\", \"job-job-a\")\nassert len(jobs) == 1\nassert create_or_reuse(\"   \", jobs)[0] == \"error\"\nassert create_or_reuse(\"job-b\", jobs) == (\"created\", \"job-job-b\")\nassert jobs[\"job-a\"] == \"job-job-a\"\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "rag-reciprocal-rank",
@@ -597,7 +631,8 @@
     ],
     "prerequisites": [
       "rag-rank-chunks"
-    ]
+    ],
+    "judge_tests": "assert reciprocal_rank({\"d9\"}, [\"d1\", \"d9\", \"d3\"], 3) == 0.5\nassert reciprocal_rank({\"d1\"}, [\"d1\", \"d2\"], 1) == 1.0\nassert reciprocal_rank({\"d2\"}, [\"d1\", \"d2\"], 1) == 0\nassert reciprocal_rank({\"d2\"}, [\"d1\", \"d2\"], 2) == 0.5\nassert reciprocal_rank({\"d1\"}, [\"d1\"], True) == 0\nassert reciprocal_rank({\"d1\"}, [\"d1\"], 2.5) == 0\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "agent-tool-authorization",
@@ -617,7 +652,8 @@
     ],
     "prerequisites": [
       "agent-tool-policy"
-    ]
+    ],
+    "judge_tests": "allowed = {\"read_doc\", \"write_doc\"}\nwrites = {\"write_doc\"}\nassert authorize_tool(\"read_doc\", allowed, writes, False) is True\nassert authorize_tool(\"write_doc\", allowed, writes, False) is False\nassert authorize_tool(\"write_doc\", allowed, writes, True) is True\nassert authorize_tool(\"drop_table\", allowed, writes, True) is False\nassert authorize_tool(\"read_doc\", allowed, set(), False) is True\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "container-release-readiness",
@@ -637,7 +673,8 @@
     ],
     "prerequisites": [
       "deployment-validate-container-config"
-    ]
+    ],
+    "judge_tests": "assert release_ready({\"non_root\": True, \"baked_secrets\": False, \"healthcheck\": True}) is True\nassert release_ready({\"non_root\": True, \"baked_secrets\": False}) is False\nassert release_ready({}) is False\nassert release_ready({\"non_root\": True, \"baked_secrets\": True, \"healthcheck\": True}) is False\nassert release_ready({\"non_root\": False, \"baked_secrets\": False, \"healthcheck\": False}) is False\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "foundations-system-map",
@@ -653,7 +690,8 @@
       "foundations",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "expected = {\n    \"web form\": \"client\",\n    \"request validator\": \"application\",\n    \"language model\": \"model\",\n    \"document index\": \"data\",\n    \"search connector\": \"tools\",\n    \"trace dashboard\": \"operations\",\n}\nfor name, layer in expected.items():\n    assert classify_component(name) == layer\nassert len(set(expected.values())) == 6\ntry:\n    classify_component(\"quantum widget\")\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"unknown components must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "backend-customer-revenue",
@@ -672,7 +710,8 @@
       "databases",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "rows = [\n    {\"customer_id\": \"c1\", \"status\": \"paid\", \"amount\": \"10.00\"},\n    {\"customer_id\": \"c2\", \"status\": \"paid\", \"amount\": 2.5},\n    {\"customer_id\": \"c1\", \"status\": \"paid\", \"amount\": \"5.25\"},\n    {\"customer_id\": \"c1\", \"status\": \"pending\", \"amount\": \"100\"},\n    {\"customer_id\": \"c3\", \"status\": \"paid\", \"amount\": \"0\"},\n]\nassert revenue_by_customer(rows) == {\"c1\": 15.25, \"c2\": 2.5, \"c3\": 0.0}\nassert revenue_by_customer([]) == {}\noriginal = [dict(row) for row in rows]\nrevenue_by_customer(rows)\nassert rows == original, \"input rows must not be mutated\"\nfor bad in [\n    [{\"customer_id\": \" \", \"status\": \"paid\", \"amount\": 1}],\n    [{\"customer_id\": \"c\", \"status\": \"paid\", \"amount\": \"NaN\"}],\n    [{\"customer_id\": \"c\", \"status\": \"paid\", \"amount\": -1}],\n    [{\"customer_id\": \"c\", \"status\": \"paid\", \"amount\": True}],\n]:\n    try:\n        revenue_by_customer(bad)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid rows must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "llm-model-budget",
@@ -689,7 +728,8 @@
       "llm",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "models = [\n    {\"name\": \"Cheap-Ok\", \"quality\": 0.7, \"cost\": 0.01},\n    {\"name\": \"Mid\", \"quality\": 0.8, \"cost\": 0.02},\n    {\"name\": \"Mid-Rival\", \"quality\": 0.8, \"cost\": 0.02},\n]\nassert choose_model(models, 0.7, 0.02)[\"name\"] == \"Cheap-Ok\"\nassert choose_model(models, 0.8, 0.02)[\"name\"] == \"Mid\"\nassert choose_model(models, 0.9, 1.0) is None\nassert choose_model(models, 0.8, 0.015) is None\nexact = choose_model([{\"name\": \"Edge\", \"quality\": 0.5, \"cost\": 0.5}], 0.5, 0.5)\nassert exact[\"name\"] == \"Edge\"\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "llm-structured-evidence",
@@ -706,7 +746,8 @@
       "llm",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "source_text = \"The launch is set for 5 May 2027. Budget approved.\"\nok = validate_claim({\"value\": \"5 May 2027\", \"evidence\": \"launch is set for 5 May 2027\"}, source_text)\nassert ok == {\"value\": \"5 May 2027\", \"evidence\": \"launch is set for 5 May 2027\"}\npadded = validate_claim({\"value\": \"  padded  \", \"evidence\": \"Budget approved.\"}, source_text)\nassert padded == {\"value\": \"padded\", \"evidence\": \"Budget approved.\"}\nfor claim in [\n    {\"value\": \"5 May 2027\", \"evidence\": \"5 May 2027 in 2099\"},\n    {\"value\": \" \", \"evidence\": \"Budget approved.\"},\n    {\"value\": \"5 May 2027\", \"evidence\": \"   \"},\n]:\n    try:\n        validate_claim(claim, source_text)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"unsupported claims must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "llm-failure-policy",
@@ -723,7 +764,8 @@
       "llm",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert failure_action(408) == \"retry\"\nassert failure_action(500) == \"retry\"\nassert failure_action(599) == \"retry\"\nassert failure_action(401, True) == \"fallback\"\nassert failure_action(403, True) == \"fallback\"\nassert failure_action(403, False) == \"stop\"\nassert failure_action(400) == \"stop\"\nassert failure_action(429) == \"retry\"\nassert failure_action(404, True) == \"stop\"\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "rag-ranking-metrics",
@@ -743,7 +785,8 @@
     ],
     "prerequisites": [
       "rag-reciprocal-rank"
-    ]
+    ],
+    "judge_tests": "assert precision_at_k([\"x\", \"y\", \"x\", \"z\"], {\"x\", \"z\"}, 3) == 2 / 3\nassert precision_at_k([\"a\", \"b\"], {\"a\"}, 2) == 0.5\nassert precision_at_k([\"a\"], {\"a\"}, 0) == 0.0\nassert precision_at_k([], {\"a\"}, 3) == 0.0\nassert reciprocal_rank([\"a\", \"b\", \"c\"], {\"b\"}) == 0.5\nassert reciprocal_rank([\"a\", \"b\", \"c\"], {\"c\"}) == 1 / 3\nassert reciprocal_rank([], {\"a\"}) == 0.0\nassert reciprocal_rank([\"a\", \"a\", \"b\"], {\"b\"}) == 0.5\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "agent-tool-policy",
@@ -761,7 +804,8 @@
       "security",
       "tool-calling"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "allowed = {\n    \"search\": {\"scopes\": {\"docs:read\"}},\n    \"admin_delete\": {\"scopes\": {\"admin\", \"docs:write\"}},\n}\nok = authorize_tool({\"name\": \"search\", \"request_id\": \"  req-9  \"}, allowed, {\"docs:read\"})\nassert ok == {\"name\": \"search\", \"request_id\": \"req-9\"}\nfor call, scopes in [\n    ({\"name\": \"admin_delete\", \"request_id\": \"r-1\"}, {\"docs:read\"}),\n    ({\"name\": \"admin_delete\", \"request_id\": \"r-1\"}, {\"admin\"}),\n    ({\"name\": \"unknown_tool\", \"request_id\": \"r-1\"}, {\"docs:read\"}),\n    ({\"name\": \"search\", \"request_id\": \"   \"}, {\"docs:read\"}),\n    ({\"name\": \"search\"}, {\"docs:read\"}),\n]:\n    try:\n        authorize_tool(call, allowed, scopes)\n    except PermissionError:\n        pass\n    else:\n        raise AssertionError(\"denied calls must raise PermissionError\")\nfull = authorize_tool({\"name\": \"admin_delete\", \"request_id\": \"r-2\"}, allowed, {\"admin\", \"docs:write\"})\nassert full[\"name\"] == \"admin_delete\"\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "orchestration-state-machine",
@@ -778,7 +822,8 @@
       "orchestration",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert transition(\"queued\", \"start\") == \"running\"\nassert transition(\"running\", \"finish\") == \"complete\"\nassert transition(\"waiting_approval\", \"approve\") == \"running\"\nassert transition(\"waiting_approval\", \"reject\") == \"cancelled\"\nfor pair in [\n    (\"complete\", \"finish\"),\n    (\"cancelled\", \"approve\"),\n    (\"queued\", \"finish\"),\n    (\"running\", \"start\"),\n    (\"waiting_approval\", \"finish\"),\n]:\n    try:\n        transition(*pair)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid transitions must be rejected\")\ntry:\n    transition(\"queued\", \"explode\")\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"unknown events must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "orchestration-idempotency",
@@ -797,7 +842,8 @@
     ],
     "prerequisites": [
       "orchestration-state-machine"
-    ]
+    ],
+    "judge_tests": "store = {\"total\": 0.0, \"results\": {}}\nassert apply_once(\"evt-1\", 10, store) == 10.0\nassert apply_once(\"evt-1\", 10, store) == 10.0\nassert store[\"total\"] == 10.0\nassert apply_once(\"evt-2\", 2.5, store) == 12.5\nassert apply_once(\"evt-2\", 2.5, store) == 12.5\nassert store[\"total\"] == 12.5\nfor args in [(\"\", 1, store), (\"evt-3\", True, store), (\"evt-4\", float(\"inf\"), store)]:\n    try:\n        apply_once(*args)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid events must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "mcp-permission-gate",
@@ -817,7 +863,8 @@
     ],
     "prerequisites": [
       "mcp-validate-tool-call"
-    ]
+    ],
+    "judge_tests": "assert authorize_mcp_call(\"read_doc\", {\"any\": \"thing\"}, {\"docs:read\"}) is True\nassert authorize_mcp_call(\"read_doc\", {}, set()) is False\nassert authorize_mcp_call(\"delete_doc\", {\"readOnlyHint\": True}, {\"docs:read\"}) is False\nassert authorize_mcp_call(\"delete_doc\", {\"readOnlyHint\": True}, {\"docs:write\"}) is True\nassert authorize_mcp_call(\"unknown\", {}, {\"docs:read\", \"docs:write\"}) is False\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "production-eval-summary",
@@ -835,7 +882,8 @@
       "reliability",
       "security"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "cases = [\n    {\"id\": \"c1\", \"expected\": \"yes\", \"actual\": \"yes\"},\n    {\"id\": \"c2\", \"expected\": \"no\", \"actual\": \"yes\"},\n    {\"id\": \"c3\", \"expected\": \"no\", \"actual\": \"no\"},\n    {\"id\": \"c4\", \"expected\": \"yes\", \"actual\": \"no\"},\n]\nsummary = evaluation_summary(cases)\nassert summary == {\"total\": 4, \"correct\": 2, \"accuracy\": 0.5, \"failures\": [\"c2\", \"c4\"]}\nassert evaluation_summary([]) == {\"total\": 0, \"correct\": 0, \"accuracy\": 0.0, \"failures\": []}\nfor bad in [\n    [{\"id\": \"\", \"expected\": 1, \"actual\": 1}],\n    [{\"id\": \"x\", \"expected\": 1, \"actual\": 1}, {\"id\": \"x\", \"expected\": 1, \"actual\": 2}],\n    [{\"expected\": 1, \"actual\": 1}],\n]:\n    try:\n        evaluation_summary(bad)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"duplicate or missing IDs must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "deployment-config-gate",
@@ -855,7 +903,8 @@
     ],
     "prerequisites": [
       "deployment-validate-container-config"
-    ]
+    ],
+    "judge_tests": "good = {\n    \"image\": \"api@sha256:\" + \"b\" * 64,\n    \"run_as_root\": False,\n    \"health_url\": \"https://health.test/ready\",\n    \"api_key_secret_ref\": \"secret://prod/key\",\n}\nassert deployment_issues(good) == []\npartial = {\n    \"image\": \"api:latest\",\n    \"run_as_root\": False,\n    \"health_url\": \"https://ok.test\",\n    \"api_key_secret_ref\": \"secret://prod/key\",\n}\nassert deployment_issues(partial) == [\"image_not_digest_pinned\"]\nupper = dict(good)\nupper[\"health_url\"] = \"http://insecure.test\"\nassert deployment_issues(upper) == [\"health_check_not_https\"]\nupper = dict(good)\nupper[\"api_key_secret_ref\"] = \"plain-text-secret\"\nassert deployment_issues(upper) == [\"secret_not_referenced\"]\nupper = dict(good)\nupper[\"run_as_root\"] = None\nassert deployment_issues(upper) == [\"root_user_enabled\"]\nbad = {\"image\": \"x\", \"run_as_root\": True, \"health_url\": \"ftp://x\", \"api_key_secret_ref\": \"literal\"}\nassert deployment_issues(bad) == sorted([\"image_not_digest_pinned\", \"root_user_enabled\", \"health_check_not_https\", \"secret_not_referenced\"])\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "system-design-budget",
@@ -874,7 +923,8 @@
       "system-design",
       "testing"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "from math import inf\nstages = [\n    {\"latency_ms\": 50, \"cost_usd\": 0.001},\n    {\"latency_ms\": 120, \"cost_usd\": 0.002},\n    {\"latency_ms\": 30, \"cost_usd\": 0.0005},\n]\nresult = budget_check(stages, 200, 0.0035)\nassert result[\"latency_ms\"] == 200\nassert abs(result[\"cost_usd\"] - 0.0035) < 1e-9\nassert result[\"exceeded\"] == []\nover = budget_check(stages, 199, 0.004)\nassert over[\"exceeded\"] == [\"latency\"]\nonly_cost = budget_check(stages, 10000, 0.003)\nassert only_cost[\"exceeded\"] == [\"cost\"]\nfor stage in [{\"latency_ms\": -1, \"cost_usd\": 0}, {\"latency_ms\": float(\"nan\"), \"cost_usd\": 0}, {\"latency_ms\": True, \"cost_usd\": 0}, {\"latency_ms\": 1, \"cost_usd\": float(\"inf\")}]:\n    try:\n        budget_check([stage], 10, 1)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"non-finite or negative stage estimates must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "capstone-requirement-trace",
@@ -893,7 +943,8 @@
     ],
     "prerequisites": [
       "capstone-requirement-checklist"
-    ]
+    ],
+    "judge_tests": "reqs = [{\"id\": \"R1\"}, {\"id\": \"R2\"}, {\"id\": \"R3\"}, {\"id\": \"R4\"}]\ntests = [{\"requirement_ids\": [\"R1\", \"R4\"]}, {\"requirement_ids\": []}, {\"requirement_ids\": [\"R2\"]}]\nassert untested_requirements(reqs, tests) == [\"R3\"]\nassert untested_requirements(reqs, []) == [\"R1\", \"R2\", \"R3\", \"R4\"]\nassert untested_requirements([], tests) == []\ntraced = [{\"id\": \"R1\"}]\nassert untested_requirements(traced, [{\"requirement_ids\": [\"R1\"]}]) == []\nfor bad_reqs in [\n    [{\"id\": \"\"}],\n    [{\"id\": \"R1\"}, {\"id\": \"R1\"}],\n    [{\"id\": 3}],\n]:\n    try:\n        untested_requirements(bad_reqs, [])\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"duplicate or missing requirement IDs must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-first-script",
@@ -909,7 +960,8 @@
       "foundations",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert describe_order(\"Bo\", 2, 19.99) == \"Bo: 39.98\"\nassert describe_order(\"Cy\", 0, 100) == \"Cy: 0.00\"\nassert describe_order(\"Dee\", 1, 3) == \"Dee: 3.00\"\nassert describe_order(\"Eve\", 3, 0) == \"Eve: 0.00\"\nfor args in [(\"Fay\", -1, 1), (\"Fay\", 1, -0.01)]:\n    try:\n        describe_order(*args)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"negative inputs must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-inventory-value",
@@ -925,7 +977,8 @@
       "foundations",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert inventory_value([\n    {\"quantity\": 3, \"unit_price\": 2.5},\n    {\"quantity\": 2, \"unit_price\": 1},\n]) == 9.5\nassert inventory_value([{\"quantity\": 0, \"unit_price\": 99}]) == 0\nassert inventory_value([{\"quantity\": 1, \"unit_price\": 0.1}, {\"quantity\": 2, \"unit_price\": 0.2}]) == 0.5\nassert inventory_value([]) == 0\nfor bad in [\n    [{\"quantity\": -1, \"unit_price\": 1}],\n    [{\"quantity\": 1, \"unit_price\": -1}],\n    [{\"quantity\": 1}],\n    [{\"unit_price\": 1}],\n]:\n    try:\n        inventory_value(bad)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid inventory records must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-safe-divide",
@@ -941,7 +994,8 @@
       "foundations",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert safe_divide(9, 4) == 2.25\nassert safe_divide(7, 3) == 2.3333\nassert safe_divide(5, 0) == 0.0\nassert safe_divide(5, 0, default=\"n/a\") == \"n/a\"\nassert safe_divide(4, 2, default=\"unused\") == 2\nassert safe_divide(0, 5) == 0\nfor args in [(True, 2), (1, \"2\"), (None, 2), (2.5, False)]:\n    try:\n        safe_divide(*args)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"non-numeric or boolean inputs must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-json-summary",
@@ -957,7 +1011,8 @@
       "foundations",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert summarize_payload('{\"name\": \"demo\", \"items\": [1, 2, 3]}') == {\"name\": \"demo\", \"items\": 3}\nassert summarize_payload('{\"items\": [\"a\"]}') == {\"name\": \"\", \"items\": 1}\nassert summarize_payload('{\"name\": 42, \"items\": []}') == {\"name\": \"\", \"items\": 0}\nassert summarize_payload('{\"name\": \"\", \"items\": []}') == {\"name\": \"\", \"items\": 0}\nfor bad in [\"not json\", \"[1, 2]\", '{\"items\": \"nope\"}', '{\"items\": 5}', \"42\"]:\n    try:\n        summarize_payload(bad)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid payloads must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "git-conventional-message",
@@ -974,7 +1029,8 @@
       "git",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert is_conventional_commit(\"docs: fix typo\") is True\nassert is_conventional_commit(\"fix(parser): handle blank lines\") is True\nassert is_conventional_commit(\"chore(ci): bump actions\") is True\nassert is_conventional_commit(\"feat:\") is False\nassert is_conventional_commit(\"random: stuff\") is False\nassert is_conventional_commit(\"feat(API): bad scope case\") is False\nassert is_conventional_commit(\"fix: trailing period.\") is False\nassert is_conventional_commit(\"fix: \" + \"y\" * 50) is True\nassert is_conventional_commit(\"fix: \" + \"y\" * 51) is False\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "python-http-status",
@@ -991,7 +1047,8 @@
       "http",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert classify_status(204) == \"success\"\nassert classify_status(308) == \"redirect\"\nassert classify_status(418) == \"client_error\"\nassert classify_status(599) == \"server_error\"\nassert classify_status(600) == \"unknown\"\nassert classify_status(199) == \"unknown\"\nassert retryable(500) is True\nassert retryable(502) is True\nassert retryable(408) is False\nassert retryable(429) is True\nassert retryable(301) is False\nfor bad in [\"500\", True, 500.0]:\n    try:\n        classify_status(bad)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid codes must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "open-weight-vram",
@@ -1008,7 +1065,8 @@
       "llm",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert estimate_vram_gb(13) == 31.2\nassert estimate_vram_gb(70, 1.0, 1.0) == 70.0\nassert estimate_vram_gb(0.5, 2.0, 1.5) == 1.5\nassert estimate_vram_gb(1, 0.5, 1.0) == 0.5\nfor args in [(0,), (-1,), (7, 0), (7, -1), (7, 2, 0.99)]:\n    try:\n        estimate_vram_gb(*args)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid sizing inputs must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "reasoning-effort-router",
@@ -1025,7 +1083,8 @@
       "llm",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert choose_effort(\"low\", \"low\", \"low\") == \"small\"\nassert choose_effort(\"low\", \"low\", \"medium\") == \"small\"\nassert choose_effort(\"medium\", \"low\", \"low\") == \"low\"\nassert choose_effort(\"low\", \"medium\", \"low\") == \"low\"\nassert choose_effort(\"high\", \"high\", \"medium\") == \"high\"\nassert choose_effort(\"low\", \"high\", \"low\") == \"low\"\nassert choose_effort(\"low\", \"high\", \"medium\") == \"high\"\nassert choose_effort(\"medium\", \"low\", \"high\") == \"medium\"\nfor bad in [(\"LOW\", \"low\", \"low\"), (\"low\", \"huge\", \"low\"), (\"low\", \"low\", \"\")]:\n    try:\n        choose_effort(*bad)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"unknown levels must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "adaptation-decision",
@@ -1042,7 +1101,8 @@
       "llm",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert choose_adaptation(10, False, True, False) == \"prompting\"\nassert choose_adaptation(500, False, True, False) == \"distillation\"\nassert choose_adaptation(49, False, False, False) == \"prompting\"\nassert choose_adaptation(500, True, True, True) == \"retrieval\"\nassert choose_adaptation(100, False, False, True) == \"fine_tuning\"\nassert choose_adaptation(500, False, False, True) == \"fine_tuning\"\nassert choose_adaptation(499, False, False, False) == \"prompting\"\ntry:\n    choose_adaptation(-1, False, False, False)\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"negative counts must be rejected\")\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "computer-use-action-guard",
@@ -1059,7 +1119,8 @@
       "python",
       "tool-calling"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "assert is_action_allowed({\"type\": \"scroll\"}, False) is True\nassert is_action_allowed({\"type\": \"screenshot\"}, False) is True\nassert is_action_allowed({\"type\": \"navigate\"}, False) is True\nassert is_action_allowed({\"type\": \"submit\"}, False) is False\nassert is_action_allowed({\"type\": \"submit\"}, True) is True\nassert is_action_allowed({\"type\": \"purchase\"}, True) is True\nassert is_action_allowed({\"type\": \"send\"}, False) is False\nassert is_action_allowed({\"type\": \"teleport\"}, True) is False\nassert is_action_allowed({}, True) is False\nassert is_action_allowed(\"delete\", True) is False\nprint('Hidden checks passed.')\n"
   },
   {
     "id": "a2a-capability-router",
@@ -1076,6 +1137,7 @@
       "orchestration",
       "python"
     ],
-    "prerequisites": []
+    "prerequisites": [],
+    "judge_tests": "agents = [\n    {\"id\": \"agent-b\", \"capabilities\": [\"legal\"], \"healthy\": True, \"cost\": 2},\n    {\"id\": \"agent-a\", \"capabilities\": [\"legal\"], \"healthy\": True, \"cost\": 2},\n    {\"id\": \"agent-c\", \"capabilities\": [\"legal\"], \"healthy\": False, \"cost\": 0},\n    {\"id\": \"agent-d\", \"capabilities\": [\"hr\"], \"healthy\": True, \"cost\": 1},\n]\nassert route_task({\"capability\": \"legal\"}, agents, 5) == \"agent-a\"\nassert route_task({\"capability\": \"legal\"}, agents, 1) is None\nassert route_task({\"capability\": \"hr\"}, agents, 1) == \"agent-d\"\nassert route_task({\"capability\": \"legal\"}, agents, 2) == \"agent-a\"\nassert route_task({\"no_capability\": True}, agents, 100) is None\nassert route_task({\"capability\": \"legal\"}, [], 100) is None\nprint('Hidden checks passed.')\n"
   }
 ]

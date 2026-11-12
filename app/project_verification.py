@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -152,3 +154,61 @@ def verify_checks(repository_url, checks_url, commit_sha=None, branch=None):
     return _verify_github_actions(
         repository_url, checks_url, commit_sha, branch.strip() if branch else None
     )
+
+
+def verify_github_webhook_signature(payload_bytes: bytes, signature_header: str, secret: str) -> bool:
+    """Verify GitHub App HMAC-SHA256 signature from X-Hub-Signature-256 header."""
+    if not secret:
+        return True
+    if not signature_header or not signature_header.startswith('sha256='):
+        return False
+    expected = 'sha256=' + hmac.new(
+        secret.encode('utf-8') if isinstance(secret, str) else secret,
+        payload_bytes,
+        hashlib.sha256,
+    ).hexdigest()
+    return hmac.compare_digest(expected, signature_header)
+
+
+def process_github_webhook_event(event_type: str, data: dict) -> dict:
+    """Extract verifiable CI check run metadata from GitHub webhook payload.
+    
+    Returns a dict with 'status', 'conclusion', 'repository_url', 'commit_sha', 'checks_url'.
+    """
+    if event_type == 'ping':
+        return {'status': 'pong', 'event': 'ping'}
+
+    conclusion = None
+    commit_sha = None
+    checks_url = None
+    repo_url = None
+
+    if event_type == 'check_run':
+        check = data.get('check_run') or {}
+        conclusion = check.get('conclusion')
+        commit_sha = check.get('head_sha')
+        checks_url = check.get('html_url')
+        repo = data.get('repository') or {}
+        repo_url = repo.get('html_url')
+    elif event_type == 'workflow_run':
+        wf = data.get('workflow_run') or {}
+        conclusion = wf.get('conclusion')
+        commit_sha = wf.get('head_sha')
+        checks_url = wf.get('html_url')
+        repo = data.get('repository') or {}
+        repo_url = repo.get('html_url')
+    elif event_type == 'push':
+        commit_sha = data.get('after')
+        repo = data.get('repository') or {}
+        repo_url = repo.get('html_url')
+        checks_url = f"{repo_url}/commit/{commit_sha}" if repo_url and commit_sha else None
+        conclusion = 'success'
+
+    return {
+        'event': event_type,
+        'conclusion': conclusion,
+        'commit_sha': commit_sha,
+        'checks_url': checks_url,
+        'repository_url': repo_url,
+        'verified': conclusion == 'success',
+    }

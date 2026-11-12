@@ -1,8 +1,8 @@
 # RUACH Next Major Release — Strategic Goals & Execution Plan
 
-**Lead Engineer Mandate:** Move RUACH from foundation stage to a market-leading, mindblowing major release.  
-**Created:** 12 November 2026  
-**Status:** In Active Execution  
+**Lead Engineer Mandate:** Move RUACH from foundation stage to a market-leading, mindblowing major release.
+**Created:** 12 November 2026
+**Status:** In Active Execution
 
 ---
 
@@ -39,13 +39,13 @@
 ---
 
 ### Sprint 2: Async Architecture & Performance Optimization (Speed, Space, Memory, Scale) (Active)
-- [ ] **Task 2.1: Asynchronous Execution Worker & SSE Streaming**
+- [x] **Task 2.1: Asynchronous Execution Worker & SSE Streaming**
   - Decouple interactive `run` and `submit` endpoints from Gunicorn sync workers.
   - Implement task queue (Redis / DB queue) and Server-Sent Events (SSE) `/arena/api/runs/<id>/stream`.
-- [ ] **Task 2.2: Profile Photo Storage Migration (Space & Memory Optimization)**
+- [x] **Task 2.2: Profile Photo Storage Migration (Space & Memory Optimization)**
   - Offload `UserProfilePhoto.data` BLOBs from PostgreSQL to S3/Cloudflare R2.
   - Add HTTP caching headers (`Cache-Control: public, max-age=86400`).
-- [ ] **Task 2.3: AI Prompt & Response Caching (Speed & Cost Optimization)**
+- [x] **Task 2.3: AI Prompt & Response Caching (Speed & Cost Optimization)**
   - Add SHA-256 exact match and semantic caching for Gemini and OpenRouter requests.
   - Cache structured quiz generation and rubric evaluation outputs.
 - [ ] **Task 2.4: Optimized Leaderboard Aggregations**
@@ -80,3 +80,7 @@
 
 * **2026-11-12 11:10:** Initiated `newgoals.md`. Architectural audit completed. Commencing Sprint 1 execution.
 * **2026-11-12 12:30:** Sprint 1 completed. 100% test suite pass rate achieved (341 passed, 1 skipped). Defensive in-memory caching, runtime fallbacks, and sandbox Dockerfile hardened. Resuming Sprint 2 (Async Architecture & Performance Optimization).
+* **2026-11-12 12:45:** Audited Sprint 2.1. The Arena already had a durable database queue, worker, and SSE status endpoint in progress; identified remaining synchronous interactive-run paths and missing persistence migration for queued run output/mode.
+* **2026-11-12 13:20:** Completed Task 2.1. All Arena, lesson, and specialization server-run endpoints now enqueue durable `Submission` work and return `202`; the standalone judge worker executes containers outside Gunicorn and SSE reports `PENDING`/`RUNNING`/terminal state. Added migration `8a2b4c6d9e10` for run output/mode and queue index, browser SSE consumers, worker runbook, and passing queue/SSE tests.
+* **2026-11-12 13:50:** Task 2.2 implementation complete. New profile photos are stored only in the configured local/S3 backend with one-day cache metadata; Postgres retains key and MIME metadata, while legacy BLOBs remain readable until explicitly copied by the new `auth migrate-profile-photos` command. Added migration `1c9e5a7b3d20` and verified profile/storage tests.
+* **2026-11-12 14:20:** Completed Task 2.3. Added optional Redis-backed SHA-256 response caching with bounded in-memory fallback, conservative scope-bound semantic reuse for bundled quiz prompts, and explicit cache enablement/configuration. Structured quiz and rubric calls retain exact caching; learner rubrics never use semantic reuse. Verified cache and provider-fallback suites (16 passed).

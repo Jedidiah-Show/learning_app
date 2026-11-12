@@ -526,6 +526,8 @@ def submit_project(module_id):
     record.submission = json.dumps(draft, ensure_ascii=False)
     record.completed = False
     record.evaluation = None
+    from app.leaderboard import refresh_leaderboard_score
+    refresh_leaderboard_score(current_user.id, commit=False)
     # This attempt's outcome is unknown until a branch below decides it.
     record.failure_stage = None
     record.failure_detail = None
@@ -605,6 +607,7 @@ def submit_project(module_id):
             current_user.id, module_id, commit=False,
         )
     # A completed rubric below threshold is a failure too, with its own stage.
+    refresh_leaderboard_score(current_user.id, commit=False)
     _attempt_outcome(
         record, None if record.completed else 'rubric_below_threshold',
     )

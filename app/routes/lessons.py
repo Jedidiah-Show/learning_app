@@ -5,7 +5,7 @@ import json
 import re
 
 import click
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, request, url_for
 from flask_login import current_user, login_required
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
@@ -16,7 +16,7 @@ from app.curriculum import curriculum, get_lesson, lesson_context
 from app.learning import lesson_is_available, next_course_action, next_unlocked_lesson
 from app.models import (
     CoursePlan, LessonCompletion, LessonTaskProgress, PracticeUsageDaily,
-    PracticeWorkspace, StudySession, VideoProgress,
+    PracticeWorkspace, StudySession, Submission, VideoProgress, utcnow,
 )
 from app.models import TutorConversation
 from app.practice import get_practice_exercise
@@ -347,6 +347,9 @@ def placement_check():
                 completion.time_spent_minutes = completion.time_spent_minutes or 0
                 completion.completion_source = 'placement'
                 placed_lessons.append(lesson_id)
+        if placed_lessons:
+            from app.leaderboard import refresh_leaderboard_score
+            refresh_leaderboard_score(current_user.id, commit=False)
         db.session.commit()
 
     weak = [topic['title'] for topic in topic_results if not topic['passed']]
@@ -500,6 +503,14 @@ def practice_workspace(lesson_id, exercise_id):
     return jsonify({'status': 'saved', 'updated_at': workspace.updated_at.isoformat()})
 
 
+def _judge_submissions_enabled():
+    """Prevent runs from attempting a missing execution engine."""
+    return bool(
+        current_app.testing
+        or current_app.config.get('JUDGE_SUBMISSIONS_ENABLED', False)
+    )
+
+
 @lessons_bp.route('/practice/<lesson_id>/<exercise_id>/run', methods=['POST'])
 @login_required
 def practice_run(lesson_id, exercise_id):
@@ -515,6 +526,13 @@ def practice_run(lesson_id, exercise_id):
         and request.content_length > MAX_PRACTICE_SOURCE_LENGTH + 1024
     ):
         return jsonify({'error': 'Practice source is too large'}), 413
+    if not _judge_submissions_enabled():
+        return jsonify({
+            'error': (
+                'Interactive server runs are temporarily unavailable. '
+                'The in-browser runtime will be used instead.'
+            ),
+        }), 503
     data = get_json_object()
     code = data.get('code') if data else None
     if not isinstance(code, str) or not code.strip():
@@ -523,35 +541,30 @@ def practice_run(lesson_id, exercise_id):
         return jsonify({
             'error': f'Source must be at most {MAX_PRACTICE_SOURCE_LENGTH} characters',
         }), 413
+    run_code = f"{code}\n\n{exercise['checks_code']}" if exercise['checks_code'] else code
+    if not run_code.strip():
+        return jsonify({'error': 'Practice source is required'}), 400
     enforce_rate_limit('practice-run', str(current_user.id))
-    from app.services.interactive_run import (
-        interactive_run_available,
-        run_learner_code,
-    )
-    if not interactive_run_available():
-        return jsonify({
-            'error': (
-                'Interactive server runs are temporarily unavailable. '
-                'The in-browser runtime will be used instead.'
-            ),
-        }), 503
-    result = run_learner_code(
-        code, exercise['checks_code'], timeout_sec=15.0, memory_mb=512,
-    )
-    if result is None:
-        return jsonify({
-            'error': (
-                'Interactive server runs are temporarily unavailable. '
-                'The in-browser runtime will be used instead.'
-            ),
-        }), 503
+    # The source already includes the trusted exercise checks. Persist it for
+    # the dedicated judge worker instead of blocking this Gunicorn worker.
+    from uuid import uuid4
+    run_id = uuid4().hex
+    db.session.add(Submission(
+        id=run_id,
+        user_id=current_user.id,
+        problem_id=f'run:{exercise_id}'[:64],
+        language='python',
+        code_snapshot=run_code,
+        mode='run',
+        verdict='PENDING',
+        submitted_at=utcnow(),
+    ))
+    db.session.commit()
     return jsonify({
-        'verdict': result.get('verdict'),
-        'output': result.get('output'),
-        'error_details': result.get('error_details'),
-        'execution_time_ms': result.get('execution_time_ms'),
-        'memory_kb': result.get('memory_kb'),
-    })
+        'run_id': run_id,
+        'status': 'queued',
+        'stream_url': url_for('practice_arena.stream_execution', run_id=run_id),
+    }), 202
 
 
 @lessons_bp.route('/<lesson_id>/bookmark', methods=['POST'])
@@ -687,6 +700,8 @@ def complete_lesson():
             current_user.id, lesson_id, commit=False,
         )
         db.session.commit()
+        from app.leaderboard import refresh_leaderboard_score
+        refresh_leaderboard_score(current_user.id)
     except IntegrityError:
         # Two tabs completed the same lesson at once. The unique constraint
         # makes one request the winner; treat the other as already completed

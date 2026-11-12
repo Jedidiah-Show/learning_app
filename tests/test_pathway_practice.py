@@ -5,11 +5,9 @@ import os
 import re
 import tempfile
 import unittest
-from unittest.mock import patch
 
 from app import create_app, db
 from app.models import PracticeWorkspace
-from app.routes import pathway_practice
 
 PATHWAY_CATALOG = 'pathway_practice_exercises.json'
 
@@ -91,40 +89,17 @@ class PathwayPracticeFlowTests(unittest.TestCase):
         self.assertEqual(got.status_code, 200)
         self.assertEqual(got.get_json()['source'], source)
 
-    def test_run_returns_mocked_piston_verdict(self):
-        mock_result = {
-            'verdict': 'COMPLETED',
-            'tests_passed': 0,
-            'total_tests': 0,
-            'output': 'Checks passed.\n',
-            'error_details': '',
-            'execution_time_ms': 42,
-            'memory_kb': 0,
-        }
-        with patch.object(
-            pathway_practice, 'run_learner_code', return_value=mock_result,
-        ) as run:
-            response = self.client.post(
-                '/api/pathways/practice/mle.math.01/mle-summarize-distribution/run',
-                data=json.dumps({'code': 'def summarize(v): return {}'}),
-                content_type='application/json',
-                headers={'X-CSRF-Token': self._csrf_token()},
-            )
-        self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.get_json()['verdict'], 'COMPLETED')
-        run.assert_called_once()
-
-    def test_run_returns_503_when_no_engine_available(self):
-        with patch.object(
-            pathway_practice, 'run_learner_code', return_value=None,
-        ):
-            response = self.client.post(
-                '/api/pathways/practice/mle.math.01/mle-summarize-distribution/run',
-                data=json.dumps({'code': 'x = 1'}),
-                content_type='application/json',
-                headers={'X-CSRF-Token': self._csrf_token()},
-            )
-        self.assertEqual(response.status_code, 503)
+    def test_run_queues_source_for_the_dedicated_judge_worker(self):
+        response = self.client.post(
+            '/api/pathways/practice/mle.math.01/mle-summarize-distribution/run',
+            data=json.dumps({'code': 'def summarize(v): return {}'}),
+            content_type='application/json',
+            headers={'X-CSRF-Token': self._csrf_token()},
+        )
+        self.assertEqual(response.status_code, 202)
+        payload = response.get_json()
+        self.assertEqual(payload['status'], 'queued')
+        self.assertIn('stream_url', payload)
 
     def test_locked_ml_lesson_practice_is_rejected(self):
         response = self.client.get('/api/pathways/practice/mle.math.02/mle-precision-recall')

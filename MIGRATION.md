@@ -304,12 +304,26 @@ backup and will refuse to run without the confirmation word.
 
 ### 4.3 Post-migration verification
 
+If the migration head includes `5d7a9e1c3b40` (leaderboard score tallies),
+backfill the materialized per-user totals once so the leaderboard is not
+stuck at zero points until the next progress write:
+
+```bash
+.venv/bin/flask --app wsgi rebuild-leaderboard-scores
+```
+
+The nightly workflow (`.github/workflows/db-migrate.yml`) runs the same
+backfill automatically after `flask db upgrade`, and every progress write
+(lesson completion, placement, project verification, ML specialization
+progress, leaderboard opt-in toggles) refreshes the affected learner's tally.
+
 ```bash
 psql "$DATABASE_URL_UNPOOLED" -v ON_ERROR_STOP=1 <<'SQL'
 SELECT version_num FROM alembic_version;
 SELECT count(*) FROM "user";
 SELECT count(*) FROM lesson_completion;
 SELECT count(*) FROM course_project;
+SELECT count(*) FROM leaderboard_score;
 SQL
 ```
 

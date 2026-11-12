@@ -70,6 +70,18 @@ class CommunityAndLeaderboardTests(unittest.TestCase):
         self.assertFalse(board['opted_in'])
         self.assertEqual(board['participants'], 0)
 
+    def test_lesson_completion_via_api_refreshes_leaderboard_tally(self):
+        self.register(self.client, 'alpha')
+        self.client.post('/api/leaderboard/visibility', json={'opt_in': True})
+        response = self.client.post('/api/lessons/complete', json={
+            'lesson_id': '0.01', 'time_spent_minutes': 15,
+        })
+        self.assertEqual(response.status_code, 200, response.get_json())
+        board = self.client.get('/api/leaderboard').get_json()
+        self.assertEqual(board['entries'][0]['username'], 'alpha')
+        self.assertEqual(board['entries'][0]['lessons'], 1)
+        self.assertEqual(board['entries'][0]['points'], 10)
+
     def test_leaderboard_orders_opted_in_learners_by_transparent_points(self):
         self.register(self.client, 'alpha')
         second_client = self.app.test_client()
@@ -92,6 +104,9 @@ class CommunityAndLeaderboardTests(unittest.TestCase):
             db.session.add(CourseProject(
                 user_id=beta.id, module_id='00', project='{}', completed=True,
             ))
+            from app.leaderboard import refresh_leaderboard_score
+            refresh_leaderboard_score(alpha.id, commit=False)
+            refresh_leaderboard_score(beta.id, commit=False)
             db.session.commit()
         board = self.client.get('/api/leaderboard').get_json()
         self.assertEqual(board['entries'][0]['username'], 'beta')
@@ -120,6 +135,8 @@ class CommunityAndLeaderboardTests(unittest.TestCase):
                 module_id='mle.data-problem-formulation', submission='{}',
                 completed=True,
             ))
+            from app.leaderboard import refresh_leaderboard_score
+            refresh_leaderboard_score(alpha.id, commit=False)
             db.session.commit()
 
         progress = self.client.get('/progress')

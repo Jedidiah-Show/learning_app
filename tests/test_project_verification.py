@@ -157,6 +157,83 @@ class ProjectVerificationTests(unittest.TestCase):
         )
         self.assertEqual(request['timeout'], 10)
 
+    def test_webhook_signature_verification_accepts_valid_and_rejects_tampered(self):
+        import hashlib
+        import hmac
+        from app.project_verification import verify_github_webhook_signature
+
+        secret = 'test-secret-key-123'
+        payload = b'{"action": "completed", "conclusion": "success"}'
+        sig = 'sha256=' + hmac.new(secret.encode('utf-8'), payload, hashlib.sha256).hexdigest()
+
+        self.assertTrue(verify_github_webhook_signature(payload, sig, secret))
+        self.assertFalse(verify_github_webhook_signature(b'tampered payload', sig, secret))
+        self.assertFalse(verify_github_webhook_signature(payload, 'sha256=wrong', secret))
+        self.assertFalse(verify_github_webhook_signature(payload, '', secret))
+
+    def test_webhook_endpoint_verifies_matching_course_project(self):
+        import hashlib
+        import hmac
+        import os
+        import tempfile
+        from app import create_app, db
+        from app.models import CourseProject, User
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            orig_db = os.environ.get('DATABASE_URL')
+            os.environ['DATABASE_URL'] = f'sqlite:///{tmp_dir}/test.db'
+            try:
+                app = create_app()
+                app.config.update(TESTING=True, GITHUB_WEBHOOK_SECRET='test-webhook-secret')
+                with app.app_context():
+                    db.create_all()
+                    user = User(username='webhook-learner', email='webhook@example.test')
+                    db.session.add(user)
+                    db.session.commit()
+                    project = CourseProject(
+                        user_id=user.id,
+                        module_id='01',
+                        project='{}',
+                        repository_url='https://github.com/learner/sample-ai-app',
+                        checks_verified=False,
+                    )
+                    db.session.add(project)
+                    db.session.commit()
+                    project_id = project.id
+
+                client = app.test_client()
+                payload = json.dumps({
+                    'check_run': {
+                        'conclusion': 'success',
+                        'head_sha': 'c' * 40,
+                        'html_url': 'https://github.com/learner/sample-ai-app/actions/runs/999',
+                    },
+                    'repository': {
+                        'html_url': 'https://github.com/learner/sample-ai-app',
+                    },
+                }).encode('utf-8')
+                sig = 'sha256=' + hmac.new(b'test-webhook-secret', payload, hashlib.sha256).hexdigest()
+
+                response = client.post(
+                    '/api/webhooks/github',
+                    data=payload,
+                    content_type='application/json',
+                    headers={'X-Hub-Signature-256': sig, 'X-GitHub-Event': 'check_run'},
+                )
+                self.assertEqual(response.status_code, 200)
+                self.assertEqual(response.get_json()['status'], 'verified')
+                self.assertIn(project_id, response.get_json()['projects_updated'])
+
+                with app.app_context():
+                    updated = db.session.get(CourseProject, project_id)
+                    self.assertTrue(updated.checks_verified)
+                    self.assertEqual(updated.checks_url, 'https://github.com/learner/sample-ai-app/actions/runs/999')
+            finally:
+                if orig_db is None:
+                    os.environ.pop('DATABASE_URL', None)
+                else:
+                    os.environ['DATABASE_URL'] = orig_db
+
 
 if __name__ == '__main__':
     unittest.main()

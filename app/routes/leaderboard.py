@@ -4,7 +4,9 @@ from flask import Blueprint, jsonify
 from flask_login import current_user, login_required
 
 from app import db
-from app.leaderboard import invalidate_leaderboard_cache, leaderboard_data
+from app.leaderboard import (
+    invalidate_leaderboard_cache, leaderboard_data, refresh_leaderboard_score,
+)
 from app.models import CoursePlan
 from app.request_data import get_json_object
 
@@ -24,6 +26,7 @@ def set_leaderboard_visibility():
         db.session.add(plan)
     plan.leaderboard_opt_in = data['opt_in']
     db.session.commit()
+    refresh_leaderboard_score(current_user.id)
     invalidate_leaderboard_cache()
     return jsonify({'opted_in': plan.leaderboard_opt_in})
 

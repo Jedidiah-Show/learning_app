@@ -31,11 +31,7 @@ from app.practice_arena import (
 )
 from app.rate_limit import enforce_rate_limit
 from app.request_data import get_json_object
-from app.services.judge import (
-    _validate_code_syntax,
-    execute_in_sandbox,
-    validate_problem_schema,
-)
+from app.services.judge import _validate_code_syntax, validate_problem_schema
 
 
 practice_arena_bp = Blueprint(
@@ -510,48 +506,28 @@ def run_problem(problem_id):
 
     enforce_rate_limit('arena-run', str(current_user.id))
 
-    if data.get('async') or data.get('stream'):
-        from uuid import uuid4
-        run_id = uuid4().hex
-        submission = Submission(
-            id=run_id,
-            user_id=current_user.id,
-            problem_id=problem_id,
-            language='python',
-            code_snapshot=code,
-            mode='run',
-            verdict='PENDING',
-            submitted_at=utcnow(),
-        )
-        db.session.add(submission)
-        db.session.commit()
-        return jsonify({
-            'run_id': run_id,
-            'status': 'queued',
-            'stream_url': url_for('practice_arena.stream_execution', run_id=run_id),
-        }), 202
-
-    result = execute_in_sandbox(
-        code,
-        '',
-        timeout_sec=15.0,
-        memory_mb=512,
+    # Never invoke Docker from a Gunicorn request worker. The independently
+    # deployed judge worker claims this durable job and the browser receives
+    # its state through the SSE endpoint below.
+    from uuid import uuid4
+    run_id = uuid4().hex
+    submission = Submission(
+        id=run_id,
+        user_id=current_user.id,
+        problem_id=problem_id,
+        language='python',
+        code_snapshot=code,
         mode='run',
+        verdict='PENDING',
+        submitted_at=utcnow(),
     )
-    if result.verdict == 'INTERNAL_ERROR' and 'unavailable' in (result.error_details or '').lower():
-        return jsonify({
-            'error': (
-                'Interactive server runs are temporarily unavailable. '
-                'The in-browser runtime will be used instead.'
-            ),
-        }), 503
+    db.session.add(submission)
+    db.session.commit()
     return jsonify({
-        'verdict': result.verdict,
-        'output': result.output,
-        'error_details': result.error_details,
-        'execution_time_ms': result.execution_time_ms,
-        'memory_kb': result.memory_kb,
-    })
+        'run_id': run_id,
+        'status': 'queued',
+        'stream_url': url_for('practice_arena.stream_execution', run_id=run_id),
+    }), 202
 
 
 @practice_arena_bp.route('/api/runs/<run_id>/stream')

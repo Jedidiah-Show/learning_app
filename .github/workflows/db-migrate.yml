@@ -60,5 +60,11 @@ jobs:
       - name: Apply migrations
         run: flask --app wsgi db upgrade
 
+      # Idempotent: recomputes per-user leaderboard tallies from the source
+      # tables. Safe to run on every migration; required after the
+      # leaderboard_score tally migration (5d7a9e1c3b40) deploys.
+      - name: Backfill leaderboard score tallies
+        run: flask --app wsgi rebuild-leaderboard-scores
+
       - name: Verify revision
         run: flask --app wsgi db current

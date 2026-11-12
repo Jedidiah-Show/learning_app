@@ -581,6 +581,8 @@ def machine_learning_lesson(lesson_id):
             update_skill_progress_from_ml_lesson(
                 current_user.id, lesson_id, commit=False,
             )
+            from app.leaderboard import refresh_leaderboard_score
+            refresh_leaderboard_score(current_user.id, commit=False)
             db.session.commit()
             flash('Lesson complete. Your specialization progress has been saved.', 'success')
             return redirect(url_for('main.machine_learning_specialization'))

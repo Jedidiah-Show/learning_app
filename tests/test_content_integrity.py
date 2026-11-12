@@ -175,6 +175,34 @@ class PracticeExerciseIntegrityTests(unittest.TestCase):
             if inspect.isawaitable(outcome):
                 asyncio.run(outcome)
 
+    def test_every_exercise_has_a_private_judge_suite_that_passes(self):
+        # The server-side judge falls back to the public browser checks when
+        # judge_tests is absent; every exercise must instead ship a dedicated
+        # hidden suite that the reference solution passes.
+        import asyncio
+        import inspect
+        for exercise in _load('practice_exercises.json'):
+            with self.subTest(exercise=exercise['id']):
+                suite = exercise.get('judge_tests', '')
+                self.assertTrue(suite.strip(), 'missing judge_tests')
+                self.assertNotEqual(
+                    suite.strip(), exercise['checks_code'].strip(),
+                    'judge_tests must be a dedicated suite, not a copy of the public checks',
+                )
+                compile(
+                    suite, exercise['id'], 'exec',
+                    flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT,
+                )
+                namespace = {'__name__': '__main__'}
+                source = exercise['solution_code'] + '\n\n' + suite
+                code = compile(
+                    source, exercise['id'], 'exec',
+                    flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT,
+                )
+                outcome = eval(code, namespace)
+                if inspect.isawaitable(outcome):
+                    asyncio.run(outcome)
+
 
 class PathwayPracticeExerciseIntegrityTests(unittest.TestCase):
     def test_pathway_exercises_reference_real_pathway_lessons(self):

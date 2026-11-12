@@ -227,7 +227,40 @@ if (root) {
                 body: JSON.stringify({code: serverCode}),
             });
             const data = await response.json().catch(() => ({}));
-            if (response.ok) serverResult = data;
+            if (response.ok && data.stream_url) {
+                serverResult = await new Promise((resolve) => {
+                    let stream = null;
+                    const timeout = setTimeout(() => {
+                        if (stream) stream.close();
+                        resolve(null);
+                    }, 30000);
+                    try {
+                        stream = new EventSource(data.stream_url);
+                        stream.onmessage = (event) => {
+                            try {
+                                const result = JSON.parse(event.data);
+                                if (!['PENDING', 'RUNNING'].includes(result.verdict)) {
+                                    clearTimeout(timeout);
+                                    stream.close();
+                                    resolve(result);
+                                }
+                            } catch (_) {
+                                clearTimeout(timeout);
+                                stream.close();
+                                resolve(null);
+                            }
+                        };
+                        stream.onerror = () => {
+                            clearTimeout(timeout);
+                            stream.close();
+                            resolve(null);
+                        };
+                    } catch (_) {
+                        clearTimeout(timeout);
+                        resolve(null);
+                    }
+                });
+            }
         } catch (error) {
             serverResult = null;
         }

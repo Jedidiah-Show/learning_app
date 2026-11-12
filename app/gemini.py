@@ -376,6 +376,7 @@ def generate_json(
     max_output_tokens=None,
     allow_fallback=True,
     use_cache=None,
+    semantic_cache_scope=None,
 ):
     """Generate JSON with Gemini, falling back to OpenRouter when configured."""
     if model not in {'flash', 'pro'}:
@@ -386,10 +387,19 @@ def generate_json(
         or (use_cache is None and current_app and current_app.config.get('AI_CACHE_ENABLED', False))
     )
     if should_cache:
-        from app.ai_cache import get_cached_response, set_cached_response
+        from app.ai_cache import (
+            get_cached_response, get_semantic_cached_response,
+            set_cached_response,
+        )
         cached = get_cached_response(prompt, model=model)
         if cached is not None:
             return cached
+        if semantic_cache_scope:
+            cached = get_semantic_cached_response(
+                prompt, scope=semantic_cache_scope, model=model,
+            )
+            if cached is not None:
+                return cached
 
     started = time.monotonic()
     overall_deadline = started + request_deadline_seconds()
@@ -428,7 +438,10 @@ def generate_json(
                 )
                 _clear_circuit('gemini')
                 if should_cache and isinstance(result, dict):
-                    set_cached_response(prompt, result, model=model)
+                    set_cached_response(
+                        prompt, result, model=model,
+                        semantic_scope=semantic_cache_scope,
+                    )
                 return result
             except GeminiError as error:
                 gemini_error = error
@@ -466,7 +479,10 @@ def generate_json(
         deadline=overall_deadline,
     )
     if should_cache and isinstance(res, dict):
-        set_cached_response(prompt, res, model=model)
+        set_cached_response(
+            prompt, res, model=model,
+            semantic_scope=semantic_cache_scope,
+        )
     return res
 
 

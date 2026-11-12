@@ -99,6 +99,35 @@ class ArenaTaxonomyTests(unittest.TestCase):
         self.assertEqual(topics['ml-python']['name'], 'Python for ML')
         self.assertEqual(topics['ml-data-analysis']['name'], 'Data Analysis')
 
+    def test_every_problem_has_a_dedicated_hidden_suite_that_passes(self):
+        # Hidden suites are the judge's source of truth; the public browser
+        # checks are only a fallback for problems without one. Every published
+        # problem now ships a dedicated suite that the reference solution passes.
+        import ast
+        import asyncio
+        import inspect
+        for problem in all_arena_problems().values():
+            with self.subTest(problem=problem['id']):
+                suite = problem['judge_tests']
+                self.assertTrue(suite.strip())
+                self.assertNotEqual(
+                    suite.strip(), problem['browser_checks'].strip(),
+                    'judge_tests must not copy the public browser checks',
+                )
+                compile(
+                    suite, problem['id'], 'exec',
+                    flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT,
+                )
+                namespace = {'__name__': '__main__'}
+                source = problem['solution_code'] + '\n\n' + suite
+                code = compile(
+                    source, problem['id'], 'exec',
+                    flags=ast.PyCF_ALLOW_TOP_LEVEL_AWAIT,
+                )
+                outcome = eval(code, namespace)
+                if inspect.isawaitable(outcome):
+                    asyncio.run(outcome)
+
     def test_every_problem_has_a_valid_track_topic_and_difficulty(self):
         problems = all_arena_problems()
         topics = {topic['id']: topic for topic in TOPICS}
@@ -492,42 +521,44 @@ class ArenaApiTests(ArenaTestCase):
         self.assertEqual(response.status_code, 503)
         self.assertIn('unavailable', response.get_json()['error'])
 
-    def test_run_returns_sandbox_result_for_valid_code(self):
+    def test_run_queues_valid_code_without_executing_on_the_web_request(self):
         self.register('arena')
-        from app.services.judge import JudgeResult
-        mock_result = JudgeResult(
-            verdict='COMPLETED',
-            output='Execution succeeded',
-            error_details='',
-            execution_time_ms=10,
-            memory_kb=1024,
+        response = self.client.post(
+            '/arena/api/problems/algo-binary-search/run',
+            json={'code': 'def binary_search(numbers, target):\n    return -1\n'},
         )
-        with patch('app.routes.practice_arena.execute_in_sandbox', return_value=mock_result):
-            response = self.client.post(
-                '/arena/api/problems/algo-binary-search/run',
-                json={'code': 'def binary_search(numbers, target):\n    return -1\n'},
-            )
-        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.status_code, 202)
         payload = response.get_json()
-        for key in ('verdict', 'output', 'error_details', 'execution_time_ms', 'memory_kb'):
+        for key in ('run_id', 'status', 'stream_url'):
             self.assertIn(key, payload)
-        self.assertEqual(payload['verdict'], 'COMPLETED')
-        self.assertEqual(payload['output'], 'Execution succeeded')
+        self.assertEqual(payload['status'], 'queued')
+        with self.app.app_context():
+            record = db.session.get(Submission, payload['run_id'])
+            self.assertEqual(record.mode, 'run')
+            self.assertEqual(record.verdict, 'PENDING')
 
-    def test_run_returns_503_when_sandbox_runtime_is_unavailable(self):
+    def test_worker_records_unavailable_sandbox_as_terminal_run_error(self):
         self.register('arenafallback')
         from app.services.judge import JudgeResult
+        from app.services.judge_worker import process_next_submission
         mock_result = JudgeResult(
             verdict='INTERNAL_ERROR',
             error_details='Sandbox runtime is unavailable',
         )
-        with patch('app.routes.practice_arena.execute_in_sandbox', return_value=mock_result):
-            response = self.client.post(
-                '/arena/api/problems/algo-binary-search/run',
-                json={'code': 'def binary_search(numbers, target):\n    return -1\n'},
-            )
-        self.assertEqual(response.status_code, 503)
-        self.assertIn('unavailable', response.get_json()['error'])
+        queued = self.client.post(
+            '/arena/api/problems/algo-binary-search/run',
+            json={'code': 'def binary_search(numbers, target):\n    return -1\n'},
+        )
+        with patch(
+            'app.services.judge_worker.execute_in_sandbox',
+            return_value=mock_result,
+        ):
+            self.assertTrue(process_next_submission(self.app))
+        status = self.client.get(
+            f"/arena/api/submissions/{queued.get_json()['run_id']}",
+        )
+        self.assertEqual(status.get_json()['verdict'], 'INTERNAL_ERROR')
+        self.assertIn('unavailable', status.get_json()['error_details'])
 
     def test_run_rejects_invalid_source(self):
         self.register('arena')

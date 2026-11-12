@@ -87,6 +87,12 @@ services:
         value: "30"
       - key: AI_RATE_LIMIT_COOLDOWN_SECONDS
         value: "60"
+      - key: AI_CACHE_ENABLED
+        value: "true"
+      # Optional managed Redis endpoint for cache sharing across Gunicorn
+      # instances. The app retains a bounded in-memory fallback if omitted.
+      - key: REDIS_URL
+        sync: false
       - key: OPENROUTER_API_KEY
         sync: false
       - key: OPENROUTER_BASE_URL
@@ -137,20 +143,9 @@ services:
       - key: JUDGE_SUBMISSIONS_ENABLED
         value: "false"
 
-      # Self-hosted Piston code execution engine for interactive practice
-      # runs (docs/PISTON_SETUP.md). Empty = disabled; the app then uses the
-      # Docker judge when enabled, else the Pyodide browser runtime.
-      - key: PISTON_URL
-        sync: false
-      - key: PISTON_PYTHON_VERSION
-        value: ""
-      - key: PISTON_RUN_TIMEOUT_MS
-        value: "10000"
-      - key: PISTON_RUN_MEMORY_LIMIT_MB
-        value: "256"
-
-      # Cloudflare R2 (S3-compatible) uploads. Profile photos remain in
-      # Postgres and are unaffected by these settings.
+      # Cloudflare R2 (S3-compatible) uploads. Profile photos are written to
+      # this object-storage backend only; Postgres keeps MIME metadata, plus
+      # legacy BLOBs until `flask auth migrate-profile-photos` copies them.
       - key: STORAGE_BACKEND
         value: s3
       - key: S3_ENDPOINT_URL

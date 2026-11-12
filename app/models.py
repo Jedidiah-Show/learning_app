@@ -252,6 +252,7 @@ class Submission(db.Model):
         db.Index('idx_submission_user', 'user_id'),
         db.Index('idx_submission_problem', 'problem_id'),
         db.Index('idx_submission_verdict', 'verdict'),
+        db.Index('idx_submission_queue', 'verdict', 'submitted_at'),
     )
 
 
@@ -732,6 +733,20 @@ class CoursePlan(db.Model):
     __table_args__ = (
         db.Index('idx_course_plan_leaderboard_opt_in', 'leaderboard_opt_in'),
     )
+
+
+class LeaderboardScore(db.Model):
+    """Materialized learning totals used by the opt-in leaderboard."""
+    __tablename__ = 'leaderboard_score'
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), primary_key=True
+    )
+    lessons = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    projects = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    ml_lessons = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    ml_projects = db.Column(db.Integer, nullable=False, default=0, server_default='0')
+    updated_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow)
+    __table_args__ = (db.Index('idx_leaderboard_score_updated', 'updated_at'),)
 
 
 class PathwayChangeRequest(db.Model):
