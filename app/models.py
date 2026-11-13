@@ -289,6 +289,34 @@ class LabDebrief(db.Model):
     )
 
 
+class WorkspaceProject(db.Model):
+    """A learner's multi-file project built in the browser workspace.
+
+    Files are stored as a JSON object mapping path -> content and the whole
+    set is written back in one request, so the server never holds partial
+    editor state. The browser runs the project in Pyodide; the server only
+    persists drafts.
+    """
+    __tablename__ = 'workspace_project'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    project_key = db.Column(db.String(64), nullable=False)
+    name = db.Column(db.String(120), nullable=False)
+    files = db.Column(db.Text, nullable=False, default='{}')
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'project_key',
+                            name='unique_workspace_project_user_key'),
+        db.Index('idx_workspace_project_user', 'user_id'),
+    )
+
+
 class SkillNode(db.Model):
     """A competency node that maps to curriculum lessons, practice problems,
     or project studio milestones. User skill progress is tracked against

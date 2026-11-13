@@ -323,7 +323,9 @@ empty and is populated as learners submit their reasoning after a judged
 ACCEPTED lab submission. If the head includes `7f9a1c3e5b62`
 (`course_project.commit_sha`), existing projects keep NULL commit SHAs and
 simply never match a GitHub App webhook; learners resubmit with their
-tested SHA to enrol in direct webhook verification.
+tested SHA to enrol in direct webhook verification. If the head includes
+`8c1f3d5b7e26` (`workspace_project`), no backfill is required — the table
+starts empty and is populated from the bundled starter kits on first open.
 
 ```bash
 psql "$DATABASE_URL_UNPOOLED" -v ON_ERROR_STOP=1 <<'SQL'

@@ -198,7 +198,6 @@ def _normalize_database_url(database_url, production):
 
 
 def current_pathway_destination():
-    """Confirmed pathway destination for the signed-in learner.
 
     The nav shell renders on every page while the destination changes rarely,
     so the value is cached on ``g``; the dashboard seeds it because it already
@@ -511,6 +510,7 @@ def create_app(config_override=None):
     from app.routes.integrations import integrations_bp
     from app.routes.credentials import credentials_bp
     from app.routes.practice_arena import practice_arena_bp
+    from app.routes.workspace import workspace_bp
     from app.routes.passport import passport_bp
     from app.routes.ml_specialization import ml_specialization_bp
     from app.routes.cloud_ai_infrastructure import cloud_ai_infrastructure_bp
@@ -534,6 +534,7 @@ def create_app(config_override=None):
     app.register_blueprint(ml_specialization_bp)
     app.register_blueprint(cloud_ai_infrastructure_bp)
     app.register_blueprint(practice_arena_bp)
+    app.register_blueprint(workspace_bp)
     app.register_blueprint(passport_bp)
 
     def _admin_header_token_valid():
