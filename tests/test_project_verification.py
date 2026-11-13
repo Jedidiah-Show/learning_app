@@ -316,6 +316,19 @@ class GitHubAppWebhookTests(unittest.TestCase):
         )
         self.assertEqual(response.status_code, 503)
 
+    def test_webhook_works_with_csrf_enabled(self):
+        # Production runs with CSRF enforcement on; GitHub callbacks carry no
+        # session token, so the endpoint must authenticate by signature only.
+        self.app.config.update(CSRF_ENABLED=True)
+        project_id = self._seed_project()
+        payload = self._payload('c' * 40, conclusion='success')
+        response = self.client.post(
+            '/api/webhooks/github', data=payload, content_type='application/json',
+            headers=self._signed(payload),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()['status'], 'verified')
+
     def test_push_event_never_verifies_a_project(self):
         project_id = self._seed_project()
         payload = json.dumps({
