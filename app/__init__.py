@@ -198,6 +198,7 @@ def _normalize_database_url(database_url, production):
 
 
 def current_pathway_destination():
+    """Confirmed pathway destination for the signed-in learner.
 
     The nav shell renders on every page while the destination changes rarely,
     so the value is cached on ``g``; the dashboard seeds it because it already
