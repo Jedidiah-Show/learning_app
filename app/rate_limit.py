@@ -36,6 +36,8 @@ RATE_LIMIT_CONFIG = {
     'arena-hint': {'limit': 30, 'window_seconds': 600},
     'arena-run': {'limit': 20, 'window_seconds': 60},
     'arena-submit': {'limit': 10, 'window_seconds': 600},
+    'arena-debrief': {'limit': 10, 'window_seconds': 600},
+    'credentials-verify-vc': {'limit': 30, 'window_seconds': 60},
     'practice-run': {'limit': 20, 'window_seconds': 60},
     'support-request-user': {'limit': 5, 'window_seconds': 86400},
     'admin-ai-json-burst': {'limit': 6, 'window_seconds': 60},

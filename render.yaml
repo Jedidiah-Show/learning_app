@@ -133,6 +133,12 @@ services:
         sync: false
       - key: TWILIO_FROM_NUMBER
         sync: false
+      # W3C verifiable credentials (Ed25519). Unset: VC downloads answer 503;
+      # public HMAC verification and issuance of credentials still work.
+      - key: CREDENTIAL_ED25519_PRIVATE_KEY_B64
+        sync: false
+      - key: CREDENTIAL_ED25519_PUBLIC_KEY_B64
+        sync: false
       # GitHub App webhook (direct CI verification for project submissions).
       # Unset: webhook is refused with 503 and the app falls back to manual
       # checks-URL verification. Set after registering the App; see

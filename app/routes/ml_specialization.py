@@ -689,6 +689,57 @@ def issue_credential():
 
 
 @ml_specialization_bp.route(
+    '/specializations/machine-learning/credentials/<public_id>/status'
+)
+def credential_status(public_id):
+    """Public revocation status check for verifiers and registries."""
+    credential = MLSpecializationCredential.query.filter_by(
+        public_id=public_id, pathway_id=PATHWAY_ID,
+    ).first()
+    if credential is None:
+        return jsonify({'error': 'Unknown credential'}), 404
+    return jsonify({
+        'public_id': credential.public_id,
+        'status': 'revoked' if credential.revoked_at else 'active',
+        'revoked_at': credential.revoked_at.isoformat() if credential.revoked_at else None,
+    })
+
+
+@ml_specialization_bp.route(
+    '/specializations/machine-learning/credentials/<public_id>/vc.json'
+)
+@login_required
+def credential_vc_download(public_id):
+    """Download the owner's signed W3C Verifiable Credential document."""
+    from flask import Response
+    import json as _json
+
+    credential = MLSpecializationCredential.query.filter_by(
+        public_id=public_id, pathway_id=PATHWAY_ID, user_id=current_user.id,
+    ).first()
+    if credential is None:
+        abort(404)
+    if credential.revoked_at is not None:
+        return jsonify({'error': 'This credential has been revoked and cannot be exported.'}), 409
+    from app.routes.credentials import _issuer
+    from app.services.w3c_credentials import vc_for_specialization_credential, W3CCredentialError
+
+    try:
+        vc = vc_for_specialization_credential(
+            credential, _issuer(), machine_learning_pathway()['title'],
+        )
+    except W3CCredentialError as error:
+        return jsonify({'error': str(error)}), 503
+    body = _json.dumps(vc, indent=2, ensure_ascii=False)
+    response = Response(body, mimetype='application/vc+ld+json')
+    response.headers['Content-Disposition'] = (
+        f'attachment; filename="ruach-credential-{credential.public_id}.vc.json"'
+    )
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@ml_specialization_bp.route(
     '/specializations/machine-learning/credentials/<public_id>'
 )
 def verify_credential(public_id):

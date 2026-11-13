@@ -18,6 +18,9 @@ const brand = {
 };
 
 module.exports = {
+  // The app toggles `data-theme="dark"` on <html>; make `dark:` utilities follow
+  // that attribute instead of prefers-color-scheme so they agree with the toggle.
+  darkMode: ['selector', '[data-theme="dark"]'],
   content: ['./templates/**/*.html', './static/js/**/*.js'],
   theme: {
     extend: {
