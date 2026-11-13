@@ -577,6 +577,10 @@ def create_app(config_override=None):
             # need no session token (keeps scripted maintenance calls working).
             if request.path.startswith('/api/admin/') and _admin_header_token_valid():
                 return None
+            # GitHub cannot send a session CSRF token; the webhook authenticates
+            # itself with an HMAC-SHA256 signature over the raw body instead.
+            if request.path == '/api/webhooks/github':
+                return None
             token = session.get('_csrf_token')
             supplied = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
             if not token or not supplied or not hmac.compare_digest(token, supplied):
