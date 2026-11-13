@@ -157,9 +157,13 @@ def verify_checks(repository_url, checks_url, commit_sha=None, branch=None):
 
 
 def verify_github_webhook_signature(payload_bytes: bytes, signature_header: str, secret: str) -> bool:
-    """Verify GitHub App HMAC-SHA256 signature from X-Hub-Signature-256 header."""
+    """Verify GitHub App HMAC-SHA256 signature from X-Hub-Signature-256 header.
+
+    Fails closed: without a configured secret or a well-formed signature the
+    payload is rejected.
+    """
     if not secret:
-        return True
+        return False
     if not signature_header or not signature_header.startswith('sha256='):
         return False
     expected = 'sha256=' + hmac.new(

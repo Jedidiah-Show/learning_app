@@ -449,13 +449,41 @@ class ArenaApiTests(ArenaTestCase):
         self.assertNotIn('hints', data['problem'])
         self.assertEqual(data['status'], 'not-started')
 
-    def test_legacy_exercise_without_private_suite_is_not_gradeable(self):
+    def test_legacy_exercise_with_dedicated_suite_is_gradeable(self):
+        # Every legacy exercise now ships a dedicated hidden judge_tests
+        # suite, so the old "not gradeable" 409 path only applies to data
+        # built without a suite. A normal exercise submit enqueues durable
+        # judge work instead.
         self.register('legacylearner')
         self.app.config.update(TESTING=False, CSRF_ENABLED=False, JUDGE_SUBMISSIONS_ENABLED=True)
         response = self.client.post(
             '/arena/api/problems/first-python-greeting/submit',
-            json={'code': 'def greet():\n    return "hello"\n'},
+            json={'code': 'def greet(name):\n    return f"Hello, {name}!"\n\nprint(greet("AI engineering"))\n'},
         )
+        self.assertEqual(response.status_code, 202)
+        payload = response.get_json()
+        self.assertEqual(payload['status'], 'queued')
+        self.assertEqual(payload['verdict'], 'PENDING')
+
+    def test_submit_returns_409_when_problem_has_no_hidden_suite(self):
+        # Defensive guard for data built without a dedicated hidden suite.
+        # All shipped problems have one, so the branch is exercised here by
+        # patching the catalogue lookup.
+        self.register('nosuitelearner')
+        self.app.config.update(TESTING=False, CSRF_ENABLED=False, JUDGE_SUBMISSIONS_ENABLED=True)
+        suiteless = {
+            'id': 'synthetic-exercise', 'source': 'lesson', 'track': 'algorithms',
+            'topic': 'arrays-strings', 'title': 'Synthetic', 'statement': 'x',
+            'difficulty': 'beginner', 'skills': ['python'], 'prerequisites': [],
+            'starter_code': 'pass', 'solution_code': 'pass',
+            'browser_checks': 'assert True', 'judge_tests': '',
+            'hints': [], 'editorial': '',
+        }
+        with patch('app.routes.practice_arena.get_arena_problem', return_value=suiteless):
+            response = self.client.post(
+                '/arena/api/problems/synthetic-exercise/submit',
+                json={'code': 'pass\n'},
+            )
         self.assertEqual(response.status_code, 409)
         self.assertIn('Verified grading is not available', response.get_json()['error'])
 

@@ -570,3 +570,78 @@ if (root) {
 
     void loadProblem();
 }
+
+// Lab debrief: capture the learner's diagnosis and verification reasoning for
+// the three engineering troubleshooting labs. The judge owns fix correctness;
+// this endpoint rubric-scores the reasoning and records LAB evidence.
+const debriefPanel = document.querySelector('[data-lab-debrief]');
+if (debriefPanel) {
+    const debriefUrl = debriefPanel.dataset.debriefUrl;
+    const debriefForm = debriefPanel.querySelector('[data-lab-debrief-form]');
+    const debriefStatus = debriefPanel.querySelector('[data-lab-debrief-status]');
+    const debriefResult = debriefPanel.querySelector('[data-lab-debrief-result]');
+    const debriefVerdict = debriefPanel.querySelector('[data-lab-debrief-verdict]');
+    const debriefSummary = debriefPanel.querySelector('[data-lab-debrief-summary]');
+    const debriefCsrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
+    const showDebrief = (debrief) => {
+        if (!debrief) {
+            debriefResult.classList.add('hidden');
+            return;
+        }
+        debriefResult.classList.remove('hidden');
+        debriefVerdict.textContent = debrief.passed
+            ? `Passed — LAB evidence recorded in your Skill Passport (score ${debrief.score})`
+            : debrief.evaluation_source === 'local'
+                ? 'Saved — AI scoring is temporarily unavailable'
+                : `Recorded — score ${debrief.score ?? '—'} (pass at 70+ with every criterion ≥ 50)`;
+        const feedback = Array.isArray(debrief.criterion_feedback)
+            ? debrief.criterion_feedback.map((item) => `${item.criterion}: ${item.score}`).join(' · ')
+            : '';
+        debriefSummary.textContent = feedback;
+    };
+
+    fetch(debriefUrl, { headers: { Accept: 'application/json' } })
+        .then((response) => (response.ok ? response.json() : null))
+        .then((data) => {
+            if (!data || !data.debrief) return;
+            debriefForm.diagnosis.value = data.debrief.diagnosis || '';
+            debriefForm.verification.value = data.debrief.verification || '';
+            showDebrief(data.debrief);
+        })
+        .catch(() => { /* pre-fill is best effort */ });
+
+    debriefForm.addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const diagnosis = debriefForm.diagnosis.value.trim();
+        const verification = debriefForm.verification.value.trim();
+        if (diagnosis.length < 40 || verification.length < 40) {
+            debriefStatus.textContent = 'Each answer needs at least 40 characters.';
+            return;
+        }
+        debriefStatus.textContent = 'Scoring your debrief…';
+        try {
+            const response = await fetch(debriefUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-Token': debriefCsrf,
+                    Accept: 'application/json',
+                },
+                body: JSON.stringify({ diagnosis, verification }),
+            });
+            const data = await response.json().catch(() => ({}));
+            if (!response.ok) {
+                debriefStatus.textContent = data.error || 'Your debrief could not be recorded.';
+                if (data.debrief) showDebrief(data.debrief);
+                return;
+            }
+            debriefStatus.textContent = data.status === 'passed'
+                ? 'Debrief passed — your Skill Passport has been updated.'
+                : (data.message || 'Debrief recorded.');
+            if (data.debrief) showDebrief(data.debrief);
+        } catch (error) {
+            debriefStatus.textContent = 'Network error — your debrief was not recorded.';
+        }
+    });
+}

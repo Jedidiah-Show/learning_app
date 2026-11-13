@@ -1,6 +1,7 @@
 """Module projects based on the bundled course and evaluated with AI."""
 
 import json
+import os
 from io import BytesIO
 from zipfile import ZIP_DEFLATED, ZipFile
 from urllib.parse import urlsplit
@@ -596,12 +597,21 @@ def submit_module_project(module_id):
     if branch_value is not None and not isinstance(branch_value, str):
         return jsonify({'error': 'Branch must be a string'}), 400
     branch = branch_value.strip() or None if isinstance(branch_value, str) else None
+    if not isinstance(checks_url, str):
+        checks_url = ''
+    checks_url = checks_url.strip()
+    commit_sha = data.get('commit_sha') if isinstance(data.get('commit_sha'), str) else None
     if not isinstance(repository_url, str) or not repository_url.strip():
         return jsonify({'error': 'A public repository URL is required'}), 400
-    if not isinstance(checks_url, str) or not checks_url.strip():
-        return jsonify({'error': 'A public automated checks URL is required'}), 400
     if not isinstance(commit_sha, str) or not commit_sha.strip():
         return jsonify({'error': 'The full commit SHA tested by CI is required'}), 400
+    webhook_configured = bool(
+        current_app.config.get('GITHUB_WEBHOOK_SECRET') or os.environ.get('GITHUB_WEBHOOK_SECRET')
+    )
+    if not checks_url and not webhook_configured:
+        return jsonify({
+            'error': 'Provide a public automated checks URL, or ask the administrator to configure the GitHub App webhook so your CI can verify this project directly.',
+        }), 400
     try:
         demo_url = _optional_https_url('demo_url')
     except ValueError as error:
@@ -618,7 +628,8 @@ def submit_module_project(module_id):
     # unreachable checks page keeps the draft instead of discarding the work.
     record.submission = submission.strip()
     record.repository_url = repository_url
-    record.checks_url = checks_url
+    record.commit_sha = commit_sha.strip().lower()
+    record.checks_url = checks_url or None
     record.demo_url = demo_url
     record.checks_verified = False
     record.completed = False
@@ -626,12 +637,22 @@ def submit_module_project(module_id):
     from app.leaderboard import refresh_leaderboard_score
     refresh_leaderboard_score(current_user.id, commit=False)
     db.session.commit()
-    try:
-        verification = verify_checks(
-            repository_url, checks_url, commit_sha=commit_sha.strip(), branch=branch
-        )
-    except VerificationError as error:
-        return jsonify({'error': str(error), 'draft_saved': True}), 422
+    if checks_url:
+        try:
+            verification = verify_checks(
+                repository_url, checks_url, commit_sha=commit_sha.strip(), branch=branch
+            )
+        except VerificationError as error:
+            return jsonify({'error': str(error), 'draft_saved': True}), 422
+    else:
+        # Direct GitHub App webhook verification: there is no checks page to
+        # fetch. The CI run will call us back when it completes, matched
+        # against the commit recorded above.
+        verification = {
+            'verified': False,
+            'commit_sha': record.commit_sha,
+            'pending': 'github_webhook',
+        }
     project_payload = record.get_project()
     if module_id != all_modules()[-1]['id']:
         project_payload['rubric'] = module.get('project_rubric') or project_payload.get('rubric', [])
@@ -650,7 +671,7 @@ def submit_module_project(module_id):
         f"Project: {json.dumps(project_payload, ensure_ascii=False)}\n"
         f"Submission: {json.dumps(submission.strip(), ensure_ascii=False)}\n"
         f"Repository URL: {repository_url}\n"
-        f"Automated checks URL: {checks_url}\n"
+        f"Automated checks URL: {checks_url or 'pending — GitHub App webhook will verify CI by commit SHA'}\n"
         f"Demo URL: {demo_url or 'not provided'}"
     )
     try:
@@ -759,6 +780,8 @@ def submit_module_project(module_id):
         'completed': record.completed,
         'evaluation': evaluation,
         'checks': verification,
+        'verification_pending': not record.checks_verified
+        and verification.get('pending') == 'github_webhook',
     })
 
 
@@ -835,14 +858,23 @@ def _config():
 
 @projects_bp.route('/api/webhooks/github', methods=['POST'])
 def github_webhook():
-    """Receive automated GitHub checks and push events to verify projects directly."""
+    """Receive automated GitHub check and workflow events to verify projects directly.
+
+    Fails closed when the webhook secret is not configured; only completed
+    check_run/workflow_run events can verify a project, and the webhook must
+    match the repository and the exact commit SHA recorded at submission.
+    Push events never verify a project on their own.
+    """
     secret = current_app.config.get('GITHUB_WEBHOOK_SECRET') or os.environ.get('GITHUB_WEBHOOK_SECRET')
     sig_header = request.headers.get('X-Hub-Signature-256', '')
     payload_bytes = request.get_data()
 
     from app.project_verification import verify_github_webhook_signature, process_github_webhook_event
 
-    if secret and not verify_github_webhook_signature(payload_bytes, sig_header, secret):
+    if not secret:
+        current_app.logger.warning('GitHub webhook received but GITHUB_WEBHOOK_SECRET is not configured; refusing to process')
+        return jsonify({'error': 'Webhook verification is not configured on this server.'}), 503
+    if not verify_github_webhook_signature(payload_bytes, sig_header, secret):
         return jsonify({'error': 'Invalid signature'}), 401
 
     event_type = request.headers.get('X-GitHub-Event', 'ping')
@@ -856,13 +888,19 @@ def github_webhook():
         return jsonify({'status': 'pong'}), 200
 
     repo_url = parsed.get('repository_url')
-    if not repo_url or not parsed.get('verified'):
+    commit_sha = (parsed.get('commit_sha') or '').strip().lower()
+    # A push event proves code moved; it does not prove CI passed, so it can
+    # never verify a project. Only completed check runs and workflow runs do.
+    if event_type not in ('check_run', 'workflow_run'):
+        return jsonify({'status': 'ignored', 'reason': 'event cannot verify CI'}), 200
+    if not repo_url or not commit_sha or not parsed.get('verified'):
         return jsonify({'status': 'ignored', 'reason': 'unsupported or unverified event'}), 200
 
     repo_clean = repo_url.rstrip('/').lower().removesuffix('.git')
     projects = CourseProject.query.filter(
         CourseProject.repository_url.isnot(None),
         CourseProject.checks_verified.is_(False),
+        CourseProject.commit_sha == commit_sha,
     ).all()
 
     matched = []

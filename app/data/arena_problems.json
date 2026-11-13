@@ -901,7 +901,8 @@
       "Calculate Euclidean magnitude: sqrt(sum(x^2)). Guard against division by zero.",
       "Unit vectors have dot product equal to cosine similarity in [-1, 1]."
     ],
-    "editorial": "When ingesting embeddings from multiple providers or model versions, dimension mismatch will corrupt indexing. Unnormalized dot product magnifies vector length rather than angular direction. Enforcing dimension checks at ingestion and applying L2 normalization guarantees consistent cosine distance."
+    "editorial": "When ingesting embeddings from multiple providers or model versions, dimension mismatch will corrupt indexing. Unnormalized dot product magnifies vector length rather than angular direction. Enforcing dimension checks at ingestion and applying L2 normalization guarantees consistent cosine distance.",
+    "lab": true
   },
   {
     "id": "lab-troubleshoot-rag-chunking",
@@ -935,7 +936,8 @@
       "Use rfind(\" \", start, end) to find the nearest word boundary before cutting.",
       "Ensure the loop pointer advances by at least 1 character on every step."
     ],
-    "editorial": "Sliding window chunking is the backbone of RAG ingest. Allowing overlap >= chunk_size creates zero or negative strides, locking workers in infinite while loops. Slicing on exact character offsets without whitespace snapping corrupts semantic tokens and vocabulary embeddings at boundaries."
+    "editorial": "Sliding window chunking is the backbone of RAG ingest. Allowing overlap >= chunk_size creates zero or negative strides, locking workers in infinite while loops. Slicing on exact character offsets without whitespace snapping corrupts semantic tokens and vocabulary embeddings at boundaries.",
+    "lab": true
   },
   {
     "id": "lab-troubleshoot-docker-network",
@@ -970,6 +972,7 @@
       "Services on a user-defined bridge network resolve each other by service name via Docker embedded DNS.",
       "A service must listen on 0.0.0.0 to accept packets arriving through the container network interface."
     ],
-    "editorial": "A classic Docker networking failure is deploying multiple containers on a bridge network while retaining local development endpoints like localhost:5432. Each container has its own network namespace, so localhost never reaches sibling containers. Furthermore, binding an application server to 127.0.0.1 drops all bridge network traffic before it reaches the socket."
+    "editorial": "A classic Docker networking failure is deploying multiple containers on a bridge network while retaining local development endpoints like localhost:5432. Each container has its own network namespace, so localhost never reaches sibling containers. Furthermore, binding an application server to 127.0.0.1 drops all bridge network traffic before it reaches the socket.",
+    "lab": true
   }
 ]

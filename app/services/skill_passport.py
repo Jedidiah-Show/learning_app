@@ -230,6 +230,62 @@ def ensure_all_skill_nodes() -> None:
     _ensure_skill_node('project-studio', 'projects')
 
 
+# Evidence strength ordering: a stronger (more assessed) evidence type is
+# never downgraded to a weaker one by an unrelated later verification.
+EVIDENCE_RANK = {'LESSON': 1, 'PROBLEM': 2, 'LAB': 3, 'PROJECT': 4}
+
+
+def _award_problem_skills(user_id, problem, evidence_type, *, commit=True):
+    from app.practice_arena import all_arena_problems
+
+    problem_id = problem['id']
+    new_rank = EVIDENCE_RANK.get(evidence_type, 0)
+    skills = map_problem_skills(problem, user_id)
+    if not skills:
+        return
+
+    all_problems = all_arena_problems()
+    for skill in skills:
+        _ensure_skill_node(skill)
+        # Use row-level lock to prevent race conditions on double submissions
+        progress = UserSkillProgress.query.filter_by(
+            user_id=user_id, skill_id=skill
+        ).with_for_update().first()
+
+        if progress is None:
+            progress = UserSkillProgress(
+                user_id=user_id,
+                skill_id=skill,
+                status='DEMONSTRATED',
+                evidence_type=evidence_type,
+                evidence_id=problem_id,
+                updated_at=utcnow(),
+            )
+            db.session.add(progress)
+        else:
+            problem_ids = [
+                candidate['id']
+                for candidate in all_problems.values()
+                if skill in map_problem_skills(candidate, user_id)
+            ]
+            accepted_count = Submission.query.filter(
+                Submission.user_id == user_id,
+                Submission.verdict == 'ACCEPTED',
+                Submission.problem_id.in_(problem_ids),
+            ).count()
+            progress.status = (
+                'MASTERED' if accepted_count >= 3 else 'DEMONSTRATED'
+            )
+            current_rank = EVIDENCE_RANK.get(progress.evidence_type or '', 0)
+            if current_rank < new_rank:
+                progress.evidence_type = evidence_type
+                progress.evidence_id = problem_id
+            progress.updated_at = utcnow()
+
+    if commit:
+        db.session.commit()
+
+
 def update_skill_progress_from_submission(
     submission: Submission, *, commit: bool = True
 ) -> None:
@@ -256,48 +312,27 @@ def update_skill_progress_from_submission(
     if problem is None:
         return
 
-    skills = map_problem_skills(problem, submission.user_id)
-    if not skills:
+    _award_problem_skills(
+        submission.user_id, problem, 'PROBLEM', commit=commit,
+    )
+
+
+def update_skill_progress_from_lab(
+    user_id: int, lab_problem_id: str, *, commit: bool = True
+) -> None:
+    """Record lab-specific evidence when a learner passes the lab debrief.
+
+    Labs assess more than the fix: the learner must diagnose the failure,
+    justify the fix, and describe how they verified it. A passed debrief
+    upgrades the lab problem's skills to LAB evidence.
+    """
+    from app.practice_arena import all_arena_problems
+
+    problem = all_arena_problems().get(lab_problem_id)
+    if problem is None or not problem.get('lab'):
         return
 
-    for skill in skills:
-        _ensure_skill_node(skill)
-        # Use row-level lock to prevent race conditions on double submissions
-        progress = UserSkillProgress.query.filter_by(
-            user_id=submission.user_id, skill_id=skill
-        ).with_for_update().first()
-
-        if progress is None:
-            progress = UserSkillProgress(
-                user_id=submission.user_id,
-                skill_id=skill,
-                status='DEMONSTRATED',
-                evidence_type='PROBLEM',
-                evidence_id=problem_id,
-                updated_at=utcnow(),
-            )
-            db.session.add(progress)
-        else:
-            problem_ids = [
-                candidate['id']
-                for candidate in all_problems.values()
-                if skill in map_problem_skills(candidate, submission.user_id)
-            ]
-            accepted_count = Submission.query.filter(
-                Submission.user_id == submission.user_id,
-                Submission.verdict == 'ACCEPTED',
-                Submission.problem_id.in_(problem_ids),
-            ).count()
-            progress.status = (
-                'MASTERED' if accepted_count >= 3 else 'DEMONSTRATED'
-            )
-            if progress.evidence_type != 'PROJECT':
-                progress.evidence_type = 'PROBLEM'
-                progress.evidence_id = problem_id
-            progress.updated_at = utcnow()
-
-    if commit:
-        db.session.commit()
+    _award_problem_skills(user_id, problem, 'LAB', commit=commit)
 
 
 def update_skill_progress_from_project(

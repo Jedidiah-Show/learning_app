@@ -317,6 +317,14 @@ backfill automatically after `flask db upgrade`, and every progress write
 (lesson completion, placement, project verification, ML specialization
 progress, leaderboard opt-in toggles) refreshes the affected learner's tally.
 
+If the migration head includes `6e8f0b2d4a51` (engineering troubleshooting
+lab debriefs), no backfill is required — the `lab_debrief` table starts
+empty and is populated as learners submit their reasoning after a judged
+ACCEPTED lab submission. If the head includes `7f9a1c3e5b62`
+(`course_project.commit_sha`), existing projects keep NULL commit SHAs and
+simply never match a GitHub App webhook; learners resubmit with their
+tested SHA to enrol in direct webhook verification.
+
 ```bash
 psql "$DATABASE_URL_UNPOOLED" -v ON_ERROR_STOP=1 <<'SQL'
 SELECT version_num FROM alembic_version;
@@ -324,6 +332,7 @@ SELECT count(*) FROM "user";
 SELECT count(*) FROM lesson_completion;
 SELECT count(*) FROM course_project;
 SELECT count(*) FROM leaderboard_score;
+SELECT count(*) FROM lab_debrief;
 SQL
 ```
 
@@ -506,7 +515,11 @@ Record the Render revision and the smoke-test time in the rollout notes.
 
 ### Webhooks / CORS
 
-- No inbound webhooks were found in the repository.
+- One inbound webhook exists: `POST /api/webhooks/github`, used by the
+  GitHub App for direct CI verification of project submissions (see
+  `docs/GITHUB_APP_SETUP.md`). It is HMAC-verified against
+  `GITHUB_WEBHOOK_SECRET` and refuses to process requests with 503 when the
+  secret is unset, and 401 on a bad signature.
 - The app is same-origin for its HTML and API routes. The only CORS header is
   scoped to self-hosted Pyodide static assets for the sandboxed practice iframe;
   no application API endpoint needs cross-origin access. Do not add wildcard

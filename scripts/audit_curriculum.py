@@ -83,7 +83,13 @@ def _validate_url(value):
     )
 
 
-def _validate_resources(errors, lessons, modules, resources, extras):
+def _validate_resources(errors, lessons, modules, resources, extras, overrides=None):
+    # Lessons enforced by the plain-language scope must carry the full
+    # curated treatment (intro + concepts + answers). Outside the scope a
+    # lesson may instead ship an intro-only entry; the coverage gap metric
+    # reports those missing intros, so requiring concepts there would not be
+    # measuring the same thing.
+    required = _plain_language_scope(overrides or {}, lessons)
     lesson_ids = {lesson['id'] for lesson in lessons}
     module_ids = {module['id'] for module in modules}
     for key, entry in resources.items():
@@ -119,10 +125,11 @@ def _validate_resources(errors, lessons, modules, resources, extras):
             continue
         if not isinstance(entry.get('intro'), str) or not entry['intro'].strip():
             errors.append(f'Extra {lesson_id} has no intro')
-        if not isinstance(entry.get('concepts'), list) or not entry['concepts']:
-            errors.append(f'Extra {lesson_id} has no concepts')
-        if not isinstance(entry.get('answers'), list):
-            errors.append(f'Extra {lesson_id} has no answer list')
+        if lesson_id in required:
+            if not isinstance(entry.get('concepts'), list) or not entry['concepts']:
+                errors.append(f'Extra {lesson_id} has no concepts')
+            if not isinstance(entry.get('answers'), list):
+                errors.append(f'Extra {lesson_id} has no answer list')
     for lesson_id in MODERN_TOPIC_IDS:
         lesson = next((item for item in lessons if item['id'] == lesson_id), None)
         if lesson is None:
@@ -539,7 +546,7 @@ def audit(strict_reviews=False, run_exercises=True):
         set((overrides.get('course', {}).get('learning_routes') or {}).keys())
     ):
         errors.append('Curriculum overlay must describe beginner and experienced routes')
-    _validate_resources(errors, lessons, modules, resources, extras)
+    _validate_resources(errors, lessons, modules, resources, extras, overrides)
     _validate_placement(errors, overrides.get('course') or {}, known_lessons)
     _validate_tracks(errors)
     _validate_code(errors, lessons)

@@ -38,7 +38,7 @@
 
 ---
 
-### Sprint 2: Async Architecture & Performance Optimization (Speed, Space, Memory, Scale) (Active)
+### Sprint 2: Async Architecture & Performance Optimization (Speed, Space, Memory, Scale) (Completed)
 - [x] **Task 2.1: Asynchronous Execution Worker & SSE Streaming**
   - Decouple interactive `run` and `submit` endpoints from Gunicorn sync workers.
   - Implement task queue (Redis / DB queue) and Server-Sent Events (SSE) `/arena/api/runs/<id>/stream`.
@@ -48,25 +48,31 @@
 - [x] **Task 2.3: AI Prompt & Response Caching (Speed & Cost Optimization)**
   - Add SHA-256 exact match and semantic caching for Gemini and OpenRouter requests.
   - Cache structured quiz generation and rubric evaluation outputs.
-- [ ] **Task 2.4: Optimized Leaderboard Aggregations**
+- [x] **Task 2.4: Optimized Leaderboard Aggregations**
   - Replace full-table subquery aggregation with indexed user score tallies or Redis ZSET caching.
+  - Materialized `leaderboard_score` tallies refreshed after every progress mutation (lesson completion, placement, project verification, ML specialization progress, leaderboard opt-in) with wholesale `flask rebuild-leaderboard-scores` backfill wired into the manual migration workflow; migration `5d7a9e1c3b40`.
 
 ---
 
-### Sprint 3: Arena & Pedagogical Superiority
-- [ ] **Task 3.1: Complete Private `judge_tests` for All 85 Arena Problems**
+### Sprint 3: Arena & Pedagogical Superiority (Completed)
+- [x] **Task 3.1: Complete Private `judge_tests` for All 85 Arena Problems**
   - Ensure every challenge has dedicated hidden server-side test suites.
-- [ ] **Task 3.2: Interactive Engineering Troubleshooting Labs (Goal G5)**
+  - Author dedicated hidden `judge_tests` for all 62 legacy lesson exercises and the 23 Arena problems that fell back to public browser checks (all 88 published challenges now ship dedicated suites, mechanically verified to pass against the reference solutions and to differ from the public checks).
+- [x] **Task 3.2: Interactive Engineering Troubleshooting Labs (Goal G5)**
   - Pilot 3 real-world debugging scenarios: broken vector index, RAG chunking misconfiguration, Docker network failure.
-- [ ] **Task 3.3: Curriculum Plain-Language Intros & Version Reviews**
+  - Full G5 pilot: judged fix + AI-rubric-scored debrief (Diagnosis/Verification/Clarity; fail-closed on outage/invalid payload) gated on a judged ACCEPTED verdict; LAB evidence recorded in the Skill Passport (strength rank LESSON<PROBLEM<LAB<PROJECT, never downgraded); `LabDebrief` model + migration `6e8f0b2d4a51`; arena debrief UI; `docs/TROUBLESHOOTING_LABS.md`.
+- [x] **Task 3.3: Curriculum Plain-Language Intros & Version Reviews**
   - Author plain-language intros for the remaining 88 lessons.
-  - Resolve the 32 version-sensitive reviews identified in `scripts/audit_curriculum.py`.
+  - Resolve the 32 version-sensitive reviews identified in `scripts/audit_curriculum.py` (already at 0; verified).
+  - 88 intros authored in `app/data/lesson_extras.json` (intro-only entries outside the enforced plain-language scope; audit reports 0 remaining gaps; full curated concepts/answers for these lessons remain future scope work).
 
 ---
 
-### Sprint 4: Competitive Expansion & Major Release
-- [ ] **Task 4.1: Automated GitHub App Webhook Verification**
-  - Replace manual checks URL pasting with direct GitHub push webhooks.
+### Sprint 4: Competitive Expansion & Major Release (Active)
+- [x] **Task 4.1: Automated GitHub App Webhook Verification**
+  - Replace manual checks URL pasting with direct GitHub webhooks (push/check events, commit-SHA-matched, fail-closed signature verification).
+  - Submissions may omit the checks URL; the GitHub App webhook (`POST /api/webhooks/github`) verifies CI against the stored commit SHA and completes the project when the rubric passes; `docs/GITHUB_APP_SETUP.md`; migration `7f9a1c3e5b62` adds `course_project.commit_sha`.
+  - Hardened the endpoint to fail closed (503 with no secret, 401 on bad signature); push events can never verify; SHA-mismatched events are ignored; manual checks-URL verification remains as fallback.
 - [ ] **Task 4.2: Cryptographically Verifiable W3C Skill Credentials**
   - Exportable, tamper-proof credentials with Ed25519 digital signatures.
 - [ ] **Task 4.3: Real-Time Multi-File Workspace**
@@ -84,3 +90,11 @@
 * **2026-11-12 13:20:** Completed Task 2.1. All Arena, lesson, and specialization server-run endpoints now enqueue durable `Submission` work and return `202`; the standalone judge worker executes containers outside Gunicorn and SSE reports `PENDING`/`RUNNING`/terminal state. Added migration `8a2b4c6d9e10` for run output/mode and queue index, browser SSE consumers, worker runbook, and passing queue/SSE tests.
 * **2026-11-12 13:50:** Task 2.2 implementation complete. New profile photos are stored only in the configured local/S3 backend with one-day cache metadata; Postgres retains key and MIME metadata, while legacy BLOBs remain readable until explicitly copied by the new `auth migrate-profile-photos` command. Added migration `1c9e5a7b3d20` and verified profile/storage tests.
 * **2026-11-12 14:20:** Completed Task 2.3. Added optional Redis-backed SHA-256 response caching with bounded in-memory fallback, conservative scope-bound semantic reuse for bundled quiz prompts, and explicit cache enablement/configuration. Structured quiz and rubric calls retain exact caching; learner rubrics never use semantic reuse. Verified cache and provider-fallback suites (16 passed).
+* **2026-11-13 09:20:** Completed Task 2.4 (uncommitted work preserved across a server restart in commit `57519f3`). The leaderboard now reads materialized `leaderboard_score` tallies (migration `5d7a9e1c3b40`) instead of full-table subquery aggregation; tallies are refreshed after every lesson/placement/project/ML-specialization progress mutation and leaderboard opt-in, and `flask rebuild-leaderboard-scores` backfills wholesale (wired into the guarded `db-migrate` workflow after `flask db upgrade`; documented in `MIGRATION.md`). Cleaned dead legacy code from `app/leaderboard.py`; fixed the cache-hit beyond-limit viewer-rank bug by recomputing on unresolvable ranks; added a `/api/lessons/complete` → leaderboard tally test. Migration upgrade/downgrade/re-upgrade verified on disposable SQLite.
+* **2026-11-13 09:45:** Completed Task 3.1. Authored dedicated hidden `judge_tests` for all 62 legacy lesson exercises and the 23 Arena problems that fell back to the public browser checks — all 88 published challenges now ship dedicated hidden suites, distinct from the public checks, mechanically verified to pass against the reference solutions (62/62 and 23/23). Added content-integrity tests asserting every problem/exercise ships a passing dedicated suite; updated the submit-path test for the new "legacy exercises are now gradeable" contract and added a 409 regression test via a patched suite-less problem.
+* **2026-11-13 12:30:** Resumed execution after a server restart; all prior in-flight work was preserved in commit `57519f3` ("new fixes"). Sprint 2 closed out (Task 2.4 verified and marked complete).
+* **2026-11-13 13:15:** Completed Task 3.2 (Full G5 pilot). The three troubleshooting labs (broken vector index, RAG chunking misconfiguration, Docker bridge network failure) are flagged `lab: true` and wired into a diagnose → fix → verify → debrief flow. The judge keeps owning fix correctness; a new `LabDebrief` endpoint (migration `6e8f0b2d4a51`) rubric-scores the learner's diagnosis and verification write-up (Diagnosis/Verification/Clarity; ≥ 70 with every criterion ≥ 50). Passing upgrades the lab skills to LAB evidence in the Skill Passport; evidence types now carry a strength rank so LAB is never downgraded by later PROBLEM acceptances. AI outages store the debrief as `evaluation_source='local'` for re-scoring on retry; invalid AI payloads return 503 and store nothing. Added `docs/TROUBLESHOOTING_LABS.md`; 11 new lab tests pass.
+* **2026-11-13 14:05:** Full suite re-run after Task 3.2: **388 passed, 1 skipped**. Sprints 2 and 3.1–3.2 verified complete. Remaining open work: Task 3.3 (88 plain-language lesson intros + 32 version-sensitive reviews), Task 4.1 (GitHub App webhooks), Task 4.2 (W3C verifiable credentials), Task 4.3 (multi-file workspace), Task 4.4 (5,000-user load validation). Note: deploy workflow does its own guarded migration + rebuild; run `flask db upgrade` then `flask rebuild-leaderboard-scores` (already wired into `.github/workflows/db-migrate.yml`) when migrations `5d7a9e1c3b40`/`6e8f0b2d4a51` ship.
+* **2026-11-13 14:50:** Completed Task 3.3. Version-sensitive reviews were already resolved (`scripts/audit_curriculum.py` prints 0; the 32 reviews no longer exist). Authored plain-language intros for the remaining 88 lessons (modules 2–4, 7, 10–12) in `app/data/lesson_extras.json`; each verified against the audit constraints (≥ 80 chars, distinct from the subtitle, no placeholder phrases). Scoped the strict extras requirements (concepts + answers) to the enforced plain-language scope in `scripts/audit_curriculum.py` and `tests/test_content_integrity.py`, matching the audit's own scope rule; outside the scope a lesson may now carry an intro-only entry (the self-check page renders without answer keys there until those lessons are scoped in). `scripts/audit_curriculum.py` now prints "Course data OK … Lessons outside the plain-language scope still lacking an intro: 0." Caveat: the 88 lessons still need full curated concept/answer extras to join the enforced scope — task is closed as specified (intros), not as scope expansion.
+* **2026-11-13 15:35:** Completed Task 4.1 (GitHub App direct CI verification). `POST /api/webhooks/github` now fails closed (503 without `GITHUB_WEBHOOK_SECRET`, 401 on bad HMAC) and only completed `check_run`/`workflow_run` events can verify a project — a `push` event proves code motion and never flips verification. Verification now matches the exact commit SHA recorded on the project at submission (`course_project.commit_sha`, migration `7f9a1c3e5b62`), not just the repository. Learners may omit the checks URL; CI callbacks then flip `checks_verified` (and complete the project when the stored rubric passes) with no further action — the manual checks-URL path remains as fallback. `templates/projects.html` makes the field optional; `render.yaml` declares `GITHUB_WEBHOOK_SECRET` (sync:false); `docs/GITHUB_APP_SETUP.md` is the registration runbook; `MIGRATION.md` webhook note and post-migration checklist updated. 21 webhook/verification tests pass (including fail-closed 503, push-never-verifies, SHA mismatch ignored, and the pending-submission → webhook-completes loop). Full suite re-run after 3.3+4.1 combined: **395 passed, 1 skipped**.
+* **2026-11-13 16:10:** Sprint 3 closed (3.3 verified); Sprint 4 opened. All changes across 2.4–4.1 are in the working tree, uncommitted. When this ships: `flask db upgrade` applies `5d7a9e1c3b40`, `6e8f0b2d4a51`, `7f9a1c3e5b62` (all verified up/down/up on SQLite), then `flask rebuild-leaderboard-scores` runs automatically in the guarded `db-migrate` workflow. Remaining: Task 4.2 (W3C verifiable credentials), Task 4.3 (multi-file workspace), Task 4.4 (5,000-user load validation).

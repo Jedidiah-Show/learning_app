@@ -2,6 +2,7 @@
 
 import json
 import os
+import tempfile
 import unittest
 from unittest.mock import patch
 
@@ -195,6 +196,7 @@ class ProjectVerificationTests(unittest.TestCase):
                         module_id='01',
                         project='{}',
                         repository_url='https://github.com/learner/sample-ai-app',
+                        commit_sha='c' * 40,
                         checks_verified=False,
                     )
                     db.session.add(project)
@@ -237,3 +239,229 @@ class ProjectVerificationTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class WebhookSignatureFailClosedTests(unittest.TestCase):
+    def test_empty_secret_rejects_any_signature(self):
+        from app.project_verification import verify_github_webhook_signature
+
+        self.assertFalse(verify_github_webhook_signature(b'{}', 'sha256=abc', ''))
+        self.assertFalse(verify_github_webhook_signature(b'{}', '', 'secret'))
+
+
+class GitHubAppWebhookTests(unittest.TestCase):
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.previous_database_url = os.environ.get('DATABASE_URL')
+        os.environ['DATABASE_URL'] = f'sqlite:///{self.temp_dir.name}/test.db'
+        from app import create_app, db
+        self.db = db
+        self.app = create_app()
+        self.app.config.update(TESTING=True, GITHUB_WEBHOOK_SECRET='test-webhook-secret')
+        with self.app.app_context():
+            db.create_all()
+        self.client = self.app.test_client()
+
+    def tearDown(self):
+        with self.app.app_context():
+            self.db.session.remove()
+            self.db.drop_all()
+            self.db.engine.dispose()
+        if self.previous_database_url is None:
+            os.environ.pop('DATABASE_URL', None)
+        else:
+            os.environ['DATABASE_URL'] = self.previous_database_url
+        self.temp_dir.cleanup()
+
+    def _signed(self, payload_bytes, event='check_run'):
+        import hmac
+        import hashlib
+        sig = 'sha256=' + hmac.new(b'test-webhook-secret', payload_bytes, hashlib.sha256).hexdigest()
+        return {'X-Hub-Signature-256': sig, 'X-GitHub-Event': event}
+
+    def _seed_project(self, commit_sha='c' * 40, repository='https://github.com/learner/sample-ai-app'):
+        from app.models import CourseProject, User
+        from app import db
+
+        with self.app.app_context():
+            user = User(username='learner', email='learner@example.test')
+            db.session.add(user)
+            db.session.commit()
+            project = CourseProject(
+                user_id=user.id, module_id='01', project='{}',
+                repository_url=repository, commit_sha=commit_sha,
+                checks_verified=False,
+            )
+            db.session.add(project)
+            db.session.commit()
+            return project.id
+
+    def _payload(self, sha, conclusion='success'):
+        return json.dumps({
+            'action': 'completed',
+            'check_run': {
+                'conclusion': conclusion,
+                'head_sha': sha,
+                'html_url': 'https://github.com/learner/sample-ai-app/actions/runs/999',
+            },
+            'repository': {'html_url': 'https://github.com/learner/sample-ai-app'},
+        }).encode('utf-8')
+
+    def test_missing_secret_refuses_with_503(self):
+        self.app.config.update(GITHUB_WEBHOOK_SECRET=None)
+        os.environ.pop('GITHUB_WEBHOOK_SECRET', None)
+        response = self.client.post(
+            '/api/webhooks/github', data=b'{}', content_type='application/json',
+            headers={'X-GitHub-Event': 'check_run'},
+        )
+        self.assertEqual(response.status_code, 503)
+
+    def test_push_event_never_verifies_a_project(self):
+        project_id = self._seed_project()
+        payload = json.dumps({
+            'after': 'c' * 40,
+            'repository': {'html_url': 'https://github.com/learner/sample-ai-app'},
+        }).encode('utf-8')
+        response = self.client.post(
+            '/api/webhooks/github', data=payload, content_type='application/json',
+            headers=self._signed(payload, event='push'),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()['status'], 'ignored')
+        from app.models import CourseProject
+        from app import db
+        with self.app.app_context():
+            self.assertFalse(db.session.get(CourseProject, project_id).checks_verified)
+
+    def test_check_run_success_marks_verified_and_completes_when_rubric_passes(self):
+        from app.models import CourseProject
+        from app import db
+
+        sha = 'd' * 40
+        evaluation = json.dumps({
+            'score': 80, 'summary': 'solid', 'strengths': [], 'gaps': [], 'next_steps': [],
+            'criterion_feedback': [],
+        })
+        project_id = self._seed_project(commit_sha=sha)
+        with self.app.app_context():
+            project = db.session.get(CourseProject, project_id)
+            project.evaluation = evaluation
+            project.completed = False
+            db.session.commit()
+        payload = self._payload(sha, conclusion='success')
+        response = self.client.post(
+            '/api/webhooks/github', data=payload, content_type='application/json',
+            headers=self._signed(payload),
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()['status'], 'verified')
+        with self.app.app_context():
+            project = db.session.get(CourseProject, project_id)
+            self.assertTrue(project.checks_verified)
+            self.assertTrue(project.completed)
+
+    def test_check_run_with_mismatched_sha_does_not_verify(self):
+        project_id = self._seed_project(commit_sha='e' * 40)
+        payload = self._payload('f' * 40, conclusion='success')
+        response = self.client.post(
+            '/api/webhooks/github', data=payload, content_type='application/json',
+            headers=self._signed(payload),
+        )
+        self.assertEqual(response.get_json()['status'], 'no_matching_pending_project')
+        from app.models import CourseProject
+        from app import db
+        with self.app.app_context():
+            self.assertFalse(db.session.get(CourseProject, project_id).checks_verified)
+
+    def test_check_run_failure_is_ignored(self):
+        project_id = self._seed_project()
+        payload = self._payload('c' * 40, conclusion='failure')
+        response = self.client.post(
+            '/api/webhooks/github', data=payload, content_type='application/json',
+            headers=self._signed(payload),
+        )
+        self.assertEqual(response.get_json()['status'], 'ignored')
+        from app.models import CourseProject
+        from app import db
+        with self.app.app_context():
+            self.assertFalse(db.session.get(CourseProject, project_id).checks_verified)
+
+
+class WebhookPendingSubmissionTests(unittest.TestCase):
+    """Submit without checks_url → awaiting GitHub App webhook; then webhook completes."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.previous_database_url = os.environ.get('DATABASE_URL')
+        os.environ['DATABASE_URL'] = f'sqlite:///{self.temp_dir.name}/test.db'
+        from app import create_app, db
+        self.db = db
+        self.app = create_app()
+        self.app.config.update(TESTING=True, GITHUB_WEBHOOK_SECRET='test-webhook-secret', GEMINI_API_KEY=None)
+        with self.app.app_context():
+            db.create_all()
+        self.client = self.app.test_client()
+
+    def tearDown(self):
+        with self.app.app_context():
+            self.db.session.remove()
+            self.db.drop_all()
+            self.db.engine.dispose()
+        if self.previous_database_url is None:
+            os.environ.pop('DATABASE_URL', None)
+        else:
+            os.environ['DATABASE_URL'] = self.previous_database_url
+        self.temp_dir.cleanup()
+
+    def register(self, username):
+        response = self.client.post('/register', data={
+            'username': username,
+            'email': f'{username}@example.test',
+            'password': 'secure-pass-123',
+            'confirm_password': 'secure-pass-123',
+        }, follow_redirects=True)
+        self.client.post('/onboarding', data={'action': 'skip'})
+
+    def test_submission_without_checks_url_stays_pending_until_webhook(self):
+        from app.curriculum import all_modules
+        from app.models import CourseProject, LessonCompletion, User
+        from app import db
+
+        self.register('learner')
+        module = all_modules()[0]
+        with self.app.app_context():
+            user = User.query.filter_by(username='learner').one()
+            for index, lesson in enumerate(module['lessons'], start=1):
+                db.session.add(LessonCompletion(
+                    user_id=user.id, lesson_id=lesson['id'],
+                    subject_id=module['id'], day_number=index, completed=True,
+                ))
+            db.session.commit()
+        self.client.get(f"/api/projects/module/{module['id']}")
+        evaluation = {
+            'score': 80, 'summary': 'solid', 'strengths': ['Clean work'],
+            'gaps': ['Docs'], 'next_steps': ['Add docs'],
+            'criterion_feedback': [
+                {'criterion': item['criterion'], 'score': 80,
+                 'evidence': 'Evidenced in the submission text.', 'gap': ''}
+                for item in module['project_rubric']
+            ],
+        }
+        with patch('app.gemini.generate_json', return_value=evaluation):
+            response = self.client.post(
+                f"/api/projects/module/{module['id']}/submit",
+                json={
+                    'submission': 'I built the artefact, verified each deliverable locally, and recorded the results.',
+                    'repository_url': 'https://github.com/learner/project',
+                    'checks_url': '',
+                    'commit_sha': 'b' * 40,
+                },
+            )
+        self.assertEqual(response.status_code, 200, response.get_json())
+        payload = response.get_json()
+        self.assertTrue(payload['verification_pending'])
+        self.assertFalse(payload['completed'])
+        with self.app.app_context():
+            project = CourseProject.query.one()
+            self.assertEqual(project.commit_sha, 'b' * 40)
+            self.assertFalse(project.checks_verified)

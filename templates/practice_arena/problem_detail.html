@@ -77,6 +77,29 @@
         </div>
         <p id="arena-hint-output" class="mt-3 whitespace-pre-line text-sm text-slate-700 dark:text-slate-200" aria-live="polite"></p>
       </div>
+
+      {% if problem.is_lab %}
+      <div class="rounded-xl border border-indigo-200 bg-indigo-50/50 p-5 shadow-sm dark:border-indigo-900 dark:bg-indigo-950/30" data-lab-debrief data-debrief-url="{{ url_for('practice_arena.lab_debrief', problem_id=problem.id) }}">
+        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Lab debrief</h2>
+        <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Diagnose the failure, then describe how you verified the fix. The judge decides whether the code is correct; this rubric scores your reasoning. Passing the debrief records <span class="font-semibold">LAB evidence</span> in your Skill Passport. Requires a judged ACCEPTED solution first.</p>
+        <form class="mt-3 space-y-3" data-lab-debrief-form>
+          <div>
+            <label for="lab-diagnosis" class="text-sm font-semibold text-slate-700 dark:text-slate-200">Diagnosis — what actually broke and why?</label>
+            <textarea id="lab-diagnosis" name="diagnosis" rows="4" required minlength="40" maxlength="4000" class="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="The service returned misleading results because ..."></textarea>
+          </div>
+          <div>
+            <label for="lab-verification" class="text-sm font-semibold text-slate-700 dark:text-slate-200">Verification — how do you know the fix works?</label>
+            <textarea id="lab-verification" name="verification" rows="4" required minlength="40" maxlength="4000" class="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="I confirmed the fix by ..."></textarea>
+          </div>
+          <button type="submit" class="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800">Submit debrief for rubric scoring</button>
+          <p class="text-xs text-slate-500 dark:text-slate-400" aria-live="polite" data-lab-debrief-status></p>
+          <div class="hidden rounded-lg border border-slate-200 bg-white p-3 text-sm dark:border-slate-700 dark:bg-slate-900" data-lab-debrief-result>
+            <p class="font-semibold text-slate-800 dark:text-slate-100" data-lab-debrief-verdict></p>
+            <p class="mt-1 text-slate-600 dark:text-slate-300" data-lab-debrief-summary></p>
+          </div>
+        </form>
+      </div>
+      {% endif %}
     </article>
 
     <div id="arena-resize" class="hidden cursor-col-resize rounded-full bg-slate-200 hover:bg-indigo-400 focus:bg-indigo-500 lg:block" role="separator" aria-label="Resize problem and editor panes" aria-orientation="vertical" aria-valuenow="50" tabindex="0"></div>

@@ -256,6 +256,39 @@ class Submission(db.Model):
     )
 
 
+class LabDebrief(db.Model):
+    """A learner's diagnosis and verification write-up for an engineering lab.
+
+    The judge owns correctness of the fix; this record captures the reasoning
+    half of the lab: naming the root cause, explaining why the fix works, and
+    describing how the fix was verified. The rubric scores the write-up; the
+    judged verdict gates whether the lab counts as solved at all.
+    """
+    __tablename__ = 'lab_debrief'
+    id = db.Column(db.String(64), primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    problem_id = db.Column(db.String(64), nullable=False)
+    diagnosis = db.Column(db.Text, nullable=False)
+    verification = db.Column(db.Text, nullable=False)
+    score = db.Column(db.Integer)
+    criterion_feedback = db.Column(db.Text)  # JSON list of {criterion, score, evidence, gap}
+    evaluation_source = db.Column(
+        db.String(16), nullable=False, default='local', server_default='local'
+    )  # 'ai' or 'local'
+    passed = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'problem_id', name='unique_lab_debrief_user_problem'),
+        db.Index('idx_lab_debrief_user', 'user_id'),
+    )
+
+
 class SkillNode(db.Model):
     """A competency node that maps to curriculum lessons, practice problems,
     or project studio milestones. User skill progress is tracked against
@@ -293,7 +326,7 @@ class UserSkillProgress(db.Model):
         ),
         default='NOT_STARTED'
     )
-    evidence_type = db.Column(db.String(32)) # "PROBLEM", "PROJECT", "LESSON"
+    evidence_type = db.Column(db.String(32)) # "PROBLEM", "PROJECT", "LESSON", "LAB"
     evidence_id = db.Column(db.String(64)) # problem_id, project_id, or lesson_id
     updated_at = db.Column(
         db.DateTime(timezone=True), default=utcnow, onupdate=utcnow
@@ -572,6 +605,7 @@ class CourseProject(db.Model):
     is_ai_generated = db.Column(db.Boolean, default=False, server_default=db.false(), nullable=False)
     submission = db.Column(db.Text)
     repository_url = db.Column(db.String(500))
+    commit_sha = db.Column(db.String(40))
     demo_url = db.Column(db.String(500))
     checks_url = db.Column(db.String(500))
     checks_verified = db.Column(

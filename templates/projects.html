@@ -314,7 +314,7 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
     repository.value = savedRepository || ''; repository.maxLength = 500;
     repository.className = 'mt-3 w-full rounded-xl border p-3';
     const checks = document.createElement('input');
-    checks.type = 'url'; checks.required = true; checks.setAttribute('aria-label', 'Public automated checks URL'); checks.placeholder = 'Public passing CI/checks run URL (HTTPS, required)';
+    checks.type = 'url'; checks.required = false; checks.setAttribute('aria-label', 'Public automated checks URL'); checks.placeholder = 'Optional: public CI/checks run URL (HTTPS) — leave blank to verify directly from your GitHub webhook';
     checks.value = savedChecks || ''; checks.maxLength = 500;
     checks.className = 'mt-3 w-full rounded-xl border p-3';
     const commit = document.createElement('input');
@@ -334,7 +334,7 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
     demo.className = 'mt-3 w-full rounded-xl border p-3';
     const help = document.createElement('p');
     help.className = 'mt-2 text-xs text-slate-500';
-    help.textContent = 'Use a GitHub Actions run for this repository, then provide the full commit SHA tested by that run. Other CI providers cannot yet be verified automatically. Completion requires passing checks and a passing rubric evaluation.';
+    help.textContent = 'Provide the full commit SHA tested by CI. Leave the checks URL blank to verify directly from your GitHub App webhook; paste a GitHub Actions run URL to verify immediately instead. Other CI providers cannot yet be verified automatically. Completion requires passing checks and a passing rubric evaluation.';
     const submit = document.createElement('button');
     submit.className = 'mt-2 rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white';
     submit.textContent = hasSubmission ? 'Revise and resubmit' : 'Verify checks and get feedback';
@@ -349,8 +349,8 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
     [
         'Create a public repository and push the starter kit or your project code.',
         'Run the project tests locally, then let the repository CI run them again.',
-        'Open the successful GitHub Actions run and copy its URL and the full 40-character commit SHA.',
-        'Paste the repository, run URL, and tested commit SHA below, then submit for verification and rubric feedback.',
+        'Either leave the checks URL blank and let the GitHub App webhook verify your CI against the tested commit SHA, or open the successful GitHub Actions run and paste its URL.',
+        'Paste the repository and the full 40-character commit SHA below, then submit for rubric feedback.',
     ].forEach((step) => {
         const item = document.createElement('li');
         item.textContent = step;
@@ -394,9 +394,11 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
                 return;
             }
             const evaluation = result.evaluation || {};
-            message.textContent = evaluation.score == null
-                ? (evaluation.summary || 'Submission saved. Automated scoring is unavailable; retry later.')
-                : `Score: ${evaluation.score}% · ${evaluation.summary}`;
+            message.textContent = result.verification_pending
+                ? 'Submission saved — completion is pending until your CI reports for the tested commit through the GitHub webhook. You will be marked complete once the run succeeds.'
+                : evaluation.score == null
+                    ? (evaluation.summary || 'Submission saved. Automated scoring is unavailable; retry later.')
+                    : `Score: ${evaluation.score}% · ${evaluation.summary}`;
             form.prepend(message);
             if (result.completed) {
                 const badge = document.createElement('p');

@@ -3428,5 +3428,269 @@
       "Multiplying by the per-million price but forgetting to divide the token count by one million makes the estimate a thousand times too big (reading it the wrong way round makes it a thousand times too small).",
       "When a few extreme outliers would distort the mean, the median gives the more honest \"typical\" value."
     ]
+  },
+  "2.03": {
+    "intro": "This lesson explains how to design an API around resources and HTTP verbs instead of inventing your own verbs. You will learn why a noun-plus-verb shape with honest status codes makes a service predictable for every client that calls it, and when resource modelling breaks down. It matters because most API design pain comes from ignoring what HTTP already standardized."
+  },
+  "2.05": {
+    "intro": "This lesson gets a FastAPI service running with lifespan-managed clients, sensible defaults, and a health check that reflects real dependencies. You will learn why readiness must differ from liveness. It matters because orchestrators send traffic to whatever answers the health endpoint, right or wrong."
+  },
+  "2.07": {
+    "intro": "This lesson shows how to push validation to the boundary of your service with Pydantic models. You will learn to turn bad input into an actionable 422 response instead of letting it travel deeper into your code. It matters because garbage that enters your handler corrupts everything downstream of it."
+  },
+  "2.10": {
+    "intro": "This lesson explains how to prove who is calling your API before deciding what they may do. You will learn memory-hard password hashes and short-lived, verified tokens. It matters because stolen credentials and forged tokens are how most account takeovers actually start."
+  },
+  "2.12": {
+    "intro": "This lesson teaches how to operate PostgreSQL as a shared, stateful service: connections are scarce, snapshots define visibility, and the planner needs fresh statistics. You will learn to treat the database as a staffed service, not a dumb box. It matters because one slow, unindexed query can degrade every other user of the same instance."
+  },
+  "2.13": {
+    "intro": "This lesson teaches set-based SQL that stays correct when two writers race. You will learn to respect NULL logic, return one answer per request, and make queries deterministic. It matters because most data corruption bugs are query bugs that pass in tests and fail in production traffic."
+  },
+  "2.14": {
+    "intro": "This lesson shows how to turn business rules into tables, keys, and constraints so invalid states cannot be written in the first place. You will learn to let the database say no before your application has to. It matters because the cheapest place to stop bad data is the schema itself."
+  },
+  "2.15": {
+    "intro": "This lesson explains how to model tables as Python classes with SQLAlchemy, declare how relationships load, and keep one session and one transaction per request. You will learn where the object-relational bargain leaks. It matters because two requests accidentally sharing a session corrupt each other's state."
+  },
+  "2.16": {
+    "intro": "This lesson teaches how to ship schema changes as reviewed, reversible revisions that stay compatible with the code running on either side of them. You will learn to migrate in steps deploys can survive. It matters because a bad migration can take production down harder than bad code."
+  },
+  "2.17": {
+    "intro": "This lesson explains how to use Redis as a fast, disposable side-store for counters, locks, sessions, and streams, never as the only copy of a fact. You will learn what Redis is genuinely good for and what loses data. It matters because a cache that quietly becomes your database eventually loses someone's data."
+  },
+  "2.20": {
+    "intro": "This lesson introduces message queues: delivery guarantees, visibility timeouts, and dead letters, before you put a broker between two services. You will learn what really happens when a worker crashes mid-message. It matters because at-least-once delivery is the norm, so your consumers must tolerate duplicates."
+  },
+  "3.02": {
+    "intro": "This lesson follows one token through embeddings, attention, and a stack of transformer blocks, so you can see where latency, context cost, and failures come from inside the model. You will learn why these systems behave the way they do. It matters because you cannot debug what you cannot visualize."
+  },
+  "3.03": {
+    "intro": "This lesson explains tokens: the unit models use to bill, bound, and read text. You will learn to count them accurately before you promise a budget. It matters because a prompt that fit last month may not fit today."
+  },
+  "3.04": {
+    "intro": "This lesson treats the context window as a hard budget shared by instructions, history, documents, tools, and the answer. You will learn to allocate it deliberately instead of hoping it fits. It matters because everything the model knows at once is only what fits in that window."
+  },
+  "3.05": {
+    "intro": "This lesson treats sampling settings as experimental controls rather than magic dials. You will learn to measure output behavior instead of assuming one setting is universally best. It matters because the same prompt behaves very differently between settings and providers."
+  },
+  "3.06": {
+    "intro": "This lesson shows how to build model workflows that handle images, audio, and video as typed, bounded inputs with modality-specific evaluation. You will learn why a pipeline that reads screenshots badly fails invisibly. It matters because multimodal mistakes reach users looking like nonsense, not errors."
+  },
+  "3.11": {
+    "intro": "This lesson shows how to call models over their real HTTP contract: messages, usage accounting, timeouts, request IDs, and errors you can act on. You will learn to read an API error and know exactly what to do next. It matters because your production code runs on that contract, not on SDK marketing."
+  },
+  "3.12": {
+    "intro": "This lesson explains how to stream tokens over SSE to cut perceived latency while keeping deltas, errors, and final usage correct at the edges. You will learn where streaming breaks in real deployments. It matters because half of 'it feels slow' complaints are really 'nothing moved on screen' complaints."
+  },
+  "3.13": {
+    "intro": "This lesson teaches you to classify provider failures before retrying: permanent, quota, and malformed-request errors each deserve a different response. You will learn to stop reflexively retrying. It matters because retrying a 400 in a loop is how you earn a rate-limit ban."
+  },
+  "3.15": {
+    "intro": "This lesson compares hosted APIs, self-hosted open weights, fine-tuning, and distillation using workload evidence and operating costs. You will learn to make the call with numbers instead of slogans. It matters because the wrong deployment shape costs money every month and attention every day."
+  },
+  "4.01": {
+    "intro": "This lesson shows how to design the orchestration core of an LLM application around explicit stages, budgets, and contracts, so no single probabilistic call can take down a request. You will learn to build the boundary before wiring the model behind it. It matters because unguarded AI calls fail in unreviewable ways."
+  },
+  "4.03": {
+    "intro": "This lesson teaches how to turn messy documents into typed records: a schema per document family, evidence for every field, and an explicit abstain path. You will learn to distrust a confident answer with no citation. It matters because wrong data that looks right is the most expensive kind of bug."
+  },
+  "4.04": {
+    "intro": "This lesson explains function calling as a typed loop: the model proposes JSON arguments, your code validates and executes them, and results come back as messages. You will learn exactly where this loop breaks. It matters because models confidently produce invalid arguments, every single day."
+  },
+  "4.05": {
+    "intro": "This lesson shows how to productionise tools: scope them, time them out, make side effects idempotent, and keep their output small enough to be useful. You will learn why a tool's failure mode matters as much as its success path. It matters because tools are where agents stop being harmless."
+  },
+  "4.06": {
+    "intro": "This lesson teaches how to route each request to the cheapest model that provably clears the quality bar, with calibrated thresholds and a safe default. You will learn to measure before switching anything. It matters because routing on gut feel is just guessing with a dashboard."
+  },
+  "4.07": {
+    "intro": "This lesson shows how to support two providers behind one narrow interface, normalise their differences, and use the second for tested failover rather than decoration. You will learn to spot fake redundancy. It matters because failover you never exercised does not exist on the day you need it."
+  },
+  "4.08": {
+    "intro": "This lesson teaches a fallback ladder that keeps answers flowing when a model, provider, or region fails, without hiding the degradation. You will learn why silently worse answers are worse than honest errors. It matters because a quietly degraded answer is an undetected defect."
+  },
+  "4.09": {
+    "intro": "This lesson shows how to design a streaming path that gets the first token out fast, survives disconnects, and still validates what the user finally sees. You will learn where streaming breaks at the edges. It matters because half-streamed junk is a worse experience than a short honest wait."
+  },
+  "4.10": {
+    "intro": "This lesson treats the context window as a fixed budget: count tokens before you spend them, reserve output, and consciously decide what to drop. You will learn to budget context like memory. It matters because the model will never tell you it just lost half your document."
+  },
+  "4.11": {
+    "intro": "This lesson turns token prices into unit economics you can forecast, attribute, and defend before the invoice surprises you. You will learn to find the expensive feature before finance does. It matters because AI spend surprises people who never model cost per task."
+  },
+  "4.12": {
+    "intro": "This lesson shows how to assemble the smallest context that preserves the decision: ordered, deduplicated, permissioned, and priced in tokens. You will learn why more context is almost always worse context. It matters because irrelevant text is pure cost with negative signal."
+  },
+  "4.13": {
+    "intro": "This lesson teaches how to classify every failure before retrying, return an error envelope callers can act on and operators can trace, and admit failures out loud instead of faking success. You will learn to design the error path as deliberately as the happy path. It matters because your 3 a.m. on-call self will read this code."
+  },
+  "4.14": {
+    "intro": "This lesson shows how to assemble routing, budgets, validation, fallback, and telemetry into one service you can page on and roll back. You will learn the boring shape that production LLM services actually take. It matters because shipping, not demos, is the whole point of the module."
+  },
+  "7.01": {
+    "intro": "This lesson explains what agent frameworks actually sell: durability, routing, and observability, and when your own loop has grown those requirements. You will learn to resist buying a framework you do not yet need. It matters because architecture purchased too early is just expensive learning."
+  },
+  "7.02": {
+    "intro": "This lesson learns the orchestration patterns first, then reads LangChain as one replaceable, versioned implementation of them. You will learn to spot which parts of the framework serve you and which serve the demo. It matters because skills transfer across libraries; APIs do not."
+  },
+  "7.03": {
+    "intro": "This lesson models orchestration as explicit state transitions, then evaluates LangGraph as one versioned graph runner. You will learn to read a graph as control flow you can review. It matters because implicit state is where agent bugs hide."
+  },
+  "7.04": {
+    "intro": "This lesson teaches when control flow belongs in code (known steps) and when it belongs in the model (the path genuinely varies per input). You will learn to push determinism down the stack. It matters because most agents in production are workflows wearing agent badges."
+  },
+  "7.05": {
+    "intro": "This lesson shows how a graph makes an agent reviewable: state is the contract, nodes are units of work, edges are control flow you can draw before you build. You will learn to make the skeleton explicit. It matters because you cannot test what cannot be drawn."
+  },
+  "7.06": {
+    "intro": "This lesson explains the node contract: one job, a typed input, a partial output, and a failure path, on which every guarantee in the graph rests. You will learn why one leaky node poisons every branch. It matters because graphs amplify node discipline or node sloppiness."
+  },
+  "7.07": {
+    "intro": "This lesson wires nodes into a fixed topology, shows what fan-out and fan-in really execute, and teaches when an edge should stay static. You will learn to keep routing boring. It matters because dynamic topology chosen by the model is how agents wander into cost and risk."
+  },
+  "7.08": {
+    "intro": "This lesson turns a state value into a labelled decision, keeps the router pure, and makes an unresolved label a visible failure rather than a dead end. You will learn to design for the branch nobody planned. It matters because silent dead ends look exactly like hangs to users."
+  },
+  "7.09": {
+    "intro": "This lesson designs graph state as a versioned schema with explicit reducers, so parallel branches merge instead of overwriting each other. You will learn to stop branches clobbering shared state. It matters because two branches writing one key quietly lose one team's work."
+  },
+  "7.10": {
+    "intro": "This lesson gives each conversation a durable thread, chooses a checkpoint store you can operate, and isolates tenants before the first customer arrives. You will learn why durability is a business feature. It matters because resuming a crashed run is impossible with memory alone."
+  },
+  "7.11": {
+    "intro": "This lesson uses per-step snapshots to resume a failed run, replay a decision, and branch a conversation without re-running the expensive parts. You will learn to checkpoint after the costly step, not before it. It matters because agents fail expensively and retries without checkpoints are unaffordable."
+  },
+  "7.12": {
+    "intro": "This lesson streams the right granularity to the right client, keeps the persisted turn consistent with what the user saw, and cancels work when they leave. You will learn to stop work nobody is watching. It matters because an orphaned stream is money burned on an audience of zero."
+  },
+  "7.13": {
+    "intro": "This lesson puts a persisted, resumable gate in front of consequential actions so a person can accept, edit, or reject before the graph acts. You will learn to make approval a first-class state, not a popup. It matters because an agent that can act on your behalf must also be stoppable."
+  },
+  "7.14": {
+    "intro": "This lesson teaches when several agents with separate context and permissions beat one agent, and what the extra coordination actually costs. You will learn to divide agents by permission, not by enthusiasm. It matters because two agents means two times the failure surface and zero extra judgement."
+  },
+  "7.15": {
+    "intro": "This lesson makes one coordinator own routing, budget, and termination while workers stay narrow, stateless, and unable to talk to each other. You will learn why direct worker-to-worker chatter is a failure mode. It matters because uncontrolled agent conversations produce unpredictable cost and confident nonsense."
+  },
+  "7.16": {
+    "intro": "This lesson compares how agents share work: messages, a shared board, or versioned artefacts and the conflicts each creates. You will learn to pick a collaboration shape with evidence. It matters because two agents collaborating is still two agents failing, just politely."
+  },
+  "7.17": {
+    "intro": "This lesson assembles routing, approvals, checkpoints, budgets, and tracing into one deployable, replayable, rollback-safe graph. You will learn to make an agent system operable at 3 a.m. It matters because an agent you cannot replay is an incident you cannot diagnose."
+  },
+  "10.01": {
+    "intro": "This lesson shows how a pinned artefact carrying Python, native libraries, and configuration replaces 'works on my machine' in every environment. You will learn what a container actually contains. It matters because most deployment bugs are environment bugs wearing different clothes."
+  },
+  "10.02": {
+    "intro": "This lesson explains what an image, a layer, a container, and a volume actually are, and teaches the commands that reveal what is running. You will learn to inspect before you mutate. It matters because invisible state is unfixable state."
+  },
+  "10.03": {
+    "intro": "This lesson teaches how to order Dockerfile instructions for cache hits, split build from runtime, and end with a small non-root image that handles signals. You will learn to make images boring. It matters because a bloated, root-running image is slow to pull and easy to breach."
+  },
+  "10.04": {
+    "intro": "This lesson makes a FastAPI container start quickly, report liveness and readiness honestly, and shut down without dropping requests. You will learn why health checks must reflect real dependencies. It matters because orchestrators route traffic to whatever answers 'alive', and a lying probe causes outages."
+  },
+  "10.05": {
+    "intro": "This lesson connects the API to Postgres and Redis with bounded pools, explicit timeouts, and a start-up sequence that survives restarts. You will learn to fail fast when a dependency is missing. It matters because a hung startup loops forever behind a healthy-looking load balancer."
+  },
+  "10.06": {
+    "intro": "This lesson brings the API, Postgres, and Redis up with one compose command, health-gated dependencies, and state that survives restarts. You will learn to describe your stack in one committed file. It matters because reproducible dev environments kill 'works on my machine' for good."
+  },
+  "10.07": {
+    "intro": "This lesson turns a working image into one that is small, non-root, pinned, and safe to terminate under load. You will learn the last ten percent of container hardening. It matters because dev-grade containers do not survive production traffic or production attackers."
+  },
+  "10.08": {
+    "intro": "This lesson teaches build-once, verify-everything, promote-the-same-digest, with an audit trail from test to production. You will learn why the artifact you tested must be the artifact you ship. It matters because an untested deploy is a coin flip with customer data."
+  },
+  "10.09": {
+    "intro": "This lesson makes configuration explicit, typed, and environment-specific so production cannot silently inherit a staging value. You will learn to fail loudly on a missing or malformed setting. It matters because one wrong endpoint pointed at prod can rewrite the wrong data."
+  },
+  "10.10": {
+    "intro": "This lesson shows how to choose a runtime that fits the team, then wire health checks, secrets, and rollback before the first real user arrives. You will learn to deploy with a rehearsed way back. It matters because the first user finds every mistake you skipped."
+  },
+  "10.11": {
+    "intro": "This lesson teaches to scale the queue and the concurrency limit, not the CPU graph, because model latency and provider quotas set your real ceiling. You will learn to find the actual constraint. It matters because more replicas in front of a rate-limited provider change nothing."
+  },
+  "10.12": {
+    "intro": "This lesson assembles the whole platform on one diagram with explicit failure domains, SLOs, and evidence that each dependency can fail safely. You will learn to see the system, not just the components. It matters because architecture is fundamentally an argument about failure."
+  },
+  "11.01": {
+    "intro": "This lesson designs the request path, data ownership, and failure behaviour before you choose a model, framework, or vendor. You will learn to ask the questions that shape everything else in the system. It matters because the wrong architecture gets expensive around month three."
+  },
+  "11.02": {
+    "intro": "This lesson finds the scarce resource before adding replicas, sizing capacity from arrival rate, service time, and provider quotas. You will learn to reason about scale with arithmetic instead of optimism. It matters because you cannot scale what you cannot name."
+  },
+  "11.03": {
+    "intro": "This lesson matches the request pattern to the work: answer inside the user's patience window, or acknowledge with a durable job and a way to collect the result. You will learn to pick with numbers, not vibes. It matters because synchronous AI calls fail against timeouts, and clients time out."
+  },
+  "11.04": {
+    "intro": "This lesson decouples slow work with a queue, then makes delivery, retries, and shutdown safe enough that duplicates cannot duplicate side effects. You will learn to make consumers idempotent. It matters because at-least-once delivery is the default and your handler will see duplicates."
+  },
+  "11.05": {
+    "intro": "This lesson teaches to cache the deterministic, expensive parts of the AI path, never the whole answer, and makes every key depend on the model, prompt, and data version. You will learn where caching pays and where it poisons. It matters because a stale AI answer fails with full confidence."
+  },
+  "11.06": {
+    "intro": "This lesson chooses storage by access pattern, gives each tenant a boundary, and keeps slow model calls out of transactions that hold locks. You will learn to keep AI latency out of your row locks. It matters because one slow transaction behind a model call stalls everyone behind it."
+  },
+  "11.07": {
+    "intro": "This lesson treats the vector index as a product with recall, latency, memory, and tenancy budgets, not as a library you install and forget. You will learn to measure recall before tuning anything. It matters because a wrong top-k is a silently broken feature that looks fine in demos."
+  },
+  "11.08": {
+    "intro": "This lesson sends each request to the cheapest model that passes its own evaluation slice, and keeps the routing decision logged and reversible. You will learn to route with evidence, not benchmarks from the internet. It matters because one bad route silently degrades your whole product."
+  },
+  "11.09": {
+    "intro": "This lesson treats models as a portfolio with contracts and failure domains, not as one vendor called from ten places in the codebase. You will learn to survive a model leaving. It matters because deprecation announcements land on someone every week, and it may be you."
+  },
+  "11.10": {
+    "intro": "This lesson defines the service level, gives every dependency a share of the budget, and proves the result under injected failure. You will learn to make failure a drill instead of a surprise. It matters because systems fail; the only question is whether anyone planned for it."
+  },
+  "11.11": {
+    "intro": "This lesson assumes every dependency will fail: isolate the blast radius, break failing circuits, and recover without duplicating side effects. You will learn graceful degradation as a discipline. It matters because the outage that cascades is always the one nobody practised."
+  },
+  "11.12": {
+    "intro": "This lesson optimizes cost per successful task rather than cost per token, and spends latency budgets where users actually notice. You will learn to measure success, not spend. It matters because cheap failures are still failures, just cheaper ones."
+  },
+  "11.13": {
+    "intro": "This lesson turns an ambiguous AI ambition into a one-page brief: five planes, explicit failure behaviour, a budget, and a phased plan you can defend. You will learn to design AI at the scale of a whole platform. It matters because platforms solve portfolio problems, and a ticket-shaped fix does not."
+  },
+  "12.01": {
+    "intro": "This lesson turns a platform idea into testable requirements with named actors, numeric budgets, non-goals, and a test for every clause. You will learn to make requirements falsifiable. It matters because vague requirements become political fights instead of engineering."
+  },
+  "12.02": {
+    "intro": "This lesson chooses boundaries, synchronous or queued paths, data ownership, and failure behaviour before a framework chooses them for you. You will learn to freeze the important decisions early. It matters because changing architecture after code exists costs tenfold."
+  },
+  "12.03": {
+    "intro": "This lesson makes the repository the single source of truth: reproducible setup, enforced layout, fast CI, and decisions stored beside the code. You will learn to make contributing boring. It matters because a messy repository is a broken process, not a taste issue."
+  },
+  "12.04": {
+    "intro": "This lesson builds the authenticated, tenant-scoped, idempotent request path that every model call, job, and tool will depend on. You will learn to make the boring path bulletproof. It matters because every later phase of the platform stands directly on this one."
+  },
+  "12.05": {
+    "intro": "This lesson puts every model call behind one gateway with typed output, bounded retries, token budgets, and per-tenant cost accounting. You will learn to consolidate AI calls deliberately. It matters because unbudgeted AI spend is an incident that just has a delay built in."
+  },
+  "12.06": {
+    "intro": "This lesson uses deterministic steps by default and adds a bounded agent only when model-led action selection solves a measured need. You will learn the exact question that decides between workflow and agent. It matters because complexity you do not need is failure you do need to manage."
+  },
+  "12.07": {
+    "intro": "This lesson adds retrieval only when the task needs private or changing knowledge, and shows how to choose and evaluate the right evidence path. You will learn to prove grounding is helping. It matters because RAG on the wrong corpus manufactures confident, citable nonsense."
+  },
+  "12.08": {
+    "intro": "This lesson uses MCP when interoperability across hosts and servers is valuable, and a typed internal interface when one application boundary is enough. You will learn to pick the integration shape on purpose. It matters because two half-integrated protocols are worse than one done once."
+  },
+  "12.09": {
+    "intro": "This lesson uses traces and evaluation evidence to choose between a deterministic workflow, one agent, or multiple agents, and treats multi-agent as an optional branch. You will learn to let data pick the shape. It matters because each extra agent multiplies cost and failure modes."
+  },
+  "12.10": {
+    "intro": "This lesson turns the working platform into a service: SLOs, budgets, resilience, evaluation gates, and runbooks that survive a bad model day. You will learn to operate AI in production. It matters because shipping is where AI systems actually earn their keep."
+  },
+  "12.11": {
+    "intro": "This lesson defines the platform's network, data stores, secrets, and scaling rules as reviewable infrastructure code with reproducible environments. You will learn to treat infrastructure as code you review. It matters because hand-built environments drift out from under you silently."
+  },
+  "12.12": {
+    "intro": "This lesson ships the platform through a pipeline that builds once, tests migrations, canaries traffic, and rolls back on a measured signal. You will learn to make rollback a rehearsal. It matters because the first time you roll back is during the incident, always."
+  },
+  "12.13": {
+    "intro": "This lesson presents the platform as an evidence-backed architecture: decisions, risks, costs, SLOs, and the gaps you chose not to close. You will learn to defend the system to a review board. It matters because architecture approval is earned on paper before it is earned in production."
   }
 }

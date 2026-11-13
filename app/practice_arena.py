@@ -179,6 +179,8 @@ def _validate_problem(problem, seen_ids):
         raise ValueError(f"Arena problem {problem_id} has invalid editorial")
     # Compiling here catches broken starter code or checks at import time,
     # before a learner ever opens the workspace.
+    if 'lab' in problem and not isinstance(problem['lab'], bool):
+        raise ValueError(f"Arena problem {problem_id} has an invalid lab flag")
     for field in ('starter_code', 'solution_code', 'browser_checks'):
         try:
             compile(
@@ -314,6 +316,7 @@ def public_problem(problem):
         'estimated_minutes': problem['estimated_minutes'],
         'starter_code': problem['starter_code'],
         'has_editorial': bool(problem['solution_code'] or problem['editorial']),
+        'is_lab': bool(problem.get('lab')),
     }
 
 

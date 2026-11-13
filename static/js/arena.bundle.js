@@ -23627,3 +23627,61 @@ ${customChecks.value}`
   });
   void loadProblem();
 }
+var debriefPanel = document.querySelector("[data-lab-debrief]");
+if (debriefPanel) {
+  const debriefUrl = debriefPanel.dataset.debriefUrl;
+  const debriefForm = debriefPanel.querySelector("[data-lab-debrief-form]");
+  const debriefStatus = debriefPanel.querySelector("[data-lab-debrief-status]");
+  const debriefResult = debriefPanel.querySelector("[data-lab-debrief-result]");
+  const debriefVerdict = debriefPanel.querySelector("[data-lab-debrief-verdict]");
+  const debriefSummary = debriefPanel.querySelector("[data-lab-debrief-summary]");
+  const debriefCsrf = document.querySelector('meta[name="csrf-token"]')?.content || "";
+  const showDebrief = (debrief) => {
+    if (!debrief) {
+      debriefResult.classList.add("hidden");
+      return;
+    }
+    debriefResult.classList.remove("hidden");
+    debriefVerdict.textContent = debrief.passed ? `Passed \u2014 LAB evidence recorded in your Skill Passport (score ${debrief.score})` : debrief.evaluation_source === "local" ? "Saved \u2014 AI scoring is temporarily unavailable" : `Recorded \u2014 score ${debrief.score ?? "\u2014"} (pass at 70+ with every criterion \u2265 50)`;
+    const feedback = Array.isArray(debrief.criterion_feedback) ? debrief.criterion_feedback.map((item) => `${item.criterion}: ${item.score}`).join(" \xB7 ") : "";
+    debriefSummary.textContent = feedback;
+  };
+  fetch(debriefUrl, { headers: { Accept: "application/json" } }).then((response) => response.ok ? response.json() : null).then((data) => {
+    if (!data || !data.debrief) return;
+    debriefForm.diagnosis.value = data.debrief.diagnosis || "";
+    debriefForm.verification.value = data.debrief.verification || "";
+    showDebrief(data.debrief);
+  }).catch(() => {
+  });
+  debriefForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    const diagnosis = debriefForm.diagnosis.value.trim();
+    const verification = debriefForm.verification.value.trim();
+    if (diagnosis.length < 40 || verification.length < 40) {
+      debriefStatus.textContent = "Each answer needs at least 40 characters.";
+      return;
+    }
+    debriefStatus.textContent = "Scoring your debrief\u2026";
+    try {
+      const response = await fetch(debriefUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-CSRF-Token": debriefCsrf,
+          Accept: "application/json"
+        },
+        body: JSON.stringify({ diagnosis, verification })
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        debriefStatus.textContent = data.error || "Your debrief could not be recorded.";
+        if (data.debrief) showDebrief(data.debrief);
+        return;
+      }
+      debriefStatus.textContent = data.status === "passed" ? "Debrief passed \u2014 your Skill Passport has been updated." : data.message || "Debrief recorded.";
+      if (data.debrief) showDebrief(data.debrief);
+    } catch (error) {
+      debriefStatus.textContent = "Network error \u2014 your debrief was not recorded.";
+    }
+  });
+}

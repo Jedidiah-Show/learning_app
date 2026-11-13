@@ -64,9 +64,19 @@ class DynamoCurriculumIntegrityTests(unittest.TestCase):
                                   f"lesson {lesson['id']} concept placeholder")
 
     def test_extras_are_consistent_with_questions(self):
+        # Mirrors the audit scope rule: enforced lessons carry full curated
+        # extras (answers aligned with the questions, examples on every
+        # concept). Outside the scope a lesson may ship an intro-only entry,
+        # and the lesson page renders the self-check without answer keys.
+        from scripts.audit_curriculum import _plain_language_scope
+        overrides = _load('curriculum_overrides.json')
+        scope = _plain_language_scope(overrides, self.lessons)
         question_counts = {l['id']: len(l.get('questions', [])) for l in self.lessons}
         for lesson_id, extra in self.extras.items():
             self.assertIn(lesson_id, question_counts)
+            self.assertTrue(extra.get('intro', '').strip())
+            if lesson_id not in scope:
+                continue
             answers = extra.get('answers')
             self.assertIsNotNone(answers)
             self.assertEqual(
@@ -74,7 +84,6 @@ class DynamoCurriculumIntegrityTests(unittest.TestCase):
                 f'extras for {lesson_id} carry {len(answers)} answers '
                 f'for {question_counts[lesson_id]} questions',
             )
-            self.assertTrue(extra.get('intro', '').strip())
             for concept in extra.get('concepts', []):
                 self.assertTrue(concept.get('plain', '').strip(),
                                 f'extras {lesson_id} concept missing plain explanation')
