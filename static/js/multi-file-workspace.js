@@ -14,6 +14,7 @@ const runButton = document.getElementById('workspace-run');
 const checksButton = document.getElementById('workspace-checks');
 const resetButton = document.getElementById('workspace-reset');
 const clearOutputButton = document.getElementById('workspace-clear-output');
+const fileCount = document.getElementById('workspace-file-count');
 const newFileForm = document.getElementById('workspace-new-file-form');
 const newFileInput = document.getElementById('workspace-new-file-name');
 const iframe = document.getElementById('workspace-sandbox');
@@ -97,28 +98,32 @@ const renderFileList = () => {
     if (!fileList) return;
     fileList.innerHTML = '';
     const paths = Object.keys(files).sort();
+    if (fileCount) fileCount.textContent = `${paths.length} file${paths.length === 1 ? '' : 's'}`;
     if (paths.length === 0) {
-        fileList.innerHTML = '<li class="px-2 py-2 text-xs text-slate-500">No files yet — add one above.</li>';
+        const empty = document.createElement('li');
+        empty.className = 'mf-empty';
+        empty.textContent = 'No files yet — add one above.';
+        fileList.append(empty);
         return;
     }
     for (const path of paths) {
         const item = document.createElement('li');
-        item.className = 'flex items-center gap-1';
+        item.className = 'mf-file-item';
         const activate = document.createElement('button');
         activate.type = 'button';
         activate.dataset.filePath = path;
-        activate.className = `grow rounded-lg px-2 py-1.5 text-left text-xs font-mono ${
-            path === activePath
-                ? 'bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-200'
-                : 'text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800'
-        }`;
+        activate.className = `mf-file-btn${path === activePath ? ' is-active' : ''}`;
         activate.textContent = path;
+        activate.title = path;
+        activate.setAttribute('role', 'option');
+        activate.setAttribute('aria-selected', String(path === activePath));
         activate.addEventListener('click', () => { switchTo(path); });
         const rename = document.createElement('button');
         rename.type = 'button';
         rename.textContent = '✎';
         rename.title = 'Rename file';
-        rename.className = 'rounded px-1.5 py-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200';
+        rename.setAttribute('aria-label', `Rename ${path}`);
+        rename.className = 'mf-file-icon';
         rename.addEventListener('click', () => {
             const next = window.prompt('Rename file to:', path);
             if (next === null) return;
@@ -128,7 +133,8 @@ const renderFileList = () => {
         remove.type = 'button';
         remove.textContent = '×';
         remove.title = 'Delete file';
-        remove.className = 'rounded px-1.5 py-1 text-xs text-slate-400 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950';
+        remove.setAttribute('aria-label', `Delete ${path}`);
+        remove.className = 'mf-file-icon is-danger';
         remove.addEventListener('click', () => {
             if (window.confirm(`Delete ${path}?`)) void deleteFile(path);
         });

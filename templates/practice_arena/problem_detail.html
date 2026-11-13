@@ -3,168 +3,243 @@
 {% block title %}{{ problem.title }} · Practice Arena{% endblock %}
 
 {% block content %}
-<section class="mx-auto max-w-7xl px-4 py-6 sm:px-6" aria-labelledby="problem-title">
-  <nav aria-label="Breadcrumb" class="text-sm text-slate-600 dark:text-slate-300">
-    <a class="font-semibold text-indigo-700 dark:text-indigo-300" href="{{ url_for('practice_arena.index') }}">Practice Arena</a>
-    <span aria-hidden="true"> / </span>
-    <a class="font-semibold text-indigo-700 dark:text-indigo-300" href="{% if track.id == 'ai-engineering' %}{{ url_for('practice_arena.ai_engineering') }}{% elif track.id == 'machine-learning' %}{{ url_for('practice_arena.machine_learning') }}{% else %}{{ url_for('practice_arena.algorithms') }}{% endif %}">{{ track.short_name }}</a>
-    <span aria-hidden="true"> / </span><span>{{ topic.name }}</span>
+<section class="arena-ide-page mx-auto px-3 py-3 sm:px-6" aria-labelledby="problem-title">
+  <nav aria-label="Breadcrumb" class="mb-2 flex flex-wrap items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+    <span>
+      <a class="font-semibold text-indigo-700 dark:text-indigo-300" href="{{ url_for('practice_arena.index') }}">Practice Arena</a>
+      <span aria-hidden="true"> / </span>
+      <a class="font-semibold text-indigo-700 dark:text-indigo-300" href="{% if track.id == 'ai-engineering' %}{{ url_for('practice_arena.ai_engineering') }}{% elif track.id == 'machine-learning' %}{{ url_for('practice_arena.machine_learning') }}{% else %}{{ url_for('practice_arena.algorithms') }}{% endif %}">{{ track.short_name }}</a>
+      <span aria-hidden="true"> / </span><span>{{ topic.name }}</span>
+    </span>
+    <span class="hidden sm:inline text-slate-400 dark:text-slate-500">Python 3 · browser + isolated judge</span>
   </nav>
 
-  <header class="mt-3 mb-5 flex flex-wrap items-start justify-between gap-3">
-    <div>
-      <h1 id="problem-title" class="text-2xl font-bold text-slate-900 dark:text-white sm:text-3xl">{{ problem.title }}</h1>
-      <p class="mt-1 max-w-3xl text-slate-600 dark:text-slate-300">{{ problem.summary }}</p>
+  <div class="arena-ide">
+    <div id="arena-panels" class="arena-ide-shell">
+
+      {# ---------------- Left pane: tabbed problem panel ---------------- #}
+      <article class="arena-pane arena-pane-left">
+        <div class="ide-tabs" role="tablist" aria-label="Problem panel">
+          <button type="button" class="ide-tab" role="tab" id="tab-description" data-ide-tab="description" aria-selected="true" aria-controls="panel-description">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/></svg>
+            Description
+          </button>
+          <button type="button" class="ide-tab" role="tab" id="tab-hints" data-ide-tab="hints" aria-selected="false" aria-controls="panel-hints">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18h6"/><path d="M10 22h4"/><path d="M12 2a7 7 0 0 0-4.6 12.3c.8.8 1.3 1.8 1.5 2.7h6.2c.2-.9.7-1.9 1.5-2.7A7 7 0 0 0 12 2z"/></svg>
+            Hints
+          </button>
+          <button type="button" class="ide-tab" role="tab" id="tab-editorial" data-ide-tab="editorial" aria-selected="false" aria-controls="panel-editorial">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
+            Editorial
+          </button>
+          {% if problem.is_lab %}
+          <button type="button" class="ide-tab" role="tab" id="tab-lab" data-ide-tab="lab" aria-selected="false" aria-controls="panel-lab">
+            <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 3h6"/><path d="M10 3v6L4.5 18a2 2 0 0 0 1.8 2.6h11.4a2 2 0 0 0 1.8-2.6L14 9V3"/></svg>
+            Lab debrief
+          </button>
+          {% endif %}
+        </div>
+
+        <div class="ide-tab-body">
+          {# ---- Description panel ---- #}
+          <section class="ide-tab-panel" role="tabpanel" id="panel-description" data-ide-panel="description" aria-labelledby="tab-description" tabindex="0">
+            <h1 id="problem-title" class="ide-problem-title">{{ problem.title }}</h1>
+            <p class="ide-problem-summary">{{ problem.summary }}</p>
+
+            <div class="ide-chip-row">
+              <span class="ide-diff is-{{ problem.difficulty }}">{{ problem.difficulty|capitalize }}</span>
+              <span class="ide-chip ide-chip-muted">~{{ problem.estimated_minutes }} min</span>
+              <span class="ide-status-chip {% if problem.attempted %}is-practised{% endif %}" id="problem-status">{{ problem.status_label }}</span>
+            </div>
+
+            <p class="ide-section-label">Problem statement</p>
+            <div class="ide-statement">{{ problem.statement }}</div>
+
+            {% if problem.examples %}
+            <p class="ide-section-label">Examples</p>
+            {% for example in problem.examples %}
+            <div class="ide-example">
+              <p class="ide-example-title">Example {{ loop.index }}</p>
+              <p><span class="ide-example-note">Input:</span> <code>{{ example.input }}</code></p>
+              <p><span class="ide-example-note">Output:</span> <code>{{ example.output }}</code></p>
+              {% if example.explanation %}<p class="ide-example-note">{{ example.explanation }}</p>{% endif %}
+            </div>
+            {% endfor %}
+            {% endif %}
+
+            {% if problem.constraints %}
+            <p class="ide-section-label">Constraints</p>
+            <ul class="ide-constraint-list">
+              {% for constraint in problem.constraints %}<li>{{ constraint }}</li>{% endfor %}
+            </ul>
+            {% endif %}
+
+            {% if problem.skills %}
+            <p class="ide-section-label">Skills you practise</p>
+            <ul class="ide-skill-list" aria-label="Skills practised">
+              {% for skill in problem.skills %}<li class="ide-skill">{{ skill }}</li>{% endfor %}
+            </ul>
+            {% endif %}
+
+            {% if prerequisites %}
+            <p class="ide-section-label">Helpful first</p>
+            <ul class="ide-prereq-list">
+              {% for prerequisite in prerequisites %}
+              <li><a href="{{ url_for('practice_arena.problem_detail', problem_id=prerequisite.id) }}">→ {{ prerequisite.title }}</a></li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+          </section>
+
+          {# ---- Hints panel ---- #}
+          <section class="ide-tab-panel" role="tabpanel" id="panel-hints" data-ide-panel="hints" aria-labelledby="tab-hints" tabindex="0" hidden>
+            <h2 class="ide-problem-title" style="font-size:18px">Progressive tutor hints</h2>
+            <p class="ide-problem-summary">Reveal one stage at a time — understand, decompose, approach, pseudocode, then the editorial. The worked solution unlocks only after you save an attempt.</p>
+            <div class="ide-hint-grid">
+              {% for stage in range(1, 6) %}
+              <button type="button" class="ide-hint-btn" data-arena-hint data-stage="{{ stage }}">Hint {{ stage }}</button>
+              {% endfor %}
+            </div>
+            <p id="arena-hint-output" class="ide-hint-output" aria-live="polite"></p>
+          </section>
+
+          {# ---- Editorial panel ---- #}
+          <section class="ide-tab-panel" role="tabpanel" id="panel-editorial" data-ide-panel="editorial" aria-labelledby="tab-editorial" tabindex="0" hidden>
+            <div id="arena-editorial" class="ide-editorial" aria-live="polite">
+              <p class="ide-problem-summary" style="margin:0;color:#fcd34d;font-weight:700">Worked solution and explanation</p>
+              <pre id="arena-editorial-code" class="ide-editorial-code">Save an attempt, then choose “Reveal worked solution” in the editor toolbar.</pre>
+              <p id="arena-editorial-prose" class="ide-editorial-prose"></p>
+            </div>
+          </section>
+
+          {# ---- Lab debrief panel ---- #}
+          {% if problem.is_lab %}
+          <section class="ide-tab-panel" role="tabpanel" id="panel-lab" data-ide-panel="lab" aria-labelledby="tab-lab" tabindex="0" hidden>
+            <div class="ide-lab" data-lab-debrief data-debrief-url="{{ url_for('practice_arena.lab_debrief', problem_id=problem.id) }}">
+              <h2 class="ide-problem-title" style="font-size:18px">Lab debrief</h2>
+              <p class="ide-problem-summary">Diagnose the failure, then describe how you verified the fix. The judge decides whether the code is correct; this rubric scores your reasoning. Passing the debrief records <strong>LAB evidence</strong> in your Skill Passport. Requires a judged ACCEPTED solution first.</p>
+              <form class="mt-3" data-lab-debrief-form>
+                <label for="lab-diagnosis">Diagnosis — what actually broke and why?
+                  <textarea id="lab-diagnosis" name="diagnosis" rows="4" required minlength="40" maxlength="4000" placeholder="The service returned misleading results because ..."></textarea>
+                </label>
+                <label for="lab-verification">Verification — how do you know the fix works?
+                  <textarea id="lab-verification" name="verification" rows="4" required minlength="40" maxlength="4000" placeholder="I confirmed the fix by ..."></textarea>
+                </label>
+                <button type="submit" class="ide-lab-btn">Submit debrief for rubric scoring</button>
+                <p class="ide-lab-status" aria-live="polite" data-lab-debrief-status></p>
+                <div class="ide-lab-result hidden" data-lab-debrief-result>
+                  <p class="font-bold text-slate-100" data-lab-debrief-verdict></p>
+                  <p style="margin-top:4px;color:#a3a3a3" data-lab-debrief-summary></p>
+                </div>
+              </form>
+            </div>
+          </section>
+          {% endif %}
+        </div>
+      </article>
+
+      <div id="arena-resize" class="arena-resize" role="separator" aria-label="Resize problem and editor panes" aria-orientation="vertical" aria-valuenow="50" tabindex="0"></div>
+
+      {# ---------------- Right pane: editor + dock ---------------- #}
+      <section class="arena-pane arena-pane-right" aria-labelledby="workspace-title"
+               data-arena-workspace
+               data-problem-id="{{ problem.id }}"
+               data-load-url="{{ url_for('practice_arena.api_problem', problem_id=problem.id) }}"
+               data-save-url="{{ url_for('practice_arena.save_workspace', problem_id=problem.id) }}"
+               data-submit-url="{{ url_for('practice_arena.submit_problem', problem_id=problem.id) }}"
+               data-hint-url="{{ url_for('practice_arena.problem_hint', problem_id=problem.id) }}"
+               data-editorial-url="{{ url_for('practice_arena.reveal_editorial', problem_id=problem.id) }}"
+               data-run-url="{{ url_for('practice_arena.run_problem', problem_id=problem.id) }}">
+        <h2 id="workspace-title" class="sr-only">Code workspace</h2>
+
+        <div class="ide-editor-header">
+          <div class="flex min-w-0 items-center gap-3">
+            <span class="ide-editor-title">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m16 18 6-6-6-6"/><path d="m8 6-6 6 6 6"/></svg>
+              Code
+            </span>
+            <select id="arena-language" class="ide-language" aria-label="Runtime language" title="Python is the supported judged runtime">
+              <option value="python" selected>Python 3</option>
+            </select>
+          </div>
+          <div class="ide-icon-row">
+            <button type="button" id="arena-theme" class="ide-icon-btn" aria-pressed="false" aria-label="Toggle editor between light and dark" title="Toggle editor theme">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+            </button>
+            <button type="button" id="arena-reset" class="ide-icon-btn" aria-label="Restore starter code" title="Restore starter code">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 12a9 9 0 1 0 2.6-6.3L3 8"/><path d="M3 3v5h5"/></svg>
+            </button>
+            <button type="button" id="arena-fullscreen" class="ide-icon-btn" aria-label="Toggle full screen editor" title="Toggle full screen">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H3v5"/><path d="M16 3h5v5"/><path d="M8 21H3v-5"/><path d="M16 21h5v-5"/></svg>
+            </button>
+            <button type="button" id="arena-reveal" class="ide-icon-btn {% if not problem.has_editorial %}hidden{% endif %}" aria-label="Reveal worked solution" title="Available after your first run — your attempt is saved first">
+              <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <span class="ide-vdivider" aria-hidden="true"></span>
+            <button type="button" id="arena-run" class="ide-run-btn" title="Run your code and optional checks in the browser" disabled>Run</button>
+            <button type="button" id="arena-submit" class="ide-submit-btn" title="Submit to the isolated server judge for verified grading" disabled>Submit</button>
+          </div>
+        </div>
+
+        <div id="arena-editor" aria-label="Python code editor"></div>
+
+        <footer id="arena-statusbar" class="ide-statusbar" data-arena-statusbar>
+          <span class="ide-statusbar-file">main.py</span>
+          <span id="arena-save-status" data-state="idle" aria-live="polite"><span class="ide-save-dot" aria-hidden="true"></span>Starter code loaded</span>
+          <span id="arena-statusbar-position" class="ide-position" data-arena-cursor="true">Ln 1, Col 1</span>
+        </footer>
+
+        <div class="ide-dock" id="arena-dock" data-collapsed="false">
+          <div class="ide-dock-header">
+            <div class="ide-dock-tabs" role="tablist" aria-label="Run panel">
+              <button type="button" class="ide-dock-tab" role="tab" id="docktab-testcase" data-dock-tab="testcase" aria-selected="true" aria-controls="dock-testcase">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>
+                Testcase
+              </button>
+              <button type="button" class="ide-dock-tab" role="tab" id="docktab-result" data-dock-tab="result" aria-selected="false" aria-controls="dock-result">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></svg>
+                Test Result
+              </button>
+            </div>
+            <div class="ide-dock-tools">
+              <label class="ide-dock-check" for="arena-auto-run" title="Re-run the checks automatically after your code stops changing">
+                <input type="checkbox" id="arena-auto-run"> Auto-run
+              </label>
+              <button type="button" id="arena-copy-output" class="ide-dock-btn">Copy</button>
+              <span class="ide-dock-hint">Ctrl/⌘+Enter run · Ctrl/⌘+S save</span>
+              <button type="button" id="arena-dock-toggle" class="ide-dock-toggle" aria-expanded="true" aria-controls="arena-dock-body" aria-label="Collapse output panel">
+                <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+              </button>
+            </div>
+          </div>
+          <div class="ide-dock-body" id="arena-dock-body">
+            <div class="ide-dock-panel" role="tabpanel" id="dock-testcase" data-dock-panel="testcase" aria-labelledby="docktab-testcase" tabindex="0">
+              <label class="ide-dock-label" for="arena-custom-checks">Optional local checks</label>
+              <textarea id="arena-custom-checks" class="ide-checks-input" rows="4" spellcheck="false" placeholder="assert solution(2, 7, [2, 7, 11, 15]) == [0, 1]"></textarea>
+              <p class="ide-dock-note">These assertions run only inside your browser, after your own code. The public examples above are the contract your solution must satisfy; hidden judge checks are never shown.</p>
+            </div>
+            <div class="ide-dock-panel" role="tabpanel" id="dock-result" data-dock-panel="result" aria-labelledby="docktab-result" tabindex="0" hidden>
+              <pre id="arena-output" class="arena-output-log" data-state="idle" aria-live="polite">Run your code, or submit it for server-side verification.</pre>
+            </div>
+          </div>
+        </div>
+
+        <p class="ide-notice">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></svg>
+          Browser Run executes only your code and optional checks. Submit sends it to the isolated server judge, which runs private checks before recording a verified result.
+        </p>
+
+        <iframe id="arena-sandbox" title="Isolated Python runner" sandbox="allow-scripts" class="hidden" src="about:blank"></iframe>
+      </section>
     </div>
-    <div class="flex flex-wrap gap-2 text-xs">
-      <span class="rounded-full bg-slate-100 px-2.5 py-1 font-semibold text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ problem.difficulty|capitalize }}</span>
-      <span class="rounded-full bg-slate-100 px-2.5 py-1 text-slate-700 dark:bg-slate-800 dark:text-slate-200">{{ problem.estimated_minutes }} min</span>
-      <span class="rounded-full px-2.5 py-1 font-semibold {% if problem.attempted %}bg-emerald-50 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-200{% else %}bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-200{% endif %}" id="problem-status">{{ problem.status_label }}</span>
-    </div>
-  </header>
-
-  <div id="arena-panels" class="grid gap-5 lg:grid-cols-[minmax(0,1fr)_8px_minmax(0,1fr)]">
-    <article class="space-y-5">
-      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Problem statement</h2>
-        <p class="mt-3 whitespace-pre-line text-slate-700 dark:text-slate-200">{{ problem.statement }}</p>
-
-        {% if problem.examples %}
-        <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">Examples</h3>
-        <div class="mt-2 space-y-3">
-          {% for example in problem.examples %}
-          <div class="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm dark:border-slate-700 dark:bg-slate-800">
-            <p class="font-semibold text-slate-900 dark:text-white">Example {{ loop.index }}</p>
-            <p class="mt-1 text-slate-700 dark:text-slate-200"><span class="font-semibold">Input:</span> <code class="break-all">{{ example.input }}</code></p>
-            <p class="text-slate-700 dark:text-slate-200"><span class="font-semibold">Output:</span> <code class="break-all">{{ example.output }}</code></p>
-            {% if example.explanation %}<p class="mt-1 text-slate-600 dark:text-slate-300">{{ example.explanation }}</p>{% endif %}
-          </div>
-          {% endfor %}
-        </div>
-        {% endif %}
-
-        {% if problem.constraints %}
-        <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">Constraints</h3>
-        <ul class="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-700 dark:text-slate-200">
-          {% for constraint in problem.constraints %}<li>{{ constraint }}</li>{% endfor %}
-        </ul>
-        {% endif %}
-
-        {% if problem.skills %}
-        <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">Skills</h3>
-        <ul class="mt-2 flex flex-wrap gap-2 text-xs" aria-label="Skills practised">
-          {% for skill in problem.skills %}<li class="rounded-full bg-indigo-50 px-2.5 py-1 text-indigo-800 dark:bg-indigo-950 dark:text-indigo-200">{{ skill }}</li>{% endfor %}
-        </ul>
-        {% endif %}
-
-        {% if prerequisites %}
-        <h3 class="mt-5 text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">Helpful first</h3>
-        <ul class="mt-2 space-y-1 text-sm">
-          {% for prerequisite in prerequisites %}
-          <li><a class="font-semibold text-indigo-700 hover:underline dark:text-indigo-300" href="{{ url_for('practice_arena.problem_detail', problem_id=prerequisite.id) }}">{{ prerequisite.title }}</a></li>
-          {% endfor %}
-        </ul>
-        {% endif %}
-      </div>
-
-      <div class="rounded-xl border border-slate-200 bg-white p-5 shadow-sm dark:border-slate-700 dark:bg-slate-900">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Progressive tutor hints</h2>
-        <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Reveal one stage at a time. The editorial and reference code are available only after saving an attempt.</p>
-        <div class="mt-3 flex flex-wrap gap-2">
-          {% for stage in range(1, 6) %}
-          <button type="button" class="rounded-lg border border-indigo-200 px-3 py-1.5 text-sm font-semibold text-indigo-800 dark:border-indigo-800 dark:text-indigo-200" data-arena-hint data-stage="{{ stage }}">Hint {{ stage }}</button>
-          {% endfor %}
-        </div>
-        <p id="arena-hint-output" class="mt-3 whitespace-pre-line text-sm text-slate-700 dark:text-slate-200" aria-live="polite"></p>
-      </div>
-
-      {% if problem.is_lab %}
-      <div class="rounded-xl border border-indigo-200 bg-indigo-50/50 p-5 shadow-sm dark:border-indigo-900 dark:bg-indigo-950/30" data-lab-debrief data-debrief-url="{{ url_for('practice_arena.lab_debrief', problem_id=problem.id) }}">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white">Lab debrief</h2>
-        <p class="mt-1 text-sm text-slate-600 dark:text-slate-300">Diagnose the failure, then describe how you verified the fix. The judge decides whether the code is correct; this rubric scores your reasoning. Passing the debrief records <span class="font-semibold">LAB evidence</span> in your Skill Passport. Requires a judged ACCEPTED solution first.</p>
-        <form class="mt-3 space-y-3" data-lab-debrief-form>
-          <div>
-            <label for="lab-diagnosis" class="text-sm font-semibold text-slate-700 dark:text-slate-200">Diagnosis — what actually broke and why?</label>
-            <textarea id="lab-diagnosis" name="diagnosis" rows="4" required minlength="40" maxlength="4000" class="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="The service returned misleading results because ..."></textarea>
-          </div>
-          <div>
-            <label for="lab-verification" class="text-sm font-semibold text-slate-700 dark:text-slate-200">Verification — how do you know the fix works?</label>
-            <textarea id="lab-verification" name="verification" rows="4" required minlength="40" maxlength="4000" class="mt-1 block w-full rounded-lg border border-slate-300 bg-white p-3 text-sm text-slate-800 focus:outline-none focus:ring-2 focus:ring-indigo-600 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100" placeholder="I confirmed the fix by ..."></textarea>
-          </div>
-          <button type="submit" class="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800">Submit debrief for rubric scoring</button>
-          <p class="text-xs text-slate-500 dark:text-slate-400" aria-live="polite" data-lab-debrief-status></p>
-          <div class="hidden rounded-lg border border-slate-200 bg-white p-3 text-sm dark:border-slate-700 dark:bg-slate-900" data-lab-debrief-result>
-            <p class="font-semibold text-slate-800 dark:text-slate-100" data-lab-debrief-verdict></p>
-            <p class="mt-1 text-slate-600 dark:text-slate-300" data-lab-debrief-summary></p>
-          </div>
-        </form>
-      </div>
-      {% endif %}
-    </article>
-
-    <div id="arena-resize" class="hidden cursor-col-resize rounded-full bg-slate-200 hover:bg-indigo-400 focus:bg-indigo-500 lg:block" role="separator" aria-label="Resize problem and editor panes" aria-orientation="vertical" aria-valuenow="50" tabindex="0"></div>
-    <section class="rounded-xl border border-slate-200 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-900" aria-labelledby="workspace-title"
-             data-arena-workspace
-             data-problem-id="{{ problem.id }}"
-             data-load-url="{{ url_for('practice_arena.api_problem', problem_id=problem.id) }}"
-             data-save-url="{{ url_for('practice_arena.save_workspace', problem_id=problem.id) }}"
-             data-submit-url="{{ url_for('practice_arena.submit_problem', problem_id=problem.id) }}"
-             data-hint-url="{{ url_for('practice_arena.problem_hint', problem_id=problem.id) }}"
-             data-editorial-url="{{ url_for('practice_arena.reveal_editorial', problem_id=problem.id) }}"
-             data-run-url="{{ url_for('practice_arena.run_problem', problem_id=problem.id) }}">
-      <div class="flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 id="workspace-title" class="text-lg font-bold text-slate-900 dark:text-white">Code workspace</h2>
-          <p class="text-xs text-slate-600 dark:text-slate-300">Python · <span id="arena-save-status" data-state="idle" aria-live="polite">Starter code loaded</span></p>
-        </div>
-        <div class="flex flex-wrap gap-2">
-          <button type="button" id="arena-theme" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:border-slate-600 dark:text-slate-200" aria-pressed="false">Light editor</button>
-          <button type="button" id="arena-fullscreen" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 dark:border-slate-600 dark:text-slate-200">Full screen</button>
-          <button type="button" id="arena-reset" class="rounded-lg border border-slate-300 px-3 py-1.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800">Reset</button>
-          <button type="button" id="arena-reveal" class="rounded-lg border border-amber-300 px-3 py-1.5 text-sm font-semibold text-amber-900 hover:bg-amber-50 dark:border-amber-700 dark:text-amber-200 dark:hover:bg-amber-950" title="Available after your first run — your attempt is saved first" {% if not problem.has_editorial %}hidden{% endif %}>Reveal worked solution</button>
-          <button type="button" id="arena-submit" class="rounded-lg bg-emerald-700 px-4 py-1.5 text-sm font-semibold text-white hover:bg-emerald-800" disabled>Submit for verified grading</button>
-          <button type="button" id="arena-run" class="rounded-lg bg-indigo-700 px-4 py-1.5 text-sm font-semibold text-white hover:bg-indigo-800" disabled>Run checks</button>
-        </div>
-      </div>
-
-      <div id="arena-editor" class="mt-3 overflow-hidden rounded-lg border border-slate-700" style="min-height: 22rem" aria-label="Python code editor"></div>
-      <footer id="arena-statusbar" class="mt-2 flex items-center justify-between gap-2 rounded-lg bg-slate-900 px-3 py-2 text-xs text-slate-300" data-arena-statusbar>
-        <span class="font-mono text-slate-400">main.py</span>
-        <span id="arena-statusbar-position" data-arena-cursor="true">Ln 1, Col 1</span>
-      </footer>
-      <label for="arena-custom-checks" class="mt-3 block text-sm font-semibold text-slate-700 dark:text-slate-200">Optional local checks</label>
-      <textarea id="arena-custom-checks" rows="3" class="mt-1 w-full rounded-lg border border-slate-300 bg-slate-50 p-3 font-mono text-xs dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100" placeholder="Add Python assertions for your own quick feedback. These run only in your browser."></textarea>
-
-      <div class="mt-3">
-        <div class="flex flex-wrap items-center justify-between gap-2">
-          <h3 class="text-sm font-bold uppercase tracking-wide text-slate-600 dark:text-slate-300">Output</h3>
-          <div class="flex flex-wrap items-center gap-3">
-            <label class="flex items-center gap-2 text-xs font-semibold text-slate-600 dark:text-slate-300" title="Re-run the checks automatically after your code stops changing"><input type="checkbox" id="arena-auto-run" class="accent-indigo-700"> Auto-run on save</label>
-            <button type="button" id="arena-copy-output" class="rounded-lg border border-slate-300 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800">Copy output</button>
-            <p class="text-xs text-slate-600 dark:text-slate-300">Ctrl/Cmd + Enter runs · Ctrl/Cmd + S saves</p>
-          </div>
-        </div>
-        <pre id="arena-output" class="mt-1 min-h-24 max-h-64 overflow-auto whitespace-pre-wrap rounded-lg bg-slate-950 p-3 text-sm text-slate-100" data-state="idle" aria-live="polite">Run your code or submit it for server-side verification.</pre>
-      </div>
-
-      <div id="arena-editorial" class="mt-3 hidden rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-800 dark:bg-amber-950" aria-live="polite">
-        <p class="font-semibold text-amber-900 dark:text-amber-100">Worked solution and explanation</p>
-        <pre id="arena-editorial-code" class="mt-2 overflow-auto whitespace-pre-wrap rounded bg-white p-3 text-slate-800 dark:bg-slate-900 dark:text-slate-100"></pre>
-        <p id="arena-editorial-prose" class="mt-2 whitespace-pre-line text-amber-900 dark:text-amber-100"></p>
-      </div>
-
-      <p class="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-100">Browser Run executes only your code and optional checks. Submit sends it to the isolated server judge, which runs private checks before recording a verified result.</p>
-
-      <iframe id="arena-sandbox" title="Isolated Python runner" sandbox="allow-scripts" class="hidden" src="about:blank"></iframe>
-    </section>
   </div>
 
-  <nav class="mt-6 flex flex-wrap items-center justify-between gap-3" aria-label="Problem navigation">
+  <nav class="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm" aria-label="Problem navigation">
     {% if previous_problem %}
-    <a class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800" href="{{ url_for('practice_arena.problem_detail', problem_id=previous_problem.id) }}">← {{ previous_problem.title }}</a>
+    <a class="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800" href="{{ url_for('practice_arena.problem_detail', problem_id=previous_problem.id) }}">← {{ previous_problem.title }}</a>
     {% else %}<span></span>{% endif %}
     {% if next_problem %}
-    <a class="rounded-lg border border-slate-300 px-3 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800" href="{{ url_for('practice_arena.problem_detail', problem_id=next_problem.id) }}">{{ next_problem.title }} →</a>
+    <a class="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700 hover:bg-slate-100 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800" href="{{ url_for('practice_arena.problem_detail', problem_id=next_problem.id) }}">{{ next_problem.title }} →</a>
     {% else %}<span></span>{% endif %}
   </nav>
 </section>

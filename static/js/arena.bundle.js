@@ -23090,10 +23090,41 @@ if (root) {
   const panels = document.getElementById("arena-panels");
   const resetButton = document.getElementById("arena-reset");
   const revealButton = document.getElementById("arena-reveal");
-  const editorialPanel = document.getElementById("arena-editorial");
   const editorialCode = document.getElementById("arena-editorial-code");
   const editorialProse = document.getElementById("arena-editorial-prose");
   const iframe = document.getElementById("arena-sandbox");
+  const dock = document.getElementById("arena-dock");
+  const dockToggle = document.getElementById("arena-dock-toggle");
+  const activateIdeTab = (name2) => {
+    document.querySelectorAll("[data-ide-tab]").forEach((button) => {
+      button.setAttribute("aria-selected", String(button.dataset.ideTab === name2));
+    });
+    document.querySelectorAll("[data-ide-panel]").forEach((panel) => {
+      panel.hidden = panel.dataset.idePanel !== name2;
+    });
+  };
+  document.querySelectorAll("[data-ide-tab]").forEach((button) => {
+    button.addEventListener("click", () => activateIdeTab(button.dataset.ideTab));
+  });
+  const activateDockTab = (name2) => {
+    document.querySelectorAll("[data-dock-tab]").forEach((button) => {
+      button.setAttribute("aria-selected", String(button.dataset.dockTab === name2));
+    });
+    document.querySelectorAll("[data-dock-panel]").forEach((panel) => {
+      panel.hidden = panel.dataset.dockPanel !== name2;
+    });
+  };
+  document.querySelectorAll("[data-dock-tab]").forEach((button) => {
+    button.addEventListener("click", () => activateDockTab(button.dataset.dockTab));
+  });
+  if (dock && dockToggle) {
+    dockToggle.addEventListener("click", () => {
+      const collapsed = dock.dataset.collapsed === "true";
+      dock.dataset.collapsed = String(!collapsed);
+      dockToggle.setAttribute("aria-expanded", String(collapsed));
+      dockToggle.setAttribute("aria-label", collapsed ? "Collapse output panel" : "Expand output panel");
+    });
+  }
   let problem = null;
   let editor;
   try {
@@ -23134,7 +23165,10 @@ if (root) {
   let lightTheme = false;
   let lastAutoRun = 0;
   const setSaveStatus = (message, state = "") => {
-    saveStatus.textContent = message;
+    const dot2 = document.createElement("span");
+    dot2.className = "ide-save-dot";
+    dot2.setAttribute("aria-hidden", "true");
+    saveStatus.replaceChildren(dot2, document.createTextNode(message));
     saveStatus.dataset.state = state;
   };
   const setOutput = (message, state = "idle") => {
@@ -23282,7 +23316,7 @@ if (root) {
       savedSource = data.source;
       setEditorSource(data.source);
       setSaveStatus(data.updated_at ? "Saved work loaded" : "Starter code loaded", "saved");
-      runButton.disabled = !runnerReady;
+      runButton.disabled = false;
       submitButton.disabled = false;
       if (editor) void editor.languageReady;
     } catch (error) {
@@ -23306,6 +23340,12 @@ if (root) {
   };
   const runChecks = async () => {
     if (!problem) return;
+    activateDockTab("result");
+    if (dock && dock.dataset.collapsed === "true" && dockToggle) {
+      dock.dataset.collapsed = "false";
+      dockToggle.setAttribute("aria-expanded", "true");
+      dockToggle.setAttribute("aria-label", "Collapse output panel");
+    }
     const serverCode = `${currentSource()}
 
 ${customChecks.value}`;
@@ -23403,6 +23443,7 @@ ${customChecks.value}`
   };
   const submitCode = async () => {
     if (!problem || !await saveWorkspace()) return;
+    activateDockTab("result");
     submitButton.disabled = true;
     runButton.disabled = true;
     setOutput("Submitting to the isolated server judge\u2026", "running");
@@ -23499,8 +23540,7 @@ ${customChecks.value}`
       }
       editorialCode.textContent = data.solution_code || "(No reference code supplied.)";
       editorialProse.textContent = data.editorial || "";
-      editorialPanel.classList.remove("hidden");
-      editorialPanel.scrollIntoView({ block: "nearest" });
+      activateIdeTab("editorial");
     } catch (error) {
       setOutput(error.message, "error");
     } finally {

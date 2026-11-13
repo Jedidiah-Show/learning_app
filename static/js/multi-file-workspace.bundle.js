@@ -23077,6 +23077,7 @@ var runButton = document.getElementById("workspace-run");
 var checksButton = document.getElementById("workspace-checks");
 var resetButton = document.getElementById("workspace-reset");
 var clearOutputButton = document.getElementById("workspace-clear-output");
+var fileCount = document.getElementById("workspace-file-count");
 var newFileForm = document.getElementById("workspace-new-file-form");
 var newFileInput = document.getElementById("workspace-new-file-name");
 var iframe = document.getElementById("workspace-sandbox");
@@ -23160,18 +23161,25 @@ var renderFileList = () => {
   if (!fileList) return;
   fileList.innerHTML = "";
   const paths = Object.keys(files).sort();
+  if (fileCount) fileCount.textContent = `${paths.length} file${paths.length === 1 ? "" : "s"}`;
   if (paths.length === 0) {
-    fileList.innerHTML = '<li class="px-2 py-2 text-xs text-slate-500">No files yet \u2014 add one above.</li>';
+    const empty = document.createElement("li");
+    empty.className = "mf-empty";
+    empty.textContent = "No files yet \u2014 add one above.";
+    fileList.append(empty);
     return;
   }
   for (const path of paths) {
     const item = document.createElement("li");
-    item.className = "flex items-center gap-1";
+    item.className = "mf-file-item";
     const activate = document.createElement("button");
     activate.type = "button";
     activate.dataset.filePath = path;
-    activate.className = `grow rounded-lg px-2 py-1.5 text-left text-xs font-mono ${path === activePath ? "bg-indigo-100 text-indigo-900 dark:bg-indigo-950 dark:text-indigo-200" : "text-slate-700 hover:bg-slate-50 dark:text-slate-200 dark:hover:bg-slate-800"}`;
+    activate.className = `mf-file-btn${path === activePath ? " is-active" : ""}`;
     activate.textContent = path;
+    activate.title = path;
+    activate.setAttribute("role", "option");
+    activate.setAttribute("aria-selected", String(path === activePath));
     activate.addEventListener("click", () => {
       switchTo(path);
     });
@@ -23179,7 +23187,8 @@ var renderFileList = () => {
     rename.type = "button";
     rename.textContent = "\u270E";
     rename.title = "Rename file";
-    rename.className = "rounded px-1.5 py-1 text-xs text-slate-400 hover:bg-slate-100 hover:text-slate-700 dark:hover:bg-slate-800 dark:hover:text-slate-200";
+    rename.setAttribute("aria-label", `Rename ${path}`);
+    rename.className = "mf-file-icon";
     rename.addEventListener("click", () => {
       const next = window.prompt("Rename file to:", path);
       if (next === null) return;
@@ -23189,7 +23198,8 @@ var renderFileList = () => {
     remove2.type = "button";
     remove2.textContent = "\xD7";
     remove2.title = "Delete file";
-    remove2.className = "rounded px-1.5 py-1 text-xs text-slate-400 hover:bg-rose-50 hover:text-rose-700 dark:hover:bg-rose-950";
+    remove2.setAttribute("aria-label", `Delete ${path}`);
+    remove2.className = "mf-file-icon is-danger";
     remove2.addEventListener("click", () => {
       if (window.confirm(`Delete ${path}?`)) void deleteFile(path);
     });

@@ -27,10 +27,45 @@ if (root) {
     const panels = document.getElementById('arena-panels');
     const resetButton = document.getElementById('arena-reset');
     const revealButton = document.getElementById('arena-reveal');
-    const editorialPanel = document.getElementById('arena-editorial');
     const editorialCode = document.getElementById('arena-editorial-code');
     const editorialProse = document.getElementById('arena-editorial-prose');
     const iframe = document.getElementById('arena-sandbox');
+    const dock = document.getElementById('arena-dock');
+    const dockToggle = document.getElementById('arena-dock-toggle');
+
+    // Left-pane tabs (Description / Hints / Editorial / Lab debrief)
+    const activateIdeTab = (name) => {
+        document.querySelectorAll('[data-ide-tab]').forEach((button) => {
+            button.setAttribute('aria-selected', String(button.dataset.ideTab === name));
+        });
+        document.querySelectorAll('[data-ide-panel]').forEach((panel) => {
+            panel.hidden = panel.dataset.idePanel !== name;
+        });
+    };
+    document.querySelectorAll('[data-ide-tab]').forEach((button) => {
+        button.addEventListener('click', () => activateIdeTab(button.dataset.ideTab));
+    });
+
+    // Bottom dock tabs (Testcase / Test Result)
+    const activateDockTab = (name) => {
+        document.querySelectorAll('[data-dock-tab]').forEach((button) => {
+            button.setAttribute('aria-selected', String(button.dataset.dockTab === name));
+        });
+        document.querySelectorAll('[data-dock-panel]').forEach((panel) => {
+            panel.hidden = panel.dataset.dockPanel !== name;
+        });
+    };
+    document.querySelectorAll('[data-dock-tab]').forEach((button) => {
+        button.addEventListener('click', () => activateDockTab(button.dataset.dockTab));
+    });
+    if (dock && dockToggle) {
+        dockToggle.addEventListener('click', () => {
+            const collapsed = dock.dataset.collapsed === 'true';
+            dock.dataset.collapsed = String(!collapsed);
+            dockToggle.setAttribute('aria-expanded', String(collapsed));
+            dockToggle.setAttribute('aria-label', collapsed ? 'Collapse output panel' : 'Expand output panel');
+        });
+    }
 
     let problem = null;
     let editor;
@@ -69,7 +104,10 @@ if (root) {
     let lastAutoRun = 0;
 
     const setSaveStatus = (message, state = '') => {
-        saveStatus.textContent = message;
+        const dot = document.createElement('span');
+        dot.className = 'ide-save-dot';
+        dot.setAttribute('aria-hidden', 'true');
+        saveStatus.replaceChildren(dot, document.createTextNode(message));
         saveStatus.dataset.state = state;
     };
 
@@ -225,7 +263,9 @@ if (root) {
             savedSource = data.source;
             setEditorSource(data.source);
             setSaveStatus(data.updated_at ? 'Saved work loaded' : 'Starter code loaded', 'saved');
-            runButton.disabled = !runnerReady;
+            // The Pyodide runner starts lazily on the first Run so the page
+            // stays light; the button is clickable and queues the run.
+            runButton.disabled = false;
             submitButton.disabled = false;
             if (editor) void editor.languageReady;
         } catch (error) {
@@ -251,6 +291,12 @@ if (root) {
 
     const runChecks = async () => {
         if (!problem) return;
+        activateDockTab('result');
+        if (dock && dock.dataset.collapsed === 'true' && dockToggle) {
+            dock.dataset.collapsed = 'false';
+            dockToggle.setAttribute('aria-expanded', 'true');
+            dockToggle.setAttribute('aria-label', 'Collapse output panel');
+        }
         const serverCode = `${currentSource()}\n\n${customChecks.value}`;
         let serverResult = null;
         try {
@@ -347,6 +393,7 @@ if (root) {
 
     const submitCode = async () => {
         if (!problem || !await saveWorkspace()) return;
+        activateDockTab('result');
         submitButton.disabled = true;
         runButton.disabled = true;
         setOutput('Submitting to the isolated server judge…', 'running');
@@ -441,8 +488,7 @@ if (root) {
             }
             editorialCode.textContent = data.solution_code || '(No reference code supplied.)';
             editorialProse.textContent = data.editorial || '';
-            editorialPanel.classList.remove('hidden');
-            editorialPanel.scrollIntoView({block: 'nearest'});
+            activateIdeTab('editorial');
         } catch (error) {
             setOutput(error.message, 'error');
         } finally {
