@@ -15,7 +15,7 @@ from sklearn.preprocessing import StandardScaler
 
 ROOT = (
     Path(__file__).resolve().parents[2]
-    / 'starter_kits' / 'machine_learning' / 'module_3'
+    / 'starter_kits' / 'machine_learning' / 'module_9_reproducible_training'
 )
 FEATURE_COLUMNS = ['support_tickets', 'tenure_months']
 TARGET_COLUMN = 'churn_within_30_days'

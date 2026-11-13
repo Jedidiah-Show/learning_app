@@ -1,0 +1,629 @@
+{
+  "module_id": "mle.data-problem-formulation",
+  "lessons": [
+    {
+      "id": "mle.data.05",
+      "title": "Load a table and look at it",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Load the bundled orders file with pandas and describe its shape, its column types and its missing values before you change anything.",
+      "sections": [
+        {
+          "heading": "Read the file",
+          "body": [
+            "A CSV file is a table stored as plain text, where every line is one row and every comma separates one column. Pandas is a Python library for working with those tables, and a table loaded into pandas is called a DataFrame. You read the bundled orders file with two short lines of code: `import pandas as pd`, then `df = pd.read_csv('starter_kits/machine_learning/module_3_data_problem/data/orders.csv')`. The name `df` is just a label you choose for the table you have loaded.",
+            "Two quick commands tell you what you have. `df.head()` prints the first five rows, which here are orders 1001 to 1005: order 1001 on 2025-01-01 for 24.50 dollars from the web channel, order 1002 on 2025-01-02 for 81.00 dollars from mobile, order 1003 on 2025-01-03 for 17.25 dollars from web, order 1004 on 2025-01-04 from mobile with a blank total, and order 1005 on 2025-01-05 for 44.00 dollars from partner. `df.shape` prints `(12, 6)`, which means 12 rows and 6 columns. One row is one order, so the file holds 12 orders and 6 facts about each one.",
+            "Reading the file changes nothing, which is exactly why it is the first thing you do. A file can hold numbers where you expected words, or thousands of rows where you expected twelve, and both are cheaper to find now than after you have started cleaning. Keep the file on disk untouched and let pandas load a copy into memory, so that every edit you make later leaves the original exactly as it arrived."
+          ]
+        },
+        {
+          "heading": "What is in each column",
+          "body": [
+            "`df.dtypes` prints the data type of every column. On this file it reports order_id as int64, order_date as text, order_total as float64, channel as text, returned_within_30_days as int64 and refund_reason as text. A float is a number that can carry a decimal part, which is why a total of 24.50 needs that type rather than a whole-number type. Two columns hold whole numbers, one holds a decimal number and three hold words. Recent versions of pandas print the text columns as str, which is the same idea under a shorter name.",
+            "The types tell you what each column can be used for. order_id is an identifier, a label for a row rather than a measurement, so it names an order and should not be handed to a model as if it were a measurement. channel and refund_reason are words, and words have to be turned into numbers before a model can use them. returned_within_30_days is a flag: the number 1 means the order came back within 30 days and 0 means it did not, so it is the column to predict rather than a column to learn from.",
+            "`df.describe()` summarises the numeric columns only, so it leaves out the three text columns. For order_total it reports count 11, mean 38.29, standard deviation 32.19, minimum -5.00, maximum 102.40, and the quartiles 16.125, 29.99 and 53.60. The count of 11 tells you straight away that one of the twelve rows has no total, and the minimum of -5.00 tells you that one row holds an amount no customer would ever pay."
+          ]
+        },
+        {
+          "heading": "Find what is missing",
+          "body": [
+            "`df.isna().sum()` counts the missing values in each column. On this file it prints 0 for order_id, 0 for order_date, 1 for order_total, 0 for channel, 0 for returned_within_30_days and 8 for refund_reason. The one missing total belongs to order 1004 on 2025-01-04 from the mobile channel, and its cell in the file is empty because there is nothing between two commas.",
+            "A missing value and a zero are different things. A zero order total would mean the order was free, and pandas stores that as the number 0 and counts it as present. An empty cell means nobody wrote a number down, and pandas stores that as missing and counts it as 1 for that column. If you fill a missing total with 0, the average of the column drops and the model learns that a free order is a normal thing to predict. If you leave the cell empty, the model is told that you do not know.",
+            "Eight blank refund reasons is not eight broken rows. A refund reason is only written when an order is returned, and exactly four orders in this file were returned: 1002, 1005, 1008 and 1011. The other eight rows are blank for a good reason. Always check whether a blank is a missing measurement or a blank that carries meaning before you decide to fill it or drop the row."
+          ]
+        },
+        {
+          "heading": "Look before you change",
+          "body": [
+            "Cleaning decisions change the numbers a model learns, so it pays to see the mess before you tidy it. On this file the inspection has already found three things: one missing total on order 1004, one negative total of -5.00 on order 1007, and a refund reason column that is blank for every order that was not returned. Each of those needs a decision, and each decision changes a row count or an average that somebody will quote later.",
+            "Keep the original. `df = pd.read_csv(path)` loads a copy into memory, so `df.copy()` before any edit gives you a version to compare against, and saving a cleaned table to a new file leaves the raw file exactly as it arrived. When somebody asks later why the average is 37.60 instead of 38.29, the answer should be a line of code rather than a memory.",
+            "Inspection is cheap and it is the step people skip. Two minutes with `shape`, `dtypes`, `isna().sum()` and `describe()` gives you the size of the table, what each column holds, what is missing and where the impossible numbers are. Everything in the rest of this module rests on those answers being right, so write them down before you change a single cell."
+          ]
+        }
+      ],
+      "task": "Load the bundled orders file with `pd.read_csv`, then print `df.shape`, `df.dtypes` and `df.isna().sum()`. Write down the number of rows, the number of columns and the number of missing values in each column. Finish with one sentence naming the single thing in this table that surprised you most, and why.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does the shape of a DataFrame tell you?",
+            "choices": [
+              "The average value of every numeric column",
+              "The number of rows and the number of columns",
+              "Which columns contain missing values",
+              "The order the rows appear in the file"
+            ],
+            "answer": 1,
+            "explanation": "The shape of a DataFrame is a pair of numbers written as rows by columns, and for this file it is (12, 6): 12 orders and 6 facts recorded about each order. The shape does not report averages, missing values or row order. Those come from describe(), from isna().sum() and from the order of the rows."
+          },
+          {
+            "id": "q2",
+            "question": "`df.isna().sum()` prints 1 for order_total and 8 for refund_reason. What does that tell you?",
+            "choices": [
+              "That order_total contains one zero and refund_reason contains eight empty strings",
+              "That one order has no recorded total, and eight rows have no refund reason recorded",
+              "That the totals column should be deleted because it is unusable",
+              "That eight orders were returned and one was not"
+            ],
+            "answer": 1,
+            "explanation": "isna() finds cells that hold no value, and summing those flags counts them column by column. Order 1004 has an empty total cell, and the eight rows with no refund reason are exactly the eight orders that were never returned, so their blank means something rather than signalling broken data. A zero would be counted as present, not missing."
+          },
+          {
+            "id": "q3",
+            "question": "You loaded the file and immediately replaced every empty cell with 0. What goes wrong?",
+            "choices": [
+              "pandas cannot store the number 0 in a float column",
+              "the file on disk is changed, so the original values are lost",
+              "a missing total becomes a free order, which is a claim about the business that the data never made",
+              "the table becomes too large to load into memory"
+            ],
+            "answer": 2,
+            "explanation": "Filling a blank with zero claims the order was worth nothing, and a model trained on that claim learns from a fact you invented. An empty cell says the value is unknown; zero says the value is known and happens to be zero. Filling happens on a copy, so the file on disk is untouched either way, and pandas stores 0 in a float column without complaint."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.data.06",
+      "title": "Fix missing values without inventing data",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Choose a missing-value strategy for the order_total column and explain what information that choice gives up.",
+      "sections": [
+        {
+          "heading": "Three ways to handle a gap",
+          "body": [
+            "There are three honest moves for a missing value, and they differ in what they assume. You can drop the row, which assumes the missing order is not worth learning from. You can fill with a constant such as 0, which assumes a blank total means the order was free. You can fill with a summary number such as the mean or the median, which assumes the missing order looked like the other orders.",
+            "On this file only one row has a missing total: order 1004 on 2025-01-04 from the mobile channel. Dropping it leaves 11 rows and the mean of the present totals, 38.29, unchanged, because the dropped value was never part of that mean. Filling it with 0 adds a zero to the twelve totals, giving a sum of 421.19 and a mean of 35.10.",
+            "Filling it with the median of the present totals, 29.99, gives a sum of 451.18 across 12 rows and a mean of 37.60. None of these three numbers is the true total of order 1004, because nobody knows it. The point of choosing a method is not to recover the right value. The point is to make a decision you can defend, and to record what that decision assumes."
+          ]
+        },
+        {
+          "heading": "Fill with the median, not the mean",
+          "body": [
+            "The median is the middle value once the values are sorted from smallest to largest, and the mean is the sum divided by the count. The eleven present totals, sorted, are -5.00, 12.75, 15.00, 17.25, 24.50, 29.99, 36.10, 44.00, 63.20, 81.00 and 102.40. The sixth of those eleven is 29.99, so the median is 29.99. The sum is 421.19, so the mean is 421.19 divided by 11, which is 38.29.",
+            "Those two fill values differ because of one row. The total of -5.00 on order 1007 sits far below the other ten values, and it drags the mean down while it leaves the middle position untouched. On money amounts that can be skewed, the median is the safer fill value, because it is not moved by a single unusual row. Here the mean sits 8.30 above the median, and that whole gap is the -5.00.",
+            "Choosing the median still invents a value, which is why the next section adds a column rather than pretending the gap was never there. The rule to remember is simple: fill with a summary that the rest of the column would look like, and then record the fact that you filled it."
+          ]
+        },
+        {
+          "heading": "Add a missing flag instead",
+          "body": [
+            "The pattern is to fill the value so the model has something to work with, and to add a column that says the value was missing. In pandas that is three lines: `median = df['order_total'].median()` gives 29.99, `df['order_total_was_missing'] = df['order_total'].isna()` marks the gap with True, and `df['order_total'] = df['order_total'].fillna(median)` puts 29.99 in the blank. Order 1004 now carries a total of 29.99 and a flag of True, and the other eleven rows carry a flag of False.",
+            "The flag buys you two things. It keeps the information that the value was missing, so a model can learn that missing totals behave differently, and it lets you undo the fill later without hunting for which row was filled. It also lets you report honestly: you can say that the average across the twelve rows is 37.60 while knowing that one of those twelve numbers is the median rather than a measured total.",
+            "The cost of the flag is one more column and one more decision to explain. If you drop the flag, the filled row looks like every other row and the missing-ness disappears. If you keep it, a reader of your audit can see exactly which rows you changed and why, which is the difference between a cleaned dataset and a quietly altered one."
+          ]
+        },
+        {
+          "heading": "Missing can mean something",
+          "body": [
+            "Not every blank is a gap in your knowledge. The refund_reason column is blank on eight of the twelve rows, and those eight rows are exactly the orders that were not returned: 1001, 1003, 1004, 1006, 1007, 1009, 1010 and 1012. The blank means this order was never returned, so there is no reason to give. The four returned orders carry the reasons damaged, wrong_item and late_delivery.",
+            "If you dropped every row with a blank refund_reason, you would be left with the four returned orders and nothing else. The returned rate in your table would jump from 4 in 12, which is 33 percent, to 4 in 4, which is 100 percent, and the table would no longer describe the orders the shop actually received. That is the danger of dropping rows on a blank that carries meaning.",
+            "So the rule is to ask what the blank means before you act on it. If the blank means the event did not happen, keep the row and treat the blank as information. If the blank means the event happened and nobody recorded it, you have a genuine gap, and you choose a fill or a drop and say which one in your notes."
+          ]
+        }
+      ],
+      "task": "For the bundled orders file, count the missing order totals, fill them with the median of the eleven present totals, which is 29.99, add a column called order_total_was_missing that is True where the total was absent, and write one line saying why you filled instead of dropped.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Why is the median often a safer fill value than the mean for a column of money?",
+            "choices": [
+              "Because the median is always larger than the mean",
+              "Because the median depends only on the position of the middle value, so one unusual row cannot move it",
+              "Because the median does not have to be calculated from the data",
+              "Because the median can be typed into an empty cell without a library"
+            ],
+            "answer": 1,
+            "explanation": "The median is the middle value in the sorted list, so it depends on where the values sit rather than on their size. On the eleven present totals the median is 29.99 while the mean is 38.29, and the whole 8.30 gap comes from the single -5.00 row. That is why the median is the usual choice when a column can be skewed."
+          },
+          {
+            "id": "q2",
+            "question": "You fill the missing total on order 1004 with 29.99. What is the mean of order_total across all twelve rows afterwards?",
+            "choices": [
+              "38.29",
+              "37.60",
+              "35.10",
+              "29.99"
+            ],
+            "answer": 1,
+            "explanation": "The eleven present totals sum to 421.19. Adding 29.99 gives 451.18, and 451.18 divided by 12 is 37.60. The old mean of 38.29 was 421.19 over 11 rows and never included the filled row. Filling with 0 instead would give 421.19 over 12, which is 35.10."
+          },
+          {
+            "id": "q3",
+            "question": "The refund_reason column is blank on eight rows. Why is dropping those rows a mistake?",
+            "choices": [
+              "Because pandas cannot delete rows with empty text",
+              "Because those eight rows are exactly the orders that were not returned, so dropping them removes every negative example",
+              "Because the file becomes too small for the training code to run",
+              "Because refund_reason is the column you are trying to predict"
+            ],
+            "answer": 1,
+            "explanation": "The blank on those eight rows means the order was never returned, and that is the outcome you want a model to recognise. Dropping them leaves only the four returned orders, so the returned rate goes from 33 percent to 100 percent and the table stops looking like the orders the shop received. Here the blank is information, not a gap."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.data.07",
+      "title": "Turn text categories into numbers",
+      "status": "ready",
+      "study_minutes": 40,
+      "goal": "Encode the channel column as numbers a model can use, without pretending that web, mobile and partner have an order they do not have.",
+      "sections": [
+        {
+          "heading": "Why a model cannot read a word",
+          "body": [
+            "A model that learns from numbers has no way to measure how far the word web is from the word mobile, because a distance between two words is not a number it can compare. A text column therefore has to be turned into numbers before training. How you turn it changes what the model is able to learn, which is why the choice is a modelling decision and not a formatting detail.",
+            "There are two broad options. You can give each category a single number, such as web = 0, mobile = 1 and partner = 2, which is called ordinal encoding. Or you can give each category its own column of ones and zeros, which is called one-hot encoding. The first is compact and cheap. The second is wider and safer, and the reason why is the next section.",
+            "The order you assign in ordinal encoding is arbitrary. If you number web = 0, mobile = 1 and partner = 2 today, a model may treat a partner order as being twice as far from web as a mobile order, even though nothing in the business says partner sits between web and mobile. The number is a label you made up, and a model cannot tell a label from a measurement."
+          ]
+        },
+        {
+          "heading": "One number per category",
+          "body": [
+            "One-hot encoding gives each category its own column, and every row gets a 1 in the column of its category and 0 in the others. In pandas the call is `dummies = pd.get_dummies(df['channel'], dtype=int)`, which returns three new columns named mobile, partner and web, one row for each of the twelve orders.",
+            "The resulting table looks like this. Order 1001 is web, so its row is mobile 0, partner 0, web 1. Order 1002 is mobile, so its row is mobile 1, partner 0, web 0. Order 1003 is web, so its row is mobile 0, partner 0, web 1. Order 1004 is mobile, so its row is mobile 1, partner 0, web 0. Order 1005 is partner, so its row is mobile 0, partner 1, web 0. The last seven rows follow the same pattern: 1006 web, 1007 mobile, 1008 web, 1009 partner, 1010 mobile, 1011 web and 1012 partner. Every row has exactly one 1.",
+            "Summing each of the three columns gives 4 for mobile, 3 for partner and 5 for web, which are the same counts that `df['channel'].value_counts()` reports. What the columns mean is simple: web = 1 tells the model that this order came through the website, and the same for the other two. Because each category has its own column, the model can learn a separate effect for each channel and cannot accidentally learn that partner is more than web. The cost is width: three channels become three columns, so fifty channels would become fifty columns."
+          ]
+        },
+        {
+          "heading": "When a category really has an order",
+          "body": [
+            "Some categories genuinely sit in a sequence, such as a size column with small, medium and large, or a satisfaction score from 1 to 5. Ordinal encoding is right there, because the categories have a real order and a real gap between neighbours. You write the mapping yourself, such as `{'size_small': 0, 'size_medium': 1, 'size_large': 2}`, and apply it with `df['size'].map(mapping)`.",
+            "The trap is using ordinal encoding where no order exists, and channel is the example. Web, mobile and partner are names, not positions on a line. A model that sees partner = 2 and mobile = 1 treats the gap between them as real, and it treats web = 0 as being closer to nothing. One-hot encoding does not have this problem, because three separate columns carry no implied distance between them.",
+            "A second trap is pretending that the categories are equally spaced. Even with size_small, size_medium and size_large, the jump from small to medium may matter far more to a customer than the jump from medium to large, so one number per step hides that difference. When the gaps matter, one-hot encoding each level leaves the model free to learn them from the data instead of inheriting your guess."
+          ]
+        },
+        {
+          "heading": "Keep the categories you saw",
+          "body": [
+            "The categories in your training data are not necessarily the categories that turn up later. If you fit one-hot encoding on rows from January and then score an order from a channel called kiosk, that order has no column of its own: every one-hot column is 0, which looks like an order from no channel at all. Keep the list of categories you saw during training, and give unseen categories their own handling, such as an other column or an explicit refusal to score.",
+            "A column with hundreds of distinct values has the opposite problem: one-hot encoding turns it into hundreds of columns and the table stops being readable. In this file the refund_reason column holds three distinct reasons among the four returned orders, damaged twice, wrong_item once and late_delivery once, so three extra columns would be reasonable here. On a column with one reason per order you need a different plan, such as grouping rare reasons into an other bucket.",
+            "Before you encode, count what is there. `df['channel'].value_counts()` gives web 5, mobile 4 and partner 3, and `df['refund_reason'].value_counts()` gives the three reasons with their counts. Counting first tells you how wide your table is about to become and shows you a category with a single row, which is often a typo rather than a real category. You will meet this same counting step again when you decide which rows to train on."
+          ]
+        }
+      ],
+      "task": "Use `pd.get_dummies` on the channel column of the bundled orders file to create one column per channel, then print the three new column names and the number of ones in each. Write two sentences saying why ordinal encoding would be the wrong choice for the channel column.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does one-hot encoding produce for a channel column with three values?",
+            "choices": [
+              "One number per row, using 0, 1 and 2 for the three channels",
+              "One column per channel, where each row has a 1 in its own channel column and 0 in the others",
+              "The average channel for each order",
+              "A single column holding the three channel names sorted alphabetically"
+            ],
+            "answer": 1,
+            "explanation": "One-hot encoding gives each category its own column, and a row has a 1 in the column of its category and 0 in the rest. On this file the twelve rows produce web 5, mobile 4 and partner 3 when you sum each column, which matches value_counts(). The first option is ordinal encoding, which is the approach this lesson warns against for names."
+          },
+          {
+            "id": "q2",
+            "question": "After one-hot encoding the channel column, how many ones are there in the web column?",
+            "choices": [
+              "3",
+              "4",
+              "5",
+              "12"
+            ],
+            "answer": 2,
+            "explanation": "The web channel appears on orders 1001, 1003, 1006, 1008 and 1011, so its column holds five ones and seven zeros. Mobile has four ones on orders 1002, 1004, 1007 and 1010, and partner has three on orders 1005, 1009 and 1012. The three columns together hold 5 + 4 + 3 = 12 ones, one for each order."
+          },
+          {
+            "id": "q3",
+            "question": "You number the channels web = 0, mobile = 1 and partner = 2 and train on that. What problem have you created?",
+            "choices": [
+              "The model cannot use whole numbers, only decimal numbers",
+              "The model may treat the channel numbers as a distance, inventing an order between three names that have none",
+              "The three channel numbers will be read as missing values",
+              "The table now has one column too many"
+            ],
+            "answer": 1,
+            "explanation": "Ordinal encoding tells the model that partner is further from web than mobile is, and nothing in the business supports that. A model treating the numbers as distances will fit a slope from web to partner and apply it to a difference that does not exist. One-hot encoding removes the problem by giving each channel its own column with no implied distance."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.data.08",
+      "title": "Put features on a comparable scale and catch outliers",
+      "status": "ready",
+      "study_minutes": 50,
+      "goal": "Scale the order_total column so no single column dominates a distance, and decide whether an unusual total is an error or a real case.",
+      "sections": [
+        {
+          "heading": "Why scale",
+          "body": [
+            "Many models measure how similar two rows are by adding up the squared differences between their feature values, which is the distance formula. If one column is measured in dollars and another in ones, the dollars column contributes most of the total even when the ones column is the one that carries the meaning. The rule is to put columns on comparable scales before you measure distance, so that the model listens to every column.",
+            "Take two orders from this file. Order 1005 is a partner order of 44.00 dollars that was returned, and order 1012 is a partner order of 36.10 dollars that was not returned. Their totals differ by 7.90 and their returned flags differ by 1, so the raw distance is the square root of 7.90 squared plus 1 squared, which is the square root of 63.41, about 7.96. The dollar gap does nearly all the work, and order 1012 ends up the closest order to order 1005 among the eleven rows that have a total.",
+            "Scale the dollar column into z-scores and the same comparison changes. Order 1005 becomes 0.19 and order 1012 becomes -0.07, so the total gap shrinks to about 0.26 while the flag gap of 1 stays. The distance becomes the square root of 0.26 squared plus 1 squared, about 1.03, and the closest order to order 1005 is now order 1008, a web order of 63.20 that was also returned, at about 0.63. Scaling changed which orders count as similar, which is exactly why the choice has to be yours."
+          ]
+        },
+        {
+          "heading": "Standardisation and min-max",
+          "body": [
+            "Standardisation, also called z-score scaling, centres a column on its mean and divides by its standard deviation. In words: take the value, subtract the mean of the column, then divide by the spread of the column. The eleven present totals have a mean of 38.29, because they sum to 421.19 over 11 values, and a population standard deviation of 30.69. A total of 44.00 becomes (44.00 - 38.29) divided by 30.69, which is 5.71 divided by 30.69, about 0.19.",
+            "Min-max scaling does something different: take the value, subtract the smallest value in the column, and divide by the range, which is the largest minus the smallest. The eleven present totals run from -5.00 to 102.40, so the range is 107.40, and 44.00 becomes (44.00 - (-5.00)) divided by 107.40, which is 49.00 over 107.40, about 0.46. Min-max puts every value between 0 and 1. Standardisation puts the average at 0 and the spread at 1, and it copes better when a few values sit far from the rest, because one extreme value does not stretch the whole column.",
+            "In pandas and scikit-learn you do not have to do the arithmetic by hand. `from sklearn.preprocessing import StandardScaler`, then `scaler = StandardScaler()`, `scaler.fit(train[['order_total']])` and `scaler.transform(train[['order_total']])` gives the scaled column, and the scaler stores the mean and the spread it learned as `scaler.mean_` and `scaler.scale_`. One detail worth noticing: `df['order_total'].describe()` shows a standard deviation of 32.19 because it divides by ten, while StandardScaler divides by eleven and uses 30.69. Both are standard conventions, so write down which one you used."
+          ]
+        },
+        {
+          "heading": "Fit the scaler on training data only",
+          "body": [
+            "A scaler learns numbers from the rows it is fitted on: the mean of 38.29 and the spread of 30.69 come from the rows you hand to fit. If you fit on all twelve orders, the four evaluation orders have already told the model their own average and spread before the evaluation starts, and your score on those rows is optimistic. The rule is that the scaler learns from training rows and is applied unchanged to everything else.",
+            "The same rule applies to the median you used to fill the missing total and to the one-hot columns you created for the channel. Each of them learns something from the data: the median 29.99, the list of three channel names, the mean and the spread. Every one of those must be learned from training rows only and then reused for rows the model has not seen. Breaking that rule is called data leakage, and the next lesson looks at the wider problem.",
+            "The practical habit is to split first and fit second. Create the training rows and the evaluation rows, fit the scaler on the training rows, then apply it to the evaluation rows without refitting. In code that is two steps, `scaler.fit(train[['order_total']])` followed by `scaler.transform(test[['order_total']])`, and the second line never looks at the test values to decide anything."
+          ]
+        },
+        {
+          "heading": "Outlier or unusual customer",
+          "body": [
+            "The interquartile range, written IQR, is the width of the middle half of the values. The first quartile, Q1, is the value that has a quarter of the data below it, and the third quartile, Q3, is the value that has three quarters below it. On the eleven present totals, Q1 is 16.125 and Q3 is 53.60, so the middle 50 percent of orders sits between about 16.13 and about 53.60, and the IQR is 53.60 - 16.125, which is 37.475.",
+            "Values outside that middle band are worth a look: order 1007 at -5.00 sits below 16.13, and order 1011 at 102.40 sits above 53.60. The stricter and more common fence widens the band by one and a half IQR on each side, which on this file runs from -40.09 to 109.81 and so flags neither row. That difference matters, and you have to decide it before you look: on a table of thousands of orders the fence is stable, and on a table of eleven values the quartiles move as soon as one row changes.",
+            "Even when a value is flagged, decide whether it is an error or a real case before you touch it. A total of -5.00 is impossible, so order 1007 is a data error, probably a refund recorded as a negative sale, and someone has to correct or exclude it. A total of 102.40 is a perfectly ordinary amount for a large order, and the customer who placed it is real, so deleting it would remove a genuine case and quietly narrow what your model has seen. Flag the row, look it up, and write down what you did."
+          ]
+        }
+      ],
+      "task": "Scale the order_total column of the bundled orders file with z-score scaling and report the mean and the spread you used. Then compute the first and third quartiles of the eleven present totals, name the rows that fall outside the middle 50 percent band, and say whether the wider one and a half times IQR fence would flag them too.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Why scale features before fitting a distance-based model such as k-nearest neighbours?",
+            "choices": [
+              "Because distance-based models cannot accept negative numbers",
+              "Because a distance adds squared differences, so a column in dollars would dominate a column measured in ones",
+              "Because scaling makes the target column easier to read",
+              "Because unscaled columns always contain missing values"
+            ],
+            "answer": 1,
+            "explanation": "A distance is built from squared differences that are then added, so the column with the biggest numbers contributes most of the total. In the orders file the total gap of 7.90 between two orders produced a distance of about 7.96, while the flag gap of 1 contributed almost nothing. Scaling puts both on comparable footing so the model listens to both."
+          },
+          {
+            "id": "q2",
+            "question": "Using the mean 38.29 and the population standard deviation 30.69, what is the z-score of an order total of 44.00?",
+            "choices": [
+              "0.19",
+              "0.74",
+              "1.44",
+              "5.71"
+            ],
+            "answer": 0,
+            "explanation": "The z-score is the value minus the mean, divided by the spread: (44.00 - 38.29) divided by 30.69, which is 5.71 over 30.69, about 0.19. The 5.71 option forgets to divide by the spread, 1.44 would need a much smaller spread, and 0.74 divides the wrong way round."
+          },
+          {
+            "id": "q3",
+            "question": "Order 1011 has a total of 102.40, outside the middle 50 percent band. What should you do?",
+            "choices": [
+              "Delete it, because it is far from the other totals",
+              "Change it to the median so that the column is tidier",
+              "Flag it, check whether it is a real large order, and keep it unless you can show it is an error",
+              "Move it into the evaluation set so that it does not affect training"
+            ],
+            "answer": 2,
+            "explanation": "An unusual value is a question, not a verdict. 102.40 is a plausible amount for a large order, and deleting it removes a genuine case and narrows what the model has seen. Overwriting it with the median invents a number. Check the source record, keep the row if it is real, and write down what you found so the decision can be reviewed."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.data.01",
+      "title": "Frame the prediction problem",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Write down the decision a model must support, the column it predicts, the columns available at that moment, and the simple rule a model has to beat.",
+      "sections": [
+        {
+          "heading": "Start with the decision",
+          "body": [
+            "A model earns its place by changing a decision that somebody has to make. Start by naming the person who acts, the action they can take, and the moment they need the answer. For the bundled orders file, the decision could be this: a returns team checks orders by hand before they ship, and the model should say which orders are likely to come back within 30 days. The team can only act on an answer at the moment the order is placed, so the prediction time is order time and the outcome window is 30 days.",
+            "Those three choices fix everything else. The prediction unit is one row of the table, which here means one order. The outcome window decides which rows count as returned, and the file already gives you that column: returned_within_30_days is 1 for four orders and 0 for eight. If you had instead wanted to predict returns within 7 days, this file could not answer the question, because it does not record when a return happened.",
+            "Writing this down first is what stops the common beginner mistake of choosing an algorithm first and then bending the data to fit it. A logistic regression and a decision tree can both be trained on the same table, but only one decision makes sense here. The decision, the prediction unit and the window are yours to choose; the columns and the rows you are given are not."
+          ]
+        },
+        {
+          "heading": "Choose the target and baseline",
+          "body": [
+            "The target is the column the model learns to predict. Here it is returned_within_30_days, and it takes two values, so this is a classification problem. The features are the columns that exist at prediction time: order_total, channel and order_date. The refund_reason column is not a feature, because it is only written when an order is returned, which is after the answer you are trying to predict. That column is a leakage feature, and a later lesson deals with it properly.",
+            "A baseline is the simple rule you would use if you had no model at all. The usual baseline here is to predict not returned for every order. On these twelve rows that rule gets 8 right out of 12, because 8 of the 12 orders were not returned, which is 66.7 percent accuracy. A model has to beat that number to be worth anything, and on a table where a third of the orders come back, a rule that always guesses not returned is strong enough to hide a useless model.",
+            "Write the baseline down in the same sentence as the target, so that nobody can later claim a model is good without saying what it beat. The returned rate across the whole table is 4 in 12, which is 33.3 percent, and a model that predicts that rate exactly gets about a third of the rows right. If your model scores below 66.7 percent on these rows, it is worse than the rule you would have used anyway."
+          ]
+        },
+        {
+          "heading": "Write an evaluation contract",
+          "body": [
+            "An evaluation contract is a short written promise about how you will test the model, made before you see any result. It names the rows you will test on, the number you will report, and the threshold you will judge it against. For the bundled file a workable contract says this: train on the eight earliest orders, 1001 to 1008, evaluate on the four latest, 1009 to 1012, report accuracy and recall on those four rows, and accept the model only if it beats the 66.7 percent baseline.",
+            "Fixing the contract in advance is what stops you from moving the goalposts. Without it, the natural thing to do after a disappointing score is to change the test rows, drop the awkward order 1004 with its missing total, or pick the metric that flatters the model. Each of those changes the rules after seeing the score, and the score that results then tells you nothing about future orders.",
+            "Keep the contract in the repository next to the code, and treat any change as a new experiment with a new name. On these four evaluation rows the baseline rule predicts not returned and gets three of the four right, because only order 1011 was returned. A perfect four out of four would be worth checking for leakage rather than celebrating, and that check comes later in this module."
+          ]
+        }
+      ],
+      "task": "For the bundled orders file, write one paragraph naming the decision a model would support, the prediction unit and the prediction time, the target column, the columns available at that moment, the no-model baseline rule, and the number you would report on the four evaluation rows.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Why write down the decision before choosing an algorithm?",
+            "choices": [
+              "Because the algorithm decides which columns you are allowed to use",
+              "Because the decision fixes what you must predict, for whom and by when, which in turn fixes the target and the features",
+              "Because a written evaluation contract is required by the course",
+              "Because a baseline can only be computed after the model has been trained"
+            ],
+            "answer": 1,
+            "explanation": "The decision sits upstream of everything technical. If the returns team needs to know which orders to check before shipping, then the prediction unit is the order, the prediction time is order time, and the target is a return within 30 days. The algorithm choice comes last and can change without altering that. Baselines are computed without any model, so they are always available."
+          },
+          {
+            "id": "q2",
+            "question": "On the twelve bundled orders, a model that predicts not returned for every row gets what accuracy?",
+            "choices": [
+              "25.0 percent",
+              "33.3 percent",
+              "66.7 percent",
+              "100 percent"
+            ],
+            "answer": 2,
+            "explanation": "Eight of the twelve orders were not returned, so always guessing not returned gets 8 right out of 12, which is 66.7 percent. Four orders were returned, so the opposite rule gets 4 out of 12, which is 33.3 percent. A model has to beat 66.7 percent on this table to be worth using at all."
+          },
+          {
+            "id": "q3",
+            "question": "You choose a library and a metric, then pick the test rows that give the best score. What is the problem?",
+            "choices": [
+              "Nothing is wrong, because the model was trained before the test rows were chosen",
+              "The score is now chosen after seeing results, so it no longer estimates performance on unseen orders",
+              "Random splits are never allowed on tabular data",
+              "The model needs a larger dataset before it can be scored at all"
+            ],
+            "answer": 1,
+            "explanation": "Choosing the rows or the metric after seeing the results means the score describes the rows you happened to favour, not the orders the model will meet. That is why a contract fixes the evaluation rows, the metric and the baseline in writing beforehand. Random splits are legitimate for independent rows, and a score on pre-chosen rows is exactly what a contract protects."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.data.02",
+      "title": "Inspect and validate a tabular dataset",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Find structural and quality problems in the orders table with checks you can rerun, and report each problem together with the row that caused it.",
+      "sections": [
+        {
+          "heading": "Treat a dataset as a contract",
+          "body": [
+            "A dataset is not just a file of numbers. It is a promise: these columns, this many rows, one row per order, an order total that is a positive amount of money, a channel from a known list. When you write the promise down, a check can fail loudly the moment the file stops matching it, instead of the problem surfacing three weeks later as a strange model score.",
+            "For the bundled orders file the contract reads like this: 12 rows and 6 columns named order_id, order_date, order_total, channel, returned_within_30_days and refund_reason; 12 distinct order ids; order_total a number of 0 or more; channel one of web, mobile or partner; returned_within_30_days equal to 0 or 1; and a refund reason only on rows where the order was returned. Write it as one sentence per rule, because a rule you cannot state is a rule you cannot check.",
+            "Schema checks and quality checks answer different questions. A schema check asks whether the shape is right: are the expected columns present, with the expected names and types, and is the id unique. A quality check asks whether the values are sensible: are totals positive, are channel names from the known list, is a refund reason present exactly when an order came back. Both kinds belong in the pipeline, and the second kind is where the real problems live."
+          ]
+        },
+        {
+          "heading": "Inspect with safe summaries",
+          "body": [
+            "Start with counts, because they are cheap and they catch the worst problems. `df.shape` gives 12 rows and 6 columns. `df['order_id'].nunique()` gives 12, so no order appears twice. `df['order_total'].isna().sum()` gives 1, the gap on order 1004. `df['order_total'].le(0).sum()` gives 1, the -5.00 on order 1007. And `df['refund_reason'].notna().sum()` gives 4, exactly the number of returned orders, so the refund reasons and the returned flag agree with each other.",
+            "Those five counts between them find both real faults on this file. A missing total is a gap in the record, and a negative total is impossible for a sale, so order 1007 is either a refund signed as a sale or a typing error, and somebody has to decide which. Averages hide both problems: the mean of 38.29 looks like a normal amount for an order, and it tells you nothing about a row that is missing or a row that is negative.",
+            "Compare across groups as well as across columns. `df.groupby('channel')['order_total'].mean()` gives 44.02 for web over 5 orders, 30.33 for mobile over the 3 orders that have a total, and 36.70 for partner over 3. The web and mobile averages differ because of which orders sit in each group and because of one negative row inside mobile, so a single overall average hides both the group difference and the bad row."
+          ]
+        },
+        {
+          "heading": "Make failures actionable",
+          "body": [
+            "A check that reports only failed has told you almost nothing, because you still have to find the bad rows yourself. A useful failure names the rule, the value that broke it and the row it came from: order_total must be 0 or more, order_id 1007 has -5.00. Now the fix is a decision about one order rather than a search through twelve.",
+            "In pandas the pattern is a function that returns a list of problems, each one a string, and a caller that raises an error when the list is not empty. Writing the checks as strings that name the rule also means the output can go straight into the audit report the project asks for, so the evidence of what was found is written down rather than remembered.",
+            "Keep one important limit in mind. A check can tell you that a value breaks a rule, and it cannot tell you whether the rule was wrong. If the business allows negative totals for refunds, then the check that demands a positive total is the thing to fix, not order 1007. Decide which rules are promises from the business and which are assumptions you have made, and label the assumptions."
+          ]
+        }
+      ],
+      "task": "Write a validation function for the bundled orders file that reports the row count, the number of unique order ids, the number of missing totals and the number of totals that are zero or negative. Run it, write down the four numbers, and decide what to do about the one row it flags.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What makes a dataset a contract rather than just a file of numbers?",
+            "choices": [
+              "It is stored in a CSV file so that it can be opened in a spreadsheet",
+              "It has a promised shape, column meanings and value rules that checks can test",
+              "It contains more than a thousand rows",
+              "It has been checked at least once by a person"
+            ],
+            "answer": 1,
+            "explanation": "A contract is a written promise about structure and values: 12 rows, 6 named columns, unique order ids, positive totals, channels from a known list. Because the promise is written down, a check can fail loudly and point at the row that broke it. Storage format, dataset size and past human inspection do not make a dataset checkable."
+          },
+          {
+            "id": "q2",
+            "question": "Which check finds the negative order total on order 1007?",
+            "choices": [
+              "df['order_id'].nunique() equals 12",
+              "df.isna().sum().sum() equals 1",
+              "df['order_total'].le(0).sum() equals 1",
+              "df['channel'].value_counts().max() equals 5"
+            ],
+            "answer": 2,
+            "explanation": "le(0) selects the values that are less than or equal to zero, so it finds the one negative total, -5.00 on order 1007. nunique checks that the ids are distinct, the isna count finds the missing total on order 1004, and value_counts().max() only reports the most common channel, which is web with 5 orders."
+          },
+          {
+            "id": "q3",
+            "question": "Your validation function prints validation failed. What is missing?",
+            "choices": [
+              "The function needs to be run more than once",
+              "The rule that broke, the offending value and the row it came from",
+              "The name of the library that was imported",
+              "The number of columns in the file"
+            ],
+            "answer": 1,
+            "explanation": "A bare failure leaves you searching the table yourself, which is the slow part. Naming the rule, the value and the row, as in order_total must be 0 or more, order_id 1007 has -5.00, turns the failure into one decision about one order. Running it twice, or noting the library and the column count, tells you nothing about what broke."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.data.03",
+      "title": "Choose a split that matches the real question",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Split the orders table so the evaluation rows look like future orders, and check that the split itself is sound.",
+      "sections": [
+        {
+          "heading": "Random splits are not always realistic",
+          "body": [
+            "A random split throws each row into the training pile or the evaluation pile at random, and that is the right choice when rows are independent and future rows resemble a random pick from today's rows. It is the wrong choice when the question is about the future. If the model will be used to predict whether a customer's next order comes back, then training on an order from 2025-01-12 and testing on one from 2025-01-02 has mixed up time.",
+            "The orders file is an order book, so its rows arrive in time order: 2025-01-01 through 2025-01-12, one order per day. The honest split for a model that will predict future returns is therefore a time split. Take the earliest eight orders, 1001 to 1008, as development rows and the latest four, 1009 to 1012, as evaluation rows. The evaluation rows are then orders that had not happened yet when the development rows were collected.",
+            "A random split would also be wrong when the same customer appears many times, because the model would meet that customer in training and in evaluation and score better than it would on new customers. Group the rows by customer before splitting in that case. The rule to remember is simple: match the split to the question you will be asked, not to the split that gives the nicest number."
+          ]
+        },
+        {
+          "heading": "Keep the test set for final evaluation",
+          "body": [
+            "Three sets, three jobs. The training set is what the model learns its parameters from. The validation set is what you use to choose between options: which features to include, which fill value to use, which threshold to set. The test set is what you score once, at the end, to estimate how the model will do on orders it has never seen.",
+            "The test set is worth protecting, because every time you look at it, it stops being a test set. If you check the test score after every experiment and keep the experiment with the best test score, you have fitted the model to the test data and the number you report is optimistic. Keep the test rows untouched until the choices are settled, and decide the sizes in advance: 8 development rows and 4 evaluation rows for this file.",
+            "With only twelve rows the sizes are small, and that is a real limitation to state rather than hide. Four evaluation rows means one mistake moves the score by 25 percentage points, so a single evaluation is noisy. Cross-validation, which repeats the split over several folds, gives a sense of that variation once you have more rows to spend. For now, write down the split rule and the row counts, and say plainly that the sample is small."
+          ]
+        },
+        {
+          "heading": "Check the split itself",
+          "body": [
+            "Before you trust a split, look at it. Three checks catch most problems. Does the split keep a similar proportion of returns? The development rows 1001 to 1008 contain three returned orders, which is 3 in 8 or 37.5 percent, and the evaluation rows 1009 to 1012 contain one, which is 1 in 4 or 25 percent. On four rows that difference is noise rather than a shift, but on a large table a big gap would be a warning.",
+            "Do the two parts look alike, and do they share identifiers? Here they share nothing: the 12 order ids are distinct, so the 8 and the 4 have no order in common, and you can check that with `set(train_ids).isdisjoint(test_ids)`, which returns True. The ranges differ more than the balance does. The development rows hold the missing total on order 1004 and the negative total on order 1007, while all four evaluation rows have totals, ranging from 15.00 to 102.40.",
+            "Notice what that last check revealed. Every messy row in this file landed in the development half and none landed in the evaluation half, so a model that mishandles missing or negative totals would look fine on the evaluation rows and fail on real orders. That is exactly what a split check is for. A split that hides your data problems is a split that makes you feel better than you should."
+          ]
+        }
+      ],
+      "task": "Split the bundled orders file into eight development rows, 1001 to 1008, and four evaluation rows, 1009 to 1012, in date order. Write three checks: one for the returned rate in each part, one for the totals range in each part, and one that confirms the two parts share no order id.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "When is a random split the wrong choice?",
+            "choices": [
+              "Whenever the dataset has more than a hundred rows",
+              "When the model will be used on future rows, or when the same customer appears in several rows",
+              "Whenever the target column takes only two values",
+              "Whenever the data contains a missing value"
+            ],
+            "answer": 1,
+            "explanation": "A random split mixes the past and the future, and it lets the model meet the same customer in both halves. The orders file is a time-ordered order book, so training on 1001 to 1008 and evaluating on 1009 to 1012 matches the way the model will actually be used. The size of the table, the number of target values and a missing cell do not decide the split."
+          },
+          {
+            "id": "q2",
+            "question": "With the time-ordered split, what is the returned rate in the eight development rows?",
+            "choices": [
+              "3 in 8, which is 37.5 percent",
+              "4 in 8, which is 50 percent",
+              "1 in 4, which is 25 percent",
+              "4 in 12, which is 33.3 percent"
+            ],
+            "answer": 0,
+            "explanation": "The development rows 1001 to 1008 contain the returned orders 1002, 1005 and 1008, so 3 in 8, which is 37.5 percent. The evaluation rows 1009 to 1012 contain only the returned order 1011, so 1 in 4, or 25 percent. The 4 in 12 figure is the returned rate of the whole file before any split."
+          },
+          {
+            "id": "q3",
+            "question": "Which check reveals a leaky split?",
+            "choices": [
+              "Printing the row count of each part",
+              "Checking that no order id appears in both parts",
+              "Checking that both parts have the same number of columns",
+              "Sorting both parts by order date"
+            ],
+            "answer": 1,
+            "explanation": "If the same order id sits in both halves, the model can recognise the row instead of generalising from it, and the score will be too high. On this file the 12 ids are distinct, so the check returns True and the split is clean. Equal row counts, equal column counts and sorting by date say nothing about whether information crossed the boundary."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.data.04",
+      "title": "Build features and detect leakage",
+      "status": "ready",
+      "study_minutes": 40,
+      "goal": "Decide which columns a model may use by asking when each one exists, and recognise the results that mean information leaked in.",
+      "sections": [
+        {
+          "heading": "Availability defines a valid feature",
+          "body": [
+            "A feature is a column of your table that you hand to the model as input, and a valid feature is one that exists at the exact moment you need the prediction. The test is simple and unforgiving: if the column is written after the outcome happens, it is not available at prediction time, whatever its value turns out to be.",
+            "The refund_reason column fails that test. It is blank on the eight orders that were not returned and holds damaged on 1002 and 1008, wrong_item on 1005 and late_delivery on 1011, so it is written at the moment of a return, which happens up to 30 days after the order. A model that reads it is reading the answer. The columns available when an order is placed are order_total, channel and order_date, and returned_within_30_days is the target rather than a feature.",
+            "Leakage also arrives through less obvious routes. A feature computed from a count over all orders, including the ones you will test on, has already seen the future. A duplicate customer id in two splits lets the model recognise a customer it has met before. And preprocessing fitted on the whole file, such as a scaler or a filled median, mixes the test rows into the training. Each of these makes an offline score look better than the model will be in use."
+          ]
+        },
+        {
+          "heading": "Fit transformations on training data",
+          "body": [
+            "A transformation is a step that learns numbers from your data: filling a missing total with the median 29.99, turning channel into three one-hot columns, or standardising order_total around a mean of 38.29 and a spread of 30.69. The learned part is where the risk sits. If those numbers come from all twelve rows, then the four evaluation orders have already shaped the model before you test it.",
+            "So the rule is: fit on training rows, then apply to everything else with the numbers you have already learned. `scaler.fit(train[['order_total']])` learns the mean and the spread from the development rows, and `scaler.transform(test[['order_total']])` applies exactly those numbers to the evaluation rows without looking at them. The fill for a missing total has to use a median computed on the development rows, and the one-hot columns have to come from the channels seen in development.",
+            "Keep the mapping from raw column to model input in one place, with the names, the units and the missing-value behaviour written down next to it. A feature called order_total_z means something specific: the number of standard deviations above the training mean, with the median fill applied first. Without that note, a later reader cannot tell whether two runs used the same transformation, and a comparison between them means nothing."
+          ]
+        },
+        {
+          "heading": "Audit suspiciously strong results",
+          "body": [
+            "A near-perfect score is a warning, not a celebration. On this file you can see why without building anything: every one of the four returned orders has a refund reason and all eight unreturned orders have none, so the rule that says if refund_reason is not empty then the order was returned gets 12 rows out of 12 right. A hundred percent on the training table, from a column that will be empty for every order you ever score.",
+            "The usual causes of a suspiciously strong result are the same four every time: a feature that is written after the outcome, duplicate identifiers shared across splits, a statistic computed over the full dataset, or a target column that is quietly part of the inputs. The checks are the same every time too. Take the score again with the suspect feature removed and see whether it collapses. Check for shared ids between training and evaluation. Check every feature for the moment it is written.",
+            "A lower honest score is worth more than a high dishonest one. The number you can defend is the one that would still be roughly true on orders from next month, when the refund_reason column is empty for every order you score and the feature cannot help at all. Record what you checked in your audit, because the person reading the report cannot see inside your pipeline, and an unexplained perfect score will be assumed to be a mistake."
+          ]
+        }
+      ],
+      "task": "For the bundled orders file, list every column that exists when an order is placed, mark returned_within_30_days as the target and refund_reason as a leakage feature, and explain in two sentences why a model scoring 12 out of 12 on this table is a reason to check rather than to celebrate.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What makes a column a leakage feature?",
+            "choices": [
+              "A column with too many missing values",
+              "A column that is written after the outcome you are trying to predict, so it is not available at prediction time",
+              "A column measured in dollars rather than in ones",
+              "A column with a high number of distinct values"
+            ],
+            "answer": 1,
+            "explanation": "Leakage is a timing problem: the column exists, but only after the answer is known. refund_reason is written when an order comes back, so a model that reads it has been handed the target. Missing values, units and the number of distinct values are data quality questions, and none of them makes a column unavailable at prediction time."
+          },
+          {
+            "id": "q2",
+            "question": "On the bundled file, why can a rule based on refund_reason score 12 out of 12?",
+            "choices": [
+              "Because all twelve orders were returned",
+              "Because every returned order carries a refund reason and every unreturned order has a blank one",
+              "Because the reason column was filled with the median",
+              "Because the file was split into 8 and 4 rows"
+            ],
+            "answer": 1,
+            "explanation": "The four returned orders carry a reason and the eight unreturned orders carry none, so on this table the blank separates the two groups perfectly. That is a hundred percent score on data that will never look like this in use, because a new order has no refund reason at the moment you score it. The rule works by peeking at the answer."
+          },
+          {
+            "id": "q3",
+            "question": "Why must a scaler be fitted on training rows only?",
+            "choices": [
+              "Because fitting on all rows is slower",
+              "Because the mean and the spread it learns would then include information from the evaluation rows",
+              "Because StandardScaler cannot handle more than 100 rows",
+              "Because fitting on training rows keeps the column names in place"
+            ],
+            "answer": 1,
+            "explanation": "A scaler learns a mean and a spread from the rows it is fitted on. If those come from all twelve orders, the four evaluation rows have already told the model their own average before the test, and the resulting score is optimistic. Fit on the development rows, then apply the stored mean and spread to the evaluation rows without refitting."
+          }
+        ]
+      }
+    }
+  ]
+}

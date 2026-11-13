@@ -1,0 +1,218 @@
+{
+  "module_id": "mle.production-ml",
+  "lessons": [
+    {
+      "id": "mle.production.01",
+      "title": "Choose a prediction serving pattern",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Choose batch or online inference based on the decision's latency, volume, and reliability needs.",
+      "sections": [
+        {
+          "heading": "Batch and online inference solve different timing needs",
+          "body": [
+            "Batch inference scores a group of records all at once, typically once a day or once an hour. The churn model can score all 24 training rows in a single batch job that runs overnight. This is efficient when the people who need the scores do not need them instantly.",
+            "Online inference scores one record at a time, while a person or another system waits. An customer service representative opening a support ticket might want the churn risk score before the conversation continues. Online inference adds latency, typically one to five seconds, but returns a result immediately. Batch inference has zero wait time for the person who triggers it, but the scores are stale by the time they are used. Choosing between them means trading off the acceptable wait time against how recently the data must be."
+          ]
+        },
+        {
+          "heading": "Define a stable prediction contract",
+          "body": [
+            "A prediction contract is a documented promise that says what input fields the service expects and what it returns. The churn model's contract requires two fields: support_tickets, which must be a whole number between zero and one thousand, and tenure_months, which must be a whole number between zero and twelve hundred. Each field has a type, a valid range, and a clear error message if the caller provides something else.",
+            "Changing the contract later breaks every caller who wrote code against the old shape, which is why the contract must be stable before the service goes live. The contract also says what comes back: the predicted churn risk as a number, the model version as a string, and the probability as a decimal between zero and one."
+          ]
+        },
+        {
+          "heading": "Protect the application boundary",
+          "body": [
+            "Validation belongs at the edge of the service, where the application meets the outside world. If a caller sends a negative support_tickets value the service should reject the request with a 422 response that says support_tickets must be zero or greater. If a caller sends a string where a number belongs the service should reject the request and explain which field was wrong and what type was expected.",
+            "Extra fields that the contract does not list must also be rejected, because they may indicate a caller who is trying to probe the service boundaries. Good error messages name the field, state the requirement, and give an example of a valid value, so the caller can fix the request without guesswork."
+          ]
+        }
+      ],
+      "task": "Write the prediction contract for the bundled churn model: the two required input fields with their types and valid ranges, the three response fields, and the error message for invalid or extra input. Then test the contract by sending a request with a negative support_tickets value and a request with an extra field, and confirm both are rejected with a 422 status code.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "When is batch inference the better choice over online inference?",
+            "choices": [
+              "When the people who need the scores can wait until the next batch run",
+              "When the model is too large to run on a server",
+              "When the input data has more than five features",
+              "When the model must predict probabilities above 0.9"
+            ],
+            "answer": 0,
+            "explanation": "Batch inference scores a group of records once a day or hour, which is efficient when the consumers do not need immediate results. Online inference scores one record at a time with seconds of latency, which is needed when a person waits for the answer."
+          },
+          {
+            "id": "q2",
+            "question": "What must a stable prediction contract specify about each input field?",
+            "choices": [
+              "The field name, its data type, and its valid range or format",
+              "The field name, the model version, and the prediction probability",
+              "The field name, the training data used, and the feature order",
+              "The field name, the Python type, and the database column name"
+            ],
+            "answer": 0,
+            "explanation": "A stable contract tells the caller what the field is called, what type of value is expected, and what range or format is valid. Without all three the caller cannot reliably send correct requests."
+          },
+          {
+            "id": "q3",
+            "question": "Why should extra fields sent to a prediction service be rejected?",
+            "choices": [
+              "Because extra fields always crash the service",
+              "Because extra fields may indicate a caller probing the service boundaries",
+              "Because the model cannot process more than two features at a time",
+              "Because the contract requires exactly three fields and no more"
+            ],
+            "answer": 1,
+            "explanation": "An unknown field may mean the caller is testing what the service accepts, which is a security concern. Rejecting extra fields protects the service and gives the caller clear feedback."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.production.02",
+      "title": "Monitor data and model behavior",
+      "status": "ready",
+      "study_minutes": 50,
+      "goal": "Detect service failures, input shifts, and changes in model quality with appropriate signals.",
+      "sections": [
+        {
+          "heading": "Monitor the service and the model separately",
+          "body": [
+            "A healthy service can serve bad predictions, so uptime and latency are not enough. The churn model might have 99.9 percent availability and still return a churn risk that is far from reality. Service signals such as error_rate and latency tell you whether the HTTP server is responding, but they say nothing about whether the prediction is correct.",
+            "Model signals such as error_rate on holdout data and latency per prediction tell you whether the model's quality has changed. Input drift measures how the incoming feature values differ from the values the model saw during training. Prediction drift measures whether the distribution of predicted risks has shifted. Monitoring both service and model signals gives you the full picture: the system is up, and the model is still accurate."
+          ]
+        },
+        {
+          "heading": "Drift is a signal to investigate",
+          "body": [
+            "Input drift occurs when the statistical distribution of support_tickets or tenure_months changes relative to the training data. In the 24-row training set the mean support_tickets is 1.4 and the mean tenure_months is 18. If the recent mean support_tickets rises to 3.5 that is a noticeable shift, but it does not by itself prove the model is worse.",
+            "The model may still make accurate predictions on the new input shapes. Input drift alone is not a reason to retrain or to sound an automatic alarm. What it does signal is that the world has changed and the team should investigate whether the model's assumptions still hold. The team should check if the churn quality metrics have also changed before taking action."
+          ]
+        },
+        {
+          "heading": "Set actions before alerts fire",
+          "body": [
+            "Every monitoring alert should have a written action plan that says who does what when a signal moves. For example if input drift is detected the action might be: the data engineer checks the source system for a schema change, the model owner runs a quality check on a held-out batch, and the engineering lead decides whether to pause new deployments.",
+            "If the error_rate on holdout data exceeds ten percent the action might be: rollback to the last known-good model version and page the on-call engineer. If latency exceeds two seconds the action might be: investigate the inference endpoint metrics and scale the service horizontally. Writing these plans in advance means that when an alert fires the team is not guessing what to do, and the response is faster and more consistent."
+          ]
+        }
+      ],
+      "task": "Write a monitoring plan for the bundled churn model with four signals: service error_rate, service latency, input drift on support_tickets, and prediction drift on churn risk. For each signal state a threshold that triggers an alert, the written action that follows, and the person responsible for executing that action. Run the input-shift monitor on the values [8 9 10 11] and confirm that drift_detected is True and model_quality_failed is False.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Why can a service be up and still serve bad predictions?",
+            "choices": [
+              "Because the HTTP server may return 200 even when the model returns a wrong answer",
+              "Because the model runs on a different machine than the service",
+              "Because the service does not check the model's predictions before responding",
+              "Because uptime measures network health, not model accuracy"
+            ],
+            "answer": 0,
+            "explanation": "The service can report success while the model inside returns incorrect predictions. Uptime does not guarantee correctness."
+          },
+          {
+            "id": "q2",
+            "question": "What does input drift tell you and what does it not tell you?",
+            "choices": [
+              "Input drift tells you the model is worse and must be retrained immediately, and it not tell you the direction of the change",
+              "Input drift tells you the incoming data has a different distribution from the training data, and it does not tell you whether the model quality has changed",
+              "Input drift tells you the model coefficients are wrong, and it does not tell you the feature names",
+              "Input drift tells you the service is overloaded, and it does not tell you the latency"
+            ],
+            "answer": 1,
+            "explanation": "Input drift measures whether the feature distribution has shifted from training. It does not by itself prove the model is worse, because the model may still be accurate on the new data."
+          },
+          {
+            "id": "q3",
+            "question": "What must accompany every monitoring alert?",
+            "choices": [
+              "A written action plan that says who does what when the signal moves",
+              "A direct phone call to the model trainer",
+              "A decision to retrain the model within twenty-four hours",
+              "A confirmation from the service owner that the server is healthy"
+            ],
+            "answer": 0,
+            "explanation": "Every alert needs a written action plan so the team knows who does what when the signal moves, which makes the response faster and more consistent."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.production.03",
+      "title": "Release with a canary and rollback",
+      "status": "ready",
+      "study_minutes": 55,
+      "goal": "Limit the impact of a model update and restore a known-good version safely.",
+      "sections": [
+        {
+          "heading": "Treat model promotion as a release",
+          "body": [
+            "A new model version is a production change with the same care as a code change. The churn model moving from version 1.0.0 to 1.1.0 affects every prediction the service serves, so the team should treat it like a code deployment with testing, documentation, and a rollback plan.",
+            "The canary release pattern sends a small share of traffic to the new version while the majority continues on the current version. If the new version's error_rate exceeds the guardrail the canary is stopped and traffic is shifted back. If the new version meets the guardrail it can be promoted to serve all traffic. This pattern limits the number of users affected by a bad release and gives the team a rehearsed way to restore the prior version."
+          ]
+        },
+        {
+          "heading": "Use stop and rollback conditions",
+          "body": [
+            "A canary deployment has stop conditions that automatically halt the release when a signal crosses a threshold. The churn model's canary has an error_rate_limit of ten percent: if the candidate version 1.1.0 observes an error rate above ten percent on the canary traffic the release is stopped and the active version remains 1.0.0.",
+            "The rollback steps are rehearsed ahead of time: shift traffic from the candidate version back to the current version, verify that the health endpoint returns status 200, and confirm that the prediction contract still validates inputs correctly. These steps are practiced in a staging environment before any production canary is attempted, so the team knows exactly what to do when the guardrail fires."
+          ]
+        },
+        {
+          "heading": "Retraining is a governed decision",
+          "body": [
+            "Data drift alone is not a significant reason to retrain a model. The churn model may experience input drift as the business collects new customer segments, but if the model's quality metrics on held-out data have not degraded the team should not retrain.",
+            "Retraining costs engineering time, compute, and review, and it introduces a new model that must be validated from scratch. The team should retrain only when the model's quality has demonstrably fallen, such as the holdout error_rate rising above the guardrail, and when the team has new labeled data that represents the current population. Every retraining decision should be documented with the trigger metric, the new data used, and the validation results on a held-out test set."
+          ]
+        }
+      ],
+      "task": "Write a canary plan for a new version of the bundled churn model: send ten percent of traffic to version 1.1.0, watch the error_rate signal, and stop the release if error_rate exceeds fifteen percent. The rollback steps are: shift all traffic back to version 1.0.0, verify the health endpoint returns status 200, and record the rollback in the deployment log. Rehearse these rollback steps in the staging environment before the first production canary. Then run the canary evaluation with an observed error rate of twenty percent and confirm that the candidate is not promoted and the rollback is triggered.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What is a canary release and why is it called that?",
+            "choices": [
+              "A canary release sends a small share of traffic to the new version and gets its name from the canary bird that was historically used to detect toxic gas in mines",
+              "A canary release runs the new version on a separate canopy of servers, and the name refers to the cloud architecture",
+              "A canary release is a type of unit test, and the name refers to the canary testing framework",
+              "A canary release deletes the old version first, and the name refers to the canary in the deployment pipeline"
+            ],
+            "answer": 0,
+            "explanation": "The term comes from the practice of using canary birds in mines; if the bird showed signs of distress the miners knew toxic gas was present. Similarly a canary release tests the new version on a small traffic share before fully deploying it."
+          },
+          {
+            "id": "q2",
+            "question": "What must be written down before a release can be stopped automatically?",
+            "choices": [
+              "The exact stop condition and guardrail threshold, such as an error_rate limit",
+              "The name of the person who will perform the rollback",
+              "The full list of all customers affected by the release",
+              "The date and time when the release was initiated"
+            ],
+            "answer": 0,
+            "explanation": "The stop condition and its threshold, such as an error_rate limit of ten percent, must be documented so the automatic check knows when to halt the release."
+          },
+          {
+            "id": "q3",
+            "question": "Why is data drift on its own not a reason to retrain?",
+            "choices": [
+              "Because drift always improves model quality",
+              "Because the model may still make accurate predictions on the new data distribution, and retraining costs engineering time and compute without guaranteed benefit",
+              "Because drift can only be detected on the training data, not on new data",
+              "Because the model cannot be retrained once it is in production"
+            ],
+            "answer": 1,
+            "explanation": "Data drift means the input distribution has changed, but the model may still be accurate. Retraining costs time and compute and the new model must be validated from scratch, so the team should retrain only when quality has demonstrably fallen."
+          }
+        ]
+      }
+    }
+  ]
+}

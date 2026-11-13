@@ -2,6 +2,7 @@
 
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 from sklearn.dummy import DummyClassifier
 from sklearn.impute import SimpleImputer
@@ -14,10 +15,13 @@ from sklearn.preprocessing import StandardScaler
 
 ROOT = (
     Path(__file__).resolve().parents[2]
-    / 'starter_kits' / 'machine_learning' / 'module_2'
+    / 'starter_kits' / 'machine_learning' / 'module_4_classical_ml'
 )
 FEATURE_COLUMNS = ['support_tickets', 'tenure_months']
 TARGET_COLUMN = 'churn_within_30_days'
+REGRESSION_FEATURES = ['size_sqm', 'bedrooms', 'location_score']
+REGRESSION_TARGET = 'price'
+REGRESSION_TRAIN_ROWS = 12
 
 
 def _pipeline():
@@ -28,6 +32,42 @@ def _pipeline():
             max_iter=1000, random_state=7, class_weight='balanced',
         )),
     ])
+
+
+def regression_report():
+    """Fit a straight-line price model on the first 12 houses and score the last 4.
+
+    A least-squares fit with an explicit intercept column is enough. MAE and
+    R squared are computed from the predictions of those 4 rows.
+    """
+    houses = pd.read_csv(ROOT / 'data' / 'houses.csv')
+    features = REGRESSION_FEATURES
+    values = houses[features].to_numpy(dtype=float)
+    prices = houses[REGRESSION_TARGET].to_numpy(dtype=float)
+
+    train_values = values[:REGRESSION_TRAIN_ROWS]
+    train_prices = prices[:REGRESSION_TRAIN_ROWS]
+    test_values = values[REGRESSION_TRAIN_ROWS:]
+    test_prices = prices[REGRESSION_TRAIN_ROWS:]
+
+    design = np.hstack([train_values, np.ones((train_values.shape[0], 1))])
+    coefficients, *_ = np.linalg.lstsq(design, train_prices, rcond=None)
+    test_design = np.hstack([test_values, np.ones((test_values.shape[0], 1))])
+    predicted = test_design @ coefficients
+
+    errors = test_prices - predicted
+    mae = float(np.abs(errors).mean())
+    residual = float((errors ** 2).sum())
+    total = float(((test_prices - test_prices.mean()) ** 2).sum())
+    r2 = float(1 - residual / total)
+
+    return {
+        'regression_train_rows': int(train_values.shape[0]),
+        'regression_test_rows': int(test_values.shape[0]),
+        'regression_mae': mae,
+        'regression_r2': r2,
+        'regression_features': list(features),
+    }
 
 
 def evaluate():
@@ -45,7 +85,7 @@ def evaluate():
     )
 
     predicted = model.predict(X_eval)
-    return {
+    report = {
         'train_rows': int(len(training)),
         'evaluation_rows': int(len(evaluation)),
         'baseline_accuracy': float(accuracy_score(y_eval, baseline.predict(X_eval))),
@@ -61,3 +101,5 @@ def evaluate():
         'evaluation_set_used_for_fitting': False,
         'data_split': 'fixed_holdout',
     }
+    report.update(regression_report())
+    return report

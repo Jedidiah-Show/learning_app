@@ -1,0 +1,147 @@
+{
+  "module_id": "mle.capstone-integration",
+  "lessons": [
+    {
+      "id": "mle.capstone.01",
+      "title": "Orchestrate the full ML pipeline",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Combine data preparation, model training, and evaluation into a single orchestrated pipeline that runs with one command.",
+      "sections": [
+        {
+          "heading": "Pipeline frameworks",
+          "body": [
+            "Most machine learning work lives in separate scripts: one for loading data, another for training, a third for evaluation. A pipeline runner combines them so every stage runs in the correct order without manual coordination. The runner reads a configuration that lists each stage and passes the output of one stage as the input to the next. This means a single command such as `make train evaluate` can replace three separate invocations, and the order is guaranteed by the configuration rather than by remembering which script to run first.",
+            "The beginner mistake here is to run scripts in the wrong order and wonder why the model trains on incomplete data. Another common error is to hard-code file paths between scripts, which breaks when the data location changes. A pipeline runner avoids both problems by declaring dependencies explicitly and by passing artifacts from one stage to the next through a shared location."
+          ]
+        },
+        {
+          "heading": "Artifact management",
+          "body": [
+            "An artifact is any output produced by one pipeline stage that another stage later requires. Examples are the cleaned dataset, the trained model weights, the evaluation report, and the confusion matrix. The pipeline runner stores each artifact in a versioned location, typically a timestamped folder or a content-addressable store, so that stage N+1 can always find the exact output of stage N even if earlier runs used different parameters. When the runner starts a new execution, it can skip stages whose artifacts are already up to date, saving time on long-running training.",
+            "A frequent beginner error is to re-read the raw data in every stage instead of passing the intermediate artifact forward, which makes the pipeline slow and fragile. Another mistake is to forget to version the model weights, so a later stage might accidentally use a weights file from an experiment run three weeks earlier. Explicit artifact management solves both by recording what was produced and when."
+          ]
+        },
+        {
+          "heading": "End-to-end test",
+          "body": [
+            "An end-to-end test runs the pipeline from the very first step—raw data loading—to the very last step, such as generating a model performance report. The test verifies that every stage succeeds and that the final report contains the expected numbers, such as the baseline accuracy and the count of evaluation rows. If any stage fails or produces unexpected output, the test fails immediately, catching problems such as a broken import statement or a mismatch in column names before the report is published.",
+            "A typical beginner mistake is to test only the training step in isolation and assume the other steps work because they ran successfully last week. Data files change, library versions update, and a script that worked on a laptop may fail in continuous integration. The end-to-end test catches these regressions by confirming that the full chain, from raw data to report, produces consistent results every time it runs."
+          ]
+        }
+      ],
+      "task": "Write a single shell command that runs data preparation, training, and evaluation in order and prints the final report line. Then add one test that runs the entire chain from raw data to report and fails if any step produces unexpected output.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does a pipeline runner give you that separate scripts do not?",
+            "choices": [
+              "A single command that runs every stage in order, with dependencies declared between stages.",
+              "Faster training because the runner parallelizes every stage.",
+              "Automatic selection of the best model among all runs.",
+              "A graphical interface for monitoring loss during training."
+            ],
+            "answer": 0,
+            "explanation": "A pipeline runner declares which stage depends on which output, so a single command runs them in the correct order. Separate scripts require you to remember and run each one manually, and they often fail when a later script expects data that an earlier script omitted."
+          },
+          {
+            "id": "q2",
+            "question": "How do stages pass work to each other in a pipeline?",
+            "choices": [
+              "Each stage writes its output to a shared location that the next stage reads from, and the pipeline runner tracks the artifact between stages.",
+              "Stages pass variables directly through function calls in the same Python process.",
+              "Stages exchange work by overwriting a single global file after each run.",
+              "Stages do not pass work to each other; they all read the original raw data independently."
+            ],
+            "answer": 0,
+            "explanation": "The pipeline runner stores the output of each stage such as the cleaned dataset or trained model as an artifact, and the next stage reads that artifact from the shared location. This decouples the stages and makes the pipeline resilient to individual changes."
+          },
+          {
+            "id": "q3",
+            "question": "Why does the pipeline need an end-to-end test?",
+            "choices": [
+              "Because running each stage separately is too slow for regular execution.",
+              "Because it runs the whole chain from raw data to report and catches problems such as broken imports or column mismatches before the report is published.",
+              "Because the end-to-end test trains the model faster than any other test.",
+              "Because it automatically fixes any mismatch in column names between stages."
+            ],
+            "answer": 1,
+            "explanation": "An end-to-end test confirms that every stage runs successfully from start to finish, so a failure points to a real problem such as a missing import or a changed data format, rather than a fluke in one isolated step."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.capstone.02",
+      "title": "Design monitoring and canary deployment",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Design monitoring signals and a canary deployment strategy for model updates, with explicit thresholds and rollback steps.",
+      "sections": [
+        {
+          "heading": "Monitoring signals",
+          "body": [
+            "A monitoring signal is a number computed from recent production data that reveals a change in model behaviour. The four families are error rate, latency, input drift, and prediction drift. Error rate tracks how often the service returns an incorrect response, latency measures how long a request takes, input drift compares the distribution of recent feature values to the distribution seen during training, and prediction drift compares the distribution of recent model scores to the scores from training. Each signal answers a different question: error rate catches misclassifications, latency catches performance degradation, input drift detects when the world has changed around the model, and prediction drift detects when the model's own outputs have shifted.",
+            "A beginner often ignores prediction drift because error rate looks healthy, but a model can produce correct labels on stale data, so the score distribution changes without any immediate error. That is why all four signal families are needed: each one reveals a different failure mode, and a monitoring dashboard should display all four simultaneously rather than relying on a single number."
+          ]
+        },
+        {
+          "heading": "Canary deployment strategy",
+          "body": [
+            "A canary deployment releases a new model version to a small fraction of traffic, typically 5 percent, while the majority continues on the current version. The canary runs alongside the production version, and its predictions are collected but not used to serve customers. After a watch window—such as 30 minutes or 100 requests—the team compares the canary's error rate, latency, and drift signals against predefined stop conditions. If any signal exceeds its threshold, the canary is considered unsuccessful and traffic remains on the old version.",
+            "The stop conditions must be written before the deployment: for example, error rate must not increase by more than 2 percentage points, latency must not grow by more than 200 milliseconds, and prediction drift must stay below a Kolmogorov-Smirnov statistic of 0.2. If all conditions stay within bounds for the entire watch window, the team gradually increases the canary's traffic share until it serves 100 percent of requests."
+          ]
+        },
+        {
+          "heading": "Rollback conditions",
+          "body": [
+            "Rollback is the process of returning traffic to the previous model version when the canary deployment shows signs of failure. The rollback plan should state exactly when to trigger the rollback, such as when the error rate rises by more than 3 percentage points within a 10-minute window or when prediction drift exceeds 0.25 for two consecutive watch windows. The plan should also describe how to shift traffic back, such as by updating a load balancer rule or by rolling the container image to the previous version.",
+            "Before a release, the team should rehearses the rollback steps in a staging environment and confirm that the previous version serves traffic correctly within a minute. This rehearsal proves that the rollback works and that the team is familiar with the commands, so a real rollback is faster and less error-prone. The rollback condition and the rehearsal together ensure that a failed deployment can be reversed before it damages many users."
+          ]
+        }
+      ],
+      "task": "Write the operating plan for your capstone model: the four monitoring signals, their thresholds, the canary plan with traffic share and watch window, and the rollback steps and conditions, all on one page.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Which monitoring signal would catch a service that is down?",
+            "choices": [
+              "Error rate, because a down service returns a high rate of errors or timeouts.",
+              "Latency, because a down service always has infinite latency.",
+              "Input drift, because a down service changes the feature distribution.",
+              "Prediction drift, because a down service changes the model score distribution."
+            ],
+            "answer": 0,
+            "explanation": "Error rate tracks how often the service returns an incorrect response or times out; when the service is completely down the error rate spikes, making it the signal that reveals a service outage."
+          },
+          {
+            "id": "q2",
+            "question": "What must a canary plan state before it is approved?",
+            "choices": [
+              "The exact model architecture and training dataset used for the new version.",
+              "The traffic share, watch window, and stop conditions for error rate, latency, and prediction drift.",
+              "The names of the engineers who will monitor the deployment.",
+              "The final deployment date when all traffic will shift to the new version."
+            ],
+            "answer": 1,
+            "explanation": "A canary plan must declare the traffic share how many requests go to the new model the watch window how long to observe and stop conditions thresholds for each signal. Without these the team cannot decide whether the canary succeeded or failed."
+          },
+          {
+            "id": "q3",
+            "question": "When should a rollback be rehearsed?",
+            "choices": [
+              "Only when the canary deployment fails in production.",
+              "Before the release, in a staging environment, so the team knows the steps and confirms the previous version serves traffic correctly.",
+              "After the rollback is complete, to verify the final state.",
+              "Never; rollback is a manual process that should not be practiced."
+            ],
+            "answer": 1,
+            "explanation": "Rehearsing the rollback before release proves the steps work and makes the team familiar with the commands so a real rollback is faster and less likely to cause a second outage."
+          }
+        ]
+      }
+    }
+  ]
+}

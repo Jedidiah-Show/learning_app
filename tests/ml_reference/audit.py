@@ -12,7 +12,7 @@ import pandas as pd
 
 DATA_PATH = (
     Path(__file__).resolve().parents[2]
-    / 'starter_kits' / 'machine_learning' / 'module_1' / 'data' / 'orders.csv'
+    / 'starter_kits' / 'machine_learning' / 'module_3_data_problem' / 'data' / 'orders.csv'
 )
 REQUIRED_COLUMNS = {
     'order_id', 'order_date', 'order_total', 'channel',

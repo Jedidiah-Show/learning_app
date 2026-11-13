@@ -10,7 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 ARTIFACT_PATH = (
     Path(__file__).resolve().parents[2]
-    / 'starter_kits' / 'machine_learning' / 'module_4' / 'artifacts' / 'model.joblib'
+    / 'starter_kits' / 'machine_learning' / 'module_11_production_ml' / 'artifacts' / 'model.joblib'
 )
 MODEL_VERSION = '1.0.0'
 MAX_BATCH_SIZE = 100

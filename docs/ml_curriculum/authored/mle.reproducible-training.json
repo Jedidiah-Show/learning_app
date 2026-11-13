@@ -1,0 +1,218 @@
+{
+  "module_id": "mle.reproducible-training",
+  "lessons": [
+    {
+      "id": "mle.repro.01",
+      "title": "Make a training run repeatable",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Identify the inputs and controls needed to reproduce a model training run.",
+      "sections": [
+        {
+          "heading": "A model file is not a training record",
+          "body": [
+            "A model file such as a .pkl or .h5 contains the learned weights of a classifier, the numbers the model learned from data. It does not contain the code that produced those weights, the data that was shown during training, or the random seed that started the run. Two people can have identical model files and get different answers when they apply them, because the model file says what the model knows but not how it was taught.",
+            "The training record is what ties everything together: the exact Python script, the CSV file with its row count and column names, the configuration file with learning rate and regularization strength, and the random seed that makes the run deterministic. Without that record, a model file is just a set of numbers with no context. The record answers the question: 'Exactly what data and settings produced these weights?'"
+          ]
+        },
+        {
+          "heading": "Separate configuration from code",
+          "body": [
+            "Putting parameters such as the learning rate, regularization strength, or number of epochs inside a config file means you can change them without editing a single line of Python code. The training script reads the config at startup, so the same script can produce many different runs just by switching the config. This matters because editing code to change a number introduces the risk of accidentally saving a changed script that you did not intend.",
+            "A beginner might keep everything inside the script and later forget which value belonged to which experiment. With a config file, the entire run is described in one place: the code version, the data fingerprint, and every parameter that changed the result. When you later want to repeat the run, you read the config, set the seed, load the same data, and you know the output will match."
+          ]
+        },
+        {
+          "heading": "Repeat before you trust",
+          "body": [
+            "The cheapest possible check for reproducibility is to run the exact same command twice and compare the resulting numbers. If the model weights, the evaluation metric, and the predictions all match, you have strong evidence that the run is deterministic. If they differ, you know immediately that something in the code, data, or environment changed between runs, which points you toward the record you need to fix it.",
+            "In practice this means running your training script, saving the output metrics to a file, then running it again from a clean state. A clean state means the same code, the same data file, and the same config file, started from the same directory. If the two runs produce different results, you have not yet separated configuration from code, or you have not fixed the randomness that makes one run differ from the next."
+          ]
+        }
+      ],
+      "task": "For a training script you could write, list the five inputs a run needs and where each one would live. Then describe how you would show that two runs of the same command agree.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Why is a saved model file not enough to reproduce a training run?",
+            "choices": [
+              "A model file only contains the learned weights and says nothing about the code, data, or random seed that produced them",
+              "A model file is always smaller than the training script that created it",
+              "A model file cannot be loaded by Python without a separate configuration file",
+              "A model file overwrites the original data used during training"
+            ],
+            "answer": 0,
+            "explanation": "A model file stores only the learned weights, not the code that produced them, the dataset they were trained on, or the random seed that started the run. Without those other pieces, the file has no context for reproduction."
+          },
+          {
+            "id": "q2",
+            "question": "Why keep parameters in a configuration file rather than inside the code?",
+            "choices": [
+              "Editing code to change a number risks saving a changed script you did not intend, while a config file describes the entire run in one place",
+              "Configuration files are smaller than code files and load faster",
+              "Python cannot read parameters that are written inside the script body",
+              "Configuration files are the only way to change the learning rate after training has started"
+            ],
+            "answer": 0,
+            "explanation": "Editing code to change a number risks saving a changed script you did not intend, while a config file describes the entire run in one place so the same script can produce many different runs just by switching the config."
+          },
+          {
+            "id": "q3",
+            "question": "What is the cheapest way to check that a run is repeatable?",
+            "choices": [
+              "Run the exact same command twice and compare the resulting numbers",
+              "Check that the Python script has no syntax errors",
+              "Ask a colleague to review the code",
+              "Run the script on a different computer with the same operating system"
+            ],
+            "answer": 0,
+            "explanation": "Running the exact same command twice and comparing the resulting numbers is the cheapest possible check for reproducibility. If the numbers match, the run is deterministic."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.repro.02",
+      "title": "Version datasets and model artifacts",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Track which data and model files a run used without placing sensitive raw data in experiment logs.",
+      "sections": [
+        {
+          "heading": "Fingerprint the data you used",
+          "body": [
+            "A checksum is a short string of letters and numbers that acts as a fingerprint of a file's contents. If even a single character changes in the file, the checksum changes completely. This is better than relying on a filename, because a filename does not guarantee the file's contents have not been altered, and two files with the same name can carry different data.",
+            "In practice you compute the SHA256 hash of your training CSV and your evaluation CSV and record those strings in your run manifest. The train.csv file has fingerprint 45e50618d7167f6f14ef9e6797116f3a6f5767671c943739251d6b0e706bd254 and the evaluation.csv file has fingerprint 54fe0bab10f9dbe75c6c348bf5fa0ff2f8f87fc75bc03113e5b9a0c3fc36f2da. If either file changes, the fingerprints will not match, and you know you are not working with the same data."
+          ]
+        },
+        {
+          "heading": "Version the complete inference artifact",
+          "body": [
+            "When you save only a model's weights, you capture the numbers the model learned, but you lose the preprocessing steps that turned raw rows into those weights. Scaling, encoding categorical features, and imputing missing values are part of how the model was built, and without them you cannot apply the model to new data with confidence. The inference artifact must include the complete pipeline, not just the final weights, so that anyone can use the model tomorrow as reliably as today.",
+            "A beginner might save clf.pkl and assume it contains everything needed for prediction, but the preprocessing object, the column order, and the imputation constants are separate files that must travel together. If you load the model without the scaler that was fitted on the training data, the feature scales will be wrong and the predictions will be garbage. Version the scaler, the encoder, and the model together as one artifact, and record the version string so you can prove which preprocessing went with which model."
+          ]
+        },
+        {
+          "heading": "Keep an experiment index",
+          "body": [
+            "An experiment index is a simple table, often a CSV or a markdown file, that lists every run you have completed with columns for the run name, the date, the data version, the parameters, and the metric that mattered. You read the index before you start a new experiment so you can see what has already been tried and avoid repeating the same configuration. A minimal index might have one row per run and five columns: name, date, data fingerprint, key parameters, and validation score.",
+            "Suppose you ran two experiments: one with learning rate 0.1 and data fingerprint 45e50618d7167f6f14ef9e6797116f3a6f5767671c943739251d6b0e706bd254 and another with learning rate 0.01 and the same data fingerprint. The first achieved a validation F1 of 0.72 and the second achieved 0.76. By reading the index you can decide which configuration to promote, and you can later reproduce the winning run because all the inputs are recorded. Without the index you must rely on memory, which is the beginner mistake that leads to wasted compute and irreproducible results."
+          ]
+        }
+      ],
+      "task": "Write a short experiment index for two runs of a model you train or imagine training, with columns for the run name, the date, the data version, the parameters and the metric.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does a checksum of a dataset tell you?",
+            "choices": [
+              "A short string that acts as a fingerprint of a file's contents, changing completely if even a single character changes",
+              "The exact file path where the dataset is stored",
+              "The number of rows and columns in the dataset",
+              "The name of the person who created the dataset"
+            ],
+            "answer": 0,
+            "explanation": "A checksum is a short string that acts as a fingerprint of a file's contents, changing completely if even a single character changes. This makes it more reliable than a filename for proving which data version a run used."
+          },
+          {
+            "id": "q2",
+            "question": "Why is the preprocessing part of the model artifact?",
+            "choices": [
+              "Preprocessing steps such as scaling and encoding are part of how the model was built, and without them you cannot apply the model to new data with confidence",
+              "Preprocessing code is always larger than the model file itself",
+              "The validator requires preprocessing to be included in every artifact",
+              "Preprocessing determines the random seed used during training"
+            ],
+            "answer": 0,
+            "explanation": "Preprocessing steps such as scaling and encoding are part of how the model was built, and without them you cannot apply the model to new data with confidence. The inference artifact must include the complete pipeline, not just the final weights."
+          },
+          {
+            "id": "q3",
+            "question": "What is an experiment index for?",
+            "choices": [
+              "A simple table that lists every run with columns for the run name, the date, the data version, the parameters and the metric, so you can see what has already been tried",
+              "A place to store the raw training data so it is not lost",
+              "A way to automatically tune hyperparameters for the next run",
+              "A replacement for the model file that contains both weights and code"
+            ],
+            "answer": 0,
+            "explanation": "An experiment index is a simple table that lists every run with columns for the run name, the date, the data version, the parameters and the metric, so you can see what has already been tried and avoid repeating the same configuration."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.repro.03",
+      "title": "Search parameters without overfitting validation",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Tune models on training data while preserving a final evaluation set for one honest comparison.",
+      "sections": [
+        {
+          "heading": "Search inside training folds",
+          "body": [
+            "A parameter search must be validated inside the training data using a pipeline so that each fold refits the scaler on its training portion only. When the scaler is fit on the entire dataset before the search begins, information from the validation portion leaks into the training process, and the resulting parameter choices are overly optimistic. Cross-validation splits the training data into folds, trains on each fold while refitting the scaler, and evaluates on the held-out fold, giving an unbiased estimate for every candidate parameter value.",
+            "For example, with 5-fold cross-validation on the 24-row training set, each fold uses 20 rows for training and 4 rows for validation, and the scaler is refitted on those 20 rows before the model is trained and evaluated. The mean validation score across the 5 folds is the number you compare across different parameter values, and the parameter with the highest mean score is the candidate you promote."
+          ]
+        },
+        {
+          "heading": "Keep the final test set out of the search",
+          "body": [
+            "A test set used for choosing parameters stops being a test set, and the score you record from that point on is no longer an honest estimate of performance on unseen data. If you look at the final evaluation set while tuning hyperparameters, you risk overfitting to that set without realizing it, because the parameter choices have already been shaped by the information you gained from it. The final evaluation set must be held out until the parameter search is complete, then consulted once to report the final result.",
+            "In practice this means you search over parameter values using cross-validation on the training data, select the best candidate, and only then evaluate that single candidate on the test set. The test set remains untouched throughout the search, and its score is the one number you report to stakeholders or record in the run manifest."
+          ]
+        },
+        {
+          "heading": "Promote artifacts deliberately",
+          "body": [
+            "When a candidate parameter value wins the cross-validation search, you record which value won, save its artifact, and note the metric that justified the promotion. The run manifest captures the winner's parameter value, the cross-validation mean score, the data fingerprint, and the final evaluation metric earned on the held-out test set. This record lets anyone look at the promotion decision and understand why one set of parameters was chosen over all others.",
+            "A beginner might save the model file without recording which parameter value it used, or might promote the candidate that performed best on the test set without showing the cross-validation results. Both practices make it impossible to reproduce the reasoning behind the chosen model, which defeats the purpose of a reproducible training workflow."
+          ]
+        }
+      ],
+      "task": "Describe a parameter search over three values of one parameter for a classifier on the bundled orders data, saying exactly which rows each candidate is scored on and which rows are never touched.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Why must parameter search happen inside the training data?",
+            "choices": [
+              "Using the test set to choose parameters overfits the search to that set, so the reported score is not an honest estimate of performance on unseen data",
+              "The training data is always larger than the test data",
+              "The test set does not contain enough rows to tune parameters reliably",
+              "Parameter search is faster on training data than on the test set"
+            ],
+            "answer": 0,
+            "explanation": "Using the test set to choose parameters overfits the search to that set, so the reported score is not an honest estimate of performance on unseen data. The test set must remain untouched until the search is complete."
+          },
+          {
+            "id": "q2",
+            "question": "What happens to a test set once you use it to choose parameters?",
+            "choices": [
+              "It stops being a test set, and the score you record is no longer an honest estimate of performance on unseen data",
+              "The test set automatically gets larger to accommodate the parameter search",
+              "The test set must be rebalanced with more rows from the training data",
+              "The test set becomes the new training set for the next search"
+            ],
+            "answer": 0,
+            "explanation": "It stops being a test set, and the score you record is no longer an honest estimate of performance on unseen data. The test set must be held out until the parameter search is complete."
+          },
+          {
+            "id": "q3",
+            "question": "What should be recorded when a candidate is promoted?",
+            "choices": [
+              "Which parameter value won, the cross-validation mean score that justified the promotion, the data fingerprint, and the final evaluation metric on the held-out test set",
+              "Only the model file path and the final test accuracy",
+              "The name of the person who made the decision and the time of day",
+              "The full training log with every intermediate score"
+            ],
+            "answer": 0,
+            "explanation": "Which parameter value won, the cross-validation mean score that justified the promotion, the data fingerprint, and the final evaluation metric on the held-out test set. This record lets anyone look at the promotion decision and understand the reasoning."
+          }
+        ]
+      }
+    }
+  ]
+}

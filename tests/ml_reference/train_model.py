@@ -12,7 +12,7 @@ from sklearn.preprocessing import StandardScaler
 
 ROOT = (
     Path(__file__).resolve().parents[2]
-    / 'starter_kits' / 'machine_learning' / 'module_4'
+    / 'starter_kits' / 'machine_learning' / 'module_11_production_ml'
 )
 
 

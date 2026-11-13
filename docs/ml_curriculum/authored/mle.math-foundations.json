@@ -1,0 +1,667 @@
+{
+  "module_id": "mle.math-foundations",
+  "lessons": [
+    {
+      "id": "mle.math.00",
+      "title": "How to read the maths in this course",
+      "status": "ready",
+      "study_minutes": 40,
+      "goal": "Know which numbers you must be able to work with by hand, which you can leave to Python, and how the lessons in this module connect to the models you will build later.",
+      "sections": [
+        {
+          "heading": "You do not need advanced maths",
+          "body": [
+            "Machine learning sounds like it needs advanced mathematics, and for the models that most people read about in the news, it does. This course does not use those models. It works with plain tables of numbers, small weighted sums, and a training loop that adjusts one number at a time. Every idea in this module is introduced with a worked example first, and the formula comes second.",
+            "You also do not need to memorise formulas. In this module you need to work with a mean, a median, a range, a percentage, a weighted sum and one step of a training loop by hand, because those are the numbers you will have to explain to somebody else. Everything else you can leave to Python, which has a function for each summary you will need, so the code does the arithmetic while you check the meaning."
+          ]
+        },
+        {
+          "heading": "The five ideas you will meet",
+          "body": [
+            "The first idea is describing a dataset: a dataset is a table of rows and columns, and a summary statistic is one number that stands for a whole column. The second idea is probability: a probability is a number between 0 and 1 that says how likely an outcome is under a stated setup, such as a spreadsheet of 1,000 orders.",
+            "The third idea is adding features together: a feature is one column of your table, and a weighted sum multiplies each feature by a number and adds the results. The fourth idea is learning by trial: a loss is a number that measures how wrong the model is, and the training loop moves the model parameters to make that number smaller. The fifth idea is uncertainty: an estimate computed from a sample has a range of plausible values, and a good report says how wide that range is.",
+            "None of these five ideas needs algebra beyond multiplication and addition, and none of them needs a calculator with more than one button. When a formula appears that you cannot follow on sight, it will be broken into steps you can check with a pencil and paper before you type anything into a cell."
+          ]
+        },
+        {
+          "heading": "Where each idea is used later",
+          "body": [
+            "You will meet the first idea in the data module, where a table of orders has to be described before a model is built. You will meet the second idea every time you read a flag from a model: a spam filter that flags ten emails only matters if you know how many emails in that mailbox are spam anyway.",
+            "The third idea is exactly what a linear model computes, one weighted sum per row of your table. The fourth idea is what happens inside training, where a learning rate decides how big each adjustment is. The fifth idea is how you report an uncertain number to a manager: a mean of 38.29 dollars with a spread of 30.69 dollars tells a different story from a mean of 38.29 dollars with a spread of 3 dollars.",
+            "This module ends with a small project: you describe the bundled orders dataset with statistics, you find its data quality problems, and you write down the rules you used. The same numbers are checked by an automated test, so you will know your figures are right before you write the explanation."
+          ]
+        }
+      ],
+      "task": "Write down three questions you want answered by the end of this course, in plain language, such as 'which orders are most likely to be returned'. Keep the three sentences where you will see them at the end of the module, and expect to write one sentence per question that says whether the course answered it.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Which of these is a real requirement for this course rather than a nice-to-have?",
+            "choices": [
+              "Being able to do algebra by hand",
+              "Being able to check the numbers your code produces and explain what they mean",
+              "Memorising the formula for variance without understanding it",
+              "Deriving the gradient of a neural network from first principles"
+            ],
+            "answer": 1,
+            "explanation": "The course asks you to understand and check the handful of numbers the models produce. Hand algebra, memorised formulas and proofs are not required, because Python does the arithmetic for you. What is required is the judgement to notice when a number is wrong, and that is exactly what a report to a colleague depends on."
+          },
+          {
+            "id": "q2",
+            "question": "A dot product is used in this course to do what?",
+            "choices": [
+              "Count how many rows a dataset has",
+              "Sort the values in a column from smallest to largest",
+              "Combine several feature values into one weighted score",
+              "Measure how uncertain an estimate is"
+            ],
+            "answer": 2,
+            "explanation": "A dot product multiplies matching entries of a feature vector and a weight vector and adds the products, which gives a single score for one row of your table. Counting rows and sorting values are jobs for basic Python commands, and uncertainty is measured with a confidence interval, which is a different idea entirely."
+          },
+          {
+            "id": "q3",
+            "question": "Why does this module include probability before the models?",
+            "choices": [
+              "Because probability rules decide which library you should import",
+              "Because every machine learning model is a probability distribution",
+              "Because the lessons have to be in a fixed order for the calendar",
+              "Because a model flag only means something once you know how often the outcome happens anyway"
+            ],
+            "answer": 3,
+            "explanation": "A flag is only worth acting on if the outcome is common enough to pay for the false alarms. The base rate, which is how often the outcome happens overall, tells you that. The other three choices describe administrative details: imports follow from the task, models are not all distributions, and the order of lessons does not depend on probability."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.math.01",
+      "title": "Summarize a distribution before modeling",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Calculate and interpret basic measures of center and spread before choosing a model.",
+      "sections": [
+        {
+          "heading": "Describe the center",
+          "body": [
+            "The mean is the sum of the values divided by the number of values. The median is the middle value once the values are sorted from smallest to largest. The mode is the value that appears most often. These are three different questions about the middle of a set of numbers, and on the same data they can give three different answers.",
+            "Take the five values 2, 3, 3, 4, 8. The sum is 2 + 3 + 3 + 4 + 8 = 20 and the count is 5, so the mean is 20 divided by 5, which is 4. Sorted, the values are already in order, and the third of five is 3, so the median is 3. The mode is 3 as well, because 3 is the only value that appears twice.",
+            "The mean and the median differ here because the value 8 pulls the average upward while the middle position stays at 3. That makes the median less sensitive to one extreme value and the mean more sensitive to it. Neither is better in general: the mean is the right choice when you want a total shared out among the values, and the median is the right choice when extreme values would distort that picture."
+          ]
+        },
+        {
+          "heading": "Describe the spread",
+          "body": [
+            "The range is the largest value minus the smallest value. The variance adds up how far each value sits from the mean, squared, and then divides by the count. The standard deviation is the square root of the variance, which puts the number back into the units of your data, so a standard deviation of 2 dollars means dollars.",
+            "Using the same five values, the range is 8 - 2 = 6. Each value minus the mean of 4 gives -2, -1, -1, 0 and 4. Squaring each one gives 4, 1, 1, 0 and 16, and those add to 22. Treating the five values as the whole population, the variance is 22 divided by 5, which is 4.4.",
+            "The standard deviation is the square root of 4.4, which is about 2.1. Read that as: the values sit roughly 2.1 away from the mean of 4. The spread is 2.1 because the single large value 8 sits 4 away from the mean, while three of the other four values sit within 1 of it."
+          ]
+        },
+        {
+          "heading": "Summaries are a starting point",
+          "body": [
+            "One summary can hide a lot. In the bundled orders dataset, the eleven recorded order totals have a mean of 38.29 and a median of 29.99, and the gap between them comes from a single negative total of -5.00 sitting below the other ten values, which run from 12.75 to 102.40. A report that gives only the mean hides that row, so the row needs a sentence of its own.",
+            "Compare subgroups before you conclude anything. The mean of 38.29 dollars over the eleven recorded totals hides a web channel that averages 44.02 dollars over its five orders and a mobile channel that averages 30.33 dollars over its three orders that have a total. Check the units you are reporting too: a standard deviation of 2 dollars means something very different from a standard deviation of 2 years, and mixing them up changes the story without changing any data.",
+            "These summaries are a starting point for modelling, not a conclusion. They help you notice missing values, odd units and hidden groups, and they give you a baseline to compare a later model against. They do not tell you that one feature causes an outcome, and they do not promise that a model trained on this data will work on new data."
+          ]
+        }
+      ],
+      "task": "For the values 2, 3, 3, 4, 8, write down the sum, the count, the mean, the median and the range, showing each step. Then replace 8 with 80, recompute the mean and the median, and finish with one sentence naming the measure of center that changes least and why.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "For the values 2, 3, 3, 4, 8, what is the mean, and why is it higher than the median?",
+            "choices": [
+              "4, because the value 8 pulls the average up while the middle value stays 3",
+              "3, because the median and the mean are always the same number",
+              "4, because there are four values below the average",
+              "4.4, because the spread of the values gets added to the middle"
+            ],
+            "answer": 0,
+            "explanation": "The sum is 20 and the count is 5, so the mean is 20 divided by 5, which is 4. The median is the third of the sorted values, which is 3. The single large value 8 sits 4 above the mean, so it lifts the average without moving the middle. Adding the spread to the middle is not a step in any of these calculations."
+          },
+          {
+            "id": "q2",
+            "question": "What does the standard deviation of about 2.1 for the values 2, 3, 3, 4, 8 tell you that the mean does not?",
+            "choices": [
+              "How many values are in the list",
+              "What the largest value in the list is",
+              "How much the mean would change if you added 1 to every value",
+              "How far the values typically sit from the mean of 4"
+            ],
+            "answer": 3,
+            "explanation": "The standard deviation measures spread: the values sit roughly 2.1 away from the mean of 4 for a typical value. The mean alone says nothing about that distance, and adding 1 to every value would move the mean by exactly 1 without changing the spread, so the spread would still be 2.1."
+          },
+          {
+            "id": "q3",
+            "question": "A dataset of yearly incomes has a mean of 60,000 and a median of 42,000. What does the gap suggest?",
+            "choices": [
+              "Half of the people earn exactly 42,000",
+              "A small number of very high incomes pull the mean above the middle value",
+              "The incomes follow a bell-shaped normal distribution",
+              "The median was calculated wrongly because a median must equal the mean"
+            ],
+            "answer": 1,
+            "explanation": "When a few values sit far above the rest, the mean moves up and the median barely moves, because the median depends only on the position of the middle value. A gap of 18,000 is a hint to look at the top of the distribution. It does not tell you that half the people earn exactly 42,000, and the median is a valid statistic on its own."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.math.02",
+      "title": "Reason with probability, base rates, and samples",
+      "status": "ready",
+      "study_minutes": 50,
+      "goal": "Use base rates and conditional probabilities to interpret model flags and data samples.",
+      "sections": [
+        {
+          "heading": "Start with the base rate",
+          "body": [
+            "A probability is a number between 0 and 1 that describes how likely an outcome is under a stated setup. A base rate is how often that outcome happens in the whole population, before you look at any model signal. A model flag is a small piece of evidence, and the base rate decides how much evidence it really is.",
+            "Suppose 1,000 accounts have a churn rate of 10 percent, which means 100 accounts churn. A model flags 80 percent of the 100 accounts that churn, so it catches 80 of them. It also flags 20 percent of the 900 accounts that stay, so it wrongly flags 180. The model produced 80 true positives and 180 false positives, and 260 flags in total.",
+            "Only 80 of those 260 flags are real, which is about 31 percent. You spent effort on 180 accounts that would not have churned, and that cost comes from the base rate: when the outcome is rare, false alarms outnumber true catches. Before you trust any flag, ask how often the outcome happens anyway."
+          ]
+        },
+        {
+          "heading": "Keep conditional questions distinct",
+          "body": [
+            "Recall asks what fraction of the actual positive cases the model caught: 80 out of 100, which is 80 percent. Precision asks what fraction of the flagged cases were actually positive: 80 out of 260, which is about 31 percent. The two questions use different denominators, so they can be very different numbers for the same model on the same data.",
+            "Now change the population. If half of a 1,000 account mailbox churns, so 500 accounts churn and 500 stay, the same model catches 80 percent of the 500, which is 400 true positives, and wrongly flags 20 percent of the 500 that stay, which is 100 false positives. The model now makes 500 flags, of which 400 are real, so precision is 400 out of 500, or 80 percent.",
+            "The filter did not change at all, and its usefulness changed completely, because the base rate changed. The same reasoning applies to a spam filter: if 1 email in 100 is spam, a flag means far less than it does in a mailbox where 1 email in 2 is spam. When a model score is used as a probability, check whether the predicted rates match the observed rates for the population and the time period where you will act on it."
+          ]
+        },
+        {
+          "heading": "Ask how the sample was collected",
+          "body": [
+            "A sample is useful when it represents the population your question is about. If one region, one time period or one customer group is missing from the sample, then a summary or a model built on it may not transfer to that group. Write down the sampling frame, which is the list or the rule that says who could have been in the sample.",
+            "Random sampling can reduce some selection effects, but it cannot repair an unclear target, a missing population, or a measurement process that changes over time. A survey of 30 people who already use the product tells you how those 30 people feel, and nothing about the people who have not tried it yet. The number 90 percent is a fact about the sample, not about the market.",
+            "Sampling also has ordinary variation. Two samples drawn from the same population give slightly different averages even when nothing is wrong, which is why a single number never carries the whole story. Compare important groups, check the counts, and report how many rows the number came from."
+          ]
+        }
+      ],
+      "task": "A spam filter catches 80 of every 100 spam emails and wrongly flags 20 of every 100 good emails. For a mailbox of 1,000 emails where 1 in 100 is spam, write down how many flagged emails are spam out of how many flags in total. Then repeat for a mailbox where 1 in 2 emails is spam, and compare the two fractions in one sentence.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "In a mailbox of 1,000 emails where 1 in 100 is spam, a filter catches 80 of every 100 spam emails and wrongly flags 20 of every 100 good emails. How many of its flags are spam?",
+            "choices": [
+              "10 of 1,000",
+              "80 of 206",
+              "8 of 206",
+              "198 of 206"
+            ],
+            "answer": 2,
+            "explanation": "There are 10 spam emails, and the filter catches 80 percent of them, which is 8. It also wrongly flags 20 percent of the 990 good emails, which is 198. So the filter makes 8 + 198 = 206 flags, and only 8 of them are spam. That is about 4 percent precision, which is why a rare outcome needs a careful threshold."
+          },
+          {
+            "id": "q2",
+            "question": "Why is a model's precision as important as its accuracy?",
+            "choices": [
+              "Because accuracy can look healthy when the outcome is rare, while precision says how many of the flagged cases were worth the team's time",
+              "Because accuracy cannot be computed on real data",
+              "Because precision is measured in the same units as the target",
+              "Because a model with high accuracy never needs a threshold"
+            ],
+            "answer": 0,
+            "explanation": "Accuracy counts every prediction, so on data where most accounts stay, a model that always predicts 'stays' scores well and catches nobody. Precision asks a different question: of the accounts you flagged, how many actually churned? In the 1,000 account example, precision was 80 out of 260, about 31 percent, while accuracy was 800 out of 1,000, or 80 percent."
+          },
+          {
+            "id": "q3",
+            "question": "A survey of 30 people who already use the product reports that 90 percent love it. Why is that number weak evidence?",
+            "choices": [
+              "Thirty people is too few to calculate 90 percent at all",
+              "Ninety percent is too high a number to be believable",
+              "The survey needs a second question to confirm the first",
+              "Everyone in the sample already chose to use the product, so it says nothing about people who have not started yet"
+            ],
+            "answer": 3,
+            "explanation": "The sample was drawn from people who already use the product, so it can only describe people like them. That is a selection problem, not a sample size problem: you could survey 3,000 existing users and still learn nothing about people who have not signed up. The percentage is accurate for the group that was asked, and misleading for the market."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.math.03",
+      "title": "Represent features with vectors and dot products",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Interpret a weighted sum of numeric features as a simple model calculation.",
+      "sections": [
+        {
+          "heading": "A vector keeps values in order",
+          "body": [
+            "A feature is one column of your table, a single measurement you give the model. A vector is an ordered list of numbers, one per feature, and the order is part of the meaning: a value for size must never be read as a value for age. For a house, a feature vector might be [size in square metres, number of bedrooms, age in years].",
+            "A dataset of many such rows is written as a matrix, with one row per example and one column per feature. Every row must carry its features in the same order, or the numbers mean something different in different rows. If you shuffle the values inside a row you have not created a new example, you have created a different house.",
+            "A model's weights, which are the numbers the model learns during training, use that same order. Keep the feature names and the units next to your data so the numbers still mean something when the same table is used for training in one week and for scoring in the next. A vector with no names attached is a list of numbers and nothing more."
+          ]
+        },
+        {
+          "heading": "Compute a dot product",
+          "body": [
+            "The dot product of two vectors of the same length is the sum of the products of matching entries. Take the features [120, 3, 10] and the weights [0.5, 10, -1]. Multiply each feature by its weight: 120 times 0.5 is 60, 3 times 10 is 30, and 10 times -1 is -10. Add them: 60 + 30 - 10 = 80.",
+            "That total of 80 is the model's score for this one row. The same operation with two features, x = [2, 3] and weights w = [0.5, -1], gives 0.5 times 2 plus -1 times 3, which is 1 - 3 = -2, and adding a bias of 4 gives a score of 2. A bias is a constant the model adds, and it lets the model produce a score even when every feature is zero.",
+            "This weighted sum is the building block of linear regression, of logistic regression, and of every layer in a neural network. A score is not automatically a probability: how the score is read depends on the model and the task, and you learn that reading from the model you actually built."
+          ]
+        },
+        {
+          "heading": "Check shapes and meaning",
+          "body": [
+            "The number of weights must match the number of features, and they must be in the same order. When they do not match, the operation is not defined, and that error is a useful one: it stops you from training a model that reads the wrong column. Keep the failing check in place instead of hiding it by dropping a feature.",
+            "Scales matter as well. A dot product adds the products together, so a feature measured in thousands will dominate a feature measured in units unless you rescale them. Rescaling is normal and useful, but the rescaling parameters must be learned from training data only, and they must be applied in the same way to new data.",
+            "A large weight does not by itself prove that a feature is important, because the units and the correlations between features affect what a weight means. In the worked example, the bedroom weight of 10 is the largest per unit, so the model is most sensitive to bedrooms, while the size feature contributed the most to this particular score, 60 of the 80. Read weights together with the units of the features."
+          ]
+        }
+      ],
+      "task": "Compute the dot product of the feature vector [120, 3, 10] with the weights [0.5, 10, -1]. Show each of the three multiplications and the final addition, then write one sentence saying which feature the model is most sensitive to per unit of change, and why.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does the dot product of a feature vector and a weight vector produce?",
+            "choices": [
+              "One number for each feature in the vector",
+              "One number that combines the features into a single weighted score",
+              "A new vector with the same length as the feature vector",
+              "The average of the feature values"
+            ],
+            "answer": 1,
+            "explanation": "A dot product multiplies matching entries and adds the products, so the result has one number, not one number per feature. A weighted average would divide by the sum of the weights, which a dot product does not do, and a vector of separate averages is not what this operation produces either."
+          },
+          {
+            "id": "q2",
+            "question": "For the features [120, 3, 10] and the weights [0.5, 10, -1], what is the dot product?",
+            "choices": [
+              "60",
+              "90",
+              "100",
+              "80"
+            ],
+            "answer": 2,
+            "explanation": "The three products are 120 times 0.5, which is 60, 3 times 10, which is 30, and 10 times -1, which is -10. Adding them gives 60 + 30 - 10 = 80. The option 60 keeps only the first product, 90 forgets the age term altogether, and 100 treats the negative weight as if it were positive."
+          },
+          {
+            "id": "q3",
+            "question": "In the worked example, why must the feature values and the weights be on comparable scales?",
+            "choices": [
+              "Because the products are added together, so a feature on a huge scale would dominate the whole score",
+              "Because the weights have to be whole numbers",
+              "Because the dot product is only defined for values between 0 and 1",
+              "Because a model with rounded weights is easier to explain"
+            ],
+            "answer": 0,
+            "explanation": "A dot product adds the products of matching entries, so if one feature is measured in thousands and another in units, the first one decides the score whatever the weights say. That is why features are often rescaled before training. Weights may be any real number, values may be negative, and rounding is a readability choice rather than a mathematical rule."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.math.04",
+      "title": "Understand gradients and gradient descent",
+      "status": "ready",
+      "study_minutes": 50,
+      "goal": "Explain how a gradient and a learning rate guide a model parameter toward lower loss.",
+      "sections": [
+        {
+          "heading": "A gradient describes local change",
+          "body": [
+            "A loss is a number that measures how badly the model is doing, and a smaller loss is better. A derivative measures how much the loss changes when you move one parameter a small amount. When there are several parameters, the gradient is the collection of those changes, one per parameter, and it points in the direction where the loss rises fastest right now.",
+            "Imagine standing on a hillside in fog. The gradient is the direction of the steepest slope at the spot where you stand, and it changes as you move. Training uses that information in the opposite direction: gradient descent takes a small step downhill, in the direction the loss decreases, and then repeats the calculation from the new spot."
+          ]
+        },
+        {
+          "heading": "Work a one-parameter step",
+          "body": [
+            "Take the simple loss L(w) = 0.5 times (w - 7) squared, where w is the single parameter. The partial derivative with respect to w is (w - 7), so at w = 10 the gradient is 3. The update rule subtracts a fraction of the gradient: w_new = w - learning_rate times gradient. With a learning rate of 0.1, that is 10 - 0.1 times 3, which is 9.7.",
+            "The loss at the new point is 0.5 times (9.7 - 7) squared, which is 0.5 times 7.29, so 3.645, down from 4.5 at w = 10. Repeating the same arithmetic gives 9.43 with a loss of 2.952, then 9.187 with a loss of 2.391. Each step is smaller than the one before it, because the gradient shrinks as w approaches 7.",
+            "The learning rate is the fraction of the gradient you take, and it decides how far each step travels. With a learning rate of 1 the same rule moves straight from 10 to 7 in one step and the loss goes to zero. With a learning rate of 2 it swings from 10 to 4 and back to 10 again, so the loss never improves at all."
+          ]
+        },
+        {
+          "heading": "Check the result, not only the update",
+          "body": [
+            "A rule that runs is not proof that training is working. Plot the loss over many steps and look at it: with a learning rate of 0.1 the loss falls steadily, and with a learning rate of 0.01 it falls so slowly that you might stop before it finishes. An update that looks reasonable can still be moving in the wrong direction if the gradient is wrong.",
+            "If the loss goes up after a step, look at the learning rate first, because a rate that is too large overshoots, and then check the gradient itself. Track the loss on the training data and check generalisation on separate validation data, because a model can keep improving on the rows it has seen while getting worse on new ones.",
+            "Real models have many parameters and more complicated loss surfaces than this one-dimensional example. That example gives you the direction and the size of each step, not a guarantee that every step in every model improves the result. Knowing which knob to turn, and watching the loss curve while you turn it, is the part that carries over to the models you build later."
+          ]
+        }
+      ],
+      "task": "Start at w = 10 on the loss L(w) = 0.5 times (w - 7) squared with a learning rate of 0.1. Take three steps, writing down the parameter and the loss after each step. Then repeat the first step with a learning rate of 2 and describe in one sentence what changed.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does the learning rate control during training?",
+            "choices": [
+              "How many rows of data are read in each batch",
+              "Which loss function the model is trained on",
+              "How many parameters the model is allowed to have",
+              "How much of the gradient is used in each step, so how far the parameters move"
+            ],
+            "answer": 3,
+            "explanation": "The learning rate is the fraction of the gradient applied at each step. In the worked example a rate of 0.1 moved w from 10 to 9.7, a rate of 1 moved it straight to 7, and a rate of 2 made it oscillate. The batch size, the choice of loss and the parameter count are all chosen before training starts."
+          },
+          {
+            "id": "q2",
+            "question": "The loss goes up after a step. What are the two most likely causes?",
+            "choices": [
+              "The dataset is too small to train on",
+              "The learning rate is too large, or the gradient is computed wrongly",
+              "The model has too many parameters for the machine",
+              "The loss was measured on the training rows instead of the test rows"
+            ],
+            "answer": 1,
+            "explanation": "A step that is too large overshoots the low-loss region and lands somewhere worse, which is the classic cause when the loss rises on the first few steps. If the loss rises only after many careful steps, suspect the gradient itself, such as a sign error or a badly scaled input. Small data and slow hardware make training painful but do not make the loss climb."
+          },
+          {
+            "id": "q3",
+            "question": "Starting at w = 10 on L(w) = 0.5 times (w - 7) squared with a learning rate of 0.1, what is the parameter after one step?",
+            "choices": [
+              "9.7",
+              "9.55",
+              "10.3",
+              "7"
+            ],
+            "answer": 0,
+            "explanation": "The gradient at w = 10 is 10 - 7, which is 3, so the update is 10 - 0.1 times 3 = 9.7. The option 9.55 comes from multiplying by the loss value 4.5 instead of the gradient, and 10.3 adds the gradient instead of subtracting it, which walks uphill. The value 7 is the minimum, reached in one step only with a learning rate of 1."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.math.05",
+      "title": "Understand probability distributions and sampling",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Distinguish common probability distributions and explain how samples vary.",
+      "sections": [
+        {
+          "heading": "A distribution describes possible values",
+          "body": [
+            "A probability distribution is a description of the values a quantity can take and how likely each value is, under a stated model. A Bernoulli distribution has two possible outcomes, such as an order being returned or not returned, and a probability for each. A uniform distribution spreads that probability evenly, so a single roll of a six-sided die is uniform over the six faces.",
+            "A binomial distribution counts successes in a fixed number of independent trials that all have the same success probability. The expected number of successes in n trials is n times that probability. For 5 independent trials with a success probability of 0.2, the expected count is 5 times 0.2, which is 1.",
+            "An expected count of 1 is a long-run average across many groups of 5, not a promise about any one group. Two groups of 5 with the same probability will often differ, with one holding 0 successes and another 2. A normal distribution is a symmetric, bell-shaped model often used to describe measurement variation, and it is a good description of many measurements rather than a rule that all data follows."
+          ]
+        },
+        {
+          "heading": "Samples have their own variation",
+          "body": [
+            "A statistic is a number computed from a sample, such as a sample mean or a sample proportion, and it changes from sample to sample. That sampling variation is not the same as a biased collection process. Taking more observations shrinks the random variation, but it does not repair a sample that was collected in a systematically unrepresentative way.",
+            "Draw ten values from 0 to 9 and then a hundred values, using the seed 7 in this lesson's task. The ten draws are 3, 1, 6, 0, 5, 3, 0, 5, 0 and 4, which add to 27 and average 2.7. The hundred draws average 4.16. The average of the full set 0 to 9 is 4.5, because they add to 45 and there are 10 of them.",
+            "Both sample means sit near 4.5, but the ten-value mean is 1.8 away from it while the hundred-value mean is only 0.34 away. That is why a single small measurement can mislead and a larger sample usually helps. It also explains why two teams analysing the same population can report different numbers without either of them making a mistake."
+          ]
+        },
+        {
+          "heading": "Match the model to the quantity",
+          "body": [
+            "Use a distribution as a model of uncertainty, not as a label attached by habit. Counts, binary outcomes and continuous measurements have different possible values, and each needs a different model. A Bernoulli model fits a single yes or no outcome, a binomial model fits a count of successes in a fixed number of trials, and a normal model fits a measurement that spreads roughly symmetrically around a centre.",
+            "When the choice is wrong, the numbers you compute are wrong even when the arithmetic is right. A normal model applied to a skewed amount understates the spread, and a Bernoulli model applied to a count ignores how the count varies. In machine learning, predicted probabilities and evaluation metrics are estimates from data, and their uncertainty and the population they represent matter when decisions affect people or money."
+          ]
+        }
+      ],
+      "task": "In Python, import random and create rng = random.Random(7), then draw ten values with rng.choices(range(10), k=10) and a hundred values with rng.choices(range(10), k=100). Write down the mean of each sample, then finish with one sentence saying why the two means differ.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does a probability distribution describe?",
+            "choices": [
+              "The values a quantity can take and how likely each value is under a stated model",
+              "The exact list of numbers that happen to be in your dataset",
+              "How many rows your dataset contains",
+              "The order in which the rows arrived"
+            ],
+            "answer": 0,
+            "explanation": "A distribution is a model of uncertainty: it lists the possible values and gives each one a probability. Your dataset is one sample drawn from that world, not the model itself. Two datasets drawn from the same distribution can look different while both being normal, which is why a summary number needs its sample size next to it."
+          },
+          {
+            "id": "q2",
+            "question": "Two samples come from the same distribution. Why do their averages differ?",
+            "choices": [
+              "Because one of them must have been measured with a broken instrument",
+              "Because the distribution changes every time you draw from it",
+              "Because each sample happens to contain a slightly different mix of values",
+              "Because averages are only defined for a complete population"
+            ],
+            "answer": 2,
+            "explanation": "Sampling is random, so the values that land in one sample are not a perfect copy of the population. With ten draws from 0 to 9, the mean of 4.5 is a target you can miss in either direction, and with a hundred draws you miss by much less. Nothing is broken, and the distribution does not change between draws."
+          },
+          {
+            "id": "q3",
+            "question": "What happens to the average of a sample as the sample grows?",
+            "choices": [
+              "It becomes exactly equal to the population mean every time",
+              "It gets closer to the population mean and varies less from one sample to the next",
+              "It moves in the same direction on every sample",
+              "It stays identical across samples of the same size"
+            ],
+            "answer": 1,
+            "explanation": "The average of a larger sample sits nearer the population mean and is more stable, because the luck of the draw has less room to dominate the result. It does not become exactly the population mean, because the data still vary, and it does not move in a fixed direction, because the errors cancel in both directions over many samples."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.math.06",
+      "title": "Use matrices to combine feature vectors",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Read matrix shapes and calculate a small matrix-vector product.",
+      "sections": [
+        {
+          "heading": "Rows and columns have meaning",
+          "body": [
+            "A matrix is a rectangular arrangement of numbers written in rows and columns. In a table of data, rows commonly stand for examples and columns stand for features, and the shape of the matrix, written as rows by columns, tells you how many examples and how many features you have. Four houses with three features each give a matrix of shape 4 by 3.",
+            "Here are four houses, with features [size in square metres, number of bedrooms, age in years]: 80, 2, 15; 120, 3, 40; 95, 2, 5; 60, 4, 60. Stacked as a matrix they are 4 rows and 3 columns, so the shape is 4 by 3. Each row is one example, and the columns keep their order and their units.",
+            "A vector can stand for one example's ordered feature values, such as [80, 2, 15]. Write the feature names and units down next to the matrix, so a calculation stays interpretable when the same data is used for training and for scoring. A matrix of numbers with no labels cannot be checked by anybody, including you."
+          ]
+        },
+        {
+          "heading": "A matrix can apply several weighted sums",
+          "body": [
+            "Multiplying a matrix by a vector means taking the dot product of each row of the matrix with the vector, and putting the results in a column. With the weights [0.5, 10, -1] from the previous lesson and the first house [80, 2, 15], the score is 0.5 times 80 plus 10 times 2 plus -1 times 15, which is 40 + 20 - 15 = 45.",
+            "Do the same for the other three rows. The second house gives 0.5 times 120 plus 10 times 3 plus -1 times 40, which is 50. The third gives 0.5 times 95 plus 10 times 2 plus -1 times 5, which is 62.5. The fourth gives 0.5 times 60 plus 10 times 4 plus -1 times 60, which is 10. One matrix and one weight vector produce four scores, one per house.",
+            "The shape rule follows from that. If the matrix has m rows and n columns, the vector must hold n values and the result holds m values, so a 4 by 3 matrix times a 3-value vector gives a 4 by 1 result. When the shapes do not line up the operation is not defined as written, and you should fix the data rather than quietly dropping a column to make it fit."
+          ]
+        },
+        {
+          "heading": "Connect the operation to models",
+          "body": [
+            "A linear layer is exactly this operation applied to every row at once, which is why libraries do it that way: one instruction produces a score for every example. The meaning still comes from your choices, because the column order, the units and any bias term decide what the numbers stand for. The multiplication is fast, and it is not automatically correct.",
+            "Matrix multiplication is not commutative: changing the order of the two factors changes the result, or makes it undefined, because the inner dimensions have to match. Swapping the order of the rows of the matrix and the values of the vector is the most common beginner bug, and it produces a plausible answer built on the wrong data.",
+            "In the four-house example, the age column carries a negative weight of -1, so an older house scores lower on this scale. That is a modelling choice you made, not something the data decided. When you report results, say what each column means and what the weights do, so a reader can tell a deliberate choice from an accident."
+          ]
+        }
+      ],
+      "task": "Multiply the matrix [[1, 2], [3, 4], [5, 6]] by the vector [1, 1], showing the dot product of each row with the vector. Then write down the shape of the result and one sentence explaining why the result has that shape.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does the shape of a matrix tell you?",
+            "choices": [
+              "The average value of the numbers inside it",
+              "Whether the rows are sorted in a useful order",
+              "How accurate a model built on it will be",
+              "How many rows and columns it has, which tells you what each axis represents"
+            ],
+            "answer": 3,
+            "explanation": "A shape written as rows by columns counts the examples and the features. It tells you how many values an input vector needs and how many results come out, so it catches a mismatch early. It says nothing about averages, row order or model performance, which depend on the values and on choices you make later."
+          },
+          {
+            "id": "q2",
+            "question": "In a matrix-vector product, how many numbers come out for a matrix with five rows?",
+            "choices": [
+              "Five",
+              "The number of columns in the matrix",
+              "One, because a vector has one column",
+              "The total number of entries in the matrix"
+            ],
+            "answer": 0,
+            "explanation": "Each row of the matrix produces one result, so a matrix with five rows gives five numbers, one per row. In the four-house example the result had four numbers: 45, 50, 62.5 and 10. The number of columns decides how many values the input vector needs, not how many results come out."
+          },
+          {
+            "id": "q3",
+            "question": "A model expects three features but receives four. What kind of mistake is that?",
+            "choices": [
+              "A learning rate that is too small",
+              "A missing label for one of the rows",
+              "A shape mismatch, so the weighted sum is not defined as written",
+              "An outlier that should have been removed"
+            ],
+            "answer": 2,
+            "explanation": "The weights and the features have to line up one for one, so a model built for three features cannot take four. The error appears when the shapes are checked, and the fix is to look at which column was added or dropped, not to loosen the check. A learning rate, a label and an outlier are separate problems that do not cause a shape error."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.math.07",
+      "title": "Interpret partial derivatives",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Explain how a partial derivative measures a loss change for one parameter at a time.",
+      "sections": [
+        {
+          "heading": "Vary one parameter while holding others fixed",
+          "body": [
+            "A partial derivative measures how a function changes when one input changes while all the other inputs are held still. Take f(a, b) = 2a + 3b. If b stays at any value and only a moves, the function changes by 2 for every 1 that a moves, so the partial derivative with respect to a is 2. Holding b fixed, the partial derivative with respect to b is 3.",
+            "The plain-language version is: put your finger on one knob, hold every other knob still, and watch how the output responds. That is why the name says partial, because you are measuring one direction of change rather than the whole picture. When a loss has only one parameter, its partial derivative with respect to that parameter is the ordinary derivative, because there is no second input to hold still."
+          ]
+        },
+        {
+          "heading": "Read a gradient at a point",
+          "body": [
+            "When a loss has several parameters, the gradient is the vector of partial derivatives, one number for each parameter, all evaluated at the same current point. For J(a, b) = (a - 1) squared + (b + 2) squared, the partial derivatives are 2(a - 1) and 2(b + 2). At the point (0, 0) the gradient is [-2, 4].",
+            "Read that vector as directions. The loss goes up fastest in the direction of the gradient, so gradient descent moves in the opposite direction, which here means increasing a and decreasing b, because those are the two moves that bring a towards 1 and b towards -2. The size of each number says how much the loss changes per unit of that parameter.",
+            "The derivative is local information. For a nonlinear function the slope changes as the parameters move, so training recomputes the gradient at each step instead of assuming that one direction stays right. A gradient tells you what to do next from where you stand, not what the whole landscape looks like."
+          ]
+        },
+        {
+          "heading": "Use partial derivatives carefully",
+          "body": [
+            "The numbers in a gradient depend on the function, on the units of the parameters and on where you evaluate them, so a large entry does not automatically mean that parameter matters most in the final model. A large gradient also produces a large step unless the learning rate or the parameter scaling keeps the step in check.",
+            "Flat regions slow training down. If the gradient is close to zero where you are, each step moves the parameters only a tiny amount, and progress looks like it has stopped even though the rule is running. A loss that stops improving may be a plateau rather than a bug, so look at the size of the gradient before you rewrite the model.",
+            "Automatic differentiation, which is what libraries such as PyTorch use to compute gradients, is exact for the operations it supports, but it checks nothing about whether your loss, your data or your model is the right choice. It computes the slope of the objective you gave it. Verifying that the objective is the one you meant stays your job."
+          ]
+        }
+      ],
+      "task": "For the loss L(w) = (w - 3) squared, write down the partial derivative with respect to w, then use it in two sentences to explain why w moves towards 3 during training, starting from w = 5 with a learning rate of 0.1.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "In a partial derivative, what is held fixed?",
+            "choices": [
+              "The variable being differentiated",
+              "The learning rate used during training",
+              "All the other inputs of the function",
+              "The value of the function itself"
+            ],
+            "answer": 2,
+            "explanation": "A partial derivative isolates one direction of change: you vary the input you are interested in and keep everything else still. In f(a, b) = 2a + 3b, holding b fixed leaves the coefficient of a, which is 2. The variable being differentiated is the one that moves, and the learning rate and the function value are not part of the definition."
+          },
+          {
+            "id": "q2",
+            "question": "What does the gradient vector at one point tell you?",
+            "choices": [
+              "The direction in which the loss changes fastest at that point",
+              "The overall shape of the loss for every possible parameter value",
+              "The final parameter values that training will reach",
+              "How many parameters the model has"
+            ],
+            "answer": 0,
+            "explanation": "The gradient is local: it gives the steepest direction of change at the point where the parameters currently sit, and gradient descent moves the opposite way to reduce the loss. It does not describe the whole landscape, so it cannot tell you the final values. The number of entries equals the number of parameters, but the count is not what the vector means."
+          },
+          {
+            "id": "q3",
+            "question": "Why can training become very slow in some regions?",
+            "choices": [
+              "The dataset becomes too large to fit in memory",
+              "The gradient can be close to zero there, so each step moves the parameters only a little",
+              "The model has too few parameters to learn the pattern",
+              "The learning rate is reset to zero between batches"
+            ],
+            "answer": 1,
+            "explanation": "The size of the step is set by the learning rate times the gradient, so a gradient near zero means almost no movement even though the code is running. This is a plateau, not a crash, and the fix is often patience or a different starting point rather than a rewrite. Memory limits, parameter counts and learning rate resets are separate issues."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.math.08",
+      "title": "Interpret confidence intervals and hypothesis tests",
+      "status": "ready",
+      "study_minutes": 50,
+      "goal": "Describe uncertainty in sample estimates and interpret a hypothesis-test p-value without overclaiming.",
+      "sections": [
+        {
+          "heading": "A confidence interval describes a procedure",
+          "body": [
+            "A confidence interval is a range produced by a repeatable procedure. The interval you see covers a range of plausible values for the population quantity, and the confidence level says how often that procedure covers the true value when it is repeated on fresh samples. A 95 percent confidence procedure covers the true value in about 95 out of 100 repetitions.",
+            "It does not mean there is a 95 percent chance that this particular interval contains the true value, because the true value is fixed and the interval is what was produced. It also does not mean 95 percent of your data points fall inside the interval. Read the level as a description of the method, which is why a wide interval is a warning even when the level is high.",
+            "A worked example: in a survey of 400 customers, 62 percent kept their accounts. The standard error of that proportion is the square root of 0.62 times 0.38 divided by 400, which is about 0.024, and the margin of error is about 1.96 times 0.024, which is 0.048. The 95 percent interval is therefore roughly 57 percent to 67 percent."
+          ]
+        },
+        {
+          "heading": "A p-value is conditional on a null model",
+          "body": [
+            "A hypothesis test sets up a null hypothesis, which is usually a statement that nothing is happening, and then asks how surprising the observed data would be if that statement were true. The p-value is the probability of seeing data at least as extreme as the data you actually saw, under the null hypothesis and the assumptions of the test.",
+            "A p-value of 0.03 means that if the null hypothesis and the test assumptions were true, results this extreme would happen about 3 percent of the time. It is not the probability that the null hypothesis is true, and it is not the probability that your result is correct. It also says nothing about how much the effect matters in practice.",
+            "Choose the question and the analysis before you look at the results, and be careful about testing many hypotheses. If you try twenty comparisons and report only the ones with a small p-value, you are very likely to publish a finding that is noise, because about one in twenty comparisons at the 5 percent level looks surprising by chance alone."
+          ]
+        },
+        {
+          "heading": "Association is not a causal explanation",
+          "body": [
+            "Finding that two variables move together does not tell you that one of them caused the other. A third factor can drive both, and so can the order of events or the way people were selected into the sample. On rainy days more people carry umbrellas and the streets are wet, but the umbrellas do not make the streets wet, because the rain causes both.",
+            "In the customer study, users who received onboarding messages kept 12 percent more accounts. That is a real difference in the sample that was studied. It is also compatible with the possibility that the message was sent to more engaged customers, that a product change landed at the same time, or that the extra accounts came from a different mix of customers.",
+            "In machine learning, statistical significance is not the same as predictive usefulness or a justified product decision. Report the effect size, the uncertainty, the limitations of the data and the evaluation question together, and let the decision be made on all four rather than on the p-value alone."
+          ]
+        }
+      ],
+      "task": "A study of 400 customers finds that users who received onboarding messages kept 12 percent more accounts. Write one sentence a careful analyst could say about this result and one sentence that overclaims, then say which of your two sentences you would put in a report to a manager.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does a 95 percent confidence interval mean?",
+            "choices": [
+              "There is a 95 percent chance that the true value lies inside this particular interval",
+              "If you repeated the whole sampling procedure many times, about 95 percent of those intervals would cover the true population value",
+              "95 percent of the individual data points fall inside the interval",
+              "The estimate is within 95 percent of the true value"
+            ],
+            "answer": 1,
+            "explanation": "The 95 percent describes the method: run the same procedure on many fresh samples and roughly 95 percent of the resulting intervals will cover the true value. It is not a probability about one fixed interval, and it has nothing to do with where the individual data points sit. A wide interval still tells you that the estimate is uncertain."
+          },
+          {
+            "id": "q2",
+            "question": "A p-value of 0.03 means what, exactly?",
+            "choices": [
+              "There is a 3 percent chance that the null hypothesis is true",
+              "The onboarding messages will improve retention by 3 percent",
+              "There is a 97 percent chance that the finding is correct",
+              "If the null hypothesis and the test assumptions were true, results at least this extreme would happen about 3 percent of the time"
+            ],
+            "answer": 3,
+            "explanation": "The p-value is conditional on the null hypothesis and on the assumptions of the test, so it describes how surprising the data would look under that starting point. It does not give the probability that the null is true, which would need information the test does not provide, and it does not measure the size or the business value of the effect."
+          },
+          {
+            "id": "q3",
+            "question": "Why does a strong association between two variables not prove that one causes the other?",
+            "choices": [
+              "A third factor can drive both variables, and so can timing or how the sample was chosen",
+              "Associations are only correct about half of the time",
+              "Cause and effect can never be measured at all",
+              "A p-value below 0.05 settles the direction of the effect"
+            ],
+            "answer": 0,
+            "explanation": "Umbrellas and wet streets move together on rainy days because the rain causes both, and a similar hidden factor can sit behind a customer study, such as sending messages mostly to already engaged customers. A small p-value says the pattern is hard to explain by chance alone, not that you have found the cause."
+          }
+        ]
+      }
+    }
+  ]
+}

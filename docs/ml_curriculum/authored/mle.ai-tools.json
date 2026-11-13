@@ -1,0 +1,328 @@
+{
+  "module_id": "mle.ai-tools",
+  "lessons": [
+    {
+      "id": "mle.tools.01",
+      "title": "What AI, machine learning, and deep learning actually mean",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Describe the difference between artificial intelligence, machine learning, and deep learning, and name where each one appears in products you already use.",
+      "sections": [
+        {
+          "heading": "A program that follows written rules",
+          "body": [
+            "Most software you use today follows instructions a person wrote down, step by step, and the same input always produces the same output. A spam filter that moves every message containing the phrase free money into a junk folder is exactly this kind of program. The rule is short, it is visible in the code, and a person can change it in a minute. Nobody showed that filter thousands of examples of spam. Somebody wrote down what spam looks like, and the program checks for it.",
+            "Written rules have a strength and a weakness. The strength is predictability: if you can read the rule, you can predict the answer and explain it to a customer. The weakness is coverage. A message that says claim your bonus cash today never contains the phrase free money, so the filter above lets it through, and no amount of reading the code will reveal that this case was never thought of. The decision program you build in this module has the same weakness, and the same cure."
+          ]
+        },
+        {
+          "heading": "A program that learns from examples",
+          "body": [
+            "Machine learning solves the coverage problem in a different way. Instead of writing the rule, you collect many examples that already carry the right answer, and the program works out the rule for itself. A phone that unlocks by recognising your face has been shown thousands of labelled photographs: this is my face, this is not my face. It never receives an instruction such as if the distance between the eyes is 42 units, unlock. It receives examples and a way to measure how wrong its guesses are.",
+            "Learning does not remove the human. Somebody chose which examples to collect, decided what counts as the right label, and checked the results afterwards. When a learned model is wrong, the usual cause is that the examples were unrepresentative, not that the computer was thinking badly. A spam filter trained on messages from 2015 will meet words it has never seen, because the language moved on. This is why the data behind a learned rule matters as much as the algorithm that reads it."
+          ]
+        },
+        {
+          "heading": "Where deep learning fits",
+          "body": [
+            "Deep learning is machine learning that uses many layers of simple numbers stacked on top of each other. Each layer takes the numbers from the layer below, multiplies them by a set of stored weights, and passes a new set of numbers upward. No layer understands anything. The behaviour appears because the weights were adjusted again and again, until the final layer produced the right answers often enough. Because the layers find their own inputs, you do not write the features by hand.",
+            "Face recognition is a good example. The early layers react to simple things such as edges and corners, the middle layers react to parts of a face such as eyes or a mouth, and the later layers react to whole faces. You did not write those steps; they came out of the training. Deep learning needs more examples and more computing power than simpler machine learning, which is why it spread first through image and speech work and then through text work. Deep learning is a way of building a model, not a different goal."
+          ]
+        },
+        {
+          "heading": "How to tell what a product really uses",
+          "body": [
+            "Marketing language is loose, so read a product description with a checklist. Is the behaviour a written rule you could read in the code, a model trained on examples, or a deep network with many layers? Ask what data was used and when it was collected. A rule that checks a banned phrase keeps working when the phrase becomes popular, because the rule did not change. A model trained on last year's examples starts to fail quietly as the world moves on, and nothing in the interface tells you.",
+            "Three questions separate the three kinds of system for you. Does the company describe training on examples, or does it describe conditions written in code? Does the system improve when the team collects more examples of the same kind? Does anyone on the team know the exact rule being applied, or do they inspect a set of numbers instead? The refund decision program you build in this module answers yes to the third question and no to the others, and saying that clearly is a sign you understand the difference."
+          ]
+        }
+      ],
+      "task": "Pick one product you use every day, such as a phone, a music app, or a food delivery app. Write three short sentences: the part that works from written rules, the part that learned from examples, and the data each of those two parts uses. Name the specific feature for each part so a reader can check your answer.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "A rule written by a person and a model trained on examples are two different ways to build the same behaviour. What is the key difference between them?",
+            "choices": [
+              "The trained model gives a different answer each time it sees the same input, while a written rule always gives the same answer.",
+              "The written rule was typed by a person, while the trained model worked out its own rule from labelled examples.",
+              "A written rule needs a large dataset before it can run, while a trained model needs only the code.",
+              "A written rule is always right, while a trained model is wrong on almost every input."
+            ],
+            "answer": 1,
+            "explanation": "The difference is where the rule comes from. A person wrote the conditions in a written rule, so you can read them and change them. A trained model starts with no rule and fits one to labelled examples, so it can catch cases its authors never thought of, including cases it gets wrong. A trained model is still predictable for the same input, and a written rule can be wrong too."
+          },
+          {
+            "id": "q2",
+            "question": "Which of these is an everyday example of deep learning rather than simple rules?",
+            "choices": [
+              "A spreadsheet formula that adds tax to each row of a table.",
+              "A spam filter that moves any message containing the word lottery into a folder.",
+              "A phone that recognises your face to unlock the screen.",
+              "A bank that blocks a transfer when the amount is over 5,000."
+            ],
+            "answer": 2,
+            "explanation": "Face recognition is deep learning: the system was trained on many labelled images and uses stacked layers to turn pixels into a yes or no answer. The other three are written rules, and each one states exactly the condition it checks. The giveaway is that the deep learning system learned what to look for, while the other three were told, and a rule stays the same until a person edits it."
+          },
+          {
+            "id": "q3",
+            "question": "A product claims it uses AI. Which question best helps you check whether it is really a learned model?",
+            "choices": [
+              "How much does the product charge each month?",
+              "How fast does the product run on a laptop?",
+              "Does the product show a spinner while it works?",
+              "Was the system trained on examples, and what were they?"
+            ],
+            "answer": 3,
+            "explanation": "Training on labelled examples is what separates a learned model from a written rule, so ask where the examples came from and what they contained. The other questions describe the product rather than the method, and none of them tells you how the behaviour was produced. Watch out for marketing: the word AI can cover anything from nested if statements to a large neural network, so the training question is the one worth asking."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.tools.02",
+      "title": "How a program makes a decision",
+      "status": "ready",
+      "study_minutes": 50,
+      "goal": "Write a decision rule in plain language and turn it into a Python function that always returns the same answer for the same input.",
+      "sections": [
+        {
+          "heading": "Inputs, rules, outputs",
+          "body": [
+            "Every decision program has the same three parts, and naming them makes the job easier. The inputs are the facts you already know before you decide. The rules are the written steps you apply to those facts. The outputs are the answers you are allowed to produce. In this module the inputs for one support request are the channel it arrived through, the amount of money asked for, and the reason the customer gave. The outputs are three words: approve, review, or decline.",
+            "Write the inputs down before you write the code, because a rule cannot use a fact you never collected. If your rule says a request for 50 or more needs review, then the amount has to be one of the inputs, and it has to be a number you can compare with 50 rather than a word such as fifty. Each output should also be a small fixed set. Three outputs are easy to test, twenty are not, and a decision program with an unlimited number of answers is a conversation, not a rule."
+          ]
+        },
+        {
+          "heading": "From a sentence to a table",
+          "body": [
+            "A written rule such as approve damaged orders is a sentence. A program needs the same rule as a table, because a table can be checked by a person and by a test. For the 12 requests in data/requests.json, the rule table has five rows, and the first row that matches a request produces the answer.",
+            "Row 1 says that a damaged or wrong_item reason is approved. Row 2 says that a late_delivery reason goes to review. Row 3 says that an email channel is declined. Row 4 says that an amount of 50 or more goes to review. Row 5 says that a request which matched no other row is approved.",
+            "The order is part of the rule, not a detail. Request R10 arrives by email and asks for 102.40, so it matches row 3 and row 4 at the same time. Because row 3 comes first, the answer is decline. Swap rows 3 and 4 and the same request becomes review, and your program no longer matches the table you wrote."
+          ]
+        },
+        {
+          "heading": "Writing the decision in Python",
+          "body": [
+            "Python writes a chain of rules with if, elif, and else. The keyword if tests one condition, elif tests another condition only when the first one was false, and else runs when every condition was false. A function called decide takes one request and returns the decision as a string, so the caller never has to know how the rule was checked.",
+            "def decide(request):\n    'Return the decision for one support request.'\n    # Row 1: the item was damaged or the wrong item arrived.\n    if request['reason'] in ('damaged', 'wrong_item'):\n        return 'approve'\n    # Row 2: the delivery was late, so a person should look at it.\n    if request['reason'] == 'late_delivery':\n        return 'review'\n    # Row 3: email requests are declined before any amount is checked.\n    if request['channel'] == 'email':\n        return 'decline'\n    # Row 4: any other request for 50 or more needs a person too.\n    if request['amount'] >= 50:\n        return 'review'\n    # Row 5: everything else is approved straight away.\n    return 'approve'",
+            "Only the first branch whose condition is true runs, and Python stops there, so the order of your rows is the order of your rules. The beginner mistake here is to read every branch as if it were independent: request R10 looks like decline because it is email and also like review because it is large, when in fact the program found one answer and stopped. The second mistake is leaving a return out of a branch, which lets Python run off the end of the function and hand back None instead of a decision. Give every path a return, and keep the final one as the fallback row of your table."
+          ]
+        },
+        {
+          "heading": "Testing the decision",
+          "body": [
+            "Write down the expected answers before you write the code. If you only decide after the program exists, every wrong answer looks like a reasonable one. For the rule table above, the expected answers for the 12 bundled requests are 7 approvals, 3 reviews, and 2 declines, and the two declines are R05, an email request for 15.00, and R10, an email request for 102.40.",
+            "# Each case is a request and the answer it must produce.\ncases = [\n    ({'channel': 'web', 'amount': 24.50, 'reason': 'damaged'}, 'approve'),\n    ({'channel': 'email', 'amount': 15.00, 'reason': 'other'}, 'decline'),\n]\nfor request, expected in cases:\n    got = decide(request)\n    # Print ok when the answer matches, MISMATCH when it does not.\n    print(request['amount'], got, 'ok' if got == expected else 'MISMATCH')",
+            "A decision with no test is an opinion. The loop above prints ok for a correct decision and MISMATCH for a wrong one, which means a mistake points straight at the request that caused it. Run the check on all 12 requests before you believe the program, and keep the list of cases in your repository so a reviewer can run them again."
+          ]
+        }
+      ],
+      "task": "Write a Python function decide(request) that returns approve, review, or decline for a support request, using the rule table from this lesson in the same order: damaged or wrong_item means approve, late_delivery means review, email means decline, an amount of 50 or more means review, and anything else means approve. Test it on four requests, including one email request for 102.40.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Why does the order of the branches matter in an if / elif / else chain?",
+            "choices": [
+              "Because Python requires the branches to appear from the most specific condition to the least specific one, or the program will not run.",
+              "Because only the first branch whose condition is true runs, so moving a rule earlier can change the answer for the same request.",
+              "Because each branch may only contain one line of code.",
+              "Because the last branch always wins, no matter which conditions are true."
+            ],
+            "answer": 1,
+            "explanation": "Python checks the conditions from the top and stops at the first true one, so the order of the branches is part of the rule itself. R10, an email request for 102.40, matches both the email row and the large amount row; with the email row first the answer is decline, and with the amount row first the answer is review. Python does not require a particular order, and the last branch does not win by itself."
+          },
+          {
+            "id": "q2",
+            "question": "A request arrives with an amount of 80.00 and a reason of late_delivery. What does the rule table in this lesson return, and why?",
+            "choices": [
+              "Review, because the late_delivery row matches before any row that looks at the amount.",
+              "Approve, because late_delivery is not one of damaged or wrong_item.",
+              "Decline, because an amount that large must not be approved automatically.",
+              "Approve, because the amount row only reviews requests of 100.00 or more."
+            ],
+            "answer": 0,
+            "explanation": "The late_delivery row comes second, before the email row and before the large amount row, so it produces review and the program stops there. The amount of 80.00 is never tested. The approve choices are beginner mistakes: one assumes that only damaged and wrong_item requests are approved, forgetting the fallback row, and the other misreads the 50 threshold."
+          },
+          {
+            "id": "q3",
+            "question": "Which test would catch the classic beginner mistake of swapping the amount row with the email row in the rule table?",
+            "choices": [
+              "A request with channel email and amount 102.40 must return decline.",
+              "A request with channel email and amount 15.00 must return decline.",
+              "A request with channel web and amount 120.00 must return review.",
+              "A request with channel partner and amount 12.75 must return approve."
+            ],
+            "answer": 0,
+            "explanation": "Only the first case can tell the two orders apart. An email request for 102.40 matches both rows, so swapping them changes the answer from decline to review and the check fails. The other three cases match only one row each, so they return the same answer whichever order you use, and a test built from them would pass a broken program."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.tools.03",
+      "title": "Python essentials for this course",
+      "status": "ready",
+      "study_minutes": 55,
+      "goal": "Read and write the Python used every day in this course: values, lists, dictionaries, loops, and functions that return a result.",
+      "sections": [
+        {
+          "heading": "Values and variables",
+          "body": [
+            "A value is a piece of data. A variable is a name attached to a value, so you can use that value later without repeating it. You create a variable with an equals sign, and you change it by assigning to it again. The four value types you will meet constantly in this course are text, whole numbers, decimal numbers, and true or false.",
+            "# One support request, with a variable for each of its facts.\nrequest_id = 'R01'        # str: text\nchannel = 'web'           # str: text\namount = 24.50            # float: a decimal number\nreason = 'damaged'        # str: text\n# A comparison produces a bool, which is True or False.\nneeds_review = amount >= 50",
+            "Two warnings before you build on this. First, a float is an approximation: 0.1 + 0.2 gives 0.30000000000000004, so never keep money in a float when exact amounts matter, and round only when you show a number to a person. Second, the variable amount holding 24.50 holds a number, not the text 24.50, and text cannot be compared with 50 the way a number can, which is a common first error."
+          ]
+        },
+        {
+          "heading": "Lists and dictionaries",
+          "body": [
+            "A list is an ordered row of values, written with square brackets and commas between them. A dictionary is a record with labels, written with curly braces: each key is a label and each value is the data under that label. One support request is a dictionary because it has named parts, and the request id is the label that makes it easy to find again. A list keeps the order you typed, so the first decision you wrote stays at position zero.",
+            "# A list: an ordered row of values, reached by position.\ndecisions = ['approve', 'review', 'decline']\namounts = [24.50, 81.00, 17.25]\n\n# A dictionary: labelled parts, reached by name.\n# The 12 requests are stored as a list of 12 dictionaries like this one.\nrequest = {\n    'id': 'R01',\n    'channel': 'web',\n    'amount': 24.50,\n    'reason': 'damaged',\n}",
+            "Use a list when the items are the same kind of thing and the order matters, such as the three decisions in order. Use a dictionary when each item has named parts you look up by name, such as one request. The 12 requests are stored as a list of 12 dictionaries, and that shape is what you will meet in every later module of the course."
+          ]
+        },
+        {
+          "heading": "Loops",
+          "body": [
+            "A loop runs the same block of code once for each item in a sequence. The for loop over a list gives you a loop variable that takes each value in turn, and the indented block under the loop is the body that repeats. The loop variable is an ordinary variable, so you can still read its last value after the loop ends.",
+            "# The loop variable takes each request in turn.\n# The indented block under the for line is the body of the loop.\n# The bundled file has 12 requests, so this prints 12 lines.\nfor request in requests:\n    # Printing inside the body shows one line per request.\n    print(request['id'], request['amount'])",
+            "Two mistakes are worth naming now. If the body is not indented under the for line, Python reports an error about the indentation, because indentation is how Python marks what belongs to the loop. And a loop over a list of three items runs its body three times, so a counter placed inside the body ends at three, not at one. Writing for item in items gives you the item itself, and saves you from counting positions by hand."
+          ]
+        },
+        {
+          "heading": "Functions that return a result",
+          "body": [
+            "A function is a named recipe. It takes inputs, runs a block of code, and hands back a result. The keyword return ends the function and gives that value to whoever called it. The name, the inputs, and the result are all written in the definition, so a reader can see what the function promises before reading how it keeps that promise.",
+            "def total_amount(rows):\n    'Return the sum of the amount value in every row.'\n    # total starts at zero and grows with every row.\n    total = 0.0\n    # The loop adds one amount at a time.\n    for row in rows:\n        total = total + row['amount']\n    # return hands the finished number back to the caller.\n    return total",
+            "The same three lines written three times become one function you call three times, which means a bug is fixed in one place instead of three. The difference between return and print matters here: a printed value appears on the screen and then disappears when the function ends, while a returned value is held in a variable and can be stored, compared, or passed to another function. A function should do one job and say so in its docstring, the short description under its name."
+          ]
+        }
+      ],
+      "task": "Write a function summarize_rows(rows) that takes a list of dictionaries with the keys amount and reason, and returns a dictionary with three keys: count, how many rows there are, total, the sum of the amounts, and large_count, how many rows have an amount of 50 or more. Run it on three rows: 24.50 damaged, 81.00 wrong_item, and 17.25 late_delivery. Expect count 3, total 122.75, and large_count 1.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What is the difference between a list and a dictionary in the terms used in this lesson?",
+            "choices": [
+              "A list holds related items in order and you reach them by position, while a dictionary holds labelled parts and you reach them by name.",
+              "A list can only hold text, and a dictionary can only hold numbers.",
+              "A list is written with curly braces, and a dictionary is written with square brackets.",
+              "A dictionary is always sorted by key, while a list keeps the order you typed."
+            ],
+            "answer": 0,
+            "explanation": "A list is an ordered row of values, such as the three decision words, and you reach an item by its position. A dictionary is a record with named parts, such as one request with the keys id, channel, amount, and reason, and you reach a part by its name. The brackets are the other way round from the third choice: lists use square brackets and dictionaries use curly braces."
+          },
+          {
+            "id": "q2",
+            "question": "What does a function return, and what happens to a value printed inside a function?",
+            "choices": [
+              "A function returns one value to the caller, while a printed value goes to the screen and is gone when the function ends.",
+              "A function returns one value to the caller, and a printed value is stored in a variable you can use later.",
+              "A function returns nothing at all, and only print statements produce output.",
+              "A function returns one value and a printed value is returned as well, so the caller sees both."
+            ],
+            "answer": 0,
+            "explanation": "return hands a value back to the caller and ends the function, while print only writes text to the screen and keeps nothing. That is why total_amount returns its number instead of printing it: the caller can store the number, compare it, or pass it on. The second choice is the classic beginner mistake of treating a printed value as if it had been saved."
+          },
+          {
+            "id": "q3",
+            "question": "A loop over a list of three items runs the body three times. What is the value of the loop variable after the loop finishes?",
+            "choices": [
+              "The first item, because Python resets the loop variable at the start of every pass.",
+              "The third item, because Python leaves the loop variable holding the last value it was given.",
+              "The number of items in the list, which is 3.",
+              "Nothing, because the loop variable is deleted when the loop ends."
+            ],
+            "answer": 1,
+            "explanation": "In Python the loop variable keeps the value from the final pass, so after looping over three items it holds the third one. That is also why a counter placed inside the body ends at 3. The last choice describes languages such as C, where the loop variable goes out of scope, and in Python you can still read the variable after the loop finishes."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.tools.04",
+      "title": "Your notebook, your repository, your future employer",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Run Python in a notebook, keep every change in Git, and publish the work on GitHub so that another person can run it and check your result.",
+      "sections": [
+        {
+          "heading": "Notebook cells and why order matters",
+          "body": [
+            "A notebook is a file made of cells. A cell holds a block of Python code or a block of written notes, and you run a cell when you want to see what it does. Jupyter Notebook is the tool you will use, and Google Colab is the same idea hosted in a browser with nothing to install. When you run a cell, the values it creates stay in memory until you restart the program.",
+            "Because of that, the order of the cells matters. If cell 5 uses a variable that cell 2 creates, the notebook only works if you run cell 2 first. A notebook that needs a magic order is broken for everyone else, because nobody else knows your order. Restart the program and run every cell from the top: the command is Restart and Run All in Jupyter, and Restart and Run all in Colab.",
+            "Do this before every commit. If the notebook fails from a clean start, you find out now rather than after you publish it. It also catches a common beginner error: a cell that leans on a variable you typed by hand in another cell instead of creating it, which works on your laptop and nowhere else."
+          ]
+        },
+        {
+          "heading": "What Git records",
+          "body": [
+            "Git is a system for keeping the history of your files. A repository is the folder Git watches. A commit is a named snapshot: the state of the tracked files at one moment, with a message that says why you made the change, the author, and the time.",
+            "A branch is a named line of work, so you can try an idea without disturbing the main line. Each commit points to the commit before it, so the history is a list of snapshots from oldest to newest. The command git log prints that list with the messages, and git diff shows what changed between two snapshots. Two commits with clear messages let a reviewer see both what you did and why.",
+            "Write commit messages for the person who reads them later, which at first is you. A message like Add the late_delivery rule and the expected answers for R03 and R08 tells the whole story, while a message like fix or update says nothing. Small, focused commits are easier to review and easier to undo than one large commit at the end of the week."
+          ]
+        },
+        {
+          "heading": "Commit, push, pull",
+          "body": [
+            "The everyday loop has four commands and each one does a single job. git status shows which files have changed since the last commit, and you read it before anything else. git add src/automation.py marks the files you want in the next commit. git commit -m followed by a message records the snapshot locally, on your own machine.",
+            "git push sends your commits to GitHub, and this is the step beginners forget: until you push, the work exists on one laptop and nobody else can see it. git pull does the opposite, bringing down commits that other people pushed, and you run it before you start work in a repository that other people also use. If both sides changed the same file, Git stops and shows you both versions instead of choosing for you.",
+            "A second beginner mistake is committing everything without reading git status first, which sweeps large data files and secret keys into the history, where they stay forever. Look, add the files you meant to add, and write the message before you commit. GitHub is where you publish: you create a repository, point Git at it with git remote add origin and the web address, then push."
+          ]
+        },
+        {
+          "heading": "A repository a stranger can run",
+          "body": [
+            "A repository is finished when a stranger can run it without asking you a question. Four things make that possible: a README that says what the project does and the exact commands to run it, dependencies pinned to exact versions so the same code runs next month, tests that run with a single command, and a note about the data that says where it came from and what licence applies.",
+            "In this project those four things are the README.md you are reading, the pyproject.toml file that pins pytest, the tests folder that runs with pytest, and the line in this README that says the 12 requests are synthetic. The workflow file in .github/workflows runs the same tests automatically on GitHub every time you push, so a green badge tells a reviewer that the checks pass before they read a line of your code.",
+            "Publish the repository as public when you submit it, and put the commit that passes in the submission form. A reviewer should be able to read the README, run one command, and see the same report you pasted. When they cannot, the missing piece is usually the exact command, so write it in the README as a numbered list of commands rather than as a sentence."
+          ]
+        }
+      ],
+      "task": "Create a notebook with three cells: an import cell, a cell that defines a decide function, and a cell that calls it and prints the result. Restart the notebook, run every cell from the top, and confirm the printed result is right. Then make two commits with clear messages and push the repository to GitHub.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does a Git commit record?",
+            "choices": [
+              "A full copy of every file in the folder, so the repository can be rebuilt from any single commit.",
+              "A snapshot of the tracked files at one moment, with a message, the author, the time, and a link to the commit before it.",
+              "A diff between your working files and the previous commit, and nothing else.",
+              "A message and a list of the files you changed, stored apart from the file contents."
+            ],
+            "answer": 1,
+            "explanation": "A commit is a named snapshot: it stores the state of the tracked files plus the message, the author, the time, and a pointer to its parent commit, which is what makes the history a chain you can walk through with git log. Git stores each version of each changed file, not a full copy of the folder, and the difference between two snapshots is a diff rather than the snapshot itself."
+          },
+          {
+            "id": "q2",
+            "question": "Why should you restart a notebook and run every cell from the top before sharing it?",
+            "choices": [
+              "Because running the cells in order is the only way to get the same result twice.",
+              "Because it proves the notebook works from a clean start, so nobody else needs to know the order you clicked.",
+              "Because a notebook file only saves the output of the last cell that ran.",
+              "Because restarting clears the variables, so the cells use less memory."
+            ],
+            "answer": 1,
+            "explanation": "Values live in memory while the program runs, so a notebook that only works when you click the cells in a particular order is hiding a missing step. Restarting and running everything from the top proves that the cells create everything they need. Restarting does not lose the cells or their saved output, and it is not a memory trick."
+          },
+          {
+            "id": "q3",
+            "question": "A reviewer opens your repository and cannot tell how to run it. Which file is missing, and what should it contain?",
+            "choices": [
+              "requirements.txt, listing the exact version of every package the project needs.",
+              "LICENSE, stating who owns the code and the data.",
+              "README.md, saying what the project does and giving the exact commands to install, test, and run it.",
+              "Makefile, listing the targets for install, test, and run."
+            ],
+            "answer": 2,
+            "explanation": "The README is the first file a reviewer opens, and it is the one that tells them what the project does and which commands to run. A requirements file pins versions but says nothing about the purpose, a licence states ownership, and a Makefile lists targets that a reviewer must already understand. The README also carries the note about where the bundled data came from."
+          }
+        ]
+      }
+    }
+  ]
+}

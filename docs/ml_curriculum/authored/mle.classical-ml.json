@@ -1,0 +1,547 @@
+{
+  "module_id": "mle.classical-ml",
+  "lessons": [
+    {
+      "id": "mle.classical.05",
+      "title": "Predict a number with linear regression",
+      "status": "ready",
+      "study_minutes": 55,
+      "goal": "Fit a straight-line model that predicts a number, and read its error with MAE, MSE and R squared.",
+      "sections": [
+        {
+          "heading": "What a straight line can and cannot do",
+          "body": [
+            "A linear regression predicts a number by adding up your features, each multiplied by a weight, plus a constant called the intercept. A feature is one column of your table and a weight is the number the model learns for that column. This is the dot product from the maths module, which you have already met as a way of turning a row of measurements into a single score. In the bundled houses file the features are size_sqm, bedrooms and location_score, and the target is price.",
+            "Here is the fitted model, taken from a least-squares fit on the first 12 houses: price = 4661.82 times size_sqm, minus 17239.04 times bedrooms, plus 8232.73 times location_score, minus 77001.34. To price a house of 80 square metres with 3 bedrooms and a location score of 3 you multiply and add: 4661.82 times 80 is 372945.45, 17239.04 times 3 is 51717.13, 8232.73 times 3 is 24698.18, and the intercept is 77001.34. The prediction is 372945.45 minus 51717.13 plus 24698.18 minus 77001.34, which is 268925.17.",
+            "A straight line through data is a starting point, not the answer. With three features the model is not even a line on the page: it is a flat surface in three dimensions, so it cannot bend, cannot peak, and cannot notice that size matters more in one location than in another. The negative weight on bedrooms is the first hint that a single flat surface is a simplification, because size and bedrooms move together in this table: their correlation across the 12 training houses is 0.96."
+          ]
+        },
+        {
+          "heading": "Fitting the line",
+          "body": [
+            "Fitting means searching for the weights that make the model as close as possible to the prices you already have. For any candidate set of weights you predict a price for each of the 12 training houses, subtract each prediction from the real price, square each mistake, and add the squares up. The weights that give the smallest total are the fitted weights. Squaring is what makes a prediction that overshoots and one that undershoots by the same amount count equally, and it makes a mistake of 10000 count 100 times more than a mistake of 1000.",
+            "The numbers for this dataset make the tightness visible. The fitted weights are 4661.82 for size_sqm, minus 17239.04 for bedrooms, 8232.73 for location_score and minus 77001.34 for the intercept, and on the 12 houses it was fitted on the average mistake is 5664.75 and R squared is 0.9892. That looks wonderful, and it tells you almost nothing about new houses, because the model was scored on the very rows it was built from.",
+            "You do not have to derive those weights by hand. The LinearRegression class in scikit-learn does the search for you: you give it a table of features and a column of targets, call fit, and it stores the weights it found. A numpy least-squares call on a matrix with an extra column of ones does the same job. Whichever route you take, the column order of your features must match the order of the weights, and the beginner bug here is a sensible-looking score produced by a column read in the wrong order."
+          ]
+        },
+        {
+          "heading": "Read the error three ways",
+          "body": [
+            "MAE, the mean absolute error, is the average size of the misses, keeping only their size and throwing away their direction. On the four houses held back for testing, the model's predictions were 370711.58, 398682.49, 401181.63 and 437385.26, and the real prices were 372000, 396000, 408000 and 448000. The four mistakes are 1288.42, 2682.49, 6818.37 and 10614.74; they add to 21404.02, and dividing by 4 gives an MAE of 5351.00. Because the mistakes keep the units of the target, you can say the model is off by about 5351 currency units on a typical house.",
+            "MSE, the mean squared error, squares every mistake before averaging. The same four mistakes squared are 1660028.81, 7195742.08, 46490213.17 and 112672638.23, which add to 168018622.28, and dividing by 4 gives 42004655.57. The square root of that, 6481.10, is the root mean squared error, which puts the number back into the units of the target. The point of squaring is that a large miss is punished hard: the mistake of 10614.74 contributes 112672638.23 of the 168 million, which is 67 percent of the total from one row out of four.",
+            "R squared answers a different question: how much of the movement in the target did the model explain? The four real prices have a mean of 406000, so they sit 34000 below it, 10000 below it, 2000 above it and 42000 above it; squaring those four gaps gives 1156000000, 100000000, 4000000 and 1764000000, which add to 3024000000. The model's squared mistakes add to 168018622.28, so R squared is 1 minus 168018622.28 divided by 3024000000, which is 0.9444. Read that as: on these four houses the model explained about 94 percent of the variation in price."
+          ]
+        },
+        {
+          "heading": "Predict a house price",
+          "body": [
+            "Put the pieces together on the first held-back house, which has 102 square metres, 4 bedrooms, a location score of 5 and a real price of 372000. The model gives 4661.82 times 102, which is 475505.45, minus 17239.04 times 4, which is 68956.17, plus 8232.73 times 5, which is 41163.64, minus 77001.34, and the answer is 370711.58. The real price is 372000, so the mistake is 1288.42, which is about 0.3 percent of the price.",
+            "Is the model worth anything? Compare its MAE of 5351.00 with the simplest reference you can build. The average price of the 12 training houses is 231500, so predicting 231500 for every house gives four mistakes of 140500, 164500, 176500 and 216500, which average 174500. The fitted model cuts the average miss from 174500 to 5351, and its MAE is 1.3 percent of the average price of the four test houses.",
+            "Keep three cautions in your report. Four test houses is a very small sample, so the 0.9444 rests on thin evidence. The negative bedroom weight comes from size and bedrooms moving together in the training rows, so do not read it as more bedrooms making a house cheaper. And the model has only seen houses up to 96 square metres, so a prediction for a 200 square metre house is an extrapolation you should not trust."
+          ]
+        }
+      ],
+      "task": "In data/houses.csv, fit a linear regression that predicts price from size_sqm, bedrooms and location_score using the first 12 rows, then predict the last 4 rows. Write down MAE, MSE and R squared from your own predictions, then predict the average of the 12 training prices for those same four houses and write down that MAE too. Finish with one sentence saying whether your model is worth using.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does MAE measure, and why is it in the units of the target?",
+            "choices": [
+              "The average size of the prediction mistakes, in the same units as the target",
+              "The share of the variation in the target that the model explains",
+              "The average mistake after every mistake has been squared",
+              "The number of features the model used to make its prediction"
+            ],
+            "answer": 0,
+            "explanation": "MAE averages the absolute differences between predictions and real values, so it stays in the units of the target and you can say the model is off by about 5351 currency units on a typical house. The share of variation explained is R squared. The squared version is MSE, which is not in the target's units, and a feature count is not an error."
+          },
+          {
+            "id": "q2",
+            "question": "Two models have the same MAE, but one has a much larger MSE. What does that tell you?",
+            "choices": [
+              "The model with the larger MSE made one or a few very big misses while the other missed evenly",
+              "The model with the larger MSE is better, because bigger errors are rewarded",
+              "The model with the larger MSE used more features than the other one",
+              "Both models are equally wrong, because only the MAE can be trusted"
+            ],
+            "answer": 0,
+            "explanation": "MAE adds up the size of every mistake, so one huge miss and several small ones can reach the same total. MSE squares each mistake first, which lets the big one dominate: here the single mistake of 10614.74 produced 112672638.23 of the 168 million total, 67 percent of it from one row out of four."
+          },
+          {
+            "id": "q3",
+            "question": "An R squared of 0.4 means what in plain words?",
+            "choices": [
+              "The model is right on 40 percent of the rows",
+              "The model explained 40 percent of the variation in the target on this data",
+              "The model is 40 percent better than predicting the average every time",
+              "The model was wrong by 40 percent on the average row"
+            ],
+            "answer": 1,
+            "explanation": "R squared compares the model's squared mistakes with the spread of the target around its own mean. A value of 0.4 means 40 percent of that spread was removed by the model and 60 percent was not. It is not an accuracy, and it is not measured against a baseline, so it does not say on its own how good the model is."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.classical.06",
+      "title": "Predict a label with k-nearest neighbours",
+      "status": "ready",
+      "study_minutes": 50,
+      "goal": "Predict a label by looking at the most similar examples in the training data, and see how the choice of k changes the answer.",
+      "sections": [
+        {
+          "heading": "The idea in one sentence",
+          "body": [
+            "A k-nearest neighbours model, usually shortened to KNN, learns nothing at all. To predict a new row it finds the rows in the training data that are closest to it, the neighbours, and answers with their answers. The letter k is how many neighbours you look at. For a label such as churned or stayed you take the label that appears most among the k neighbours, and for a price like the houses file you take the average of their prices.",
+            "Take a house of 80 square metres with 3 bedrooms and a location score of 3, and use the first 12 houses of data/houses.csv as the training data. With k = 1 the closest training house is the one with 78 square metres, 3 bedrooms and a location score of 3, priced at 258000, and the raw distance between them is 2 because only the size differs. The prediction is therefore exactly 258000.",
+            "With k = 5 the model looks at five houses: 78 square metres at 258000, 85 at 288000, 74 at 226000, 92 at 312000 and 64 at 214000. Their prices add to 1298000, and dividing by 5 gives 259600. Nothing was fitted and nothing was learned: the prediction is a lookup in the training table, and the only thing you chose was how many rows to read."
+          ]
+        },
+        {
+          "heading": "Distance needs comparable features",
+          "body": [
+            "Closest has to be measured, and the usual measurement adds up the raw differences between columns. That works only when the columns sit on comparable scales. Across the 12 training houses the standard deviation of size_sqm is 15.53, while the standard deviation of bedrooms and the standard deviation of location_score are both 1.03, so a difference of 10 square metres counts ten times as much as a difference of one bedroom.",
+            "The fix is scaling, which turns each column into a spread of ones: subtract that column's mean and divide by its standard deviation, so a one-step change in any column means the same distance. On the example house above, scaling changed which rows were the five nearest. The raw five were the houses of 78, 85, 74, 88 and 70 square metres, and the scaled five were the houses of 78, 85, 74, 92 and 64 square metres.",
+            "That swap changed the number. Averaging the raw five prices gives 250800, and averaging the scaled five gives 259600, a difference of 8800 on a single prediction. The lesson is not that one neighbour set is wrong. It is that a choice as quiet as scaling changes your numbers, so the choice belongs in the report next to the score."
+          ]
+        },
+        {
+          "heading": "Choosing k",
+          "body": [
+            "With k = 1 the model copies a single neighbour, so its prediction jumps from one row's price to the next with no smoothing, and one odd training row can decide the answer for a whole region of input space. With k = 5 the model averages, which is steadier. The second example house, 100 square metres with 4 bedrooms and a location score of 5, is predicted at 344000 when k = 1, because the nearest training house is the one of 96 square metres, and at 297600 when k = 5, the average of 344000, 288000, 312000, 258000 and 286000.",
+            "Push k to the far end and the model stops using the features at all. If k equals the number of training rows, every training house is a neighbour of every new house, so the prediction is always the average price of the 12 training houses, 231500, no matter what the new house looks like. A 60 square metre flat and a 200 square metre house would get the same answer.",
+            "So k = 1 is too jumpy and k = the whole training set is too smooth, and the useful range sits between them. With 16 houses in this file, values from 3 to 5 are a sensible place to start, and the right value is decided with evidence rather than taste: the cross-validation in the next lesson gives you a score for each k on the same rows."
+          ]
+        },
+        {
+          "heading": "Where it works and where it does not",
+          "body": [
+            "The cost of KNN is that it keeps every training row and, for each prediction, measures the distance to every one of them. On the churn data with 24 training rows that costs nothing. With 500000 customers each single prediction becomes 500000 distance calculations, and the model needs an extra search structure to avoid computing all of them. KNN is easy to fit and expensive to serve.",
+            "KNN also fails in two specific ways. It cannot extrapolate: a house of 200 square metres, larger than anything in the training table, gets the price of the largest neighbours and never more, because every prediction is an average of prices that already exist. And it drowns in columns that do not matter: add 50 columns that say nothing about a house and the two useful columns lose their grip on which rows are near which.",
+            "One more warning: KNN memorises its training table, so scoring it on rows it has already seen flatters it badly. Always score it on rows it has not seen, and remember that a neighbour model has no weights to explain, which is its real cost when somebody asks why the model predicted that price."
+          ]
+        }
+      ],
+      "task": "In data/houses.csv, fit a k-nearest neighbours regressor on the first 12 rows using size_sqm, bedrooms and location_score, then predict the price of a 100 square metre house with 4 bedrooms and a location score of 5 with k = 1 and again with k = 5. Write down both predictions, then two sentences saying why they differ.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "How does a k-nearest neighbours model produce a prediction?",
+            "choices": [
+              "By fitting a straight line through the training rows",
+              "By finding the k closest training rows and combining their answers",
+              "By averaging every value in the target column of the training data",
+              "By multiplying each feature by a weight learned from the target"
+            ],
+            "answer": 1,
+            "explanation": "KNN stores the training rows and, for a new row, finds the k nearest ones by distance. A label is taken as the majority among them and a number as their average, which is why the choice of k changes the answer. A straight line is a linear regression, and weights come from fitting, not from looking up neighbours."
+          },
+          {
+            "id": "q2",
+            "question": "Why must features be scaled before you measure distance?",
+            "choices": [
+              "Because distance is only defined for columns that hold whole numbers",
+              "Because raw differences are added together, so a column with a large spread dominates the comparison",
+              "Because unscaled columns always make the model fit more slowly",
+              "Because a scaler always improves the final accuracy"
+            ],
+            "answer": 1,
+            "explanation": "In the houses table the standard deviation of size_sqm is 15.53 while bedrooms and location_score are 1.03, so raw distance is driven by size alone. Scaling puts every column on a comparable spread. The neighbour set did change here: the raw five nearest houses averaged 250800 and the scaled five averaged 259600."
+          },
+          {
+            "id": "q3",
+            "question": "What happens to a k-nearest neighbours model when k equals the size of the whole training set?",
+            "choices": [
+              "It becomes a linear regression with one weight per feature",
+              "It predicts the most common label of the training data",
+              "Every prediction becomes the average of the training targets, so the features stop mattering",
+              "It runs faster, because there is no distance left to compute"
+            ],
+            "answer": 2,
+            "explanation": "With k equal to the number of training rows, every training row is a neighbour of every new row, so the answer is the average of the training targets whatever the new row contains. On the houses file that average price is 231500 for every house, however large. It is slower, not faster, and it is not a linear model."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.classical.07",
+      "title": "Split your data and cross-validate",
+      "status": "ready",
+      "study_minutes": 55,
+      "goal": "Compare models on data they were not trained on, and use cross-validation to make a comparison you can trust.",
+      "sections": [
+        {
+          "heading": "Why one test set is fragile",
+          "body": [
+            "A single split gives you one number from one arrangement of the rows, and on a small table the arrangement matters as much as the model. Take the churn data with 24 training rows and a model that is allowed to see only tenure_months, the number of months a customer has been with the company. Split the 24 rows into 17 for fitting and 7 for testing, five times with five different random choices of the 7 test rows, and the accuracy comes out 0.43, 0.57, 0.57, 0.71 and 0.43, while the F1 score comes out 0.33, 0.40, 0.40, 0.50 and 0.00.",
+            "The model and the data never changed. Only the rows held back changed, and the score moved from 0.00 to 0.50. In the run that scored 0.00 the model caught no churner at all: it flagged 2 of the 5 customers who did not churn and missed both of the 2 who did. In the run that scored 0.50 it caught 1 of the 2 churners and flagged 1 of the 5 who stayed, so it got 5 of 7 rows right. With 7 rows, one row is worth 14 percentage points of accuracy.",
+            "The baseline in those same five splits always answered 0 and always scored 0.7143, so in the run where the model managed 0.43 it was worse than doing nothing at all. Two teams can build the same model on the same data and publish different scores, with neither team making a mistake. The fix is not to be careful with one split. It is to let every row take a turn as the test row."
+          ]
+        },
+        {
+          "heading": "Cross-validation in plain words",
+          "body": [
+            "Cross-validation takes turns. You divide the training rows into k groups, called folds, and then you fit the model k times. In each run one fold is kept back as the evaluation part while the other folds do the fitting, so with 5 folds on 24 rows the held-back group is 5 rows, 5 rows, 5 rows, 5 rows and 4 rows, and every one of the 24 rows is the evaluation row exactly once.",
+            "You then score each of the k runs and average the scores. On the churn data the logistic regression that uses both support_tickets and tenure_months scored an F1 of 1.00 on every one of the five folds, so its mean is 1.00 and its spread is 0.00. The model that saw only tenure_months scored 0.00, 0.00, 0.33, 0.33 and 0.00, a mean of 0.13 and a spread of 0.33.",
+            "Cross-validation is more work than one split, because you fit the model five times instead of once, and it is the reason your comparison can be trusted. It also gives every training row a job. The model is tested on rows it has not seen, and every row is used for testing once, so no row is wasted and no single row decides the result."
+          ]
+        },
+        {
+          "heading": "Use it for choices, keep the test set for the verdict",
+          "body": [
+            "Give each job one tool. Cross-validation is for making choices: which features to use, which model family, which threshold. The fixed evaluation set is for the verdict, and you touch it once, after the choices are made. If you look at the evaluation score every time you try a new feature list, the evaluation set stops being a test and becomes part of your training loop.",
+            "The churn example shows the payoff. Cross-validation on the 24 training rows chose the model that uses both features, with a mean F1 of 1.00 against 0.13 for the tenure-only model. Scoring that chosen model once on the 12 rows of data/evaluation.csv gave 12 correct out of 12, an accuracy of 1.00 with precision 1.00, recall 1.00 and F1 1.00.",
+            "Both numbers are honest because the evaluation rows never entered the fitting or the choosing. If you had tried ten feature lists and kept the one with the best evaluation score, the 1.00 would no longer describe new customers. It would describe the 12 rows you kept looking at, and with 12 rows a single changed prediction moves accuracy by 8.3 percentage points."
+          ]
+        },
+        {
+          "heading": "Report the variation, not just the mean",
+          "body": [
+            "A mean hides the thing you most need to know. The tenure-only model averaged 0.13 across five folds, but three of those folds were 0.00 and two were 0.33, so on three fifths of the data the model was worth nothing at all. If you report only the average, a reader cannot see that. The spread across folds, 0.33 from the lowest fold to the highest, is the information that says how much the score depends on which rows were held back.",
+            "The strong model has a spread of 0.00, which is the opposite warning: every fold gave 1.00, so the score looks completely stable. On 24 rows that is usually a sign that the problem is too easy rather than that the model is excellent, because support_tickets alone already separates the churners from the rest. A perfect score on a small table is a prompt to look for a simpler explanation, not a reason to ship.",
+            "So report the mean and the spread, and report how many rows are behind them. A cross-validated F1 of 1.00 with a spread of 0.00 over 5 folds of 24 rows is a very different claim from a mean of 0.13 with a spread of 0.33 over the same 5 folds of the same 24 rows. Both sentences are true, and only one of them lets a reader judge how much to trust the model."
+          ]
+        }
+      ],
+      "task": "On data/train.csv, run 5-fold cross-validation on a logistic regression that uses support_tickets and tenure_months, then run the same cross-validation on a model that uses only tenure_months. Write down the mean F1 score and the spread across the five folds for each, then write one sentence saying which model you would pick and why.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does cross-validation do that a single split does not?",
+            "choices": [
+              "It uses every training row as the evaluation row once, so the score does not depend on one lucky split",
+              "It fits the model on more rows than a single split does",
+              "It removes the need for a fixed evaluation set",
+              "It guarantees that the model will score well on new data"
+            ],
+            "answer": 0,
+            "explanation": "With 5 folds on 24 rows, four folds hold back 5 rows and one holds back 4, and every row is tested once, so the score averages over all the arrangements instead of one. A single split on the same data gave F1 from 0.00 to 0.50 depending only on which rows were held back. Fitting on more rows and guaranteeing future performance are not what folds do."
+          },
+          {
+            "id": "q2",
+            "question": "Which set should you never tune on?",
+            "choices": [
+              "The fixed evaluation set",
+              "The training set",
+              "The fold that scored highest",
+              "The rows used to fit the scaler"
+            ],
+            "answer": 0,
+            "explanation": "The evaluation set exists to give one honest number after the choices are made. If you use it to pick features, models or thresholds, it becomes training feedback and its score stops describing rows the model has not seen. The training set and the folds are exactly where tuning belongs, and the scaler is fitted on training rows only."
+          },
+          {
+            "id": "q3",
+            "question": "Why report the spread of the fold scores and not only their average?",
+            "choices": [
+              "Because the spread tells you how much the score depends on which rows were held back",
+              "Because the average is always wrong when the folds are small",
+              "Because the spread identifies which fold was the hardest",
+              "Because a score without a spread cannot be published"
+            ],
+            "answer": 0,
+            "explanation": "The tenure-only model averaged 0.13 over five folds but scored 0.00 on three of them, and only the spread shows that. A high average with a wide spread is a risk that a single number hides. The average is not always wrong, the spread does not name the hardest fold, and publishing rules are not the reason."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.classical.01",
+      "title": "Build a baseline before a model",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Compare a candidate model with a simple reference that exposes the value of learning from features.",
+      "sections": [
+        {
+          "heading": "A baseline makes performance interpretable",
+          "body": [
+            "A baseline is the simplest thing you could do that still produces an answer, and it needs no learning at all. For a label the usual baseline is to predict the most common class every time, which scikit-learn calls a DummyClassifier. The bundled evaluation file holds 12 customers, 8 of whom did not churn and 4 of whom did, so a model that answers 0 for every row gets 8 of 12 right and scores 0.6667.",
+            "Now read that number next to a claim of 90 percent accuracy. A model that always says 0 on a table where 8 of 12 rows are 0 already has 66.67 percent accuracy before it has learned anything, so an accuracy figure on its own says nothing about whether the work paid off. This is why the report records the baseline score next to the model score: the gap between them is the part that belongs to your model.",
+            "There is a second reason, and it is the more important one. The baseline finds none of the 4 customers who churned, so its recall is 0.00 and a retention team working from it would do nothing at all. A score that hides this is worse than no score, because it looks like evidence. The same idea applies to the regression half of this project: predict the average price of the training houses, 231500, for every house you score."
+          ]
+        },
+        {
+          "heading": "Compare on the same held-out rows",
+          "body": [
+            "Two numbers can only be compared when they were measured on the same thing. So the baseline and your model must both be scored on the same 12 rows of data/evaluation.csv, and both must be fitted without ever seeing those rows. If you scored the baseline on the 24 training rows and the model on the 12 evaluation rows, the two numbers would describe different data, and the difference would tell you about the rows rather than about the models.",
+            "The second rule follows from the first: the evaluation set is also off limits for fitting. A scaler fitted on all 36 rows, or an encoder that has already seen which categories exist, has learned something from the evaluation rows even though your classifier never saw their labels. The fix is in the next lesson, and the reason is that any number derived from the evaluation rows has to stay out of the training process.",
+            "Write down what you did so the comparison can be repeated: the rows used for fitting, the rows used for scoring, the rule that split them, the metrics you computed and the definitions of those metrics. In this project the split rule is simple and fixed, the first 24 customers are for fitting and the last 12 are for scoring, and the report records that as data_split = fixed_holdout."
+          ]
+        },
+        {
+          "heading": "Keep the baseline in the report",
+          "body": [
+            "The report you paste into the submission form holds both numbers: baseline_accuracy 0.6667 and accuracy 1.00, which comes from 12 of 12 correct on the evaluation rows. A reviewer looks at three things. Is the baseline sensible for this data, which here it is, because the majority class really is 8 of the 12. Does the model beat it, which it does. And by how much, in the units of the decision, which is 4 churners caught that the baseline would have missed.",
+            "The same shape works for the regression half of the project. The baseline there predicts the average training price, 231500, for every house, and on the four held-back houses that produces an average error of 174500. The fitted linear regression produces an average error of 5351. Reporting both makes the claim checkable, because a reader can see that the model, and not the data, did the work.",
+            "A baseline also protects you from a bad surprise. If a carefully built model cannot beat the simplest reference, then something is wrong with the model, the features or the measurement, and the report should say so instead of hiding it behind a respectable-looking score. The baseline is a floor, and knowing your floor tells you how much of your score you actually earned."
+          ]
+        }
+      ],
+      "task": "In data/evaluation.csv, count how many of the 12 customers have the churn label 0, then score a model that always predicts that class and write its accuracy down. Score your trained model on the same 12 rows, write its accuracy next to the baseline number, and finish with one sentence saying what the gap between the two tells a reader.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Why compare a model against a baseline?",
+            "choices": [
+              "Because a score only means something next to the simplest possible reference",
+              "Because the baseline is usually the model you will end up shipping",
+              "Because a model that beats a baseline is guaranteed to work on new data",
+              "Because accuracy cannot be computed without one"
+            ],
+            "answer": 0,
+            "explanation": "On the evaluation file, always answering 0 already scores 0.6667, so a model accuracy of 0.90 says only 0.23 more than doing nothing. The baseline shows what the data gives away for free, and the gap is what your model earned. Beating a baseline is not a guarantee, and accuracy can be computed without one."
+          },
+          {
+            "id": "q2",
+            "question": "Why must both models be scored on the same rows?",
+            "choices": [
+              "Because otherwise the two numbers describe different data and the comparison is meaningless",
+              "Because scoring on different rows is faster",
+              "Because the baseline has to be fitted on the evaluation rows",
+              "Because a model scored on fewer rows looks better"
+            ],
+            "answer": 0,
+            "explanation": "A comparison is only fair when both numbers come from the same held-out rows, which is why the baseline and the model are both scored on the 12 rows of evaluation.csv. Speed is not the issue, the baseline is fitted on the training rows, and scoring on fewer rows makes a score look less certain rather than better."
+          },
+          {
+            "id": "q3",
+            "question": "A baseline scores 0.50 and your model scores 0.85. What does that tell you?",
+            "choices": [
+              "The model found 35 percentage points more than the simple reference on this data",
+              "The model will also score 0.85 on new data",
+              "The baseline was fitted badly and should be improved",
+              "The model and the baseline agree on 85 percent of the rows"
+            ],
+            "answer": 0,
+            "explanation": "The gap between the two scores, 0.85 minus 0.50, is 0.35, so the model found 35 percentage points more than the simple reference on these rows. It says nothing about new data, and the baseline is not necessarily badly fitted, because its job is to be a sensible floor. Agreement between two models is a different measurement."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.classical.02",
+      "title": "Keep preprocessing inside a pipeline",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Fit transformations only on training folds and keep inference behavior reproducible.",
+      "sections": [
+        {
+          "heading": "Preprocessing learns from data",
+          "body": [
+            "Preprocessing is the work you do to a table before the model sees it, such as filling in missing values, turning words into columns, or putting numbers on a comparable scale. Each of those steps learns numbers from the rows it sees. A scaler learns a mean and a standard deviation, an imputer learns a median, and a one-hot encoder learns which categories exist. That is why they cannot be fitted once on everything and then left alone.",
+            "The numbers move very little here, which is exactly what makes the mistake dangerous. On the 24 training rows the mean number of support tickets is 2.125 and the standard deviation is 1.833. A scaler fitted on all 36 rows would use a mean of 2.111 and a standard deviation of 1.838, so the training rows would be transformed with values the 12 evaluation rows helped set. Nothing in the output looks wrong, and the evaluation score is quietly optimistic.",
+            "An encoder makes the same point more visibly. One-hot encoding turns a channel such as web, mobile or partner into three columns of ones and zeros, and to do that it has to know the list of channels. If a channel appears only in the evaluation rows, fitting the encoder on everything puts that channel into the vocabulary, and the model has been told something about the evaluation rows before it was scored on them."
+          ]
+        },
+        {
+          "heading": "Use a pipeline for mixed columns",
+          "body": [
+            "A pipeline is an object that holds the preparation steps and the model together, so that one call fits everything in the right order. A ColumnTransformer is the part of a pipeline that handles mixed columns: you name the columns and give each group its own recipe, and it stacks the results into one table of numbers. In the orders table from the data module, order_total is numeric and channel is text with three values: web on 5 rows, mobile on 4 and partner on 3.",
+            "The recipe for order_total is an imputer followed by a scaler, because one total is missing and one is negative. The median of the 11 recorded totals is 29.99, so the missing order gets that value instead of a blank. The recipe for channel is a one-hot encoder, so a mobile order becomes one in the mobile column and zero in the web and partner columns. The classifier comes last, and nothing inside the pipeline is fitted until you call fit.",
+            "The order of the steps matters as much as the grouping. The imputer runs before the scaler, because the scaler needs a number in every cell, and the scaler runs before the classifier, because the classifier expects columns on a comparable scale. When the pipeline is fitted on training rows, every step learns its numbers from those rows only, and the same fitted object then scores new rows exactly as it scored the ones it trained on."
+          ]
+        },
+        {
+          "heading": "Save the whole inference path",
+          "body": [
+            "Save the fitted pipeline, not just the model inside it. The model is a set of weights, and on its own it cannot do anything with a raw row. It needs the mean and the standard deviation that turn a ticket count into a scaled number, the median that fills a missing total, the list of channels that keeps the one-hot columns lined up, and the column order that says which number goes where.",
+            "If you keep only the model, one of two things happens. Either the code that loads it rebuilds the transformations by hand, in which case any small difference between that code and the original fit changes the prediction silently, or it cannot rebuild them at all and scoring new rows stops working. Neither failure announces itself, which is why it is worth saving one object that holds the whole path.",
+            "Record the other facts beside it: the feature names and their order, the library versions you used, and the metrics you measured, so that a reader can rebuild the same numbers. The report for this project records the feature list, the number of folds and the split rule for exactly this reason, and a saved pipeline plus those notes is enough for somebody else to repeat your work."
+          ]
+        }
+      ],
+      "task": "Build a scikit-learn Pipeline for the churn data in data/train.csv: a ColumnTransformer that sends support_tickets and tenure_months through an imputer and a scaler, then a logistic regression. Fit it on the 24 training rows only, score it on the 12 rows of data/evaluation.csv, and save the fitted pipeline with joblib. Write one sentence saying what breaks if you save only the classifier.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Why must a scaler be fitted inside a pipeline rather than before it?",
+            "choices": [
+              "Because the scaler learns a mean and a spread from the rows it sees, and inside the pipeline each training fold learns its own",
+              "Because a scaler cannot be used together with a classifier",
+              "Because fitting a scaler first always makes the model slower",
+              "Because a scaler fitted first will always produce a perfect fit"
+            ],
+            "answer": 0,
+            "explanation": "The mean and the standard deviation are numbers learned from data, so fitting the scaler once on all 36 rows lets the 12 evaluation rows influence the training. Inside the pipeline each training fold fits its own scaler, and that fitted scaler is then applied unchanged to the rows being scored. The other three choices describe effects that do not happen."
+          },
+          {
+            "id": "q2",
+            "question": "What is a ColumnTransformer used for?",
+            "choices": [
+              "Applying different preparation recipes to named groups of columns and stacking the results into one table",
+              "Copying the target column into the feature table",
+              "Choosing how many folds cross-validation should use",
+              "Turning a trained model into a fitted pipeline"
+            ],
+            "answer": 0,
+            "explanation": "A ColumnTransformer takes named column groups and gives each one its own steps, such as an imputer and a scaler for numbers and a one-hot encoder for text, then joins the results into one table. It does not copy the target, it has nothing to do with the number of folds, and wrapping the model into a pipeline is the Pipeline's job."
+          },
+          {
+            "id": "q3",
+            "question": "Why save the whole pipeline and not only the model?",
+            "choices": [
+              "Because the model needs the fitted transformations to turn a raw row into the inputs it was trained on",
+              "Because a saved model file is larger than a saved pipeline",
+              "Because joblib cannot save a classifier on its own",
+              "Because a pipeline retrains the model every time it is loaded"
+            ],
+            "answer": 0,
+            "explanation": "The scaler, the imputer and the encoder hold numbers the model depends on, such as the mean of 2.125 and the standard deviation of 1.833 for support tickets. Saving only the classifier loses them, so a raw row cannot be prepared in the same way. File size, joblib's abilities and retraining are not the reason."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.classical.03",
+      "title": "Measure model quality for the decision",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Select metrics that reflect the costs and consequences of model errors.",
+      "sections": [
+        {
+          "heading": "Read the confusion matrix",
+          "body": [
+            "A confusion matrix is a 2 by 2 table that counts what a classifier did with four kinds of row. For the churn problem the positive class is the customer who churned within 30 days. On the 12 rows of data/evaluation.csv, the model that uses support_tickets and tenure_months put 8 non-churners in the negative column and 4 churners in the positive column, and made no mistakes at all, so the table holds 8 true negatives, 0 false positives, 0 false negatives and 4 true positives.",
+            "The four cells are easier to remember as sentences. A true positive is a customer who really churned and you flagged, which is the cell you want to fill. A false positive is a customer who stayed and you flagged anyway, the wasted call. A false negative is a customer who churned and you did not flag, the missed save. A true negative is a customer who stayed and you left alone.",
+            "Read the table as a cost, not as a score. On this data the model produced 4 useful flags and 0 wasted ones, so a retention team would spend 4 calls and catch 4 churners. A model with 4 true positives and 3 false positives would spend 7 calls to catch the same 4, and that difference in work is what your threshold and your metric are really about."
+          ]
+        },
+        {
+          "heading": "Use metrics with clear meanings",
+          "body": [
+            "Every metric is arithmetic on those four cells. Accuracy is true positives plus true negatives over all rows, which here is (4 + 8) / 12 = 1.00. Precision is true positives over everything you flagged, which is 4 / (4 + 0) = 1.00. Recall is true positives over everything that really churned, which is 4 / (4 + 0) = 1.00. F1 is the harmonic mean of precision and recall, which is 2 times 1 times 1 divided by 1 plus 1, so 1.00.",
+            "The sentence each one means in a report is worth writing down. Accuracy says 12 of the 12 customers were labelled correctly. Precision says of the customers you would call, all 4 really churned. Recall says of the 4 customers who really churned, you found all 4. F1 says one number that balances precision and recall, and it is the one to quote when you cannot say which of the two matters more to the decision.",
+            "The same arithmetic on the baseline makes the point. Always predicting 0 gives accuracy (0 + 8) / 12 = 0.6667 and recall 0 / (0 + 4) = 0.00, and precision is not defined because the baseline flags nobody. The orders table from the data module shows the other trap: 4 of its 12 orders were returned, so a model that always says no also scores 0.6667 accuracy while catching nothing at all."
+          ]
+        },
+        {
+          "heading": "Report the threshold",
+          "body": [
+            "A classifier that outputs a probability does not decide anything by itself. The threshold is the number you compare that probability against, and turning a score into a label is a decision you own, because it encodes what a false positive costs you. On the 24 churn training rows, using out-of-fold predictions so that each row is scored by a model that did not train on it, a threshold of 0.3 gave 8 true positives and 3 false positives, while a threshold of 0.5 gave 8 true positives and 0 false positives.",
+            "The model did not change between those two lines, only the threshold, and precision moved from 8 / 11 = 0.73 to 8 / 8 = 1.00 while recall stayed at 1.00. Push the threshold up to 0.8 and the picture changes again: 4 true positives and 4 false negatives, so recall falls to 4 / 8 = 0.50 and F1 falls to 0.67. The same model, the same data, three different reports.",
+            "Choose the threshold on validation data and never on the fixed evaluation set, then apply the chosen threshold once to the evaluation rows and report it next to the metrics. A report that gives precision and recall without the threshold is incomplete, because a reader cannot tell whether you were strict or generous without knowing where you drew the line."
+          ]
+        }
+      ],
+      "task": "Print the confusion matrix for your churn classifier on the 12 rows of data/evaluation.csv, then compute accuracy, precision, recall and F1 from the four cell counts by hand. Next, use out-of-fold predictions on the 24 training rows and write down the precision and recall at a threshold of 0.3 and at a threshold of 0.8. Finish with one sentence saying which of the four errors would cost your team most.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "In a confusion matrix, what does a false positive mean?",
+            "choices": [
+              "A row that was really negative was labelled positive, a false alarm",
+              "A row that was really positive was labelled negative, a missed case",
+              "A row that was labelled correctly but with a low probability",
+              "A positive row that the model gave a high score to"
+            ],
+            "answer": 0,
+            "explanation": "A false positive counts the rows where the truth was negative and your model said positive, so they are wasted calls. A missed case is a false negative. A correct label is a true positive or a true negative, and a high score on a row that was labelled correctly is not an error at all."
+          },
+          {
+            "id": "q2",
+            "question": "Which metric tells you how many of the flagged cases were genuinely positive?",
+            "choices": [
+              "Precision",
+              "Recall",
+              "Accuracy",
+              "The threshold"
+            ],
+            "answer": 0,
+            "explanation": "Precision is true positives divided by everything you flagged, so on the churn rows it is 4 / (4 + 0) = 1.00. Recall divides by everything that really churned, accuracy divides by all 12 rows, and the threshold is the cut-off rather than a measure. Precision is the one that answers the question about your flagged list."
+          },
+          {
+            "id": "q3",
+            "question": "Why does the threshold matter as much as the model?",
+            "choices": [
+              "Because the same scores give different labels at different thresholds, and the choice is a business decision",
+              "Because the threshold changes the training data",
+              "Because a model cannot produce a probability without one",
+              "Because the machine learning library sets the threshold, not you"
+            ],
+            "answer": 0,
+            "explanation": "On the churn training rows a threshold of 0.3 gave precision 0.73 and recall 1.00, while 0.8 gave precision 1.00 and recall 0.50, with no change to the model. Where you cut decides how many calls you make and how many churners you catch. The threshold does not change the data, the model produces scores without one, and you choose it."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.classical.04",
+      "title": "Validate, compare, and read probabilities carefully",
+      "status": "ready",
+      "study_minutes": 50,
+      "goal": "Estimate variation, make fair model comparisons, and interpret predicted probabilities carefully.",
+      "sections": [
+        {
+          "heading": "Use cross-validation for model choices",
+          "body": [
+            "When you compare two models, the only thing that should differ is the model. If one model is scored on one split and the other on another, the gap between the scores measures the split as much as it measures the model. Cross-validation removes that problem by giving every candidate the same folds: on the churn data with 24 training rows, 5 folds hold back 5 rows, 5 rows, 5 rows, 5 rows and 4 rows in turn, and every model sees the same five evaluation slices.",
+            "The comparison on this data is instructive rather than exciting. A logistic regression on both features and a decision tree of depth 3 both scored an F1 of 1.00 on every fold, so the mean is 1.00 and the spread is 0.00 for each, and the data cannot tell them apart. A logistic regression allowed to see only tenure_months scored 0.00, 0.00, 0.33, 0.33 and 0.00, a mean of 0.13 and a spread of 0.33.",
+            "A tie is information too. It tells you that on this data the choice between those two model families does not matter, so you should pick on cost, on speed or on explainability. It also tells you to look again at the data, because support_tickets alone already separates every churner from every stayer, which is a sign that the exercise is easy rather than that your model is brilliant."
+          ]
+        },
+        {
+          "heading": "Do not tune on the test set",
+          "body": [
+            "Every look at the evaluation set during development is a small leak. Try three feature sets, keep the one with the best evaluation accuracy, and you have used the evaluation rows to make a choice, so the final score no longer describes rows the model has not seen. This is easy to do by accident, because checking the score is the fastest way to know whether a change helped, and the evaluation file is right there.",
+            "The numbers make the cost concrete. The evaluation file has 12 rows, so one changed prediction moves accuracy by 8.3 percentage points, and it holds only 4 churners, so one churner is a quarter of everything you could catch. Any model selection done on those rows is working with a very small and very precious number, and repeated selection quietly turns the file into training data.",
+            "The same rule protects you from a subtler leak. In this bundled churn table the column cancelled_after_snapshot is 1 for exactly the rows that churn and 0 for exactly the rows that did not, in the training rows and in the evaluation rows alike, so a model that is allowed to use it will look perfect while learning nothing about customers. It is information from after the prediction moment, and the report records it as a leakage feature that must stay out."
+          ]
+        },
+        {
+          "heading": "A score is not automatically a probability",
+          "body": [
+            "A model that outputs 0.9 is claiming a score, not a 90 percent chance, unless somebody has checked. On the 12 evaluation rows the honest churn model gave an average score of 0.367, while the observed churn rate is 4 / 12 = 0.333, so the model is slightly pessimistic about the average customer. The gap is small here, and it is exactly the kind of gap that grows on real data.",
+            "Look closer and the model is doing well. The 8 customers it scored below 0.40 averaged 0.114 and none of them churned, and the 4 it scored between 0.79 and 0.94 averaged 0.872 and all 4 churned. Customer E003 was scored 0.266 and did not churn, and E009 was scored 0.820 and did. Calibration means comparing the average score in each band of scores with the rate you actually observe in that band.",
+            "This matters because people act on the number. A retention manager told that an account has a 90 percent chance of leaving will spend real money on a save offer, and if the scores are too high that budget goes to accounts that were never going to leave. If the scores are too low, real churners are ignored. So check the bands, and if the model is badly off, calibrate it on data it was not fitted on before you let anybody act on its numbers."
+          ]
+        }
+      ],
+      "task": "On data/train.csv, cross-validate a logistic regression and a decision tree with the same 5 folds and write down the mean F1 and the spread across folds for each, then write one sentence saying which model you would pick and why. Next, take the 12 rows of data/evaluation.csv, split them into a low-score group and a high-score group, and write one sentence on why a high predicted probability still needs checking.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Why must two models be compared on the same folds?",
+            "choices": [
+              "So that the difference you see comes from the models and not from the rows that were held back",
+              "So that both models take the same time to fit",
+              "So that the fold scores can be averaged",
+              "So that the evaluation set is used more often"
+            ],
+            "answer": 0,
+            "explanation": "Cross-validation gives every candidate the same five evaluation slices, so a gap in the scores is a property of the models. With different slices the gap measures the split, which is how a tenure-only model produced F1 scores from 0.00 to 0.50 on the same 24 rows. Averaging is what you do with the scores afterwards, and using the evaluation set more often is the mistake to avoid."
+          },
+          {
+            "id": "q2",
+            "question": "What goes wrong if you tune hyperparameters on the test set?",
+            "choices": [
+              "The test set becomes training feedback, so the final score is optimistic about new rows",
+              "The model trains more slowly",
+              "The test set becomes too small to score",
+              "The cross-validation folds stop working"
+            ],
+            "answer": 0,
+            "explanation": "Choosing between models by their test scores turns the test rows into part of the selection process, and the score then describes the rows you kept looking at rather than new customers. With 12 rows, one changed prediction is 8.3 percentage points, which makes such a score fragile. Training speed, test size and the folds are not what breaks."
+          },
+          {
+            "id": "q3",
+            "question": "What is calibration?",
+            "choices": [
+              "The agreement between predicted probabilities and the rate of the outcome observed in each band of scores",
+              "The practice of choosing a threshold that maximises F1",
+              "The process of scaling features to a comparable range",
+              "The habit of reporting the mean score instead of the spread"
+            ],
+            "answer": 0,
+            "explanation": "Calibration asks whether the average predicted risk in a group matches the rate you actually observe there. On the evaluation rows the 4 customers scored between 0.79 and 0.94 averaged 0.872 and all 4 churned, so the model was close there. A threshold and a scaler are separate tools, and reporting a spread is about uncertainty rather than calibration."
+          }
+        ]
+      }
+    }
+  ]
+}

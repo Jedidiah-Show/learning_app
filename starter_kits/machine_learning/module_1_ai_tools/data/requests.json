@@ -1,0 +1,86 @@
+[
+  {
+    "id": "R01",
+    "channel": "web",
+    "amount": 24.50,
+    "reason": "damaged",
+    "expected_decision": "approve"
+  },
+  {
+    "id": "R02",
+    "channel": "mobile",
+    "amount": 81.00,
+    "reason": "wrong_item",
+    "expected_decision": "approve"
+  },
+  {
+    "id": "R03",
+    "channel": "web",
+    "amount": 17.25,
+    "reason": "late_delivery",
+    "expected_decision": "review"
+  },
+  {
+    "id": "R04",
+    "channel": "mobile",
+    "amount": 120.00,
+    "reason": "other",
+    "expected_decision": "review"
+  },
+  {
+    "id": "R05",
+    "channel": "email",
+    "amount": 15.00,
+    "reason": "other",
+    "expected_decision": "decline"
+  },
+  {
+    "id": "R06",
+    "channel": "web",
+    "amount": 44.00,
+    "reason": "other",
+    "expected_decision": "approve"
+  },
+  {
+    "id": "R07",
+    "channel": "email",
+    "amount": 63.20,
+    "reason": "damaged",
+    "expected_decision": "approve"
+  },
+  {
+    "id": "R08",
+    "channel": "mobile",
+    "amount": 29.99,
+    "reason": "late_delivery",
+    "expected_decision": "review"
+  },
+  {
+    "id": "R09",
+    "channel": "web",
+    "amount": 15.00,
+    "reason": "other",
+    "expected_decision": "approve"
+  },
+  {
+    "id": "R10",
+    "channel": "email",
+    "amount": 102.40,
+    "reason": "other",
+    "expected_decision": "decline"
+  },
+  {
+    "id": "R11",
+    "channel": "partner",
+    "amount": 12.75,
+    "reason": "wrong_item",
+    "expected_decision": "approve"
+  },
+  {
+    "id": "R12",
+    "channel": "web",
+    "amount": 36.10,
+    "reason": "other",
+    "expected_decision": "approve"
+  }
+]

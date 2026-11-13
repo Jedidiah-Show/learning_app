@@ -1,0 +1,13 @@
+order_id,order_date,order_total,channel,returned_within_30_days,refund_reason
+1001,2025-01-01,24.50,web,0,
+1002,2025-01-02,81.00,mobile,1,damaged
+1003,2025-01-03,17.25,web,0,
+1004,2025-01-04,,mobile,0,
+1005,2025-01-05,44.00,partner,1,wrong_item
+1006,2025-01-06,12.75,web,0,
+1007,2025-01-07,-5.00,mobile,0,
+1008,2025-01-08,63.20,web,1,damaged
+1009,2025-01-09,29.99,partner,0,
+1010,2025-01-10,15.00,mobile,0,
+1011,2025-01-11,102.40,web,1,late_delivery
+1012,2025-01-12,36.10,partner,0,

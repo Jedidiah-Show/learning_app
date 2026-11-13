@@ -1,0 +1,395 @@
+{
+  "module_id": "mle.deep-learning",
+  "lessons": [
+    {
+      "id": "mle.deeplearning.01",
+      "title": "From one neuron to a network",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Explain what a single artificial neuron computes and how stacking neurons into layers builds a model.",
+      "sections": [
+        {
+          "heading": "One neuron, one number",
+          "body": [
+            "An artificial neuron is the simplest building block of a deep learning model. It takes several numbers, multiplies each by a stored weight, adds them all together, and then adds a single number called a bias. The bias shifts the result up or down without changing any of the weights. This computation is exactly a weighted sum plus an offset, the same kind of arithmetic you use when you compute a total bill from item prices and quantities.",
+            "During training, the learning process is the only thing that changes the weights and biases. All weights and biases start as random numbers, typically drawn from a small range so they are not huge. No human writes the feature-to-output rule by hand; the training loop nudges each weight a little bit at a time until the model produces the right answers often enough. The neuron's raw output before any activation function is this weighted sum plus bias."
+          ]
+        },
+        {
+          "heading": "Layers pass numbers to layers",
+          "body": [
+            "A layer is a group of neurons that work in parallel. Each neuron in the layer takes the same input numbers, produces its own output number, and the layer passes all those output numbers upward to the next layer. The width of a layer — how many neurons it contains — is a design choice you make. More neurons let the model represent more complex patterns, but each one adds weights that must be trained.",
+            "If a layer has N neurons, its output is a row of N numbers, one per neuron. The next layer takes that row as its input and applies its own set of weights and biases. Stacking layers this way builds a network, and the depth — how many layers you have — is another design choice. Each additional layer increases the functions the model can compute, but also increases the number of weights that the training loop must find."
+          ]
+        },
+        {
+          "heading": "Where the numbers come from",
+          "body": [
+            "All the weights and biases start as random numbers, typically drawn from a small range so they are not huge. During training, the learning process is the only thing that changes these numbers. No human writes the feature-to-output rule by hand; the training loop nudges each weight a little bit at a time until the model produces the right answers often enough.",
+            "The training loop computes gradients and updates each weight a tiny amount at a time. The bias terms are updated the same way, shifting the neuron's output left or right. Because the weights start random, different initialisations can lead to different final models, which is why practitioners often run training several times with different random seeds."
+          ]
+        },
+        {
+          "heading": "Why bother with layers",
+          "body": [
+            "A single-layer neuron computes a weighted sum, which draws one straight-line (hyperplane) boundary in the space of its inputs. That can only separate two classes when they are linearly mixable. Stacking layers lets the model draw curved boundaries, even circles or spirals, at the cost of more weights to get right.",
+            "The trade-off is that a deeper network can represent far richer functions than a single neuron alone. A two-layer network with ReLU activation can approximate any continuous function given enough neurons, which is why deep learning models almost always have at least one hidden layer. The cost is that more weights must be trained, and the model becomes harder to interpret."
+          ]
+        }
+      ],
+      "task": "For a neuron with weights [0.5, -2, 1] and bias 1, compute the weighted sum for input [3, 1, 4] and say what the bias does.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does a single artificial neuron compute before any activation function is applied?",
+            "choices": [
+              "A weighted sum of its inputs plus a bias",
+              "The average of its inputs",
+              "The maximum of its inputs",
+              "The product of all its inputs"
+            ],
+            "answer": 0,
+            "explanation": "A neuron multiplies each input by a weight, adds those products together, and then adds a bias term. This weighted sum plus offset is the neuron's raw output before any squashing function is applied."
+          },
+          {
+            "id": "q2",
+            "question": "What changes during training of a neural network?",
+            "choices": [
+              "The number of layers in the model",
+              "The bias term only, not the weights",
+              "The weight and bias values, nudged by the training loop",
+              "The activation function used in the output layer"
+            ],
+            "answer": 2,
+            "explanation": "Training adjusts every weight and bias value, moving each one a small amount at a time so the model's output better matches the correct labels. The architecture, such as the number of layers, stays fixed during training."
+          },
+          {
+            "id": "q3",
+            "question": "What can a stack of layers compute that a single linear neuron cannot?",
+            "choices": [
+              "Only faster computation, not richer patterns",
+              "Curved decision boundaries, not just straight ones",
+              "Only one extra class of output",
+              "No difference at any depth"
+            ],
+            "answer": 1,
+            "explanation": "A single neuron draws one straight-line boundary (hyperplane). Adding layers with activation functions between them lets the model draw curved boundaries, such as circles or spirals, which a single linear model cannot produce."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.deeplearning.02",
+      "title": "Activation functions",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Explain what an activation function does and choose between sigmoid, tanh and ReLU for a hidden layer.",
+      "sections": [
+        {
+          "heading": "Why a layer needs an activation",
+          "body": [
+            "Without an activation function, every layer of a neural network computes only a weighted sum, and stacking several linear layers together still gives just one linear result. The composition of linear functions is always linear, so the whole network would collapse to one neuron no matter how many layers you add. An activation function squashes each neuron's output into a new range, and that nonlinearity is what lets the model compute and draw curved boundaries.",
+            "Without nonlinearity, a deep network has no more representational power than a single neuron. This is why every hidden layer in a practical deep learning model uses an activation function. The choice of activation changes how gradients flow during training and what kinds of patterns the model can learn."
+          ]
+        },
+        {
+          "heading": "Sigmoid and tanh",
+          "body": [
+            "The sigmoid function squashes any input number into a range between 0 and 1, which is useful when the output must be read as a probability. The tanh function does the same squashing but its range is between -1 and 1, zero-centred, which makes learning easier for the layers below. Both functions saturate when their input is very far from zero: the gradient becomes almost zero, so learning slows to a crawl.",
+            "A beginner's mistake is to use sigmoid for hidden layers where tanh often works better because of its zero-centred range. When inputs to sigmoid or tanh are large in magnitude, the output saturates at 0 or 1 respectively, and the gradient near zero means the weights receive almost no update. This is why ReLU became the default choice for many hidden layers."
+          ]
+        },
+        {
+          "heading": "ReLU",
+          "body": [
+            "ReLU, which stands for rectified linear unit, keeps the input unchanged if it is positive and outputs zero otherwise. Its computation is simply max(0, x), which makes it very fast to calculate. Because ReLU does not saturate when the input is positive, learning flows through it more easily than through sigmoid or tanh.",
+            "The main risk with ReLU is the 'dead ReLU' problem: if a neuron receives only negative inputs during training, its gradient becomes zero forever and the neuron stops learning entirely. This means the model permanently loses that weight. Variants such as leaky ReLU or parametric ReLU were introduced to keep a tiny gradient even when the input is negative, so the neuron can recover."
+          ]
+        },
+        {
+          "heading": "Choosing the output activation",
+          "body": [
+            "The output activation depends on the task type. A binary classification problem — deciding between two classes — typically uses a single output with sigmoid, which produces a number between 0 and 1 that can be interpreted as the probability of the positive class.",
+            "A multi-class classification problem with ten or more classes, such as classifying handwritten digits, uses one output unit per class with softmax, which spreads the outputs so they sum to 1 across all classes. A regression problem, where the target is a continuous number, typically uses no activation at the output layer at all, so the model can produce any real-valued prediction."
+          ]
+        }
+      ],
+      "task": "Compute the sigmoid of 0 and of 2 to two decimal places, describe in one sentence what ReLU does to a negative number, and say which output activation you would use for the ten digit classes.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What happens if you stack layers without any activation function?",
+            "choices": [
+              "The network learns much faster because there are no constraints",
+              "The network's output is always zero, regardless of input",
+              "The composition of linear functions is still linear, so the network gains no representational power",
+              "The weights automatically become binary values"
+            ],
+            "answer": 2,
+            "explanation": "Without activation functions, every layer computes only a weighted sum, and the composition of any number of linear transformations is itself linear. The network would be equivalent to a single neuron no matter how many layers it contains, which is why activation functions are essential for deep learning."
+          },
+          {
+            "id": "q2",
+            "question": "What does ReLU do to a negative input?",
+            "choices": [
+              "It squashes the input into the range [0, 1]",
+              "It outputs zero",
+              "It reflects the input to positive territory",
+              "It subtracts the mean and divides by the standard deviation"
+            ],
+            "answer": 1,
+            "explanation": "ReLU stands for rectified linear unit, and its rule is: if the input is positive, keep it; if it is negative, output zero. So for any negative number, ReLU outputs exactly zero."
+          },
+          {
+            "id": "q3",
+            "question": "Why does a ten class problem need ten output units instead of one?",
+            "choices": [
+              "Because one output unit cannot store the number 10",
+              "Because the ten outputs are multiplied together to produce the final score",
+              "Because each output unit scores one digit class, and softmax spreads one probability across all ten so they sum to 1",
+              "Because the model would overfit with fewer outputs"
+            ],
+            "answer": 2,
+            "explanation": "In a ten class problem, each output unit learns to score one digit class. The softmax function then converts those ten raw scores into probabilities that sum to 1, so the highest-scoring class is the model's prediction. One output unit cannot represent ten distinct classes simultaneously."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.deeplearning.03",
+      "title": "How a network learns: backpropagation in plain words",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Describe backpropagation as a two-step loop of measuring each weight's contribution to the error and adjusting it, without needing the calculus behind it.",
+      "sections": [
+        {
+          "heading": "The loss measures how wrong you are",
+          "body": [
+            "A loss function is a number that measures how poorly the model's predictions match the true labels. For a regression task, mean squared error is common: it squares the difference between the predicted and actual value, so larger errors loom even larger. For a classification task, cross-entropy loss measures the surprise of the predicted probability given the true class. In both cases, the training loop's job is to make this number smaller and smaller.",
+            "The loss number answers one question: 'how wrong are we right now?' A smaller loss means the model's outputs are closer to the correct answers. The loss function provides the target that the training loop will try to minimize, and it is the single number that drives every update to the model's weights."
+          ]
+        },
+        {
+          "heading": "Step one: blame the weights",
+          "body": [
+            "The backward pass works backwards from the error: it asks, 'If I nudge this weight a tiny amount, how much does the loss change?' The gradient tells the model how much each weight contributed to the current error. This is not a human judgment; it is a precise arithmetic calculation using the chain rule, and it assigns a blame score to every weight in the network.",
+            "The gradient is a vector of partial derivatives, one per weight. Each entry says how much the loss would change if that weight were increased slightly, holding everything else steady. The backward pass computes these derivatives efficiently, propagating the error signal from the output layer back through every hidden layer."
+          ]
+        },
+        {
+          "heading": "Step two: nudge the weights",
+          "body": [
+            "Gradient descent takes the blame scores (the gradient) and subtracts a small fraction of each one from the current weight. The learning rate controls how large that fraction is: a larger learning rate moves the weights farther each step, a smaller one moves them less. After the nudge, the forward pass recomputes the output and the loss, and the loop starts over.",
+            "The update rule for one weight is: weight_new = weight_old - learning_rate × gradient. If the gradient is positive, the weight decreases; if the gradient is negative, the weight increases. The learning rate is the knob you turn to control step size, and choosing it well is one of the most important practical decisions in training."
+          ]
+        },
+        {
+          "heading": "Repeat many times, on small batches",
+          "body": [
+            "Training loops over many iterations, and in each iteration the model sees a small batch of examples rather than the whole dataset at once. Mini-batch training makes learning faster and more stable than using the entire dataset in one go, and it also introduces a little noise that can help the model escape shallow local minima.",
+            "The loss usually falls in a bumpy way, not straight down, because each batch gives a slightly different gradient direction. An epoch is one complete pass through the entire training dataset, and typical training runs for many epochs. The model's loss on the training set may keep falling while the validation loss tells you whether you have trained too long."
+          ]
+        }
+      ],
+      "task": "Write down the training loop in four steps in your own words, using the words 'forward', 'loss', 'backward', 'update'. Then explain what would happen if the learning rate were a hundred times too large.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What are the four steps of every training loop?",
+            "choices": [
+              "Import data, train model, test model, save model",
+              "Forward pass, compute loss, backward pass, update weights",
+              "Choose activation, pick optimizer, set learning rate, run epochs",
+              "Load dataset, define model, train for one epoch, evaluate"
+            ],
+            "answer": 1,
+            "explanation": "Every training loop runs through four stages: the forward pass computes the model's output, the loss measures how wrong it is, the backward pass computes gradients, and the update step nudges the weights. These four repeat until training stops."
+          },
+          {
+            "id": "q2",
+            "question": "What does the backward pass calculate?",
+            "choices": [
+              "The accuracy of the model's predictions on the training set",
+              "The new learning rate for the next step",
+              "How much each weight contributed to the current error, i.e. the gradient",
+              "The number of batches in the training dataset"
+            ],
+            "answer": 2,
+            "explanation": "The backward pass computes the gradient of the loss with respect to each weight, telling the training loop how much each weight contributed to the error and in which direction it should be nudged."
+          },
+          {
+            "id": "q3",
+            "question": "What is the likely symptom of a learning rate that is far too large?",
+            "choices": [
+              "The loss falls smoothly and quickly to zero",
+              "The loss stays exactly the same across every step",
+              "The loss rises after each step or bounces around without settling",
+              "The model immediately achieves 100 percent accuracy"
+            ],
+            "answer": 2,
+            "explanation": "When the learning rate is too large, the weight updates overshoot the low-loss region and land somewhere worse, so the loss goes up instead of down. The steps become too big and the training diverges or bounces around without ever settling."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.deeplearning.04",
+      "title": "Training, validating and spotting overfitting",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Train a network while watching the training and validation curves, and recognise overfitting when you see it.",
+      "sections": [
+        {
+          "heading": "Three sets of data, three jobs",
+          "body": [
+            "Every neural network training uses three separate sets of data: training, validation, and test. The training set is used in every training iteration, the model's weights are updated after each batch, and this is the only set that drives the learning process. The validation set is not used for weight updates; instead, after each epoch the model's performance on the validation set is checked to decide when to stop training or which model checkpoint to keep.",
+            "The test set is held out until the very end, and its result is reported once as the final evaluation — it must never influence training decisions, or the reported accuracy will be artificially inflated. Using the test set during training would give an optimistically biased result that does not generalise to completely new data. The three sets together form the complete data pipeline."
+          ]
+        },
+        {
+          "heading": "Reading a learning curve",
+          "body": [
+            "A learning curve plots the model's loss (or accuracy) versus the training epoch. A healthy curve shows both training loss and validation loss falling together over the early epochs. A broken curve shows training loss continuing to fall while validation loss starts to rise: the model is learning patterns that are specific to the training examples rather than general patterns, which is the sign of overfitting.",
+            "The epoch number is on the x-axis and the loss value is on the y-axis. When you see the two curves (training and validation) diverge, with training going down and validation going up, you are looking at classic overfitting. The vertical distance between the curves measures how much the model has over specialised to the training data."
+          ]
+        },
+        {
+          "heading": "What is overfitting",
+          "body": [
+            "Overfitting happens when the model memorises the training examples instead of learning the general patterns. In a digit classification task, the model might learn that a particular pixel arrangement always goes with a specific digit in the training set, but that memorisation does not transfer to new digits. On the training set the model gets very high accuracy, but on completely new digits its accuracy drops.",
+            "The gap between training performance and validation (or test) performance is the diagnostic marker. A model that has overfitted will show training accuracy near 100 percent but validation accuracy much lower. The model has not learned to recognise digits in general; it has learned to recognise the specific digits that happened to be in the training set."
+          ]
+        },
+        {
+          "heading": "The four usual cures",
+          "body": [
+            "The first remedy is to get more training data, because a model with too few examples can memorise them all. Data augmentation is another technique: for digit classification, small random rotations, shifts, or contrasts of the existing digits create synthetic new training examples without collecting new data.",
+            "Dropout randomly turns off a fraction of neurons during each training step, which prevents the model from relying on any single path and makes it learn more robust features. Early stopping monitors the validation loss and stops training the moment it starts rising, so the model does not keep refining memorisation patterns after the general pattern has already been learned. Of these, getting more data or using augmentation is usually the first thing to try, because it addresses the root cause rather than the symptom."
+          ]
+        }
+      ],
+      "task": "Draw a sketch of a healthy learning curve and a sketch of an overfitting one, label both axes, and write one sentence naming the first thing you would try when you sees the overfitting curve.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Which set of data is used to decide when to stop training?",
+            "choices": [
+              "The training set, because it has the most examples",
+              "The validation set, because its loss is monitored across epochs",
+              "The test set, because it represents the real-world data distribution",
+              "All three sets are used equally for stopping decisions"
+            ],
+            "answer": 1,
+            "explanation": "The validation set is explicitly held aside from weight updates; its loss is computed after each epoch and used as the signal for early stopping or model checkpointing. The test set must remain untouched until the final evaluation."
+          },
+          {
+            "id": "q2",
+            "question": "What does a validation loss that rises while the training loss falls tell you?",
+            "choices": [
+              "The learning rate is too small, so training is very slow",
+              "The model is memorising the training examples rather than learning general patterns",
+              "The test set is too small to give a reliable signal",
+              "The activation function is wrong for the task"
+            ],
+            "answer": 1,
+            "explanation": "When training loss keeps falling but validation loss rises, the model is overfitting: it is learning idiosyncrasies of the training data that do not generalise. The gap between the two curves is the diagnostic signal."
+          },
+          {
+            "id": "q3",
+            "question": "Name two ways to reduce overfitting.",
+            "choices": [
+              "Increase the learning rate and use more epochs",
+              "Use dropout and early stopping",
+              "Remove the bias terms from the model",
+              "Use a single-layer neuron instead of a network"
+            ],
+            "answer": 1,
+            "explanation": "Dropout randomly drops neurons during training, forcing the model to learn robust features, and early stopping halts training before the model starts memorising training-specific patterns. Both are standard techniques for reducing overfitting."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.deeplearning.05",
+      "title": "Your first network in Keras",
+      "status": "ready",
+      "study_minutes": 50,
+      "goal": "Build, compile, train and evaluate a classifier for handwritten digits with a few lines of Keras.",
+      "sections": [
+        {
+          "heading": "The shape of the code",
+          "body": [
+            "A Keras digit classifier follows four steps. First, build the model by stacking layers: an input layer that accepts 64 pixels (8 times 8 greyscale values), one hidden layer with 32 ReLU units, and an output layer of 10 units (one per digit class) with softmax activation. Second, compile the model by choosing the loss function (sparse categorical crossentropy for integer labels), the optimizer (Adam is a good default), and the metric to track (accuracy).",
+            "Third, train the model on the training data, specifying the number of epochs and a validation split so you can watch the learning curves. Fourth, evaluate the model on the held-out test set, which reports the test loss and test accuracy. The data shape at each step is: input of 64 pixels per example, hidden layer produces 32 numbers, output produces 10 probabilities that sum to 1."
+          ]
+        },
+        {
+          "heading": "The compile step is where you choose the loss",
+          "body": [
+            "Compiling a Keras model is where you specify the three core ingredients: the loss, the optimizer, and the metrics. The loss is the function the model minimises during training; for integer labels across ten classes, sparse categorical crossentropy is the standard choice. The optimizer, such as Adam, determines how the weights are updated each step based on the gradients.",
+            "The metric, usually accuracy, is the proportion of predictions that match the true label and is reported at the end of every epoch and at evaluation time. These three choices — loss, optimizer, metrics — define how the model learns and what is reported, and they are set once before training begins."
+          ]
+        },
+        {
+          "heading": "Pixels are numbers between 0 and 1",
+          "body": [
+            "The digits dataset stores each image as 8 by 8 greyscale pixels, and each pixel value is an integer from 0 to 255, where 0 is white and 255 is black. Before feeding these values into a neural network, it is standard practice to scale them to the range 0 to 1 by dividing by 255. This scaling keeps the weighted sums in a reasonable range and makes the optimization landscape easier for the training algorithm.",
+            "The input layer then receives a flat vector of 64 numbers, each between 0 and 1, one per pixel. Without scaling, the pixel values would dominate the weighted sums because 255 is much larger than the random starting weights, and the model would learn more slowly or poorly."
+          ]
+        },
+        {
+          "heading": "Read the evaluation output",
+          "body": [
+            "After model.evaluate() runs on the test set, the output includes the test loss and the test accuracy. On a ten class digit problem, a test accuracy of 98 percent means the model correctly classified 98 out of every 100 digits it has never seen before. The test loss tells you the average loss per example on that held-out set.",
+            "Comparing the training loss to the test loss tells you whether the model generalises well or shows signs of overfitting. If training loss is much lower than test loss, the model has memorised the training examples rather than learning patterns that transfer to new data. A close gap between training and test loss indicates good generalisation."
+          ]
+        }
+      ],
+      "task": "Build a small Keras model for the bundled digits data: an input layer of 64 pixels, one hidden layer of 32 ReLU units and an output layer of 10 classes. Train it for five epochs and record the test accuracy.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What are the four stages of a Keras training script?",
+            "choices": [
+              "Import, build, run, exit",
+              "Build, compile, train, evaluate",
+              "Load data, define model, train, predict",
+              "Preprocess, train, test, save"
+            ],
+            "answer": 1,
+            "explanation": "Every Keras script follows four stages: build the model architecture, compile it with loss, optimizer and metrics, train it on data for a specified number of epochs, and evaluate it on held-out data to report test loss and accuracy."
+          },
+          {
+            "id": "q2",
+            "question": "Where do you choose the loss function in a Keras script?",
+            "choices": [
+              "In the input layer definition",
+              "In the compile step",
+              "In the training loop",
+              "In the evaluation output"
+            ],
+            "answer": 1,
+            "explanation": "The compile step is where you specify the loss function, the optimizer, and the metrics. This is the step that sets up how the model will be trained and what will be reported."
+          },
+          {
+            "id": "q3",
+            "question": "Why are pixel values usually scaled to the range 0 to 1?",
+            "choices": [
+              "So the images display correctly on screen",
+              "So the model can use standard library functions only",
+              "So the weighted sums stay in a reasonable range and the optimization landscape is easier for the training algorithm",
+              "So the model cannot overfit"
+            ],
+            "answer": 2,
+            "explanation": "The digits dataset stores pixel values as integers from 0 to 255. Dividing by 255 scales them to [0, 1], which keeps the weighted sums in a reasonable range and makes the optimization landscape easier for the training algorithm. Without scaling, features on a much larger scale could dominate the learning process."
+          }
+        ]
+      }
+    }
+  ]
+}

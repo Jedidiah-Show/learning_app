@@ -22,3 +22,12 @@ def test_pipeline_excludes_post_outcome_leakage():
     assert report['feature_columns'] == ['support_tickets', 'tenure_months']
     assert report['leakage_features'] == ['cancelled_after_snapshot']
     assert report['cross_validation_folds'] == 5
+
+
+def test_house_price_regression_reports_error_and_explained_variation():
+    report = evaluate()
+    assert report['regression_train_rows'] == 12
+    assert report['regression_test_rows'] == 4
+    assert report['regression_features'] == ['size_sqm', 'bedrooms', 'location_score']
+    assert report['regression_mae'] <= 30000
+    assert report['regression_r2'] >= 0.85

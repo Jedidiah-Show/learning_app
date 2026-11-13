@@ -1,0 +1,473 @@
+{
+  "module_id": "mle.computer-vision",
+  "lessons": [
+    {
+      "id": "mle.vision.01",
+      "title": "How a computer sees an image",
+      "status": "ready",
+      "study_minutes": 35,
+      "goal": "Explain how an image becomes a grid of numbers and what information is lost when you flatten it.",
+      "sections": [
+        {
+          "heading": "Pixels are numbers",
+          "body": [
+            "Each image in the bundled data is 8 pixels by 8 pixels, giving 64 pixel values per image. The image I001 has p0=15 as its top-left pixel, p1=20 as the next pixel to the right, and so on across each row. A pixel value represents brightness, with larger numbers meaning brighter pixels. In this synthetic dataset the smallest value is 12 and the largest is 214, so the images use the full available range. When you look at the grid, you can see patterns — a row of high numbers might look like a bright stripe, and a row of low numbers like a dark stripe. The computer stores these numbers but discards the visual shape unless you keep the 8-by-8 layout in mind.",
+            "A brightness value of 12 is very dark, near black, while 214 is very light, near white. The 64 values for I001 average about 118, which is close to mid‑grey. If you see a pixel with value 200 you know it is brighter than average, and a pixel with value 30 is noticeably darker. These numbers let you compare brightness across images, but only if you remember which position each number came from. Without the position information you cannot tell whether a bright pixel is in the top-left corner or the bottom-right, and that position matters for recognising shapes."
+          ]
+        },
+        {
+          "heading": "Greyscale has one channel",
+          "body": [
+            "Most colour images have three channels — red, green and blue — so every pixel needs three numbers, one for each colour. The bundled images are greyscale, which means each pixel is stored as a single brightness value. That single number is the perceived lightness, and it combines the three colour channels into one shade of grey. A pixel with value 150 in a greyscale image might correspond to red 150, green 150, blue 150 in a colour image, producing a neutral middle‑grey. Having just one number per pixel makes the data smaller and easier to work with, especially when you have many images to process.",
+            "A greyscale image discards colour information, so you cannot tell a red shirt from a blue shirt — both become just a brightness number. That loss matters if colour is the feature you need, but for many tasks such as detecting whether a digit is written clearly or judging the lightness of a surface, colour is irrelevant and the single channel is sufficient. The trade-off is that you give up the ability to distinguish objects that differ only in colour, but you gain speed and simplicity in every step that follows."
+          ]
+        },
+        {
+          "heading": "Flattening loses the picture",
+          "body": [
+            "Flattening an image means putting the 64 pixel values into one long list of 64 numbers, going from a two‑dimensional grid to a one‑dimensional line. The image I001 has its top‑left pixel first, then the next pixel to the right, and so on until the 64th pixel at the bottom‑right. When you flatten you keep the numbers but you lose the knowledge that position seven is next to position eight and far from position fifty-seven. A flat list tells you how bright each spot is, but not where that spot lives in the picture.",
+            "Because human vision relies on neighbouring pixels to recognise edges and shapes, a model that receives a flat list must re‑learn the spatial structure from scratch. Keeping the 8-by-8 layout lets the model use neighbouring pixels the way our visual system does: a bright pixel next to a dark pixel signals an edge, and a small cluster of bright pixels suggests a feature. When the grid shape is preserved, a convolution or simple rule can detect patterns such as a bright corner or a dark line without extra processing."
+          ]
+        },
+        {
+          "heading": "Brightness values across the dataset",
+          "body": [
+            "Across the 30 images in the dataset the individual pixel values range from 12 to 214, a span of 202 units. Image I001 has its 64 pixels clustered between 15 and 20, giving a uniformly dark appearance, while image I011 has pixels spread from 180 to 214, producing a very bright image. Some images, such as I005, have a mix of very dark pixels (around 15) and very bright pixels (around 200), creating high contrast. Knowing the overall range helps you normalise the data later, but each image has its own brightness character that a single number cannot capture.",
+            "If you compute the mean pixel value for each image you get a single number summarising its overall brightness: I001 averages about 118, I011 averages about 197, and I005 averages about 108. These means tell you which images are generally brighter or darker, but two images can have the same mean and look very different — one might have a bright spot on a dark background, the other a medium‑grey scene. The mean is a useful summary, yet it hides the detail that a histogram of pixel values would reveal."
+          ]
+        }
+      ],
+      "task": "Take the bundled image data, print the shape of one image as a grid of 8-by-8 numbers, and write two sentences: one describing what the grid shows and one explaining what a flat list of those 64 numbers would lose.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does a pixel value represent in a greyscale image?",
+            "choices": [
+              "The file size of the image in bytes",
+              "The position of the pixel in the image grid",
+              "The brightness of the pixel, with larger numbers meaning brighter",
+              "The colour hue of the pixel"
+            ],
+            "answer": 2,
+            "explanation": "A pixel value is a number that records how bright that pixel is, larger values meaning brighter pixels. In the bundled data pixel 214 is brighter than pixel 12. This number is the only information the computer stores about that location."
+          },
+          {
+            "id": "q2",
+            "question": "Why does flattening an image lose information?",
+            "choices": [
+              "The numbers become too large for the computer to store",
+              "The computer no longer knows which numbers belonged to the same row",
+              "The flat list changes the pixel values themselves",
+              "The computer can no longer see the total number of pixels"
+            ],
+            "answer": 1,
+            "explanation": "Flattening turns the 8-by-8 grid into a list of 64 numbers in a fixed order. The computer remembers the order but not the two‑dimensional structure, so it cannot tell that position seven is next to position eight. Without the grid layout the model loses the spatial relationships that signal edges and shapes."
+          },
+          {
+            "id": "q3",
+            "question": "Why is it important to keep the 8-by-8 grid shape when working with these images?",
+            "choices": [
+              "The grid shape makes the file size smaller",
+              "The grid shape lets the model detect edges and features by looking at neighbouring pixels",
+              "The grid shape is required for Python lists",
+              "The grid shape ensures every image has exactly 64 pixels"
+            ],
+            "answer": 1,
+            "explanation": "When the 8-by-8 shape is preserved, a model can check whether a pixel's neighbour is brighter or darker, which signals an edge. A flat list forces the model to re‑learn this neighbourhood relationship from scratch, which wastes computation and can miss simple patterns that are obvious in the grid."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.vision.02",
+      "title": "Preparing image data",
+      "status": "ready",
+      "study_minutes": 40,
+      "goal": "Resize, scale and organise image data so that every training image looks the same to the model.",
+      "sections": [
+        {
+          "heading": "Every image the same size",
+          "body": [
+            "Neural networks require every input image to have the same width and height, because the layers expect a fixed number of pixels. The bundled images are already 8-by-8, but real photographs come in many sizes — a portrait might be 1200-by-1600 and a snapshot might be 800-by-600. Resizing every image to 8-by-8 before training is not optional; it is the first step that makes every image compatible with the model's fixed‑size input layer. Without resizing the model would crash or produce unpredictable results when shown images of different dimensions.",
+            "When you resize an image you change its pixel count but keep the meaning of each position — the top‑left corner stays the top‑left corner after resizing. A common beginner mistake is to stretch the image non‑uniformly, making objects look wider than they are tall. Always resize both dimensions by the same scaling factor, or use a library function that maintains the aspect ratio and then crops the excess. This ensures that a square object in the original photo remains approximately square in the resized version."
+          ]
+        },
+        {
+          "heading": "Scaling the numbers",
+          "body": [
+            "Pixel values in the bundled data run from 12 to 214, but most machine learning models work best when input numbers are centred around zero and lie in a narrow range such as 0 to 1. Dividing every pixel value by 255 — the maximum possible value in an 8‑bit greyscale image — scales the bundled data so that the smallest becomes about 0.05 and the largest becomes about 0.84. This process, called normalisation, makes the initial training steps more stable because the model does not start with one feature that is orders of magnitude larger than the others.",
+            "After normalisation a pixel that was 12 becomes 0.047 and a pixel that was 214 becomes 0.839. The difference between neighbouring pixels is now much smaller in absolute terms, which helps the gradient descent steps stay modest at the start of training. If you skip this scaling and feed raw values into the model the first updates can be huge because a single large pixel value dominates the weighted sum. That is why normalisation is standard practice before the first training epoch."
+          ]
+        },
+        {
+          "heading": "Labels and folders",
+          "body": [
+            "Each image in the dataset carries a label — a single number that tells the model what that image depicts. In the bundled data the label is 0 or 1, where 0 means one kind of pattern and 1 means another. Most tools expect a folder-per-class layout: all images with label 0 go in one folder, all images with label 1 go in another. When the folder name itself carries the class name the model can read the label directly from the file path, which is convenient for the training loop. If you put all images in one folder and write a separate CSV file with image IDs and labels you must ensure the CSV is error‑free, because the model will not guess the label from the filename.",
+            "If you store all images in one folder and keep a separate CSV file that maps each image ID to its class, the model must read that CSV instead of inferring the label from the directory. A common mistake is to mismatch the image ID in the CSV with the actual filename, causing the model to learn the wrong class for each image. Always verify that the number of rows in the CSV equals the number of image files, and that every label is either 0 or 1, with no missing or extra entries."
+          ]
+        },
+        {
+          "heading": "Augmentation: making new images on purpose",
+          "body": [
+            "Data augmentation creates additional training examples by applying small changes to each image, such as flipping it left‑right, rotating it by a few degrees, or cropping a random section. These techniques teach the model to ignore minor variations so it still recognises the same pattern when the image is slightly turned or mirrored. In this synthetic dataset the pixels are fixed, so augmentation would be applied in software before the model sees the image, not by changing the CSV file itself.",
+            "A warning specific to this domain: a flipped digit is not always valid, because the written form of a digit matters — a reversed 6 looks like a 9, and a reversed 3 can be confusing. Unlike natural images where left‑right symmetry is common, structured patterns such as digits or letters have a canonical orientation. If you augment by rotating, be sure the rotation angle stays within a range that does not destroy the recognisable shape. Always check a few augmented examples visually before starting training, to be sure the changes are helpful rather than noise."
+          ]
+        }
+      ],
+      "task": "Take the bundled image data, divide every pixel value by 255 to scale them into the range 0–1, and write the steps you would use to organise a folder of real photographs into class‑named subfolders for training.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Why must all training images have the same size?",
+            "choices": [
+              "So the computer can store them in less memory",
+              "So the model's input layer expects a fixed number of pixels",
+              "So the pixel values can be divided by 255",
+              "So the labels can be assigned correctly"
+            ],
+            "answer": 1,
+            "explanation": "Neural network layers are built with a fixed number of input units, so every image must have the same width and height. If images vary in size the model cannot process them in a single batch without resizing first."
+          },
+          {
+            "id": "q2",
+            "question": "What does dividing pixel values by 255 achieve?",
+            "choices": [
+              "It makes the image completely black",
+              "It converts the image to greyscale",
+              "It normalises the values to the range 0 to 1",
+              "It doubles the pixel values"
+            ],
+            "answer": 2,
+            "explanation": "Dividing by 255 maps the original 0‑255 range into 0‑1, which centres the data and makes the model's early training steps more stable, as described in the lesson."
+          },
+          {
+            "id": "q3",
+            "question": "Which of the following is a valid data augmentation technique for natural images?",
+            "choices": [
+              "Changing the pixel values to exceed 255",
+              "Flipping the image left‑right and rotating by a small angle",
+              "Removing the folder structure",
+              "Deleting the label from the CSV"
+            ],
+            "answer": 1,
+            "explanation": "Flipping left‑right and rotating by a small angle create new training examples that teach the model to recognise patterns regardless of orientation, which is the purpose of augmentation."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.vision.03",
+      "title": "Convolutional neural networks",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Describe what a convolution does to an image and why it lets a model find a feature anywhere in the picture.",
+      "sections": [
+        {
+          "heading": "A small filter slides across the image",
+          "body": [
+            "A convolution filter is a small grid of numbers, also called a kernel, that slides across the image one pixel at a time. The filter at position one multiplies each of its numbers by the pixel values underneath, adds the products together, and produces a single new number. As the filter moves to the next location it produces another number, and so on until every position in the image has been covered. For an 8-by-8 image with a 3-by-3 filter the output is a 6-by-6 grid of numbers, because the filter fits six positions horizontally and six vertically.",
+            "Each number in the output grid is called a feature map value, and it tells you how strong that pattern was at that location. If the filter is looking for a vertical edge and the image has a vertical line at that spot the product will be large and the feature map value will be high. If there is no edge the value will be low. The filter learns what to look for during training, starting with random numbers and gradually changing so that the feature map values highlight the patterns that matter for the task."
+          ]
+        },
+        {
+          "heading": "Early filters find edges",
+          "body": [
+            "In a convolutional network the first few layers have filters that respond to very simple patterns such as a dark pixel next to a bright pixel, which is an edge, or a slight change in colour texture. These early filters are useful because almost every image feature — corners, lines, curves — is built from edges at some scale. As you go deeper into the network the filters respond to more complex patterns such as curves, then shapes like eyes or wheels, because each layer combines the responses from the layer below.",
+            "Imagine a filter that detects a horizontal line and another that detects a vertical line; when both are active in the same region the next layer can combine them to recognise a corner. With each successive layer the model builds up from parts to wholes: edges → parts of objects → whole objects. This hierarchy is why convolutional networks are so much better at image tasks than a fully connected network, which would have to learn edge detection from scratch for every new image and would not scale to the richness of natural pictures that humans recognise instantly."
+          ]
+        },
+        {
+          "heading": "Pooling and shrinking",
+          "body": [
+            "Pooling is a operation that reduces the size of a feature map by keeping only the strongest number in each small region. For example, a 2-by-2 max-pooling takes four numbers and outputs the single largest of those four, so the feature map shrinks by half in width and height. This operation makes the model invariant to small translations: if a pattern shifts by one or two pixels the pooled result can stay the same, which helps the model recognise the same feature even when its exact position varies.",
+            "After pooling the feature map is smaller, which means fewer numbers for the next layer to process. This reduces computation and helps prevent overfitting, because the model relies on whether a feature is present rather than exactly where it sits. A common beginner mistake is to use pooling too early, before the first few convolutional layers have had a chance to learn meaningful patterns, which can cause the model to lose useful detail before it is even recognised."
+          ]
+        },
+        {
+          "heading": "From feature maps to a label",
+          "body": [
+            "After several convolutional layers and pooling steps the feature maps have been reduced to a compact set of numbers that describe the most important patterns found in the image. These numbers are then flattened into a one‑dimensional list and fed into one or more dense layers, where each neuron connects to every number from the previous layer. The dense layers compute weighted sums and apply a non‑linear activation, finally producing a small vector of scores — one score per class.",
+            "The last step is usually a softmax function that turns those raw scores into probabilities that add up to one. A score of 3.2 might become a probability of 0.78, a score of 1.1 becomes 0.15, and a score of -0.5 becomes 0.07, leaving the remaining probability for other classes. The class with the highest probability is the model's prediction, and during training the model adjusts its filters and dense‑layer weights so that the correct class receives the highest probability for each image."
+          ]
+        }
+      ],
+      "task": "Describe in four numbered steps what happens to an image between the input and the final class scores in a convolutional network, using the words convolution, pooling, dense and softmax, and explain why each step matters.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does a convolution filter do as it moves across an image?",
+            "choices": [
+              "It adds all the pixel values together into one number",
+              "It multiplies each number by the filter value underneath and adds the products, producing a new number at each position",
+              "It resizes the image to a smaller grid",
+              "It converts the image from colour to greyscale"
+            ],
+            "answer": 1,
+            "explanation": "The filter slides across the image position by position, multiplying each filter value by the pixel value underneath and adding the products. This produces one new number per position, forming a feature map that highlights where the pattern exists."
+          },
+          {
+            "id": "q2",
+            "question": "If you apply 2-by-2 max-pooling to a 6-by-6 feature map, what is the output size?",
+            "choices": [
+              "6-by-6 (no change)",
+              "3-by-3",
+              "2-by-2",
+              "1-by-1"
+            ],
+            "answer": 1,
+            "explanation": "2-by-2 max-pooling takes non-overlapping 2-by-2 regions and keeps the largest value, so a 6-by-6 map becomes 3-by-3 after one pooling layer, which reduces the number of inputs for the next computation step."
+          },
+          {
+            "id": "q3",
+            "question": "Why is a convolutional network a good fit for images rather than a fully connected network?",
+            "choices": [
+              "Because convolutional networks can find features anywhere in the picture without needing to know the exact position beforehand",
+              "Because convolutional networks are faster to train on any type of data",
+              "Because convolutional networks do not need pixel values as input",
+              "Because convolutional networks always give perfect classification accuracy"
+            ],
+            "answer": 0,
+            "explanation": "A convolutional network slides the same filter across all positions, so it detects an edge or texture whether it appears in the top-left corner or the bottom-right, unlike a fully connected network that would need separate weights for every position."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.vision.04",
+      "title": "Transfer learning: start from what is already known",
+      "status": "ready",
+      "study_minutes": 40,
+      "goal": "Reuse a pre-trained model as a feature extractor or as the starting point for your own training.",
+      "sections": [
+        {
+          "heading": "Why training from scratch is expensive",
+          "body": [
+            "Training a convolutional neural network from scratch means randomly initializing all weights and then adjusting them using your own dataset. This process can require millions of labelled images and many hours of computing time, because the model must discover edge detectors, color patterns and object parts entirely on its own. Models that have already been trained on large datasets such as ImageNet have learned these basic patterns already, so starting from those learned weights saves vast amounts of data and compute time. In practice, fine‑tuning a pre‑trained model on a new task can take minutes or hours instead of days or weeks.",
+            "Because the early layers of a pre‑trained model already detect edges and textures, only the later layers need to change when you fine‑tune on your own data. This means your own labelled dataset can be small — often just a few hundred images — and still produce a working model. If you tried to learn everything from scratch you would need thousands of examples for each class just to discover the same edge detectors that the pre‑trained model already knows."
+          ]
+        },
+        {
+          "heading": "Feature extraction",
+          "body": [
+            "Feature extraction means keeping all the layers of a pre‑trained model fixed (frozen) and training only a new, small classifier on top of them. The pre‑trained layers have already learned to produce useful feature representations from the raw pixel values — they map each image patch to a vector of numbers that capture edges, shapes and textures. You add one or more dense layers on top, with the number of output units equal to the number of classes you want to distinguish, and train those new layers using your own data. The heavy lifting of pattern detection is already done; you only teach the model how to map those patterns to your specific labels.",
+            "Think of it like reusing a trained chef's prep work: the chef has already chopped onions, measured spices and heated pans so that the final dish comes together quickly. You do not need to teach the chef from scratch; you just add your own seasoning and cooking steps to finish the recipe. In the same way, the pre‑trained model provides ready‑made pattern detectors, and you add a new classifier that learns which patterns matter for your own classes."
+          ]
+        },
+        {
+          "heading": "Fine-tuning",
+          "body": [
+            "Fine‑tuning means unfreezing some of the pre‑trained layers so that their weights can change during training on your own data. The early layers, which detect generic edges and textures, often stay frozen because those features are useful across many tasks. The later layers, which are closer to the final classification decision, are unfrozen so they can adapt to your specific classes. A small learning rate is used because the pre‑trained weights are already in a good region; large steps would move them too far and hurt performance rather than help.",
+            "A common practice is to freeze the first two of five convolutional layers and unfreeze the last two, then train for a few epochs with a learning rate around 0.001. You monitor the validation loss and if it stops improving you reduce the learning rate further or freeze the layers again. This careful adjustment lets the model specialize without losing the general knowledge it already carries."
+          ]
+        },
+        {
+          "heading": "Checking the result",
+          "body": [
+            "After fine‑tuning you evaluate the model on the held‑out evaluation set and compute a confusion matrix that counts true positives, false positives, true negatives and false negatives for each class. Comparing the accuracy and precision of your fine‑tuned model against a simple baseline — such as a model that always predicts the most common class — tells you whether the pre‑trained weights actually helped. If the confusion matrix shows many false positives you may need to adjust the decision threshold or collect more labelled examples.",
+            "A useful visual aid is to misclassify some images and look at what the model was actually responding to — sometimes a model predicts 'class 1' because it detected a bright patch that happens to correlate with that class in the training data but is not the true feature. The lesson here is that transfer learning speeds up development but you still need to check the results honestly, because a model can be confident and wrong if the data does not fully support the task."
+          ]
+        }
+      ],
+      "task": "Using the bundled image data, build a classifier that extracts features from the images and trains a simple model on top. Record the feature count and the accuracy, then say how a real pre-trained model would fit into the same code.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What is the main benefit of transfer learning?",
+            "choices": [
+              "It eliminates the need for any labelled data",
+              "It starts from weights that already detect edges and textures, saving data and compute time",
+              "It guarantees perfect accuracy on the new task",
+              "It makes the model training process longer and more thorough"
+            ],
+            "answer": 1,
+            "explanation": "Transfer learning starts from weights that have already learned to detect edges and textures from a large dataset, so your new task needs far fewer labelled examples and much less compute time to reach good performance."
+          },
+          {
+            "id": "q2",
+            "question": "What is the difference between feature extraction and fine‑tuning?",
+            "choices": [
+              "Feature extraction trains all layers, while fine‑tuning freezes the early layers",
+              "Feature extraction freezes all pre‑trained layers and trains only a new classifier on top, while fine‑tuning unfreezes some layers so their weights can change",
+              "Feature extraction uses no convolutional layers, while fine‑tuning uses only convolutional layers",
+              "Feature extraction requires more data than fine‑tuning"
+            ],
+            "answer": 1,
+            "explanation": "In feature extraction the pre‑trained layers are kept fixed and only a new top classifier is trained, whereas fine‑tuning unfreezes some layers so their weights can adapt to the new data."
+          },
+          {
+            "id": "q3",
+            "question": "Why is a small learning rate used during fine‑tuning?",
+            "choices": [
+              "Because the pre‑trained weights are already in a good region and large steps would move them too far",
+              "Because the new classifier has very few parameters",
+              "Because the evaluation set is small",
+              "Because the training data is already normalised"
+            ],
+            "answer": 0,
+            "explanation": "The pre‑trained weights are already well‑suited to extracting meaningful features; a large learning rate would overwrite that useful knowledge, so a small rate such as 0.001 makes only gentle adjustments."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.vision.05",
+      "title": "Detection and segmentation: what comes after labels",
+      "status": "ready",
+      "study_minutes": 40,
+      "goal": "Tell classification, object detection and image segmentation apart, and say what each is used for.",
+      "sections": [
+        {
+          "heading": "One label for the whole image",
+          "body": [
+            "Image classification gives the model one label for the entire image, such as 'this picture shows a cat'. The model looks at all the pixels and outputs a single class name, which is useful when you only need to know whether the desired object is present. But classification cannot answer where the cat is located inside the image, nor can it tell if there are multiple cats or other objects sharing the frame. For tasks that require spatial information the single-label approach is too coarse.",
+            "Suppose you have a dataset of 1,000 photos of rooms and you want to know whether each room has a window. A classification model can give you 1,000 yes/no answers, but it won't tell you which of the 1,000 rooms have windows and which do not, because the 'window' or 'no window' decision is the only output the model produces. To find the location you need a different kind of model that produces spatial output such as boxes or a pixel‑wise mask."
+          ]
+        },
+        {
+          "heading": "Boxes around objects",
+          "body": [
+            "Object detection produces a set of boxes around the objects it finds in the image, together with a label for each box and a confidence score that says how sure the model is about that prediction. For example, a detector might output 'cat at position (120, 45) with size 80-by-60 and confidence 0.92'. The confidence score is the model's estimated probability that the box actually contains the stated object. Well‑known families of detectors such as YOLO (You Only Look Once) and Faster R‑CNN scan the image once or multiple times and output all detected objects in a single pass.",
+            "A confidence score above a chosen threshold — commonly 0.5 or 0.7 — is taken as a detection; scores below the threshold are discarded. If the same object is detected with two overlapping boxes the model usually keeps the one with the higher score and discards the other, a procedure called non-maximum suppression. YOLO's architecture makes it particularly fast, which is why it is used in real‑time applications such as counting cars in traffic video feeds."
+          ]
+        },
+        {
+          "heading": "A label for every pixel",
+          "body": [
+            "Semantic segmentation gives every pixel in the image a label, so the output is a full‑resolution mask that shows which pixels belong to which class. All pixels that are part of the same class receive the same label — for instance, every pixel that is sky gets label 'sky' and every pixel that is grass gets label 'grass'. This lets you measure exactly how much of the image is covered by each class, which is useful for tasks such as medical image analysis or mapping land cover.",
+            "Instance segmentation goes a step further by giving each separate object its own mask, even when all objects belong to the same class. If there are three cars in the image, instance segmentation produces three distinct masks — car‑1, car‑2, car‑3 — so you can count the cars and tell them apart. This is essential for applications that need to track individual objects over time, such as counting floating particles in a fluid or tracking pedestrians in a crowd."
+          ]
+        },
+        {
+          "heading": "Choosing the right task",
+          "body": [
+            "The choice of task depends on what question you want to answer. If you need a yes/no answer — does this image contain a cat? — use classification. If you need to know where objects are and how many there are, use object detection, which gives you boxes and labels with confidence scores. If you need to measure how much of the image is occupied by a certain class, use semantic segmentation to get a pixel‑wise mask. The decision summary is: classification for yes/no, detection for boxes and counts, segmentation for per‑pixel area measures.",
+            "Counting the cars in a photo needs detection, measuring how much of the photo is road needs segmentation, and a yes or no answer about whether the photo contains a cat needs classification. Each task produces a different kind of output and requires different evaluation metrics, so choosing the right one before you start training saves time and leads to more meaningful results."
+          ]
+        }
+      ],
+      "task": "For three real tasks, name the task type you would use: counting the cars in a photo, measuring how much of the photo is road, and deciding whether the photo contains a cat.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does an object detection model output that a classifier does not?",
+            "choices": [
+              "A single label for the whole image",
+              "Boxes around objects with labels and confidence scores",
+              "A pixel‑wise mask for every class",
+              "The total number of pixels in the image"
+            ],
+            "answer": 1,
+            "explanation": "Object detection returns a set of bounding boxes, each with a class label and a confidence score, while a classifier only returns one label for the entire image, with no spatial information."
+          },
+          {
+            "id": "q2",
+            "question": "What does segmentation produce?",
+            "choices": [
+              "A single label for the whole image",
+              "Boxes around the largest object",
+              "A pixel‑wise mask labelling every pixel with a class name",
+              "The average pixel value per class"
+            ],
+            "answer": 2,
+            "explanation": "Semantic segmentation produces a full‑resolution mask where every pixel is labelled with its class name, so you can see exactly which pixels belong to each category."
+          },
+          {
+            "id": "q3",
+            "question": "Which task type would you choose for measuring the area of a road in a photo?",
+            "choices": [
+              "Classification",
+              "Object detection",
+              "Semantic segmentation",
+              "Feature extraction"
+            ],
+            "answer": 2,
+            "explanation": "Semantic segmentation gives a pixel‑wise mask, so you can count exactly how many pixels belong to the road class and compute its area proportion clearly."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.vision.06",
+      "title": "Fine-tuning, storytelling and peer review",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Plan a computer vision project, present it clearly, and use a peer review to find the gaps before an employer does.",
+      "sections": [
+        {
+          "heading": "Scope the project in one sentence",
+          "body": [
+            "A good project sentence follows a simple four‑part structure: data, task, model, and the decision it supports. You state which data you are using, what prediction or classification task the model will perform, which type of model you have chosen, and what decision the result will inform. For example: 'Using the 30 bundled 8‑by‑8 greyscale images, I will train a convolutional network to classify each image as class 0 or class 1, so that a new image can be quickly categorised without human inspection.' This one sentence tells anyone reading exactly what you built and why it matters.",
+            "Writing the sentence first forces you to think about what data you have, what you want to predict, and what you will do with the answer before you start spending hours on training. If you cannot write a clear four‑part sentence, it is a sign that the project scope is not well defined and you should clarify your data, your goal, or your model choice before you begin."
+          ]
+        },
+        {
+          "heading": "Plan before you train",
+          "body": [
+            "Before you start training write down the data split you will use, the evaluation metric you will track, and a simple baseline model you can beat. For example: 'I will use 20 images for training and 10 for evaluation, I will report accuracy, and a baseline that always predicts the majority class achieves 50% accuracy.' Having these numbers recorded before you train prevents you from accidentally overfitting to the evaluation set and gives you a clear rubric to judge whether your model is actually improving.",
+            "The split should be stratified so that both the training and evaluation sets have roughly the same proportion of each class, and the metric should be chosen before you look at the results. A common beginner mistake is to pick the metric after seeing that the model does well, which inflates the apparent performance. Write down your plan, then train, then evaluate exactly against that plan."
+          ]
+        },
+        {
+          "heading": "Tell the story with evidence",
+          "body": [
+            "A good project presentation follows a clear shape that reviewers can follow quickly. Start with the problem the project addresses, then describe the data you used, then the method (model type and key steps), then the numbers (accuracy, confusion matrix, anything else), then the limits of what the model can do, and finally the next step you would take. This six‑part structure ensures that no important aspect is omitted and that the reviewer can judge the work on its own terms.",
+            "In the bundled computer vision project the problem is to classify new 8‑by‑8 greyscale images, the data are the 30 images with their labels, the method is a convolutional network with transfer learning, the numbers include the accuracy and confusion matrix on the 10 evaluation images, the limits are that the model cannot localisation objects, and the next step is to collect more varied images and try object detection. Writing these six sentences in your README lets a reviewer quickly check that you have addressed every component."
+          ]
+        },
+        {
+          "heading": "Peer review that helps",
+          "body": [
+            "When you review a classmate's project, give specific feedback that mentions what they did well and exactly what could be improved, such as 'your project sentence clearly states the data and task, but the confusion matrix section is missing so I cannot tell if the model performed well.' Receiving feedback is easier when you remember that the reviewer is trying to help you make your project stronger, not criticise you personally. Always ask for at least two pieces of feedback so you see the same issue mentioned by more than one person, which signals that the improvement is real.",
+            "Give the story and the six‑part presentation to your classmate and ask for two pieces of feedback: one about the clarity of the project description and one about whether the numbers reported match what the confusion matrix shows. When you receive feedback, read it once without defending your work, then go back and address the points that were mentioned by both you and your reviewer. This loop of draft‑feedback‑revise is what makes peer review valuable practice for employer evaluations later."
+          ]
+        }
+      ],
+      "task": "Write your project in one sentence, then write the six-part story you would present: problem, data, method, numbers, limits and next step. Give the story to a classmate and ask for two pieces of feedback.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What four things belong in a one-sentence project description?",
+            "choices": [
+              "Data, task, model, and the decision it supports",
+              "Problem, data, model, and code",
+              "Images, labels, accuracy, and loss",
+              "Learning rate, epochs, batch size, and optimizer"
+            ],
+            "answer": 0,
+            "explanation": "A good project sentence includes the data you are using, the prediction task, the model type, and the decision the result will inform, which together give a complete picture in one line."
+          },
+          {
+            "id": "q2",
+            "question": "Why write down the metric and the baseline before training?",
+            "choices": [
+              "So you can change them later if the model does not learn",
+              "So you can compare your model's performance against a simple baseline and know if training actually helped",
+              "Because the training code requires you to specify a metric before running",
+              "Because the baseline must always be 50 percent accuracy"
+            ],
+            "answer": 1,
+            "explanation": "Writing down the metric and a baseline before you train lets you objectively measure whether your model is better than doing nothing, and prevents you from choosing the metric after seeing flattering results."
+          },
+          {
+            "id": "q3",
+            "question": "What makes peer review feedback useful rather than annoying?",
+            "choices": [
+              "When the feedback mentions specific parts of the project and suggests concrete improvements",
+              "When the feedback is short and says the project is good overall",
+              "When the feedback tells you exactly what code to change",
+              "When the feedback agrees with everything you already did"
+            ],
+            "answer": 0,
+            "explanation": "Specific feedback that names what works and what could be improved, with concrete suggestions, is much more helpful than vague praise or generic comments clearly."
+          }
+        ]
+      }
+    }
+  ]
+}

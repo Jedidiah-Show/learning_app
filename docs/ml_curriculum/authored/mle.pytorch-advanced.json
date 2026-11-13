@@ -1,0 +1,147 @@
+{
+  "module_id": "mle.pytorch-advanced",
+  "lessons": [
+    {
+      "id": "mle.pytorch.01",
+      "title": "Tensors, autograd and where the code runs",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Understand tensor operations, automatic differentiation, and the PyTorch workflow.",
+      "sections": [
+        {
+          "heading": "Tensors are numbers with a shape",
+          "body": [
+            "A tensor is a grid of numbers that has a shape describing how many dimensions it has and how many values are in each dimension. A plain Python list can hold numbers but does not track its shape, so you cannot easily tell whether [1, 2, 3, 4] is a row of four or a column of four. A tensor with shape 4 tells you there are four values in a single dimension, and a shape of 2 by 2 tells you there are two rows of two values each. The bundled churn data has 24 rows, and each row is a tensor of shape 2, with one value for support_tickets and one for tenure_months.",
+            "Reshaping a tensor does not change the values, only the way they are grouped; for example, a tensor of shape 12 can be viewed as two rows of six or three rows of four, and the underlying data stays the same. This is why it is important to know the expected shape before you pass a tensor into a layer, because the same values laid out differently will produce different results."
+          ]
+        },
+        {
+          "heading": "Autograd records the path",
+          "body": [
+            "PyTorch autograd records every operation applied to a tensor that requires gradients. When you ask for a gradient, PyTorch replays those operations backwards to compute how much each parameter changed the output. For example, if you square a number and then add 5, the gradient of the result with respect to the original number is twice that number. The recording stops the moment you detach the tensor, so only the recorded path contributes to the gradient.",
+            "A common beginner mistake is to forget that autograd only tracks operations on tensors requires_grad=True; if you create a new tensor inside the forward path without requiring gradients, the backward pass will produce a zero gradient for that part, which can be confusing when the loss does not change."
+          ]
+        },
+        {
+          "heading": "Device placement",
+          "body": [
+            "A device is the hardware where a tensor lives, typically a CPU or a GPU. Moving a tensor to a GPU with .to('cuda') makes operations run faster, but if you try to add a CPU tensor to a GPU tensor PyTorch raises a RuntimeError because the two tensors are on different devices. Always check that the model and the input data are on the same device before you run a forward pass, and use .device to inspect where a tensor currently lives.",
+            "A common beginner mistake is to forget to move the model to the same device as the data; if the model is on GPU and the batch is on CPU, the forward pass will silently produce incorrect results or raise an error, so always .to(device) both the model and every input tensor before training."
+          ]
+        }
+      ],
+      "task": "Create a tensor of 12 numbers, reshape it into three rows of four, multiply it by itself element-wise and print the result and its shape. Then use torch.autograd to compute a gradient of the sum of the tensor with respect to the tensor and print the gradient.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What is the key difference between a tensor and a plain Python list for this work?",
+            "choices": [
+              "A tensor has a shape that tracks its dimensions, while a plain list does not.",
+              "A tensor can hold only numbers, while a list can hold any Python object.",
+              "A tensor is always on a GPU, while a list is always on the CPU.",
+              "A tensor requires a gradient, while a list does not."
+            ],
+            "answer": 0,
+            "explanation": "A tensor stores its shape as part of its data, so you can reshape, transpose or query dimensions. A plain list has no shape attribute and cannot be reshaped directly. The other choices misrepresent what tensors can do."
+          },
+          {
+            "id": "q2",
+            "question": "What does autograd record and replay when you compute a gradient?",
+            "choices": [
+              "It records the operations on a tensor that requires gradients and replays them backwards to compute gradients.",
+              "It records the values of every variable in the function and replays them in forward order.",
+              "It records the source code of the function and replays it with different inputs.",
+              "It records the time each operation took and replays the timing to adjust the learning rate."
+            ],
+            "answer": 0,
+            "explanation": "Autograd builds a graph of every tensor operation that requires gradients. Backward replays that graph in reverse to compute partial derivatives. The other choices describe different mechanisms that PyTorch does not use."
+          },
+          {
+            "id": "q3",
+            "question": "Why does a device mismatch cause an error when adding two tensors?",
+            "choices": [
+              "Tensors on different devices live in different memory spaces, so PyTorch cannot add them without an explicit copy.",
+              "The shape of the tensors must match before addition, and devices affect shape.",
+              "Tensors on the CPU are always float32, while GPU tensors are bfloat16.",
+              "PyTorch requires all tensors to have the same requires_grad setting, which differs by device."
+            ],
+            "answer": 0,
+            "explanation": "A CPU tensor and a GPU tensor reside in separate memory spaces. Adding them would require moving one to the other device, which PyTorch does not do implicitly. The error prompts you to move both tensors to the same device first."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.pytorch.02",
+      "title": "Build a neural network in PyTorch",
+      "status": "ready",
+      "study_minutes": 50,
+      "goal": "Define a neural network module and forward pass for tabular data.",
+      "sections": [
+        {
+          "heading": "A module holds the layers",
+          "body": [
+            "nn.Module is a container for layers that also knows its own parameters. When you define a class that inherits from nn.Module, you add layers in the __init__ method and the framework collects all learnable weights for you. The forward method describes how data flows through those layers, one after another, and the output is the model's prediction. In the churn use case, the model takes support_tickets and tenure_months as input and produces a score that indicates how likely a customer is to cancel.",
+            "Every nn.Module also has a named parameter dictionary named parameters() that lets you inspect or modify each learnable weight, and you can zero them all at once with named_parameters() if you need to debug. This is how optimizers like SGD or Adam find the parameters to update; they ask the module for its parameters rather than looking them up by name yourself."
+          ]
+        },
+        {
+          "heading": "Choosing the shape of the network",
+          "body": [
+            "The input size comes from the number of features in your table. The churn data has two features, support_tickets and tenure_months, so the input layer must have two units. A hidden layer of 16 ReLU units gives the model enough capacity to learn nonlinear patterns without becoming too large. The output layer has one unit that produces a raw score; a later step will turn that score into a probability with a sigmoid function. The total number of learnable parameters is (2 times 16) plus 16 bias terms for the hidden layer, plus (16 times 1) plus 1 bias term for the output layer, which is 49 parameters.",
+            "Using ReLU activation means that negative values become exactly zero, which keeps the model sparse and speeds up training compared to sigmoid, which squashes values between 0 and 1 and can cause vanishing gradients. A beginner mistake is to apply ReLU before the linear transformation, but the standard order is linear first, then activation."
+          ]
+        },
+        {
+          "heading": "The forward pass",
+          "body": [
+            "The forward pass runs the input tensor through each layer in order. With an input of shape 2, the hidden layer transforms it to shape 16 applying the ReLU activation (which replaces negative values with zero). The output layer then transforms shape 16 to shape 1, producing a single score per row. For a batch of four rows the input tensor has shape 4 by 2, the hidden layer produces shape 4 by 16, and the output produces shape 4 by 1. Each step is a matrix multiplication followed by adding the bias term.",
+            "The ReLU activation function outputs the input unchanged if it is positive and zero otherwise, so it does not change the magnitude of positive values and completely removes negative values. A common beginner mistake is to apply dropout before the ReLU, but the standard practice is to apply dropout after the activation, zeroing out entire feature maps to prevent co-adaptation."
+          ]
+        }
+      ],
+      "task": "Write a network class for the bundled churn data with one hidden layer of 16 ReLU units and one output unit, then run one forward pass on a batch of four rows and print the output shape.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does an nn.Module keep besides the layers?",
+            "choices": [
+              "The module also keeps track of all learnable parameters, including weights and bias terms.",
+              "The module stores the training history and the loss value after each epoch.",
+              "The module remembers the exact order in which the training data was presented.",
+              "The module keeps a copy of the input data for the forward pass."
+            ],
+            "answer": 0,
+            "explanation": "nn.Module registers every nn.Parameter (weight or bias) so that autograd can find and update them. It does not store training history, data order, or the input data itself."
+          },
+          {
+            "id": "q2",
+            "question": "How do you decide the number of hidden units for the churn model?",
+            "choices": [
+              "The number of hidden units should match the number of training rows, so 24.",
+              "The churn data has two features, so a hidden layer of 16 ReLU units gives the model enough capacity to learn nonlinear patterns without becoming too large.",
+              "The number of hidden units must equal the number of features, so exactly 2.",
+              "The hidden units are always 32, regardless of the number of features."
+            ],
+            "answer": 1,
+            "explanation": "With two features, a hidden layer of 16 ReLU units provides model capacity for nonlinear patterns while keeping the parameter count reasonable at 49 total learnable parameters. Too few units underfit, and too many increase the risk of overfitting."
+          },
+          {
+            "id": "q3",
+            "question": "What does the forward pass do for a batch of four rows from the churn data?",
+            "choices": [
+              "It produces a single score for the entire batch, regardless of the number of rows.",
+              "It produces a 4 by 1 output tensor, one score per row, by passing each row through the network independently.",
+              "It prints the churn probability for each row without returning a tensor.",
+              "It reshapes the input into 4 by 4 and applies a 4 by 4 matrix."
+            ],
+            "answer": 1,
+            "explanation": "The input batch has shape 4 by 2 (four rows, two features). The network transforms it to shape 4 by 16 in the hidden layer and then to shape 4 by 1 at the output, giving one score per row in the batch."
+          }
+        ]
+      }
+    }
+  ]
+}

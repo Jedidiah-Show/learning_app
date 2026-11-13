@@ -1,0 +1,395 @@
+{
+  "module_id": "mle.unsupervised-learning",
+  "lessons": [
+    {
+      "id": "mle.unsupervised.01",
+      "title": "What unsupervised learning is for",
+      "status": "ready",
+      "study_minutes": 40,
+      "goal": "Explain the difference between a labelled problem and an unlabelled one, and name three situations where you would cluster data.",
+      "sections": [
+        {
+          "heading": "No labels, just rows",
+          "body": [
+            "A dataset is a table of rows and columns. In a supervised problem, each row already carries a label — such as 'spam' or 'not spam' — so the model learns to predict that label from the other columns. An unsupervised problem has no such label column. The rows are present, and the feature values are present, but nobody has marked which group each row belongs to. A cluster is a group of rows that are similar to one another across their feature columns. The learner discovers the clusters; the meaning of the clusters comes later.",
+            "This is the core idea of unsupervised learning: find structure in data that has no pre-assigned answers. The bundled pixels.csv data has 144 rows, each with red, green and blue values plus x and y position. If you ask Python to group the rows without telling it that the image has a blue top, a red middle and a green bottom, the algorithm will find some grouping. The question is whether those groups make sense to a human."
+          ]
+        },
+        {
+          "heading": "Three real uses",
+          "body": [
+            "Image colour segmentation groups pixels by similar colours, so a 12 by 12 image can be split into a blue band, a red block and a green band. Customer grouping clusters shoppers by purchasing behaviour, so a business can offer different promotions to each segment. Document grouping organizes articles by topic, so a search engine can show related pieces together. All three situations start with a table of rows and no label column, and the clustering step reveals groups that a human must then interpret.",
+            "The pixels.csv data is a concrete example: 144 pixels from a synthetic image, with red green blue values and position coordinates. Running k-means on those 144 rows without knowing the true region labels will produce groups that a human can compare to the top-middle-bottom layout. The method works the same way for customer data or text documents, except the features are purchase counts or word frequencies instead of colour values."
+          ]
+        },
+        {
+          "heading": "The catch: you decide what a group means",
+          "body": [
+            "Without labels, the meaning of a cluster comes from your interpretation, and a cluster is not automatically a useful segment. The algorithm only knows distance; it does not know that one group represents 'customers who buy expensive items' and another represents 'customers who rarely purchase'. That interpretation is up to you, and different people may assign different meanings to the same groups.",
+            "A cluster that is mixed — containing pixels from blue, red and green regions all in one group — is less useful than a cluster that contains pixels from only one true region. The algorithm minimizes distance within groups, but it does not maximize separation between groups unless you guide it. Always check what each group contains before you claim it has a meaningful interpretation."
+          ]
+        },
+        {
+          "heading": "How you will know it worked",
+          "body": [
+            "A cluster is useful when it is stable, separated, and you can say something actionable about it. Stable means that if you ran the algorithm again with a slightly different start, you get similar groups. Separated means that the groups are distinct from one another, not overlapping heavily. Actionable means that you can name the group in a way that helps a decision, such as 'these customers are high-value' or 'these pixels are the blue sky'.",
+            "In the pixels case, you would check whether each cluster maps primarily to one of the three true regions: top band, middle red block, or bottom green band. If a cluster contains roughly 48 pixels and they are all similar blue values, that cluster is useful. If a cluster mixes red and green pixels, it does not help anyone make a decision."
+          ]
+        }
+      ],
+      "task": "Take the bundled pixel data and write down two questions you would ask of the groups you expect to find, and how you would check whether the answer is useful.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What makes a problem unsupervised rather than supervised?",
+            "choices": [
+              "The dataset has no rows, only columns.",
+              "The dataset has no label column and no pre-assigned answers.",
+              "The dataset contains only text, no numbers.",
+              "The algorithm always produces exactly two groups."
+            ],
+            "answer": 1,
+            "explanation": "Supervised learning has a label column that tells the model the correct answer for each row. Unsupervised learning has no such column, so the model must find structure on its own. The other choices describe problems that are not defined by the presence or absence of labels."
+          },
+          {
+            "id": "q2",
+            "question": "In the pixels.csv data, how many pixels are in each of the three true colour regions?",
+            "choices": [
+              "24 pixels per region, so 72 total.",
+              "48 pixels per region, so 144 total.",
+              "36 pixels per region, so 108 total.",
+              "60 pixels per region, so 180 total."
+            ],
+            "answer": 1,
+            "explanation": "The module specs state that pixels.csv has 144 rows, one per pixel of a 12 by 12 synthetic image, with three colour regions of 48 pixels each: a blue band at the top, a red block in the middle and a green band at the bottom. That is 3 times 48 equals 144."
+          },
+          {
+            "id": "q3",
+            "question": "Why can a cluster from unsupervised learning not be automatically called a 'segment' or 'group' without interpretation?",
+            "choices": [
+              "The algorithm runs faster when names are withheld.",
+              "The algorithm only knows distance, not meaning, so a human must assign meaning to each cluster.",
+              "The data does not contain enough information for the algorithm to name groups.",
+              "The Python code does not return group names, only numbers."
+            ],
+            "answer": 1,
+            "explanation": "The k-means algorithm minimizes distance within groups and has no concept of what the groups represent. A cluster of pixels may look like 'the blue sky' to one person and 'a mix of sky and sea' to another. The algorithm produces numbers, not labels with meaning."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.unsupervised.02",
+      "title": "k-means clustering, step by step",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Run the k-means algorithm by hand on a small example and explain each of its four steps.",
+      "sections": [
+        {
+          "heading": "Pick k starting points",
+          "body": [
+            "The k-means algorithm begins by placing k initial centres, which are called centroids. The number k is how many groups the algorithm will find, and you must choose it before the run begins. A bad choice of starting points can lead to a poor final arrangement, because the centroids may start in a region where the algorithm converges to a locally optimal solution rather than the best overall one. That is why practitioners often run k-means many times with different starts and keep the best result.",
+            "In the pixels data, if we set k = 3, we would place three initial centroids somewhere in the feature space. One common method is to pick k rows at random from the data and use their r g b values as the starting centres. With 144 pixels and k = 3, there are many possible starting configurations, and the choice matters for the final answer."
+          ]
+        },
+        {
+          "heading": "Assign each point to its nearest centre",
+          "body": [
+            "Once the k centroids are placed, each row in the dataset is assigned to the centroid that is closest in distance. The most common distance measure in k-means is Euclidean distance: the square root of the summed squared differences across all feature columns. For the pixels data, the features are r, g and b, so the distance between one pixel and a centroid is the square root of the squared differences of those three colour values.",
+            "If a pixel has r = 30, g = 82, b = 195 and a centroid has r = 28, g = 85, b = 192, the squared differences are (30-28)² = 4, (82-85)² = 9 and (195-192)² = 9, which adds to 22, and the square root of 22 is about 4.7. The pixel is assigned to the centroid with the smallest such distance. This assignment step is repeated for all 144 rows."
+          ]
+        },
+        {
+          "heading": "Move each centre to the middle of its group",
+          "body": [
+            "After all rows are assigned, each centroid moves to the mean (the average) of the rows that were assigned to it. This is the step that gives k-means its name: the k refers to the number of clusters, and means refers to the arithmetic mean of the assigned points. For the pixels data, if three pixels with r values 30, 31 and 29 are assigned to one centroid, the new r value for that centroid is (30 + 31 + 29) divided by 3, which is 30.",
+            "The centroid moves toward the centre of its group, and the groups slowly shift as centroids move. This is why the algorithm is iterative: the new centroid positions change the distances for the next assignment step, which can move more rows, which changes the centroids again."
+          ]
+        },
+        {
+          "heading": "Repeat until nothing moves",
+          "body": [
+            "The algorithm repeats the assignment and update steps until the centroids stop moving, or until the change is smaller than a very small threshold. When the centroids no longer move, the algorithm has converged. The risk is converging to a poor arrangement, especially if the starting points were not well chosen. Running the algorithm multiple times with different random starts and comparing the results is a common practice.",
+            "In the pixels data with k = 3 and three true regions (blue top, red middle, green bottom), the algorithm will typically find centroids that are near the average r g b values of each region. If the blue region has average r about 28, g about 82, b about 193, the centroid for that cluster will have those average values — assuming the algorithm converges to a good arrangement."
+          ]
+        }
+      ],
+      "task": "Run k-means by hand on three points with two clusters, showing the assignment and the new centre for each of two rounds. Then run the same algorithm in code on the bundled pixels and compare.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What are the four steps of the k-means algorithm?",
+            "choices": [
+              "Pick k starting points, assign each point to its nearest centre, move each centre to the middle of its group, repeat until nothing moves.",
+              "Pick k starting points, assign each point to its farthest centre, move each centre to the edge of its group, repeat until everything moves.",
+              "Pick k starting points, assign each point to its nearest centre, move each centre to the edge of its group, repeat until nothing moves.",
+              "Pick k starting points, assign each point to its farthest centre, move each centre to the middle of its group, repeat until everything moves."
+            ],
+            "answer": 0,
+            "explanation": "The four steps are: 1) Pick k starting points (centroids). 2) Assign each point to its nearest centre. 3) Move each centre to the mean of its group. 4) Repeat until the centroids stop moving. This is the standard k-means loop."
+          },
+          {
+            "id": "q2",
+            "question": "Why can the starting points change the final answer of k-means?",
+            "choices": [
+              "The algorithm is random and never converges if the starts are poor.",
+              "The algorithm converges to a locally optimal solution, and bad starting centroids can trap it there.",
+              "The algorithm always produces a different answer regardless of starting points.",
+              "The starting points only affect the speed, not the final answer."
+            ],
+            "answer": 1,
+            "explanation": "K-means uses assignment and update steps that converge to a locally optimal arrangement of centroids. If the initial centroids are placed in a part of the feature space that leads to a poor grouping, the algorithm may stop there and never reach a better arrangement. Multiple runs with different starts help avoid this."
+          },
+          {
+            "id": "q3",
+            "question": "What does the k in k-means refer to?",
+            "choices": [
+              "The number of times the algorithm repeats.",
+              "The number of clusters the algorithm will find.",
+              "The number of feature columns in the data.",
+              "The number of centroids that must be chosen at random."
+            ],
+            "answer": 1,
+            "explanation": "The k in k-means is the number of clusters the algorithm is asked to find. You choose k before the algorithm runs, and all four steps depend on that number: k centroids are placed, each row is assigned to one of those k centroids, and each centroid is updated as the mean of its assigned rows."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.unsupervised.03",
+      "title": "Choosing how many groups",
+      "status": "ready",
+      "study_minutes": 50,
+      "goal": "Choose a number of clusters with evidence from the data instead of a guess, and report the trade-off.",
+      "sections": [
+        {
+          "heading": "More groups always fits better",
+          "body": [
+            "If you increase k, the within-group spread can only decrease or stay the same, because each point has more centres to choose from when finding its nearest centroid. With k = 144 (one cluster per row), the algorithm could assign each row to its own centroid and the within-group spread would be zero. A perfect fit with enough groups means nothing; it is simply overfitting to the quirks of the individual rows rather than finding meaningful structure.",
+            "The pixels data has 144 rows. If you run k-means with k = 3, each cluster contains about 48 pixels and the within-group spread is some positive number. If you run with k = 144, every pixel is its own cluster and the spread is zero, but you have not found three colour regions — you have simply labelled each pixel uniquely."
+          ]
+        },
+        {
+          "heading": "The elbow",
+          "body": [
+            "The elbow method plots the within-group spread (also called inertia or total within-cluster sum of squared distance) against the number of clusters k. As k grows, the spread drops. The elbow is the point where the rate of decrease slows down markedly — the plot bends like an elbow. Choosing k at the elbow gives a good trade-off: adding more groups reduces the spread only a little, so the extra complexity is not justified by the gain.",
+            "In the pixels data, running k-means for k = 1, 2, 3, 4, 5 and recording the within-group spread would show a sharp drop from k = 1 to k = 3, because three groups capture the blue top, red middle and green bottom. Going from k = 3 to k = 4 gives a much smaller reduction in spread, so the elbow is often at k = 3 for this dataset."
+          ]
+        },
+        {
+          "heading": "The silhouette score",
+          "body": [
+            "The silhouette score measures how well separated each point is from its own group compared with the next group. For one point, the silhouette width is (distance to next group minus distance to own group) divided by the larger of those two distances. The width ranges from -1 to 1: a high value means the point is very close to its own group and far from the next group, so the clustering is doing a good job. The average silhouette score across all points summarizes the overall quality for a given k.",
+            "For the pixels data with k = 3, the blue pixels would have high silhouette scores because they are far from the red and green groups. Red pixels would also score well, and green pixels would as well. If k were set to 4 or higher, some groups would be very small or mixed, and the average silhouette score would drop, signaling that the extra group is not well supported by the data."
+          ]
+        },
+        {
+          "heading": "Choose and justify",
+          "body": [
+            "To choose k with the elbow method or silhouette score, record the metric for each k value you test, plot the results, and look for the elbow or the highest average silhouette. Then write down the k you would use and the sentence you would use to defend it. The defence must appeal to the data, not to personal preference. For the pixels data, k = 3 is supported because the within-group spread drops sharply from k = 2 to k = 3 and then slows, and the average silhouette score is highest at k = 3.",
+            "Checking stability is also wise: run k-means a few times with different random starts for your chosen k and see whether the groups are similar each time. If the groups change wildly, the chosen k may not be reliable. For the pixels data with k = 3, you would expect the three clusters to map cleanly to the blue top, red middle and green bottom regions across multiple runs; if the cluster labels flip-flop between runs, the grouping is not stable and you should reconsider your k."
+          ]
+        }
+      ],
+      "task": "On the bundled pixel data, run k-means for k between 1 and 8, record the within-group spread for each k, and write down the k you would choose and the sentence you would use to defend it.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Why does a larger k always reduce the within-group spread?",
+            "choices": [
+              "Because each centroid can move to a more precise location with more groups.",
+              "Because with more clusters, each point has more centres to choose from when finding its nearest centroid.",
+              "Because the algorithm runs faster with larger k.",
+              "Because the feature values are rescaled when k grows."
+            ],
+            "answer": 1,
+            "explanation": "With more clusters, every row has more centroids to compare its distance to, so the nearest centroid is always at least as close as it was with fewer centroids. This means the within-group distance for each row can only decrease or stay the same, and the total spread drops."
+          },
+          {
+            "id": "q2",
+            "question": "What is the elbow method looking for?",
+            "choices": [
+              "The k value where the within-group spread becomes zero.",
+              "The k value where the within-group spread starts to decrease.",
+              "The k value where the rate of decrease in within-group spread slows down markedly.",
+              "The k value where the clusters become perfectly separated."
+            ],
+            "answer": 2,
+            "explanation": "The elbow method plots within-group spread against k and looks for the point where the plot bends — where adding another group reduces the spread only a little. That bend is the elbow, and it represents the trade-off between fit and complexity."
+          },
+          {
+            "id": "q3",
+            "question": "What does a high average silhouette score indicate about the chosen k?",
+            "choices": [
+              "The clusters are compact and well separated from each other.",
+              "The algorithm converged very quickly.",
+              "The within-group spread is close to zero.",
+              "The k value is the largest possible."
+            ],
+            "answer": 0,
+            "explanation": "A high average silhouette score means that, on average, points are close to their own centroid and far from the next centroid, which is exactly what we want from a clustering. Low or negative scores indicate that groups overlap or that some points are closer to a different group."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.unsupervised.04",
+      "title": "Look at and read your clusters",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Visualise a clustering result and describe it without overclaiming what the algorithm found.",
+      "sections": [
+        {
+          "heading": "Draw the clusters",
+          "body": [
+            "Visualising clusters helps you see what the algorithm found. A simple scatter plot can show each row as a point, coloured by its cluster label. For the pixels data, the three features r, g and b are colour values, and the x and y coordinates give the pixel position. A plot of x versus y coloured by cluster label will show the three true regions as horizontal bands: blue at the top, red in the middle, green at the bottom. If the algorithm found different groups, the plot would show those groups in the same coordinate system.",
+            "To make the plot readable, use clear colours, a legend that shows which label corresponds to which colour, and enough white space that the points do not run together. Avoid plotting all 144 points in a way that makes the image unreadable; a 12 by 12 grid with colour-coded cells is one effective approach."
+          ]
+        },
+        {
+          "heading": "Describe each group",
+          "body": [
+            "After plotting, describe each group in words. Give the average r, g and b values for the group, and name how many pixels it contains. For example, a group might have average r = 28, g = 82, b = 193 and contain 48 pixels — that colour profile matches the blue band at the top of the image. Another group might have average r = 201, g = 45, b = 42 and contain 48 pixels — that matches the red middle block. Always ground your description in concrete numbers from the data.",
+            "Describing groups with average colour values is especially intuitive for the pixels data, because the three regions have very different colour profiles. The blue band has relatively low red values and relatively high green and blue values. The red middle has high red values and low green and blue values. The green bottom has moderate red values, high green values and moderate blue values."
+          ]
+        },
+        {
+          "heading": "The label problem",
+          "body": [
+            "Cluster numbers are arbitrary: if you ran k-means twice with different random starts, the cluster labelled 0 in the first run might be labelled 1 or 2 in the second run. The algorithm does not guarantee that cluster 0 means the same thing across runs. This is why you should name groups by their characteristics — such as 'the blue group' or 'the red group' — rather than by their assigned number.",
+            "If you say 'cluster 0 is blue', a reader might think that cluster 0 is always blue, but another run could label the blue group as cluster 1. Naming groups by what they contain — 'the group with average r = 28, g = 82, b = 193' — survives a rerun of the algorithm."
+          ]
+        },
+        {
+          "heading": "What you may claim",
+          "body": [
+            "You may claim that the data has structure that this method found, but you may not claim that you discovered the absolute truth about the data. The algorithm found groups that are useful for the purpose at hand, and a different method or a different k might find different groups. State what the data shows, not what the algorithm proved.",
+            "An honest summary for the pixels data would be: 'k-means with k = 3 found three groups of 48 pixels each. The groups have distinct average colours, matching the blue top, red middle and green bottom of the original image.' You can say the method found structure, but you cannot say that the groups are the only possible ones or that no other method could find others."
+          ]
+        }
+      ],
+      "task": "Make a scatter plot of the bundled pixel data coloured by cluster, and write three sentences describing the groups: one for each region, with the average colour of each.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "Why can cluster numbers not be compared across two different runs of k-means?",
+            "choices": [
+              "The algorithm always produces the same cluster numbers, so comparison is unnecessary.",
+              "The algorithm's centroids are re-randomized each run, so cluster 0 in one run may be cluster 1 in another.",
+              "The pixel data changes between runs, so the cluster numbers change.",
+              "The Python code produces random numbers for cluster labels each time."
+            ],
+            "answer": 1,
+            "explanation": "K-means initializes centroids randomly (or using a heuristic), so the cluster assigned to label 0 depends on that initialization. One run may place a blue-centroid at label 0, another at label 1. The numbers are not intrinsic to the data; the group characteristics are what matter."
+          },
+          {
+            "id": "q2",
+            "question": "What is a good way to describe a group to a reader who cannot see the plot?",
+            "choices": [
+              "Say the cluster number and assume the reader knows the convention.",
+            "Give the average r, g and b values and the number of pixels in the group.",
+              "Describe the group using only the cluster number and the value of k.",
+              "Tell the reader to run the algorithm themselves."
+            ],
+            "answer": 1,
+            "explanation": "Giving the average red, green and blue values and the number of pixels lets the reader identify the group's colour profile without needing the plot. For the pixels data, average r = 28, g = 82, b = 193 immediately signals the blue band."
+          },
+          {
+            "id": "q3",
+            "question": "Which wording about a clustering result is too strong?",
+            "choices": [
+              "k-means with k = 3 found three groups of 48 pixels each, matching the blue top, red middle and green bottom of the original image.",
+              "k-means discovered the absolute truth about the image and no other method could find different groups.",
+              "The three groups have distinct average colours: blue, red and green.",
+              "The data has structure that k-means found, though a different k might reveal more groups."
+            ],
+            "answer": 1,
+            "explanation": "The second choice claims that k-means discovered the absolute truth and that no other method could find different groups, which is an overstatement. The other three options use careful hedging language that acknowledges the method's role without overclaiming."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.unsupervised.05",
+      "title": "Fewer columns with PCA",
+      "status": "ready",
+      "study_minutes": 50,
+      "goal": "Reduce many features to a few combined features with PCA, and judge how much information was kept.",
+      "sections": [
+        {
+          "heading": "Why squeeze the columns",
+          "body": [
+            "Having many features slows down computation and makes plots harder to draw. If you have 50 features, plotting all pairs is impossible. Reducing the number of features speeds up the code, makes visualisations possible, and can remove noisy columns that do not carry signal. In practice, you often reduce a dataset to two or three principal components so you can draw a 2D or 3D plot.",
+            "The pixels data has three feature columns: r, g and b. That is already a small number, but even here PCA can show how two components capture the variation across the 144 pixels. With more features — such as texture measurements or colour histograms — PCA becomes increasingly useful."
+          ]
+        },
+        {
+          "heading": "The idea of a principal component",
+          "body": [
+            "PCA finds the directions in which the data varies the most. The first principal component is the single direction in feature space along which the data varies the most. The second principal component is the direction orthogonal (perpendicular) to the first that captures the most remaining variation, and so on. Each principal component is a weighted combination of the original feature columns. For the pixels data, the first principal component might be a combination such as 0.5 times r plus 0.5 times g plus 0.3 times b, and the second would be orthogonal to it.",
+            "The weights are called loadings, and they tell you how much each original feature contributes to the new component. A large positive loading means the feature contributes in the same direction, a large negative loading means it contributes in the opposite direction, and a loading near zero means the feature hardly contributes at all."
+          ]
+        },
+        {
+          "heading": "How much did you keep",
+          "body": [
+            "The explained variance ratio tells you how much of the original data's variation is captured by each principal component. If the first principal component has an explained variance ratio of 0.7, it means 70 percent of the total variation in the data is captured by that one component. The second component's ratio adds to the first, so if it is 0.2, the first two components together capture 90 percent of the variation. You choose the number of components that keeps most of the variation while reducing the column count to a manageable level.",
+            "For the pixels data, the three colour columns r, g and b are highly correlated because each pixel has one colour from a limited set. PCA on those three columns might show that the first component captures about 60 percent of the variance and the second captures about 30 percent, so two components keep about 90 percent of the information. That means you can work with two columns instead of three with little loss."
+          ]
+        },
+        {
+          "heading": "When not to use it",
+          "body": [
+            "PCA assumes that the relationship between features is linear, so it will not capture curved or nonlinear structure in the data. If the clusters in your data follow a circular pattern, PCA's linear combinations may spread them out rather than pulling them together. PCA also requires that features be on comparable scales; if one feature is measured in thousands of dollars and another in cents, the feature with the larger numerical range will dominate the principal components unless the features are scaled first — typically by subtracting the mean and dividing by the standard deviation.",
+            "The new columns from PCA cannot be read directly as 'red value' or 'green value'. They are abstract combinations, and the loadings that produce them depend on the dataset you applied PCA to. If you apply PCA to one dataset and then try to use the same components on new data, you must apply the same scaling and the same weighting, or the numbers will not mean the same thing."
+          ]
+        }
+      ],
+      "task": "Apply PCA to the bundled pixel colours, keep two components, and report the explained variance of each. Then say what you could and could not say about the result in plain words.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does a principal component represent?",
+            "choices": [
+              "A new feature that is a weighted combination of the original feature columns.",
+              "The original feature column with the largest variance.",
+              "A measure of how many rows are in the dataset.",
+              "A visual plot of the data."
+            ],
+            "answer": 0,
+            "explanation": "A principal component is a direction in feature space, and when you project the data onto that direction, each row gets a new value. That new value is a weighted sum of the original feature columns, and the weights are the loadings. The first component captures the most variation, the second captures the most remaining variation orthogonal to the first."
+          },
+          {
+            "id": "q2",
+            "question": "What does the explained variance ratio tell you?",
+            "choices": [
+              "How many principal components the dataset has.",
+              "The percentage of the total variation in the data captured by that component.",
+              "Whether the principal components are orthogonal.",
+              "The exact numerical value of each original feature."
+            ],
+            "answer": 1,
+            "explanation": "The explained variance ratio for one principal component is the proportion of the dataset's total variation that is captured by that component. If the first ratio is 0.6, then 60 percent of the data's variation is along that first direction."
+          },
+          {
+            "id": "q3",
+            "question": "Why must features be scaled before applying PCA?",
+            "choices": [
+              "PCA cannot run on datasets with more than five feature columns.",
+              "The feature with the largest numerical range will dominate the principal components, unless the features are scaled to comparable sizes.",
+              "PCA only works with text data, not numerical data.",
+              "Scaling changes the colour values in the pixels data."
+            ],
+            "answer": 1,
+            "explanation": "PCA maximises variance, and variance is measured in the units of the features. If one feature such as price is measured in thousands and another feature such as weight is measured in grams, the price feature's range will dominate the principal components simply because its numbers are larger. Scaling puts all features on comparable footing so that each contributes fairly."
+          }
+        ]
+      }
+    }
+  ]
+}

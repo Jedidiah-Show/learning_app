@@ -1,0 +1,375 @@
+{
+  "module_id": "mle.classification-models",
+  "lessons": [
+    {
+      "id": "mle.classification.01",
+      "title": "What a classifier does",
+      "status": "ready",
+      "study_minutes": 35,
+      "goal": "Explain what a classification model produces, how a probability becomes a label, and where classification fits in a product.",
+      "sections": [
+        {
+          "heading": "A label, not a number",
+          "body": [
+            "A classification model does not output a continuous value like a regression model. Instead it produces one of a fixed set of labels. In the spam problem the labels are spam and not-spam, and the model must pick one of those two for every email. This distinction matters because a user needs to take action based on the label, not admire a decimal number."
+          ]
+        },
+        {
+          "heading": "Scores become labels at a threshold",
+          "body": [
+            "A classifier first produces a score, a raw number that reflects how strong the evidence is. Choosing a threshold turns that score into a label: above the threshold becomes spam, below becomes not-spam. If the threshold is 0.5 an email with probability 0.6 is flagged as spam, while 0.4 is not. The trainer chooses the threshold based on which error is more costly."
+          ]
+        },
+        {
+          "heading": "Labels need to be right in the data",
+          "body": [
+            "A model can only learn from the labels you give it. If an email is truly spam but labelled not-spam, the model will learn the wrong rule. Noisy or inconsistent labels mean the model may learn patterns that do not reflect reality, and its predictions will be wrong in ways that are hard to diagnose later."
+          ]
+        },
+        {
+          "heading": "What good looks like",
+          "body": [
+            "A first spam filter will be wrong often. The goal is not to be right every time but to be wrong in the cheapest direction. If a spam email gets through it may cost the provider in lost trust; if a real email is hidden it costs the user time to retrieve it. A good first model minimises the more expensive error."
+          ]
+        }
+      ],
+      "task": "Write down the two labels you would use for the bundled email dataset, state which one your business cares about more, and pick a threshold you would start with and explain why.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does a classification model output before you choose a threshold?",
+            "choices": [
+              "A continuous regression value",
+              "One of a fixed set of labels",
+              "A probability between 0 and 1",
+              "A confusion matrix"
+            ],
+            "answer": 2,
+            "explanation": "A classifier produces a raw score or probability between 0 and 1 before a threshold is applied. That score is then compared to the threshold to decide which label the email receives."
+          },
+          {
+            "id": "q2",
+            "question": "Why does the order of your labels in the data not change the model?",
+            "choices": [
+              "Because the model always predicts the first label",
+              "Because swapping label names does not change the model's decisions, only how we read them",
+              "Because the data contains only one label per email",
+              "Because the model ignores the label column"
+            ],
+            "answer": 1,
+            "explanation": "The model learns from the pattern of features, not from which string is called spam. If you swap the label names the model's predictions stay exactly the same; only the human-readable output changes."
+          },
+          {
+            "id": "q3",
+            "question": "Which direction of error costs a mail provider more: a spam email that gets through, or a real email that is hidden?",
+            "choices": [
+              "A spam email that gets through costs more, because the provider loses trust and users see unwanted content",
+              "A real email that is hidden costs more, because the user must spend time retrieving it",
+              "Both cost exactly the same, so the threshold does not matter",
+              "Neither costs anything in a well-trained model"
+            ],
+            "answer": 0,
+            "explanation": "A spam email that reaches the inbox erodes user trust and increases abuse reports, which is typically more costly for a provider than a legitimate email being sent to spam, which the user can retrieve in seconds."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.classification.02",
+      "title": "Logistic regression: a score that becomes a label",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Train a logistic regression classifier and explain how its weights turn feature values into a probability.",
+      "sections": [
+        {
+          "heading": "A weighted sum, then a squeeze",
+          "body": [
+            "Logistic regression begins with a weighted sum of the features: each column of the email is multiplied by a learned weight and all those products are added together. The squeeze is the logistic (or sigmoid) function that pushes that sum between 0 and 1, producing a probability. If the weighted sum is large and positive the probability approaches 1 (spam); if it is large and negative the probability approaches 0 (not-spam)."
+          ]
+        },
+        {
+          "heading": "Fitting the weights",
+          "body": [
+            "The weights are chosen so that the model's predicted probabilities match the true labels in the training data. Scikit-learn searches for weights that make wrong predictions expensive, using an optimisation algorithm that adjusts each weight slightly until the loss stops decreasing. The process is automatic once you provide the feature matrix and the label vector."
+          ]
+        },
+        {
+          "heading": "Reading the coefficient",
+          "body": [
+            "A coefficient tells you how a one-unit change in a feature moves the probability. A positive coefficient pushes the probability toward spam, a negative one toward not-spam. The size of the coefficient depends on the units of the feature: a coefficient of 0.5 on a word-count feature means each additional occurrence of that word increases the spam probability by a measurable amount, but the same coefficient on a feature measured in dollars would have a very different effect."
+          ]
+        },
+        {
+          "heading": "Where it works well",
+          "body": [
+            "Logistic regression is fast to train, makes few assumptions about the data, and produces a readable set of coefficients. Its main weakness is that it can only draw straight-line boundaries in feature space, so it cannot capture complex interactions unless features are engineered. For many text problems a bag-of-words representation with logistic regression provides a strong first baseline."
+          ]
+        }
+      ],
+      "task": "Train a logistic regression classifier on the bundled email dataset using the subject and body text, then print the predicted probability for three emails and explain what each number means.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does the logistic regression model do to the weighted sum of features?",
+            "choices": [
+              "It leaves the sum unchanged",
+              "It clamps the sum to between -1 and 1",
+              "It squeezes the sum between 0 and 1 using the logistic (sigmoid) function",
+              "It subtracts the mean and divides by the standard deviation"
+            ],
+            "answer": 2,
+            "explanation": "The logistic (sigmoid) function takes any real-valued number and pushes it into the range (0, 1), producing a probability that can be compared to a threshold to produce a label."
+          },
+          {
+            "id": "q2",
+            "question": "What does a large positive coefficient for a word tell you?",
+            "choices": [
+              "The word never appears in spam emails",
+              "The word pushes the probability toward the spam class",
+              "The word must be removed before training",
+              "The coefficient must be negative for the model to work"
+            ],
+            "answer": 1,
+            "explanation": "A positive coefficient means that as that feature increases, the weighted sum grows, and after the squeeze the probability moves toward 1 (spam). The word is therefore indicative of the spam class."
+          },
+          {
+            "id": "q3",
+            "question": "Why is logistic regression usually a good first classifier?",
+            "choices": [
+              "It is guaranteed to achieve 100 percent accuracy",
+              "It is fast to train, makes few assumptions, and produces readable coefficients",
+              "It can capture any non-linear boundary without feature engineering",
+              "It does not require any labelled data"
+            ],
+            "answer": 1,
+            "explanation": "It trains quickly, does not require heavy tuning assumptions, and the learned coefficients tell you which features push the prediction toward each class, which is useful for understanding and debugging."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.classification.03",
+      "title": "k-nearest neighbours for labels",
+      "status": "ready",
+      "study_minutes": 40,
+      "goal": "Classify a new example by the labels of its nearest neighbours, and see how the choice of k changes the answer.",
+      "sections": [
+        {
+          "heading": "The idea in one sentence",
+          "body": [
+            "k-nearest neighbours classifies a new email by looking at the k training emails most similar to it and assigning the most common label among those neighbours. If k=1 the new email takes the label of its single closest neighbour; if k=7 it takes the majority vote of its seven closest neighbours."
+          ]
+        },
+        {
+          "heading": "Turning text into something you can measure",
+          "body": [
+            "Distance cannot be computed on raw text directly, so each email is turned into a vector of numbers. A simple approach is counting how many times each word appears, which gives a sparse vector that can be compared using Euclidean distance or cosine similarity. Without this step no distance metric can operate on the text."
+          ]
+        },
+        {
+          "heading": "Choosing k",
+          "body": [
+            "A small k makes the model flexible and likely to overfit, because a single outlier neighbour can change the prediction. A large k makes the model more conservative and likely to underfit, because the majority vote smooths over local patterns. The choice of k trades off bias against variance, and the optimal k is typically found by cross-validation on a held-out set."
+          ]
+        },
+        {
+          "heading": "Its limits",
+          "body": [
+            "k-nearest neighbours stores every training example, so prediction time grows with the size of the training set. Irrelevant or noisy features can dominate the distance calculation, making all examples appear equally distant. The method also struggles when the feature space has many dimensions relative to the number of training examples."
+          ]
+        }
+      ],
+      "task": "Train a k-nearest neighbours classifier on the bundled email dataset with k equal to 1 and again with k equal to 7. Compare the two accuracy scores and explain in two sentences why they differ.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "How does a k-nearest neighbours classifier choose a label?",
+            "choices": [
+              "It computes the weighted average of all training labels",
+              "It looks at the k training examples closest to the new example and takes the majority vote of their labels",
+              "It uses the label of the single farthest training example",
+              "It randomises between all labels present in the training set"
+            ],
+            "answer": 1,
+            "explanation": "The k-nearest neighbours rule assigns the new example the most common label among its k closest training neighbours, breaking ties arbitrarily or by distance."
+          },
+          {
+            "id": "q2",
+            "question": "Why do we count words before using distance on text?",
+            "choices": [
+              "So that the text can be stored in a database",
+              "So that each email has the same number of characters",
+              "So that each email can be represented as a vector of numbers that distance metrics can operate on",
+              "So that the model trains faster"
+            ],
+            "answer": 2,
+            "explanation": "Distance metrics work on numbers, not on raw strings. Counting words produces a vector where each entry represents how often a word appears, enabling distance computations such as Euclidean or cosine distance."
+          },
+          {
+            "id": "q3",
+            "question": "What happens to a k-nearest neighbours model when the training set grows?",
+            "choices": [
+              "The model becomes faster at prediction time",
+              "The model becomes more likely to overfit",
+              "The prediction time grows because every training example must be examined",
+              "The model automatically reduces the value of k"
+            ],
+            "answer": 2,
+            "explanation": "In k-nearest neighbours every training example must be compared to the new example at prediction time, so a larger training set means more distance computations and slower predictions."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.classification.04",
+      "title": "Decision trees: rules you can read",
+      "status": "ready",
+      "study_minutes": 45,
+      "goal": "Train a decision tree and read it as a set of if-then rules that a person could follow.",
+      "sections": [
+        {
+          "heading": "A tree of questions",
+          "body": [
+            "A decision tree is a hierarchical structure of questions about the feature values. Starting at the root the tree asks a question such as 'does the word free appear in the subject?' and follows the 'yes' or 'no' branch depending on the answer. Each internal node is a question and each leaf node carries a label, so traversing the tree from root to leaf produces a sequence of decisions that ends with a predicted class."
+          ]
+        },
+        {
+          "heading": "How the tree chooses its questions",
+          "body": [
+            "At each node the tree evaluates many possible questions and picks the one that separates the labels most usefully. The measure of usefulness is typically information gain or Gini impurity: the question that reduces impurity the most is chosen. In the spam problem the tree might first ask whether the word 'free' appears, because that split separates most of the spam emails from the normal ones."
+          ]
+        },
+        {
+          "heading": "Reading a tree without over-trusting it",
+          "body": [
+            "A printed tree can be followed as a set of if-then rules, which is useful for explanation. But a fully grown tree may memorise the training data, including noise and idiosyncrasies that will not appear in new emails. Pruning, limiting depth, or requiring a minimum number of examples per leaf are techniques that prevent the tree from becoming too specific to the training set."
+          ]
+        },
+        {
+          "heading": "When a tree is a good choice",
+          "body": [
+            "Decision trees handle mixed data types naturally, can work with missing values, and produce rules that are easy for a non-expert to understand. They are a good first choice when interpretability matters. The risk is overfitting: a deep tree can achieve perfect training accuracy while generalising poorly to new emails."
+          ]
+        }
+      ],
+      "task": "Train a decision tree on the bundled email dataset with a maximum depth of three, print the tree, and write down the first rule the tree asks and what it tells you.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "What does each question in a decision tree do?",
+            "choices": [
+              "It selects the next branch to follow, leading to another question or a leaf label",
+              "It computes the probability of the spam class",
+              "It averages the feature values in the subtree",
+              "It decides the learning rate for the subtree"
+            ],
+            "answer": 0,
+            "explanation": "Each internal node asks a question about a feature value. The answer directs you to the left or right branch, and you continue until you reach a leaf node that carries the predicted label."
+          },
+          {
+            "id": "q2",
+            "question": "Why can a deep decision tree memorise the training data?",
+            "choices": [
+              "Because it stores every training email in memory",
+              "Because it can grow deep enough to isolate each single training example in its own leaf",
+              "Because it uses the logistic function to squeeze probabilities",
+              "Because it always chooses the majority label at each node"
+            ],
+            "answer": 1,
+            "explanation": "A deep tree can continue splitting until each leaf contains only one training example, which means the model memorises the training labels rather than learning a generalisable rule."
+          },
+          {
+            "id": "q3",
+            "question": "Give one situation where a decision tree is a better fit than logistic regression.",
+            "choices": [
+              "When the relationship between features and the label is perfectly linear",
+              "When the data contains only numerical features with no missing values",
+              "When interpretability is important and the data contains mixed types or missing values",
+              "When the number of features exceeds the number of training examples"
+            ],
+            "answer": 2,
+            "explanation": "Decision trees handle mixed data types natively, can work with missing values, and produce if-then rules that are easy for a person to read, unlike logistic regression which assumes a linear boundary and requires feature engineering for non-linear patterns."
+          }
+        ]
+      }
+    },
+    {
+      "id": "mle.classification.05",
+      "title": "Accuracy, precision, recall, F1 and the confusion matrix",
+      "status": "ready",
+      "study_minutes": 50,
+      "goal": "Compute the four standard classification metrics from a confusion matrix and choose the one that matches the decision.",
+      "sections": [
+        {
+          "heading": "The four cells",
+          "body": [
+            "A confusion matrix for the spam problem has four entries. True positives (TP) are spam emails correctly labelled as spam. False positives (FP) are normal emails wrongly labelled as spam. True negatives (TN) are normal emails correctly labelled as not-spam. False negatives (FN) are spam emails wrongly labelled as not-spam. In matrix form the rows are the actual labels and the columns are the predicted labels."
+          ]
+        },
+        {
+          "heading": "Accuracy: the simple one",
+          "body": [
+            "Accuracy is the fraction of predictions that are correct: (TP + TN) divided by all predictions. It misleads when one class is rare: if 95 out of 100 emails are normal and the model predicts 'not-spam' for every email, accuracy is 95 percent even though the model never detects spam."
+          ]
+        },
+        {
+          "heading": "Precision and recall: the useful pair",
+          "body": [
+            "Precision is the fraction of predicted spam that are actually spam: TP divided by (TP + FP). Recall is the fraction of actual spam that were caught: TP divided by (TP + FN). The two questions use different denominators, so they can be very different numbers for the same model. In a spam filter precision asks 'of the emails we flagged as spam, how many were really spam?' and recall asks 'of all the spam emails, how many did we catch?'"
+          ]
+        },
+        {
+          "heading": "F1 and the cost of errors",
+          "body": [
+            "F1 is the harmonic mean of precision and recall, the harmonic mean being 2 divided by (1 divided by precision plus 1 divided by recall). It gives a single number that balances both concerns. In a spam filter you might deliberately accept more false positives to catch more spam, which raises recall at the expense of precision, and the F1 score reflects that trade-off."
+          ]
+        }
+      ],
+      "task": "Using the bundled email dataset, print the confusion matrix for your best classifier and compute accuracy, precision, recall and F1 from it. Then lower the threshold, recompute the four numbers, and write one sentence saying which version you would ship.",
+      "quiz": {
+        "questions": [
+          {
+            "id": "q1",
+            "question": "A classifier flags 100 emails and 90 of them really are spam. What is its precision?",
+            "choices": [
+              "90 percent",
+              "10 percent",
+              "90 out of the total email count",
+              "Cannot be determined from this information alone"
+            ],
+            "answer": 0,
+            "explanation": "Precision is TP divided by (TP + FP). Here 90 out of the 100 flagged emails are spam, so precision is 90 percent."
+          },
+          {
+            "id": "q2",
+            "question": "Of the 200 spam emails that exist, the classifier caught 120. What is its recall?",
+            "choices": [
+              "60 percent",
+              "40 percent",
+              "120 out of the total email count",
+              "Cannot be determined from this information alone"
+            ],
+            "answer": 0,
+            "explanation": "Recall is TP divided by (TP + FN). The classifier caught 120 spam, and there are 200 spam in total, so recall is 120 divided by 200, which is 60 percent."
+          },
+          {
+            "id": "q3",
+            "question": "Why can accuracy be a misleading metric when spam is rare?",
+            "choices": [
+              "Because accuracy only counts correct predictions and ignores the order of the predictions",
+              "Because a model that always predicts the majority class can achieve high accuracy while detecting no spam",
+              "Because accuracy cannot be computed from a confusion matrix",
+              "Because accuracy only measures precision and not recall"
+            ],
+            "answer": 1,
+            "explanation": "If 95 out of 100 emails are normal and the model predicts 'not-spam' for every email, accuracy is 95 percent even though the model never detects spam. Accuracy does not reveal whether the rare class is being modelled correctly."
+          }
+        ]
+      }
+    }
+  ]
+}
