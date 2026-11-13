@@ -70,7 +70,9 @@ jobs:
           npm run build:js
           node --check static/js/practice-sandbox.js
       - name: Verify compiled assets are current
-        run: git diff --exit-code -- static/css/tailwind.css static/js/practice.bundle.js
+        # Whitespace-insensitive: the minifier's trailing newline varies by tool
+        # version; the check exists to catch a stale class set, not byte counts.
+        run: git diff --exit-code --ignore-space-at-eol --ignore-blank-lines -- static/css/tailwind.css static/js/practice.bundle.js
 
   browser-ide:
     runs-on: ubuntu-latest
