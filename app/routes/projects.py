@@ -573,6 +573,8 @@ def get_module_project(module_id):
 @projects_bp.route('/api/projects/module/<module_id>/submit', methods=['POST'])
 @login_required
 def submit_module_project(module_id):
+    from app.services.achievements import achievement_keys
+    before_achievements = achievement_keys(current_user)
     data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'error': 'Request body must be a JSON object'}), 400
@@ -776,12 +778,15 @@ def submit_module_project(module_id):
         )
     refresh_leaderboard_score(current_user.id, commit=False)
     db.session.commit()
+    from app.services.achievements import new_badges_since
+    earned_badges = new_badges_since(current_user, before_achievements)
     return jsonify({
         'completed': record.completed,
         'evaluation': evaluation,
         'checks': verification,
         'verification_pending': not record.checks_verified
         and verification.get('pending') == 'github_webhook',
+        'new_badges': earned_badges,
     })
 
 

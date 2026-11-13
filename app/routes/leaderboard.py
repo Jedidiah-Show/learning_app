@@ -1,6 +1,6 @@
 """Privacy-controlled course leaderboard participation."""
 
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, render_template
 from flask_login import current_user, login_required
 
 from app import db
@@ -12,6 +12,14 @@ from app.request_data import get_json_object
 
 
 leaderboard_bp = Blueprint('leaderboard', __name__)
+
+
+@leaderboard_bp.route('/leaderboard')
+@login_required
+def page():
+    """The learner-facing board: top 20 opt-in learners plus your own rank."""
+    board = leaderboard_data(current_user)
+    return render_template('leaderboard.html', board=board)
 
 
 @leaderboard_bp.route('/api/leaderboard/visibility', methods=['POST'])

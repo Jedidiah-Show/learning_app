@@ -91,7 +91,7 @@
 <div class="space-y-5" id="module-list">
 <p id="module-filter-empty" class="rounded-xl border border-dashed bg-white p-6 text-sm text-slate-600" hidden>No ML pathway modules appear in this catalog for your current plan. The shared foundation lives here, and the ML pathway is one click away on the ML Pathway page.</p>
 {% for module in modules %}
-  <section class="overflow-hidden rounded-2xl border border-slate-200 bg-white" data-module-source="{{ module.source or 'ai' }}">
+  <section id="module-{{ module.id }}" class="scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white" data-module-source="{{ module.source or 'ai' }}">
     <div class="border-b border-slate-100 bg-slate-50 px-5 py-4">
       <p class="text-xs font-bold uppercase text-indigo-600">{% if module.badge %}{{ module.badge }}{% else %}Module {{ module.number }}{% endif %}</p>
       <h3 class="text-lg font-bold text-slate-900">{{ module.title }}</h3>

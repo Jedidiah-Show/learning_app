@@ -243,6 +243,23 @@ def current_review_due_count():
     return count
 
 
+def current_notifications():
+    """Derived shell notifications, cached per request like the review badge.
+
+    Admins see none (matching the streak/review badge behaviour), and any
+    failure yields an empty list so the shell never breaks over a badge.
+    """
+    if hasattr(g, 'notifications'):
+        return g.notifications
+    try:
+        from app.services.notifications import build_notifications
+        g.notifications = build_notifications(current_user)
+    except Exception:
+        current_app.logger.exception('Could not build notifications')
+        g.notifications = []
+    return g.notifications
+
+
 def create_app(config_override=None):
     flask_options = {
         'template_folder': '../templates',
@@ -763,6 +780,7 @@ def create_app(config_override=None):
             'pathway_destination': current_pathway_destination(),
             # Review Center badge: items due now, per learner, hidden from admins.
             'review_due_count': current_review_due_count(),
+            'notifications': current_notifications(),
             'google_calendar_oauth_configured': bool(
                 app.config.get('GOOGLE_CLIENT_ID')
                 and app.config.get('GOOGLE_CLIENT_SECRET')

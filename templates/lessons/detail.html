@@ -3,7 +3,10 @@
 {% block extra_head %}{% if lesson.video %}<link rel="preconnect" href="https://i.ytimg.com"><link rel="preconnect" href="https://www.youtube.com"><link rel="preconnect" href="https://www.youtube-nocookie.com">{% endif %}{% endblock %}
 {% block content %}
 <div class="reading-progress" aria-hidden="true"><span data-reading-progress></span></div>
-<a class="text-sm font-semibold text-indigo-700" href="{{ url_for('main.lessons') }}">← All lessons</a>
+<div class="lesson-back-row">
+  <a class="lesson-back-button" href="{{ url_for('main.index') }}"><span aria-hidden="true">←</span> Back to Dashboard</a>
+  <a class="lesson-back-link" href="{{ url_for('main.lessons') }}#module-{{ module.id }}">← Back to {{ module.badge or ('Module ' ~ module.number) }}</a>
+</div>
 
 <header class="lesson-hero">
   <p class="lesson-hero-kicker">Module {{ module.number }} · {{ module.title }} · Lesson {{ lesson._ordinal }} of {{ total_lessons }}</p>
@@ -15,6 +18,7 @@
     <li><span aria-hidden="true">🧩</span> {{ lesson.concepts|length if lesson.concepts else (lesson.core_concepts|length if lesson.core_concepts else 1) }} core concepts</li>
     <li><span aria-hidden="true">🎯</span> {{ lesson.outcomes|length if lesson.outcomes else 0 }} learning goals</li>
     {% if practice_exercises %}<li><span aria-hidden="true">💻</span> Hands-on practice included</li>{% endif %}
+    {% if lesson.video %}<li><span aria-hidden="true">▶</span> 1 video</li>{% endif %}
   </ul>
 </header>
 
@@ -708,6 +712,12 @@ if (completeButton) completeButton.addEventListener('click', async () => {
       return;
     }
     status.textContent = 'Lesson complete.';
+    if (Array.isArray(data.new_badges) && data.new_badges.length) {
+      try {
+        const queued = JSON.parse(sessionStorage.getItem('achv-toasts') || '[]');
+        sessionStorage.setItem('achv-toasts', JSON.stringify(queued.concat(data.new_badges)));
+      } catch (error) { /* storage unavailable; the badges page still shows them */ }
+    }
     completeButton.textContent = 'Completed ✓';
     completed = true;
     const nextButton = document.getElementById('next-lesson-button');

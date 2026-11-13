@@ -1,6 +1,17 @@
 // Core app JavaScript
 
 (() => {
+    const syncThemeIcons = (isDark) => {
+        document.querySelectorAll('[data-theme-icon]').forEach((holder) => {
+            const moon = holder.querySelector('.theme-icon-moon');
+            const sun = holder.querySelector('.theme-icon-sun');
+            if (moon && sun) {
+                moon.hidden = isDark;
+                sun.hidden = !isDark;
+            }
+        });
+    };
+
     document.addEventListener('click', (event) => {
         const navButton = event.target.closest('[data-toggle-nav]');
         if (navButton) {
@@ -47,7 +58,7 @@
             const isDark = theme === 'dark';
             themeButton.setAttribute('aria-label', `Switch to ${isDark ? 'light' : 'dark'} mode`);
             themeButton.querySelector('[data-theme-label]').textContent = `${isDark ? 'Light' : 'Dark'} mode`;
-            themeButton.querySelector('[data-theme-icon]').textContent = isDark ? '☀️' : '🌙';
+            syncThemeIcons(isDark);
             try {
                 localStorage.setItem('ruachai-theme', theme);
             } catch (error) {
@@ -99,7 +110,7 @@
         const isDark = document.documentElement.dataset.theme === 'dark';
         themeButton.setAttribute('aria-label', `Switch to ${isDark ? 'light' : 'dark'} mode`);
         themeButton.querySelector('[data-theme-label]').textContent = `${isDark ? 'Light' : 'Dark'} mode`;
-        themeButton.querySelector('[data-theme-icon]').textContent = isDark ? '☀️' : '🌙';
+        syncThemeIcons(isDark);
     }
 
     const token = document.querySelector('meta[name="csrf-token"]')?.content;
@@ -504,5 +515,133 @@
             try { localStorage.setItem('ruachai-leaderboard-nudge-dismissed', '1'); } catch (error) {}
             nudge.remove();
         });
+    }
+})();
+
+// Live clock in the top bar — always shown in the viewer's local timezone.
+(() => {
+    const clockText = document.querySelector('[data-clock-text]');
+    if (!clockText) return;
+    const render = () => {
+        const now = new Date();
+        const day = now.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });
+        const time = now.toLocaleTimeString('en-GB', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const tzName = now.toLocaleTimeString('en-GB', { timeZoneName: 'short' }).split(' ').pop();
+        clockText.textContent = `${day}, ${time} ${tzName}`;
+    };
+    render();
+    window.setInterval(render, 30000);
+})();
+
+// Notification bell: toggle the dropdown, close on Escape / outside click.
+(() => {
+    const toggle = document.querySelector('[data-notif-toggle]');
+    const panel = document.getElementById('notif-panel');
+    if (!toggle || !panel) return;
+    const setOpen = (open) => {
+        panel.hidden = !open;
+        toggle.setAttribute('aria-expanded', String(open));
+    };
+    toggle.addEventListener('click', (event) => {
+        event.stopPropagation();
+        setOpen(panel.hidden);
+    });
+    document.addEventListener('click', (event) => {
+        if (!panel.hidden && !panel.contains(event.target)) setOpen(false);
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !panel.hidden) {
+            setOpen(false);
+            toggle.focus();
+        }
+    });
+})();
+
+// Help modal + lightweight global shortcuts (?, G, A, N).
+(() => {
+    const backdrop = document.getElementById('help-backdrop');
+    if (!backdrop) return;
+    const toggle = document.querySelector('[data-help-toggle]');
+    const panel = document.getElementById('help-panel');
+    const isTypingTarget = (target) => target && target.closest && target.closest('input, textarea, select, [contenteditable="true"]');
+    const setOpen = (open) => {
+        backdrop.hidden = !open;
+        if (toggle) toggle.setAttribute('aria-expanded', String(open));
+        if (open && panel) {
+            const closeButton = panel.querySelector('[data-help-close]');
+            if (closeButton) closeButton.focus();
+        }
+    };
+    if (toggle) toggle.addEventListener('click', () => setOpen(backdrop.hidden));
+    const closeButton = backdrop.querySelector('[data-help-close]');
+    if (closeButton) closeButton.addEventListener('click', () => setOpen(false));
+    backdrop.addEventListener('click', (event) => {
+        if (event.target === backdrop) setOpen(false);
+    });
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !backdrop.hidden) {
+            setOpen(false);
+            if (toggle) toggle.focus();
+            return;
+        }
+        const mod = event.metaKey || event.ctrlKey || event.altKey;
+        if (mod || isTypingTarget(event.target)) return;
+        if (document.body.classList.contains('palette-open')) return;
+        if (event.key === '?') {
+            event.preventDefault();
+            setOpen(backdrop.hidden);
+            return;
+        }
+        const path = { g: '/gates', a: '/achievements', n: '/notifications' }[event.key.toLowerCase()];
+        if (path) window.location.href = path;
+    });
+})();
+
+// Achievement toasts — renders badges handed back in JSON payloads (new_badges).
+window.showAchievementToasts = (badges) => {
+    if (!Array.isArray(badges) || badges.length === 0) return;
+    let wrap = document.querySelector('.achv-toast-wrap');
+    if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.className = 'achv-toast-wrap';
+        wrap.setAttribute('aria-live', 'polite');
+        document.body.appendChild(wrap);
+    }
+    const shown = badges.slice(0, 3);
+    shown.forEach((badge) => {
+        const toast = document.createElement('a');
+        toast.className = 'achv-toast';
+        toast.href = '/achievements';
+        toast.innerHTML = `
+            <span class="achv-toast-icon" aria-hidden="true">${badge.icon || '🏆'}</span>
+            <span>
+                <span class="achv-toast-kicker">Achievement unlocked</span>
+                <span class="achv-toast-name">${badge.name || 'New badge'}</span>
+                <span class="achv-toast-desc">${badge.description || ''}</span>
+            </span>
+            <span class="achv-toast-link">View →</span>`;
+        wrap.appendChild(toast);
+        window.setTimeout(() => toast.remove(), 7000);
+    });
+    if (badges.length > 3) {
+        const extra = document.createElement('a');
+        extra.className = 'achv-toast';
+        extra.href = '/achievements';
+        extra.innerHTML = `<span class="achv-toast-icon" aria-hidden="true">🏆</span><span><span class="achv-toast-kicker">Achievement unlocked</span><span class="achv-toast-name">${badges.length - 3} more badges earned</span></span><span class="achv-toast-link">View →</span>`;
+        wrap.appendChild(extra);
+        window.setTimeout(() => extra.remove(), 7000);
+    }
+};
+
+// Drain achievement toasts queued before a lesson-page navigation.
+(() => {
+    try {
+        const raw = sessionStorage.getItem('achv-toasts');
+        if (raw) {
+            sessionStorage.removeItem('achv-toasts');
+            if (window.showAchievementToasts) window.showAchievementToasts(JSON.parse(raw));
+        }
+    } catch (error) {
+        // Storage unavailable or malformed payload; badges live on the page.
     }
 })();

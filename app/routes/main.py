@@ -694,6 +694,46 @@ def progress():
     due_reviews = ReviewItem.query.filter_by(user_id=current_user.id, active=True).filter(
         ReviewItem.due_at <= now
     ).count()
+    heatmap = None
+    try:
+        from collections import Counter
+        from app.models import MLSpecializationLessonCompletion
+        day_counts = Counter(
+            item.completed_at.date() for item in completions if item.completed_at
+        )
+        for row in MLSpecializationLessonCompletion.query.filter_by(
+            user_id=current_user.id
+        ).all():
+            if row.completed_at:
+                day_counts[row.completed_at.date()] += 1
+        today = learner_today()
+        start = today - timedelta(days=today.weekday()) - timedelta(weeks=25)
+        weeks = []
+        for w in range(26):
+            column = []
+            for d in range(7):
+                day = start + timedelta(days=w * 7 + d)
+                if day > today:
+                    column.append(None)
+                else:
+                    count = day_counts.get(day, 0)
+                    level = 0 if count == 0 else (1 if count == 1 else (2 if count <= 3 else (3 if count <= 5 else 4)))
+                    column.append({'date': day, 'count': count, 'level': level})
+            weeks.append(column)
+        total = sum(day_counts.get(start + timedelta(days=w * 7 + d), 0) for w in range(26) for d in range(7))
+        active_days = sum(1 for column in weeks for cell in column if cell and cell['count'] > 0)
+        month_marks = []
+        previous_month = None
+        for index, column in enumerate(weeks):
+            first = next((cell for cell in column if cell), None)
+            if first:
+                month = first['date'].strftime('%b')
+                if month != previous_month:
+                    month_marks.append({'index': index, 'label': month})
+                    previous_month = month
+        heatmap = {'weeks': weeks, 'total': total, 'active_days': active_days, 'months': month_marks}
+    except Exception:
+        current_app.logger.exception('Could not build activity heatmap')
     analytics = {
         'streak': streak, 'minutes_30d': minutes, 'due_reviews': due_reviews,
         'quiz_results': quizzes,
@@ -750,7 +790,8 @@ def progress():
                                for item in recent_completions
                            },
                            pathway_destination=destination,
-                           completed_project_ids=completed_project_ids)
+                           completed_project_ids=completed_project_ids,
+                           heatmap=heatmap)
 
 
 @main_bp.route('/review')
@@ -981,3 +1022,95 @@ def update_preferences():
             current_app.logger.exception('Could not reconcile Calendar preferences for user %s', current_user.id)
             return jsonify({'error': 'Preferences saved, but Calendar sync is incomplete. Retry to finish syncing.'}), 502
     return jsonify({'status': 'success'})
+
+
+@main_bp.route('/notifications')
+@login_required
+def notifications_page():
+    """Full list of the derived shell notifications."""
+    from app.services.notifications import build_notifications
+
+    items = build_notifications(current_user)
+    return render_template('notifications.html', items=items)
+
+
+@main_bp.route('/achievements')
+@login_required
+def achievements():
+    """Badge wall computed from the learner's existing records."""
+    from app.services.achievements import compute_achievements
+
+    badges = compute_achievements(current_user)
+    earned = sum(1 for badge in badges if badge['earned'])
+    return render_template(
+        'achievements.html', badges=badges, earned=earned, total=len(badges),
+    )
+
+
+@main_bp.route('/gates')
+@login_required
+def gates():
+    """A gate-by-gate view of the learner's course progression."""
+    completed_ids = completed_lesson_ids(current_user)
+    completed_project_ids = completed_project_modules(current_user)
+    progress = course_progress(
+        current_user, completed=completed_ids,
+        completed_projects=completed_project_ids,
+    )
+    plan = CoursePlan.query.filter_by(user_id=current_user.id).first()
+    pathway_destination = plan.pathway_destination if plan else None
+    progress = pathway_dashboard_progress(
+        current_user, pathway_destination, progress,
+        completed=completed_ids, completed_projects=completed_project_ids,
+    )
+    next_action = progress.get('next_action') or {}
+    next_module_id = None
+    if next_action.get('type') == 'project':
+        next_module_id = next_action.get('module_id')
+    elif next_action.get('lesson_id'):
+        focused = get_lesson(next_action['lesson_id']) or get_machine_learning_lesson(
+            next_action['lesson_id']
+        )
+        next_module_id = focused.get('module_id') if focused else None
+    # ML destination intentionally carries no next_action (the ML card owns it);
+    # without it the map would mark the learner's live module as locked, so
+    # fall back to the first incomplete gate.
+    if next_module_id is None:
+        for module in progress['modules']:
+            if (
+                module['completed_lessons'] < module['total_lessons']
+                or not module['project_completed']
+            ):
+                next_module_id = module['id']
+                break
+    tracks = []
+    for module in progress['modules']:
+        lessons_done = module['completed_lessons']
+        total_lessons = module['total_lessons']
+        project_done = module['project_completed']
+        if project_done and lessons_done == total_lessons:
+            state = 'complete'
+        elif module['id'] == next_module_id:
+            state = 'project' if lessons_done == total_lessons else 'current'
+        elif lessons_done == total_lessons and not project_done:
+            # Earlier module whose lessons are finished but project pending,
+            # and it is not the actionable gate — treat as current too.
+            state = 'project'
+        else:
+            state = 'locked'
+        tracks.append({
+            **module,
+            'state': state,
+            'lessons_left': max(total_lessons - lessons_done, 0),
+        })
+    total = len(tracks)
+    cleared = sum(1 for item in tracks if item['state'] == 'complete')
+    return render_template(
+        'gates.html',
+        tracks=tracks,
+        cleared=cleared,
+        total=total,
+        completed_lessons=progress['completed_lessons'],
+        total_lessons=progress['total_lessons'],
+        pathway_destination=pathway_destination,
+    )

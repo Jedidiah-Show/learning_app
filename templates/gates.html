@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}Gates · RUACH{% endblock %}
+{% block content %}
+<header class="mb-6">
+  <p class="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700">Course progression</p>
+  <h1 class="mt-1 text-3xl font-bold">Your gates</h1>
+  <p class="mt-2 max-w-2xl text-slate-600">Each module is a gate. Pass its lessons, then clear the project to open the next one. Work through them in order — the map shows exactly where you stand.</p>
+</header>
+
+<div class="gates-summary" aria-label="Course summary">
+  <div class="gates-stat"><b>{{ cleared }} / {{ total }}</b><span>gates cleared</span></div>
+  <div class="gates-stat"><b>{{ completed_lessons }} / {{ total_lessons }}</b><span>lessons done</span></div>
+  <div class="gates-stat"><b>{% if cleared == total %}✓{% else %}{{ total - cleared }}{% endif %}</b><span>{% if cleared == total %}course complete{% else %}to open{% endif %}</span></div>
+</div>
+
+<ol class="gates-track">
+  {% for module in tracks %}
+  {% if not loop.first %}
+  {% set prev = tracks[loop.index0 - 1] %}
+  <li class="gate-divider {% if prev.state == 'complete' %}is-open{% endif %}" aria-hidden="true">
+    <span class="gate-divider-icon">{% if prev.state == 'complete' %}🔓{% else %}🔒{% endif %}</span>
+    <span>{% if prev.state == 'complete' %}Gate opened{% else %}Gate sealed — clear Module {{ prev.number }}{% endif %}</span>
+  </li>
+  {% endif %}
+  <li class="gate-stop gate-{{ module.state }}">
+    <div class="gate-node" aria-hidden="true">{% if module.state == 'complete' %}✓{% else %}{{ module.number if module.number is not number else '%02d' % module.number }}{% endif %}</div>
+    <article class="gate-card">
+      <div class="gate-card-head">
+        <span class="gate-kicker">{{ module.badge or ('Module ' ~ module.number) }}</span>
+        {% if module.state == 'complete' %}<span class="gate-pill">✓ Cleared</span>
+        {% elif module.state == 'current' %}<span class="gate-pill">You are here</span>
+        {% elif module.state == 'project' %}<span class="gate-pill">Project gate</span>
+        {% else %}<span class="gate-pill">🔒 Locked</span>{% endif %}
+      </div>
+      <h2 class="gate-title">{{ module.title }}</h2>
+      {% if module.outcome %}<p class="gate-outcome">{{ module.outcome }}</p>{% endif %}
+      <div class="gate-progress" aria-hidden="true"><span style="width:{{ (100 * module.completed_lessons / module.total_lessons)|round if module.total_lessons else 0 }}%"></span></div>
+      <div class="gate-meta">
+        <span>{{ module.completed_lessons }} / {{ module.total_lessons }} lessons</span>
+        <span>·</span>
+        <span>{% if module.project_completed %}Project ✓{% else %}Project outstanding{% endif %}</span>
+        {% if module.estimated_hours %}<span>·</span><span>~{{ module.estimated_hours }}h</span>{% endif %}
+      </div>
+      <div class="gate-actions">
+        <a class="gate-link" href="{{ url_for('main.lessons') }}#module-{{ module.id }}">{% if module.state == 'locked' %}View syllabus{% elif module.completed_lessons < module.total_lessons %}Continue this gate →{% else %}Review this gate{% endif %}</a>
+        {% if module.completed_lessons == module.total_lessons and not module.project_completed %}
+        {% if module.id.startswith('mle.') %}
+        <a class="gate-link" href="{{ url_for('main.machine_learning_specialization') }}#projects">Clear the project gate →</a>
+        {% else %}
+        <a class="gate-link" href="{{ url_for('projects.project_page') }}#module-{{ module.id }}">Clear the project gate →</a>
+        {% endif %}
+        {% endif %}
+      </div>
+    </article>
+  </li>
+  {% endfor %}
+</ol>
+{% endblock %}

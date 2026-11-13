@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Notifications · RUACH{% endblock %}
+{% block content %}
+<header class="mb-6">
+  <p class="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700">Inbox</p>
+  <h1 class="mt-1 text-3xl font-bold">Notifications</h1>
+  <p class="mt-2 max-w-2xl text-slate-600">{% if items %}{{ items|length }} update{{ 's' if items|length != 1 else '' }} waiting for you — replies, reviews and project verdicts.{% else %}Everything is caught up. New replies, reviews and project verdicts will appear here.{% endif %}</p>
+</header>
+
+{% if items %}
+<div class="notif-page-list">
+  {% for item in items %}
+  <a class="notif-page-item notif-item-{{ item.tone }}" href="{{ item.url }}">
+    <span class="notif-page-icon" aria-hidden="true">{{ item.icon }}</span>
+    <span>
+      <span class="notif-item-title">{{ item.title }}</span>
+      <span class="notif-item-body" style="font-size:12px">{{ item.body }}</span>
+    </span>
+    <span class="ml-auto self-center text-slate-400" aria-hidden="true">→</span>
+  </a>
+  {% endfor %}
+</div>
+{% else %}
+<div class="notif-empty" style="padding:56px 16px;border:1px dashed var(--app-border);border-radius:17px">
+  <span style="font-size:34px" aria-hidden="true">✓</span>
+  <strong>You’re all caught up</strong>
+  <span>Nothing needs your attention right now. Keep going — the next lesson or review will put something here.</span>
+  <a class="rounded-lg bg-brand-900 px-4 py-2 font-semibold text-white" href="{{ url_for('main.lessons') }}" style="margin-top:8px">Continue learning →</a>
+</div>
+{% endif %}
+{% endblock %}

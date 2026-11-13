@@ -1,0 +1,31 @@
+{% extends "base.html" %}
+{% block title %}Achievements · RUACH{% endblock %}
+{% block content %}
+<header>
+  <p class="text-xs font-bold uppercase tracking-[0.18em] text-indigo-700">Milestones</p>
+  <h1 class="mt-1 text-3xl font-bold">Achievements</h1>
+  <p class="mt-2 max-w-2xl text-slate-600">Badges earned through real work — lessons, projects, streaks and lab evidence. No badges here are decorative.</p>
+</header>
+
+<div class="achv-summary">
+  <div><b>{{ earned }}<span style="color:var(--app-muted)"> / {{ total }}</span></b><br><span>badges unlocked</span></div>
+  <div style="flex:1;min-width:180px"><div class="achv-progress" style="height:10px"><span style="width:{{ (100 * earned / total)|round if total else 0 }}%"></span></div><p class="achv-progress-label" style="margin-top:6px">{{ total - earned }} to unlock</p></div>
+</div>
+
+<div class="achv-grid">
+  {% for badge in badges %}
+  <article class="achv-card {% if badge.earned %}achv-earned{% else %}achv-locked{% endif %}" aria-label="{{ badge.name }} — {{ 'unlocked' if badge.earned else 'locked' }}">
+    <span class="achv-icon" aria-hidden="true">{{ badge.icon }}</span>
+    <span class="achv-name">{{ badge.name }}</span>
+    <span class="achv-desc">{{ badge.description }}</span>
+    {% if badge.earned %}
+    <span class="achv-state">✓ Unlocked</span>
+    {% else %}
+    <span class="achv-progress"><span style="width:{{ badge.progress_pct or 0 }}%"></span></span>
+    <span class="achv-progress-label">{{ badge.progress_current or 0 }} / {{ badge.progress_target or 1 }}</span>
+    <span class="achv-state">Locked</span>
+    {% endif %}
+  </article>
+  {% endfor %}
+</div>
+{% endblock %}

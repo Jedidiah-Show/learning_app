@@ -394,6 +394,9 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
                 return;
             }
             const evaluation = result.evaluation || {};
+            if (Array.isArray(result.new_badges) && result.new_badges.length && window.showAchievementToasts) {
+                window.showAchievementToasts(result.new_badges);
+            }
             message.textContent = result.verification_pending
                 ? 'Submission saved — completion is pending until your CI reports for the tested commit through the GitHub webhook. You will be marked complete once the run succeeds.'
                 : evaluation.score == null

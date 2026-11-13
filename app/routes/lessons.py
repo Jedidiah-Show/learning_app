@@ -658,6 +658,8 @@ def complete_lesson():
     from app.user_preferences import get_effective_config_for_user
     if not get_effective_config_for_user(current_user).get('progress', {}).get('track_time_spent', True):
         minutes = 0
+    from app.services.achievements import achievement_keys, new_badges_since
+    before_achievements = achievement_keys(current_user)
     completion = LessonCompletion.query.filter_by(
         user_id=current_user.id, lesson_id=lesson_id
     ).first()
@@ -724,9 +726,12 @@ def complete_lesson():
             'status': 'success',
             'already_completed': True,
             **_next_course_payload(),
+            'new_badges': [],
             'completed_lesson_id': lesson_id,
         })
+    earned_badges = new_badges_since(current_user, before_achievements)
     return jsonify({'status': 'success', **_next_course_payload(),
+                    'new_badges': earned_badges,
                     'completed_lesson_id': lesson_id})
 
 
