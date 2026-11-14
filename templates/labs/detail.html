@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% block title %}{{ lab.title }} · Engineering Labs · RUACH{% endblock %}
+{% block content %}
+<a href="{{ url_for('main.engineering_labs', domain=domain.id) }}" class="text-sm font-semibold text-indigo-700 hover:underline">← Back to {{ domain.label }} labs</a>
+<header class="mt-3 mb-6 rounded-2xl bg-brand-950 p-6 text-white">
+  <p class="text-xs font-semibold uppercase tracking-wide text-emerald-200">{{ domain.label }} · Engineering Lab</p>
+  <h1 class="mt-2 text-3xl font-bold">{{ lab.title }}</h1>
+  <p class="mt-3 text-emerald-50">{{ lab.scenario }}</p>
+</header>
+
+<div class="grid gap-5 lg:grid-cols-2">
+  <section class="rounded-2xl border bg-white p-5">
+    <h2 class="text-lg font-bold">Investigation tasks</h2>
+    <ol class="mt-3 list-decimal space-y-2 pl-5 text-slate-700">
+      {% for task in lab.tasks %}<li>{{ task }}</li>{% endfor %}
+    </ol>
+  </section>
+  <section class="rounded-2xl border bg-white p-5">
+    <h2 class="text-lg font-bold">Success criteria</h2>
+    <ul class="mt-3 list-disc space-y-2 pl-5 text-slate-700">
+      {% for item in lab.success_criteria %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+  </section>
+  <section class="rounded-2xl border bg-white p-5">
+    <h2 class="text-lg font-bold">Hints</h2>
+    <ul class="mt-3 list-disc space-y-2 pl-5 text-slate-700">
+      {% for hint in lab.hints %}<li>{{ hint }}</li>{% endfor %}
+    </ul>
+  </section>
+  <section class="rounded-2xl border bg-white p-5">
+    <h2 class="text-lg font-bold">Reset guidance</h2>
+    <p class="mt-3 text-slate-700">{{ lab.reset_guidance }}</p>
+    <h3 class="mt-4 font-semibold">Completion evidence to capture</h3>
+    <ul class="mt-2 list-disc space-y-1 pl-5 text-slate-700">
+      {% for item in lab.evidence %}<li>{{ item }}</li>{% endfor %}
+    </ul>
+  </section>
+</div>
+
+<p class="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><strong>Note:</strong> This is a deterministic learning scenario. Use the reset guidance to return to a clean baseline before retrying. Record evidence (notes, outputs, artifacts) in your project/showcase workflow for verification.</p>
+{% endblock %}

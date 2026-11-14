@@ -88,11 +88,11 @@ def next_course_action(user, completed=None, completed_projects=None,
     completed, completed_projects = _merged_completions(
         uq, destination, completed, completed_projects
     )
-    from app.pathway_scope import pathway_modules
-    # Scoped to the learner's own modules: for an ML destination the pointer
+    from app.pathway_scope import course_modules
+    # Scoped to the learner's own course: for an ML destination the pointer
     # walks the foundation straight into the pathway and stops there.
     return _next_course_action(
-        completed, completed_projects, modules=pathway_modules(destination)
+        completed, completed_projects, modules=course_modules(destination)
     )
 
 
@@ -122,7 +122,7 @@ def lesson_is_available(user, lesson_id, completed=None, completed_projects=None
     """
     from app.curriculum import get_lesson
     from app.ml_pathway import get_machine_learning_lesson
-    from app.pathway_scope import FOUNDATION_MODULE_IDS, is_ml
+    from app.pathway_scope import foundation_course_modules
 
     uq = _user_id(user)
     destination = _scope(uq, None)
@@ -130,10 +130,30 @@ def lesson_is_available(user, lesson_id, completed=None, completed_projects=None
     ml_lesson = get_machine_learning_lesson(lesson_id)
     if ai_lesson is None and ml_lesson is None:
         return False
-    if is_ml(destination):
-        if ai_lesson is not None and ai_lesson['module_id'] not in FOUNDATION_MODULE_IDS:
+
+    # A dual-enrolled learner can open both specialisations.  A learner scoped
+    # to exactly one pathway cannot open the other's modules; foundation
+    # lessons (00–02) are always shared.
+    from app.pathway_scope import active_pathway_enrolments, is_ml
+    enrolled_ids = {
+        enrolment.pathway_id
+        for enrolment, _ in active_pathway_enrolments(uq)
+    }
+    has_ai = 'ai-engineering' in enrolled_ids
+    has_ml = 'machine-learning' in enrolled_ids
+    if not enrolled_ids:
+        # Legacy single-destination accounts: the plan decides the scope.
+        if is_ml(destination):
+            has_ml = True
+        else:
+            has_ai = True
+    foundation_ids = {
+        module['id'] for module in foundation_course_modules()
+    }
+    if ai_lesson is not None and ai_lesson['module_id'] not in foundation_ids:
+        if not has_ai:
             return False
-    elif ml_lesson is not None:
+    if ml_lesson is not None and not has_ml:
         return False
 
     if completed is None:
@@ -173,7 +193,7 @@ def course_progress(user, completed=None, completed_projects=None,
     course as authored (credential eligibility) pass ``destination='ai'``.
     """
     from app.pathway_scope import (
-        destination_for, is_ml, module_entry, pathway_modules,
+        course_modules, is_ml, module_entry,
     )
 
     uq = _user_id(user)
@@ -185,7 +205,7 @@ def course_progress(user, completed=None, completed_projects=None,
     completed, completed_projects = _merged_completions(
         uq, destination, completed, completed_projects
     )
-    modules = pathway_modules(destination)
+    modules = course_modules(destination)
     lessons = [lesson for module in modules for lesson in module['lessons']]
     # Reuse these sets for all progress fields. Re-querying through
     # next_course_action() and next_unlocked_lesson() made dashboard renders
@@ -229,7 +249,9 @@ def pathway_dashboard_progress(user, destination, progress,
     ``progress`` comes from :func:`course_progress` and is left untouched, so a
     caller can still compare against the shared-course numbers.
     """
-    if destination != 'ml':
+    from app.pathway_scope import is_ml
+
+    if not is_ml(destination):
         return progress
 
     from app.ml_pathway import machine_learning_pathway, ml_module_progress

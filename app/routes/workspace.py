@@ -27,12 +27,18 @@ KIT_ROOT = ROOT / 'starter_kits' / 'machine_learning'
 
 # Project keys are server-owned; they never take a caller-supplied path.
 WORKSPACE_PROJECTS = {
-    'ml-module-1': ('mle.data-problem-formulation', 'ML module 1 — Audit a prediction dataset', 'module_1'),
-    'ml-module-2': ('mle.classical-ml', 'ML module 2 — Train and evaluate a classifier', 'module_2'),
-    'ml-module-3': ('mle.reproducible-training', 'ML module 3 — Make a training run reproducible', 'module_3'),
-    'ml-module-4': ('mle.production-ml', 'ML module 4 — Serve and operate a tabular model', 'module_4'),
-    'ml-module-5': ('mle.pytorch-advanced', 'ML module 5 — PyTorch advanced', 'module_5'),
-    'ml-module-6': ('mle.capstone-integration', 'ML module 6 — Capstone integration', 'module_6'),
+    'ml-module-1': ('mle.ai-tools', 'ML module 1 — AI tools and decision-making', 'module_1_ai_tools'),
+    'ml-module-2': ('mle.math-foundations', 'ML module 2 — Mathematics foundations', 'module_2_math_foundations'),
+    'ml-module-3': ('mle.data-problem-formulation', 'ML module 3 — Audit a prediction dataset', 'module_3_data_problem'),
+    'ml-module-4': ('mle.classical-ml', 'ML module 4 — Classical baseline', 'module_4_classical_ml'),
+    'ml-module-5': ('mle.classification-models', 'ML module 5 — Classification models', 'module_5_classification'),
+    'ml-module-6': ('mle.unsupervised-learning', 'ML module 6 — Unsupervised learning', 'module_6_unsupervised'),
+    'ml-module-7': ('mle.deep-learning', 'ML module 7 — Deep learning', 'module_7_deep_learning'),
+    'ml-module-8': ('mle.computer-vision', 'ML module 8 — Computer vision', 'module_8_computer_vision'),
+    'ml-module-9': ('mle.reproducible-training', 'ML module 9 — Reproducible training', 'module_9_reproducible_training'),
+    'ml-module-10': ('mle.pytorch-advanced', 'ML module 10 — PyTorch advanced', 'module_10_pytorch_advanced'),
+    'ml-module-11': ('mle.production-ml', 'ML module 11 — Production ML', 'module_11_production_ml'),
+    'ml-module-12': ('mle.capstone-integration', 'ML module 12 — Capstone integration', 'module_12_capstone'),
 }
 
 MAX_FILES = 50

@@ -12,8 +12,7 @@
     <button id="filter-ai" type="button" class="module-filter-btn" data-module-filter="ai" aria-pressed="false">AI &amp; foundation</button>
     <button id="filter-ml" type="button" class="module-filter-btn" data-module-filter="ml" aria-pressed="false">ML pathway</button>
   </div>
-  {% set pathway_ids = {e.pathway_id for _, e in pathway_enrolments} %}
-  {% set has_ml = 'machine-learning' in pathway_ids %}
+    {% set has_ml = 'machine-learning' in pathway_ids %}
   {% if has_ml %}
   {# The nav names this page "AI Pathway", but for an ML learner it lists the
      whole course — say so plainly, and point at the pathway home. #}
@@ -75,7 +74,7 @@
 </header>
 {% if ml_overview %}
 <section class="mb-7 rounded-2xl border {% if ml_overview.prerequisites_met %}border-violet-200 bg-violet-50{% else %}border-slate-200 bg-white{% endif %} p-5 shadow-sm">
-  <p class="text-xs font-bold uppercase tracking-wider {% if ml_overview.prerequisites_met %}text-violet-700{% else %}text-slate-500{% endif %}">Second pathway · optional</p>
+  <p class="text-xs font-bold uppercase tracking-wider {% if ml_overview.prerequisites_met %}text-violet-700{% else %}text-slate-500{% endif %}">Parallel pathway</p>
   <h3 class="mt-2 text-lg font-bold text-slate-900">{{ ml_overview.title }}</h3>
   {% if ml_overview.complete %}
   <p class="mt-2 text-sm text-violet-900">All {{ ml_overview.total_lessons }} lessons and {{ ml_overview.total_projects }} projects passed. Your credential is ready to claim.</p>

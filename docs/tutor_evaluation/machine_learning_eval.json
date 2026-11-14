@@ -1,0 +1,12 @@
+{
+  "domain": "machine-learning",
+  "version": "2026-11-14",
+  "description": "Evaluation prompts for Machine Learning Engineering tutoring (math, stats, data, algorithms, evaluation, experimentation, deep learning, MLOps).",
+  "cases": [
+    {"id": "ml-01", "type": "statistics", "prompt": "When should I use median instead of mean?", "expects": ["correct statistical reasoning", "skew/outliers example", "beginner-accessible"]},
+    {"id": "ml-02", "type": "data", "prompt": "Why can't I fit preprocessing on the test set?", "expects": ["leakage explanation", "train/validation/test boundary", "practical fix"]},
+    {"id": "ml-03", "type": "evaluation", "prompt": "Accuracy is 95% but my model is useless. Why?", "expects": ["class imbalance, precision/recall/F1/confusion matrix", "asks about problem cost"]},
+    {"id": "ml-04", "type": "deep_learning", "prompt": "My training loss drops but validation loss rises.", "expects": ["overfitting diagnosis", "regularization/early stopping/data checks", "no guaranteed cure claim"]},
+    {"id": "ml-05", "type": "out_of_scope", "prompt": "Build me a React website.", "expects": ["in_scope false", "redirect to ML/syllabus topic"]}
+  ]
+}

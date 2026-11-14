@@ -294,10 +294,10 @@
       </div>
       <p id="tutor-history-status" class="text-sm text-slate-600" role="status" aria-live="polite">Loading saved conversation…</p>
       <p class="mt-2 text-xs text-slate-500">AI-generated feedback — verify important details against the lesson.</p>
-      <div id="answer" class="tutor-chat" role="log" aria-live="polite" aria-relevant="additions text">
+      <div id="answer" class="tutor-chat" role="log" aria-live="polite" aria-relevant="additions text" data-tutor-greeting="{{ tutor_greeting|e }}">
         <article class="tutor-message tutor-message-assistant">
           <span class="tutor-message-author">Tutor</span>
-          <p>Hi, I’m Ruach-AI, your tutor for the RUACH AI & ML Engineering course. What would you like to understand better in this lesson?</p>
+          <p>{{ tutor_greeting }}</p>
         </article>
       </div>
       <form id="ask-form" class="lesson-ask-form tutor-composer">
@@ -465,13 +465,14 @@ const addTutorMessage = (role, text, state = '') => {
   tutorChat.scrollTop = tutorChat.scrollHeight;
   return message;
 };
+const tutorGreeting = (tutorChat && tutorChat.dataset.tutorGreeting) || 'Hi, I’m Ruach-AI, your tutor for the RUACH AI & ML Engineering course. What would you like to understand better in this lesson?';
 const renderTutorHistory = () => {
   if (tutorHistory.length) {
     tutorChat.replaceChildren();
     tutorHistory.forEach((item) => addTutorMessage(item.role, item.content));
   } else {
     tutorChat.replaceChildren();
-    addTutorMessage('assistant', 'Hi, I’m Ruach-AI, your tutor for the RUACH AI & ML Engineering course. What would you like to understand better in this lesson?');
+    addTutorMessage('assistant', tutorGreeting);
   }
 };
 fetch(`/api/lessons/tutor/history/${encodeURIComponent(lessonId)}`)

@@ -29,7 +29,10 @@ from app.routes.ml_specialization import _report_matches  # noqa: E402
 def _run_kit_tests(module_dir):
     kit = KITS / module_dir
     test_path = next((kit / 'tests').glob('test_*.py'))
-    namespace = {'__name__': f'reference_{module_dir}'}
+    namespace = {
+        '__name__': f'reference_{module_dir}',
+        '__file__': str(test_path),
+    }
     previous_cwd = os.getcwd()
     os.chdir(kit)
     try:
@@ -78,4 +81,32 @@ class StarterContractReferenceTests(unittest.TestCase):
             project_report.build_report(
                 joblib.load(train_model.train_and_save())
             ),
+        ))
+
+    def test_module_5_classifier_reference_meets_kit_and_server_contracts(self):
+        spam_model = reload(import_module('spam_model'))
+        self.assertEqual(_run_kit_tests('module_5'), [])
+        self.assertTrue(_report_matches(
+            'mle.classification-models', spam_model.build_report()
+        ))
+
+    def test_module_6_segmentation_reference_meets_kit_and_server_contracts(self):
+        segmentation = reload(import_module('segmentation'))
+        self.assertEqual(_run_kit_tests('module_6'), [])
+        self.assertTrue(_report_matches(
+            'mle.unsupervised-learning', segmentation.build_report()
+        ))
+
+    def test_module_7_digits_reference_meets_kit_and_server_contracts(self):
+        digit_model = reload(import_module('digit_model'))
+        self.assertEqual(_run_kit_tests('module_7'), [])
+        self.assertTrue(_report_matches(
+            'mle.deep-learning', digit_model.build_report()
+        ))
+
+    def test_module_8_vision_reference_meets_kit_and_server_contracts(self):
+        vision_model = reload(import_module('vision_model'))
+        self.assertEqual(_run_kit_tests('module_8'), [])
+        self.assertTrue(_report_matches(
+            'mle.computer-vision', vision_model.build_report()
         ))

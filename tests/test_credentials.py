@@ -65,15 +65,21 @@ class CredentialScopeTests(unittest.TestCase):
     def test_ml_learner_credential_page_does_not_show_ai_course_counts(self):
         self.register('mlcred')
         self.set_destination('mlcred', 'ml')
+        with self.app.app_context():
+            from app.learning import course_progress
+            user = User.query.filter_by(username='mlcred').one()
+            scoped = course_progress(user, destination='ai-engineering')
+            ml = course_progress(user, destination='machine-learning')
         response = self.client.get('/credential')
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
         # ML destination scope: shared foundation plus the ML pathway modules,
-        # not the AI course's full 213 lessons / 13 modules.
-        self.assertIn('0 / 76', html)
-        self.assertIn('0 / 9', html)
-        self.assertNotIn('0 / 213', html)
-        self.assertNotIn('0 / 13', html)
+        # not the AI course's full authored catalogue.
+        self.assertIn(f"0 / {ml['total_lessons']}", html)
+        self.assertIn(f"0 / {ml['total_projects']}", html)
+        self.assertNotIn(f"0 / {scoped['total_lessons']}", html)
+        self.assertNotIn(f"0 / {scoped['total_projects']}", html)
+        self.assertLess(ml['total_lessons'], scoped['total_lessons'])
 
     def test_credential_issue_is_still_gated_on_the_ai_course(self):
         self.register('creduser')

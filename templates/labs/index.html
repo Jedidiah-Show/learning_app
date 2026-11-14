@@ -1,0 +1,39 @@
+{% extends "base.html" %}
+{% block title %}Engineering Labs · RUACH{% endblock %}
+{% block content %}
+<header class="mb-7">
+  <p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Engineering Labs 2.0</p>
+  <h1 class="mt-2 text-3xl font-bold">Domain-specific troubleshooting labs</h1>
+  <p class="mt-2 max-w-3xl text-slate-600">Practice realistic engineering scenarios with guided investigation, success criteria, and reset guidance. Labs are deterministic learning scenarios; completion evidence can be recorded alongside your project and showcase artifacts.</p>
+</header>
+
+<div class="mb-6 flex flex-wrap gap-2">
+  <a href="{{ url_for('main.engineering_labs') }}" class="rounded-full px-3 py-1.5 text-sm font-semibold {{ 'bg-indigo-600 text-white' if not selected_domain else 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}">All domains</a>
+  {% for d in domains %}
+  <a href="{{ url_for('main.engineering_labs', domain=d.id) }}" class="rounded-full px-3 py-1.5 text-sm font-semibold {{ 'bg-indigo-600 text-white' if selected_domain and selected_domain.id == d.id else 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}">{{ d.label }}</a>
+  {% endfor %}
+</div>
+
+{% set shown = [selected_domain] if selected_domain else domains %}
+{% for domain in shown %}
+<section class="mb-8" aria-labelledby="labs-{{ domain.id }}">
+  <div class="mb-3">
+    <p class="text-xs font-semibold uppercase tracking-wide text-indigo-600">{{ domain.label }}</p>
+    <h2 id="labs-{{ domain.id }}" class="text-xl font-bold">{{ domain.label }} labs</h2>
+    <p class="mt-1 text-slate-600">{{ domain.description }}</p>
+  </div>
+  <div class="grid gap-4 md:grid-cols-2">
+    {% for lab in domain.labs %}
+    <article class="rounded-2xl border bg-white p-5">
+      <h3 class="text-lg font-bold">{{ lab.title }}</h3>
+      <p class="mt-2 text-sm text-slate-700">{{ lab.scenario }}</p>
+      <ul class="mt-3 list-disc space-y-1 pl-5 text-sm text-slate-700">
+        {% for task in lab.tasks[:3] %}<li>{{ task }}</li>{% endfor %}
+      </ul>
+      <a class="mt-4 inline-block font-semibold text-indigo-700 hover:underline" href="{{ url_for('main.engineering_lab_detail', domain_id=domain.id, lab_id=lab.id) }}">Open lab →</a>
+    </article>
+    {% endfor %}
+  </div>
+</section>
+{% endfor %}
+{% endblock %}

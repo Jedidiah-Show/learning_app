@@ -8,10 +8,6 @@
    shared foundation (hero, cards, curriculum grid) is never split or
    reordered — only this section moves. #}
 {# Determine if learner is enrolled in ML pathway #}
-{% set pathway_ids = [] %}
-  {% for _, e in pathway_enrolments %}
-    {% set pathway_ids = pathway_ids + [e.pathway_id] %}
-  {% endfor %}
 {% set has_ml = 'machine-learning' in pathway_ids %}
 {% set ml_leads = has_ml and ml_overview %}
 {# The hero leads with pathway milestones only once the pathway is actually
@@ -19,7 +15,7 @@
 {% set ml_hero = ml_leads and ml_overview.prerequisites_met and ml_overview.total_lessons %}
 {% if ml_overview %}{% set ml_card %}
 <section class="mt-8 rounded-2xl border {% if ml_overview.prerequisites_met %}border-violet-200 bg-violet-50{% else %}border-slate-200 bg-white{% endif %} p-6 shadow-sm">
-  <p class="text-xs font-bold uppercase tracking-wider {% if ml_overview.prerequisites_met %}text-violet-700{% else %}text-slate-500{% endif %}">{% if ml_leads %}Your pathway{% else %}Optional pathway{% endif %}</p>
+  <p class="text-xs font-bold uppercase tracking-wider {% if ml_overview.prerequisites_met %}text-violet-700{% else %}text-slate-500{% endif %}">{% if ml_leads %}Your pathway{% else %}Machine Learning pathway{% endif %}</p>
   <h3 class="mt-2 text-xl font-bold text-slate-900">{{ ml_overview.title }} specialization</h3>
   {% if ml_overview.complete %}
   <p class="mt-2 text-sm text-violet-900">All {{ ml_overview.total_lessons }} lessons and {{ ml_overview.total_projects }} projects passed. Your specialization credential is ready to claim.</p>

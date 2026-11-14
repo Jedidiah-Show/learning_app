@@ -134,7 +134,7 @@
       "artifacts": [
         "src/segmentation.py - the learner implements kmeans(points, k, ...) and build_report().",
         "artifacts/clusters.csv - one row per pixel with pixel_index and cluster; the report recomputes the agreement with the true regions from this file.",
-        "artifacts/segmentation.ppm - the segmented image saved as a plain PPM image (the standard library can write this without any extra package); the report checks that the file exists and has the right number of pixels.",
+        "artifacts/segmentation.ppm - the segmented image saved as a plain PPM image (the standard library can write this without any extra package); the report checks that the file exists and has the right number of pixels."
       ],
       "reference": "tests/ml_reference/segmentation.py"
     }

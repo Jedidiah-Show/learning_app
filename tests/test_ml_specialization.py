@@ -92,11 +92,11 @@ class MLSpecializationFlowTests(unittest.TestCase):
             if lesson.get('status') == 'ready'
         ][0]
         self.assertIn('Continue: ' + first['title'], opened.get_data(as_text=True))
-        self.assertIn('0 of 26 lessons · 0 of 6 projects complete', opened.get_data(as_text=True))
+        self.assertIn('0 of 59 lessons · 0 of 12 projects complete', opened.get_data(as_text=True))
 
         self._complete_quiz(first)
         advanced = self.client.get('/').get_data(as_text=True)
-        self.assertIn('1 of 26 lessons', advanced)
+        self.assertIn('1 of 59 lessons', advanced)
 
     def test_dashboard_compares_distinct_pathway_progress_and_shows_one_ml_card(self):
         self._complete_shared_prerequisites()
@@ -128,18 +128,34 @@ class MLSpecializationFlowTests(unittest.TestCase):
         self.assertEqual(pathway['id'], PATHWAY_ID)
         first_module_lessons = pathway['modules'][0]['lessons']
         self.assertEqual(
-            [lesson['id'] for lesson in first_module_lessons[:8]],
-            [f'mle.math.{index:02d}' for index in range(1, 9)],
+            [lesson['id'] for lesson in first_module_lessons],
+            [f'mle.tools.{index:02d}' for index in range(1, 5)],
         )
-        self.assertEqual(first_module_lessons[8]['id'], 'mle.data.01')
+        second_module_lessons = pathway['modules'][1]['lessons']
+        self.assertEqual(
+            [lesson['id'] for lesson in second_module_lessons],
+            [f'mle.math.{index:02d}' for index in range(0, 9)],
+        )
 
     def test_ml_lesson_evidence_is_pathway_scoped_and_not_mastery(self):
         self._complete_shared_prerequisites()
+        first_module = machine_learning_pathway()['modules'][0]
+        for item in first_module['lessons']:
+            self.assertEqual(self._complete_quiz(item).status_code, 302)
+        with self.app.app_context():
+            user = User.query.filter_by(username='mllearner').one()
+            db.session.add(MLSpecializationProject(
+                user_id=user.id, pathway_id=PATHWAY_ID,
+                module_id=first_module['id'], completed=True,
+            ))
+            db.session.commit()
+        second_module = machine_learning_pathway()['modules'][1]
+        for item in second_module['lessons'][:2]:
+            self.assertEqual(self._complete_quiz(item).status_code, 302)
         lesson = next(
-            item for item in machine_learning_pathway()['modules'][0]['lessons']
+            item for item in second_module['lessons']
             if item['id'] == 'mle.math.01'
         )
-        self.assertEqual(self._complete_quiz(lesson).status_code, 302)
 
         from app.services.skill_passport import get_user_all_skill_states
 
@@ -162,11 +178,17 @@ class MLSpecializationFlowTests(unittest.TestCase):
 
     def test_all_starter_downloads_contain_the_expected_project_files(self):
         for module_id, root in (
+            ('mle.ai-tools', 'ruach-ml-ai-tools'),
+            ('mle.math-foundations', 'ruach-ml-math-foundations'),
             ('mle.data-problem-formulation', 'ruach-ml-data-audit'),
             ('mle.classical-ml', 'ruach-ml-classical-baseline'),
+            ('mle.classification-models', 'ruach-ml-classification'),
+            ('mle.unsupervised-learning', 'ruach-ml-unsupervised'),
+            ('mle.deep-learning', 'ruach-ml-deep-learning'),
+            ('mle.computer-vision', 'ruach-ml-computer-vision'),
             ('mle.reproducible-training', 'ruach-ml-reproducible-training'),
-            ('mle.production-ml', 'ruach-ml-production-service'),
             ('mle.pytorch-advanced', 'ruach-ml-pytorch-advanced'),
+            ('mle.production-ml', 'ruach-ml-production-service'),
             ('mle.capstone-integration', 'ruach-ml-capstone-integration'),
         ):
             response = self.client.get(
@@ -190,6 +212,11 @@ class MLSpecializationFlowTests(unittest.TestCase):
             'preprocessing_in_pipeline': True,
             'evaluation_set_used_for_fitting': False,
             'data_split': 'fixed_holdout',
+            'regression_train_rows': 12,
+            'regression_test_rows': 4,
+            'regression_mae': 12000.0,
+            'regression_r2': 0.91,
+            'regression_features': ['size_sqm', 'bedrooms', 'location_score'],
         }
         self.assertTrue(_report_matches('mle.classical-ml', classical))
         classical['f1'] = .79
@@ -222,7 +249,7 @@ class MLSpecializationFlowTests(unittest.TestCase):
 
         pytorch = {
             'train_rows': 24, 'evaluation_rows': 12,
-            'dataset_sha256': _dataset_sha256(5),
+            'dataset_sha256': 'b' * 64,
             'feature_columns': ['support_tickets', 'tenure_months'],
             'baseline_accuracy': 8 / 12,
             'model_family': 'pytorch_mlp',
@@ -238,12 +265,14 @@ class MLSpecializationFlowTests(unittest.TestCase):
 
         capstone = {
             'train_rows': 24, 'evaluation_rows': 12,
-            'dataset_sha256': _dataset_sha256(6),
+            'dataset_sha256': 'c' * 64,
             'feature_columns': ['support_tickets', 'tenure_months'],
             'baseline_accuracy': 8 / 12,
             'stages': [
-                'data_audit', 'classical_baseline', 'reproducible_training',
-                'production_service', 'pytorch_model', 'integration_test',
+                'data_audit', 'math_foundations', 'classical_baseline',
+                'classification', 'unsupervised', 'deep_learning',
+                'computer_vision', 'reproducible_training', 'pytorch_model',
+                'production_service', 'integration_test', 'release_review',
             ],
             'monitoring_signals': [
                 'error_rate', 'latency', 'input_drift', 'prediction_drift',
@@ -281,14 +310,16 @@ class MLSpecializationFlowTests(unittest.TestCase):
             self.assertEqual(len(ml_completions), len(lessons))
             self.assertEqual(LessonCompletion.query.filter_by(user_id=user.id).count(), 0)
 
+        first_module_id = machine_learning_pathway()['modules'][0]['id']
         project = self.client.get(
-            '/specializations/machine-learning/projects/mle.data-problem-formulation'
+            f"/specializations/machine-learning/projects/{first_module_id}"
         )
         self.assertEqual(project.status_code, 200)
 
     def test_project_and_credential_stay_locked_until_requirements_are_met(self):
+        first_module_id = machine_learning_pathway()['modules'][0]['id']
         project = self.client.get(
-            '/specializations/machine-learning/projects/mle.data-problem-formulation'
+            f"/specializations/machine-learning/projects/{first_module_id}"
         )
         self.assertEqual(project.status_code, 403)
         credential = self.client.get('/specializations/machine-learning/credential')
@@ -304,15 +335,15 @@ class MLSpecializationFlowTests(unittest.TestCase):
             self.assertEqual(self._complete_quiz(lesson).status_code, 302)
 
         page = self.client.get(
-            '/specializations/machine-learning/projects/mle.data-problem-formulation'
+            f"/specializations/machine-learning/projects/{module['id']}"
         )
         csrf = self._csrf_token(page)
         evaluation = {
             'score': 85,
             'summary': 'The evidence satisfies the project requirements.',
-            'strengths': ['The data checks are clear.'],
+            'strengths': ['The rules and decision record are clear.'],
             'gaps': [],
-            'next_steps': ['Keep the audit repeatable.'],
+            'next_steps': ['Keep the decision table covered by tests.'],
             'criterion_feedback': [{
                 'criterion': item['criterion'], 'score': 85,
                 'evidence': 'The report and reflection explain this choice.',
@@ -324,21 +355,20 @@ class MLSpecializationFlowTests(unittest.TestCase):
             return_value={'verified': True, 'checks_status': 200},
         ), patch('app.gemini.generate_json', return_value=evaluation):
             response = self.client.post(
-                '/specializations/machine-learning/projects/mle.data-problem-formulation/submit',
+                f"/specializations/machine-learning/projects/{module['id']}/submit",
                 headers={'X-CSRF-Token': csrf},
                 json={
-                    'repository_url': 'https://github.com/learner/ml-audit',
-                    'checks_url': 'https://github.com/learner/ml-audit/actions/runs/1',
+                    'repository_url': 'https://github.com/learner/ml-ai-tools',
+                    'checks_url': 'https://github.com/learner/ml-ai-tools/actions/runs/1',
                     'commit_sha': 'a' * 40,
-                    'reflection': 'I audited the source data, preserved the time boundary, '
-                                  'and excluded post-outcome refund information from features.',
+                    'reflection': 'I wrote three explicit decision rules, ran them over every '
+                                  'bundled request, and checked the recorded decisions against '
+                                  'the expected answers before submitting.',
                     'report': {
-                        'row_count': 12, 'required_columns_present': True,
-                        'unique_order_ids': 12, 'missing_order_total_count': 1,
-                        'nonpositive_order_total_count': 1, 'returned_count': 4,
-                        'development_rows': 8, 'evaluation_rows': 4,
-                        'split_strategy': 'time_ordered',
-                        'leakage_features': ['refund_reason'],
+                        'requests_total': 12, 'decisions_recorded': 12,
+                        'correct_decisions': 12, 'decision_rules': 3,
+                        'distinct_decisions': 2, 'readme_present': True,
+                        'run_script_present': True,
                     },
                 },
             )
@@ -354,16 +384,13 @@ class MLSpecializationFlowTests(unittest.TestCase):
             from app.services.skill_passport import get_user_all_skill_states
             states = get_user_all_skill_states(user.id)
             self.assertEqual(
-                states['ml-feature-engineering']['status'], 'DEMONSTRATED'
+                states['ml-python-programming']['status'], 'DEMONSTRATED'
             )
             self.assertEqual(
-                states['ml-feature-engineering']['evidence_type'], 'ML_PROJECT'
+                states['ml-python-programming']['evidence_type'], 'ML_PROJECT'
             )
             self.assertEqual(
-                states['ml-feature-engineering']['evidence_id'], module['id']
-            )
-            self.assertEqual(
-                states['ml-mathematics-statistics']['status'], 'DEVELOPING'
+                states['ml-python-programming']['evidence_id'], module['id']
             )
 
     def test_failed_submissions_record_a_classified_failure_stage(self):
@@ -380,24 +407,22 @@ class MLSpecializationFlowTests(unittest.TestCase):
         )
         csrf = self._csrf_token(page)
         report = {
-            'row_count': 12, 'required_columns_present': True,
-            'unique_order_ids': 12, 'missing_order_total_count': 1,
-            'nonpositive_order_total_count': 1, 'returned_count': 4,
-            'development_rows': 8, 'evaluation_rows': 4,
-            'split_strategy': 'time_ordered',
-            'leakage_features': ['refund_reason'],
+            'requests_total': 12, 'decisions_recorded': 12,
+            'correct_decisions': 12, 'decision_rules': 3,
+            'distinct_decisions': 2, 'readme_present': True,
+            'run_script_present': True,
         }
         reflection = (
-            'I audited the source data, preserved the time boundary, '
-            'and excluded post-outcome refund information from features. '
-            'The split follows the documented contract exactly.'
+            'I wrote the decision rules down before running them, recorded one '
+            'decision per support request, and verified every recorded decision '
+            'against the expected answer in the bundled dataset.'
         )
         rubric = module['project_rubric']
 
         def submit(payload):
             return self.client.post(url, headers={'X-CSRF-Token': csrf}, json={
-                'repository_url': 'https://github.com/learner/ml-audit',
-                'checks_url': 'https://github.com/learner/ml-audit/actions/runs/1',
+                'repository_url': 'https://github.com/learner/ml-ai-tools',
+                'checks_url': 'https://github.com/learner/ml-ai-tools/actions/runs/1',
                 'commit_sha': 'a' * 40,
                 'reflection': reflection, 'report': payload,
             })
@@ -430,7 +455,7 @@ class MLSpecializationFlowTests(unittest.TestCase):
             }
 
         # 1. Report does not match the server-owned contract.
-        broken = dict(report, row_count=999)
+        broken = dict(report, requests_total=999)
         response = submit(broken)
         self.assertEqual(response.status_code, 422)
         self.assertTrue(response.get_json()['draft_saved'])
@@ -494,7 +519,7 @@ class MLSpecializationFlowTests(unittest.TestCase):
         self.assertIsNone(state['detail'])
         self.assertTrue(state['completed'])
 
-        response = submit(dict(report, row_count=999))
+        response = submit(dict(report, requests_total=999))
         self.assertEqual(response.status_code, 422)
         with self.app.app_context():
             user = User.query.filter_by(username='mllearner').one()
@@ -502,10 +527,10 @@ class MLSpecializationFlowTests(unittest.TestCase):
             states = get_user_all_skill_states(user.id)
             self.assertFalse(recorded()['completed'])
             self.assertEqual(
-                states['ml-data-preparation']['status'], 'DEVELOPING'
+                states['ml-python-programming']['status'], 'DEVELOPING'
             )
             self.assertEqual(
-                states['ml-data-preparation']['evidence_type'], 'ML_LESSON'
+                states['ml-python-programming']['evidence_type'], 'ML_LESSON'
             )
 
     def test_eligible_learner_can_issue_and_publicly_verify_credential(self):
@@ -594,7 +619,7 @@ class MLSpecializationFlowTests(unittest.TestCase):
             plan = ml_pathway_pacing(user_id)
             self.assertEqual(plan['pathway_id'], PATHWAY_ID)
             self.assertEqual(plan['weekly_hours'], 6)
-            self.assertEqual(len(plan['modules']), 6)
+            self.assertEqual(len(plan['modules']), 12)
             self.assertGreater(plan['total_hours'], 0)
             self.assertEqual(
                 plan['estimated_weeks'],
@@ -602,7 +627,8 @@ class MLSpecializationFlowTests(unittest.TestCase):
             )
             # The plan is derived from authored order, never reordered.
             self.assertEqual(
-                [item['number'] for item in plan['modules']], [1, 2, 3, 4, 5, 6]
+                [item['number'] for item in plan['modules']],
+                list(range(1, 13)),
             )
             self.assertEqual(plan['modules'][0]['status'], 'In progress')
             self.assertEqual(plan['modules'][1]['status'], 'Up next')
@@ -637,10 +663,10 @@ class MLSpecializationFlowTests(unittest.TestCase):
         response = self.client.get('/lessons')
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        # The AI lesson catalog keeps an unobtrusive second-pathway card that
-        # names the ML pathway and links to it; AI course projects do not gate it.
+        # The AI lesson catalog keeps a parallel-pathway card that names the ML
+        # pathway and links to it; AI course projects do not gate it.
         self.assertIn('Machine Learning Engineering', page)
-        self.assertIn('Second pathway', page)
+        self.assertIn('Parallel pathway', page)
         self.assertIn('Open ML pathway', page)
         self.assertIn('Continue: ', page)
 

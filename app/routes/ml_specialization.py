@@ -166,184 +166,64 @@ def _dataset_sha256(module_number):
 
 
 def _report_matches(module_id, report):
-    if module_id == 'mle.reproducible-training':
-        if not isinstance(report, dict):
-            return False
-        expected = {
-            'train_rows': 24,
-            'evaluation_rows': 12,
-            'seed': 7,
-            'dataset_sha256': '796762d44d09a4b82c2280af5a5f074b1f9b451ee9845773609def28d20f0ca4',
-            'feature_columns': ['support_tickets', 'tenure_months'],
-            'artifact_version': '1.0.0',
-            'run_manifest_fields': [
-                'artifact_version', 'dataset_sha256', 'feature_columns',
-                'fixed_metrics', 'parameters', 'package_versions',
-                'source_revision', 'training_seed', 'validation_f1_mean',
-            ],
-            'repeated_run_predictions_match': True,
-            'evaluation_set_used_for_fitting': False,
-            'accuracy': None,
-            'f1': None,
-            'validation_f1_mean': None,
-        }
-        if not set(expected).issubset(set(report)):
-            return False
-        for key, value in expected.items():
-            if key in {'accuracy', 'f1', 'validation_f1_mean'}:
-                continue
-            if type(report.get(key)) is not type(value) or report[key] != value:
-                return False
-        for key, minimum in (('accuracy', .90), ('f1', .80), ('validation_f1_mean', .80)):
-            actual = report.get(key)
-            if not isinstance(actual, (int, float)) or isinstance(actual, bool) or not math.isfinite(actual) or not minimum <= actual <= 1:
-                return False
-        return True
-    if module_id == 'mle.production-ml':
-        expected = {
-            'health_status': 200,
-            'model_version': '1.0.0',
-            'batch_prediction_count': 2,
-            'invalid_feature_rejected': True,
-            'extra_feature_rejected': True,
-            'input_drift_detected': True,
-            'drift_proves_quality_failure': False,
-            'canary_promoted': False,
-            'rollback_active_version': '1.0.0',
-            'rollback_triggered': True,
-        }
-        return (
-            isinstance(report, dict) and set(report) == set(expected)
-            and all(type(report.get(key)) is type(value) and report[key] == value
-                    for key, value in expected.items())
-        )
-    if module_id == 'mle.classical-ml':
-        if not isinstance(report, dict):
-            return False
-        expected = {
-            'train_rows': 24,
-            'evaluation_rows': 12,
-            'baseline_accuracy': 8 / 12,
-            'accuracy': None,
-            'precision': None,
-            'recall': None,
-            'f1': None,
-            'cross_validation_f1_mean': None,
-            'feature_columns': ['support_tickets', 'tenure_months'],
-            'leakage_features': ['cancelled_after_snapshot'],
-            'cross_validation_folds': 5,
-            'preprocessing_in_pipeline': True,
-            'evaluation_set_used_for_fitting': False,
-            'data_split': 'fixed_holdout',
-        }
-        if not set(expected).issubset(set(report)):
-            return False
-        for key, value in expected.items():
-            if key in {
-                'accuracy', 'precision', 'recall', 'f1',
-                'cross_validation_f1_mean',
-            }:
-                continue
-            actual = report.get(key)
-            if key == 'baseline_accuracy':
-                if not isinstance(actual, (int, float)) or isinstance(actual, bool) or not math.isfinite(actual) or abs(actual - value) > 1e-9:
-                    return False
-            elif type(actual) is not type(value) or actual != value:
-                return False
-        for key, minimum in (
-            ('accuracy', .90), ('precision', .80), ('recall', .80),
-            ('f1', .80), ('cross_validation_f1_mean', .80),
-        ):
-            actual = report.get(key)
-            if not isinstance(actual, (int, float)) or isinstance(actual, bool) or not math.isfinite(actual) or not minimum <= actual <= 1:
-                return False
-        return True
-    if module_id == 'mle.pytorch-advanced':
-        if not isinstance(report, dict):
-            return False
-        expected = {
-            'train_rows': 24,
-            'evaluation_rows': 12,
-            'dataset_sha256': _dataset_sha256(5),
-            'feature_columns': ['support_tickets', 'tenure_months'],
-            'baseline_accuracy': 8 / 12,
-            'model_family': 'pytorch_mlp',
-            'experiment_tracking': True,
-            'beats_baseline': True,
-            'evaluation_set_used_for_fitting': False,
-            'data_split': 'fixed_holdout',
-            'accuracy': None,
-            'precision': None,
-            'recall': None,
-            'f1': None,
-        }
-        if set(report) != set(expected):
-            return False
-        for key, value in expected.items():
-            if key in {'accuracy', 'precision', 'recall', 'f1'}:
-                continue
-            actual = report.get(key)
-            if key == 'baseline_accuracy':
-                if not isinstance(actual, (int, float)) or isinstance(actual, bool) or not math.isfinite(actual) or abs(actual - value) > 1e-9:
-                    return False
-            elif type(actual) is not type(value) or actual != value:
-                return False
-        for key, minimum in (
-            ('accuracy', .90), ('precision', .80),
-            ('recall', .80), ('f1', .80),
-        ):
-            actual = report.get(key)
-            if not isinstance(actual, (int, float)) or isinstance(actual, bool) or not math.isfinite(actual) or not minimum <= actual <= 1:
-                return False
-        return True
-    if module_id == 'mle.capstone-integration':
-        if not isinstance(report, dict):
-            return False
-        expected = {
-            'train_rows': 24,
-            'evaluation_rows': 12,
-            'dataset_sha256': _dataset_sha256(6),
-            'feature_columns': ['support_tickets', 'tenure_months'],
-            'baseline_accuracy': 8 / 12,
-            'stages': [
-                'data_audit', 'classical_baseline', 'reproducible_training',
-                'production_service', 'pytorch_model', 'integration_test',
-            ],
-            'monitoring_signals': [
-                'error_rate', 'latency', 'input_drift', 'prediction_drift',
-            ],
-            'canary_rollback_defined': True,
-            'evaluation_set_used_for_fitting': False,
-            'data_split': 'fixed_holdout',
-            'classical_accuracy': None,
-            'pytorch_accuracy': None,
-            'selected_model': None,
-        }
-        if set(report) != set(expected):
-            return False
-        for key, value in expected.items():
-            if key in {'classical_accuracy', 'pytorch_accuracy', 'selected_model'}:
-                continue
-            actual = report.get(key)
-            if key == 'baseline_accuracy':
-                if not isinstance(actual, (int, float)) or isinstance(actual, bool) or not math.isfinite(actual) or abs(actual - value) > 1e-9:
-                    return False
-            elif type(actual) is not type(value) or actual != value:
-                return False
-        for key, minimum in (('classical_accuracy', .90), ('pytorch_accuracy', .80)):
-            actual = report.get(key)
-            if not isinstance(actual, (int, float)) or isinstance(actual, bool) or not math.isfinite(actual) or not minimum <= actual <= 1:
-                return False
-        if report.get('selected_model') not in {'classical_baseline', 'pytorch_mlp'}:
-            return False
-        return True
-    if module_id != 'mle.data-problem-formulation':
+    """Validate a learner report against the module's published contract.
+
+    The contract is authored with the curriculum (see
+    ``docs/ml_curriculum/module_specs``) and embedded in the pathway manifest,
+    so every module — not just the six original pilot modules — has a
+    server-owned, deterministic definition of a complete report.
+    """
+    module = _module(module_id)
+    contract = (module or {}).get('report_contract') or []
+    if not contract or not isinstance(report, dict):
         return False
-    expected = _expected_data_audit_report()
-    if not isinstance(report, dict) or set(report) != set(expected):
+    keys = {entry['key'] for entry in contract}
+    if set(report) != keys:
         return False
-    return all(type(report[key]) is type(value) and report[key] == value
-               for key, value in expected.items())
+    for entry in contract:
+        key = entry['key']
+        value = report[key]
+        kind = entry.get('type')
+        if kind in ('int', 'float'):
+            if isinstance(value, bool) or not isinstance(value, (int, float)):
+                return False
+            if not math.isfinite(value):
+                return False
+            if kind == 'int' and not isinstance(value, int):
+                return False
+            if 'equals' in entry:
+                expected = entry['equals']
+                tolerance = entry.get('tolerance', 1e-9)
+                if abs(value - expected) > tolerance:
+                    return False
+            if 'min' in entry and value < entry['min']:
+                return False
+            if 'max' in entry and value > entry['max']:
+                return False
+        elif kind == 'bool':
+            if not isinstance(value, bool) or value != entry.get('equals', value):
+                return False
+        elif kind in ('str', 'string'):
+            if not isinstance(value, str):
+                return False
+            if 'equals' in entry and value != entry['equals']:
+                return False
+            if 'allowed' in entry and value not in entry['allowed']:
+                return False
+            if 'length' in entry and len(value) != entry['length']:
+                return False
+            if 'min_length' in entry and len(value) < entry['min_length']:
+                return False
+        elif kind == 'list':
+            if not isinstance(value, list):
+                return False
+            if 'equals' in entry and value != entry['equals']:
+                return False
+            if 'length' in entry and len(value) != entry['length']:
+                return False
+        else:
+            return False
+    return True
 
 
 def _evaluation_valid(evaluation, rubric):
@@ -451,30 +331,22 @@ def project(module_id):
 @login_required
 def project_starter(module_id):
     module = _module(module_id)
-    starter_paths = {
-        'mle.data-problem-formulation': STARTER_PATH,
-        'mle.classical-ml': STARTER_PATH.parent / 'module_2',
-        'mle.reproducible-training': STARTER_PATH.parent / 'module_3',
-        'mle.production-ml': STARTER_PATH.parent / 'module_4',
-        'mle.pytorch-advanced': STARTER_PATH.parent / 'module_5',
-        'mle.capstone-integration': STARTER_PATH.parent / 'module_6',
-    }
-    starter_path = starter_paths.get(module_id)
-    if module is None or starter_path is None or not starter_path.is_dir():
+    kit = (module or {}).get('kit') or {}
+    kit_dir = kit.get('dir')
+    if module is None or module_id not in _project_module_ids() or not kit_dir:
         abort(404)
+    starter_path = STARTER_PATH.parent / kit_dir
+    if not starter_path.is_dir():
+        abort(404)
+    root_name = kit.get('root') or f"ruach-ml-{module_id.removeprefix('mle.').replace('.', '-')}"
     archive = BytesIO()
     with ZipFile(archive, 'w', ZIP_DEFLATED) as bundle:
-        root_names = {
-            'mle.data-problem-formulation': 'ruach-ml-data-audit',
-            'mle.classical-ml': 'ruach-ml-classical-baseline',
-            'mle.reproducible-training': 'ruach-ml-reproducible-training',
-            'mle.production-ml': 'ruach-ml-production-service',
-            'mle.pytorch-advanced': 'ruach-ml-pytorch-advanced',
-            'mle.capstone-integration': 'ruach-ml-capstone-integration',
-        }
-        root_name = root_names[module_id]
         for path in starter_path.rglob('*'):
-            if path.is_file() and '.pytest_cache' not in path.parts and '__pycache__' not in path.parts:
+            if (
+                path.is_file()
+                and '.pytest_cache' not in path.parts
+                and '__pycache__' not in path.parts
+            ):
                 bundle.write(path, f"{root_name}/{path.relative_to(starter_path)}")
     archive.seek(0)
     return send_file(
@@ -771,6 +643,8 @@ def _experiment_payload(experiment):
 
     return {
         'id': experiment.id,
+        'pathway_id': getattr(experiment, 'pathway_id', PATHWAY_ID),
+        'domain': 'machine-learning',
         'module_id': experiment.module_id,
         'experiment_name': experiment.experiment_name,
         'experiment_date': experiment.experiment_date.isoformat(),

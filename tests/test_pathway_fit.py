@@ -335,15 +335,16 @@ class DashboardPathwayLeadTests(unittest.TestCase):
 
     def test_unset_destination_keeps_the_current_order(self):
         html = self._dashboard()
-        self.assertIn('Optional pathway', html)
+        self.assertIn('Machine Learning pathway', html)
         self.assertNotIn('Your pathway', html)
-        self.assertLess(html.index('Continue your course'), html.index('Optional pathway'))
+        self.assertLess(html.index('Continue your course'), html.index('Machine Learning pathway'))
 
     def test_ai_destination_keeps_the_current_order(self):
         self._set_destination('ai')
         html = self._dashboard()
-        self.assertIn('Optional pathway', html)
-        self.assertLess(html.index('Continue your course'), html.index('Optional pathway'))
+        self.assertIn('Machine Learning pathway', html)
+        self.assertNotIn('Your pathway', html)
+        self.assertLess(html.index('Continue your course'), html.index('Machine Learning pathway'))
 
     def test_ml_destination_with_a_failing_overview_stays_contained(self):
         self._set_destination('ml')
@@ -352,7 +353,7 @@ class DashboardPathwayLeadTests(unittest.TestCase):
             side_effect=RuntimeError('overview unavailable'),
         ):
             html = self._dashboard()
-        self.assertNotIn('Optional pathway', html)
+        self.assertNotIn('Machine Learning pathway', html)
         self.assertNotIn('Your pathway', html)
         # The rest of the dashboard still renders: the course shell and the
         # getting-started card stay visible even when the pathway card errors.

@@ -27,10 +27,18 @@ FOUNDATION_TITLES = (
     'Backend Engineering',
 )
 ML_TITLES = (
-    'Data and problem formulation',
-    'Classical machine learning',
-    'Reproducible training',
-    'Production machine learning',
+    'AI Tools and Decision-Making',
+    'The Small Amount of Maths You Need',
+    'Data and Problem Formulation',
+    'Classical Machine Learning',
+    'Classification Models',
+    'Unsupervised Learning',
+    'Deep Learning from Scratch',
+    'Computer Vision',
+    'Reproducible Training',
+    'Neural Networks with PyTorch',
+    'Deployment and Operations',
+    'Capstone Integration',
 )
 # Modules 03-12: the AI-specific continuation an ML learner never signs up for.
 AI_ONLY_TITLES = (
@@ -123,7 +131,7 @@ class DashboardCurriculumGridTests(DynamicShellTestCase):
         self._set_destination('ml')
         html = self._page()
 
-        self.assertIn('6 modules · 26 lessons', html)
+        self.assertIn('12 modules · 59 lessons', html)
         for title in ML_TITLES:
             self.assertIn(title, html)
         for title in AI_ONLY_TITLES:
@@ -172,7 +180,7 @@ class DashboardCurriculumGridTests(DynamicShellTestCase):
 
         html = self._page()
 
-        self.assertIn('6 modules · 26 lessons', html)
+        self.assertIn('12 modules · 59 lessons', html)
         for title in AI_ONLY_TITLES:
             self.assertNotIn(title, html)
         # The foundation pointer is spent, so no generic "continue" card is left

@@ -395,6 +395,7 @@ def problem_hint(problem_id):
         'stage': stage,
         'hint': generate_hint_stage(stage, context),
         'diagnosis': diagnose_knowledge_gaps(context),
+        'pathway_context': context.pathway_context,
     })
 
 

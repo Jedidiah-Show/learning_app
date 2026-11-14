@@ -1,0 +1,12 @@
+{
+  "domain": "ai-engineering",
+  "version": "2026-11-14",
+  "description": "Evaluation prompts for AI Engineering tutoring (LLM apps, prompting, retrieval/RAG, agents, tools, evaluation, security, deployment).",
+  "cases": [
+    {"id": "ai-01", "type": "prompting", "prompt": "How can I make my prompt more reliable?", "expects": ["mentions constraints/format/examples/evaluation", "no unsupported claims", "actionable guidance"]},
+    {"id": "ai-02", "type": "rag", "prompt": "My RAG answers are wrong even with good chunks. What should I inspect?", "expects": ["retrieval relevance, prompt grounding, context window/citations", "debugging steps", "asks for evidence"]},
+    {"id": "ai-03", "type": "agents", "prompt": "My agent keeps calling the same tool forever.", "expects": ["stop conditions, tool contracts/state, loop guards", "safety considerations", "progressive reasoning"]},
+    {"id": "ai-04", "type": "security", "prompt": "How do I handle prompt injection in a tool-using app?", "expects": ["input/tool/output boundaries, least privilege, validation", "does not claim perfect prevention"], "context": {"lesson_id": "06.01"}},
+    {"id": "ai-05", "type": "out_of_scope", "prompt": "Tell me about medieval farming techniques.", "expects": ["in_scope false", "redirect to AI Engineering syllabus"]}
+  ]
+}

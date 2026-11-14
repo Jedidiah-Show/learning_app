@@ -360,9 +360,7 @@ def users():
         for account in pagination.items:
             destination = destination_by_id.get(account.id)
             pathway_by_user[account.id] = destination
-            total_by_user[account.id] = pathway_lesson_count(
-                destination_for(account)
-            )
+            total_by_user[account.id] = pathway_lesson_count(destination)
 
     return render_template(
         'admin/users.html',
@@ -1188,6 +1186,8 @@ def pathway_change_requests():
     page = max(1, request.args.get('page', 1, type=int) or 1)
     pagination = query.paginate(page=page, per_page=PAGE_SIZE, error_out=False)
     # Use enrolment-based lookup; fall back to deprecated CoursePlan.pathway_destination for rollback
+    from app.pathway_scope import destination_for
+
     destination_by_user = {}
     user_ids = [report.user_id for report in pagination.items] or [-1]
     plans_by_user = {plan.user_id: plan for plan in CoursePlan.query.filter(

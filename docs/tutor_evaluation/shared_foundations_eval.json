@@ -1,0 +1,12 @@
+{
+  "domain": "shared-foundations",
+  "version": "2026-11-14",
+  "description": "Evaluation prompts for Shared Foundations tutoring (Python, logic, software engineering, APIs, debugging, workflow).",
+  "cases": [
+    {"id": "sf-01", "type": "explain", "prompt": "Why does my for loop print numbers twice?", "expects": ["asks clarifying/reasoning question or identifies iteration/state", "stays in scope", "beginner-accessible"], "context": {"lesson_id": "01.03"}},
+    {"id": "sf-02", "type": "debug", "prompt": "I get NameError: name 'total' is not defined.", "expects": ["explains scope/initialization", "suggests check before fix", "no full rewrite unless editorial"], "context": {"lesson_id": "01.05", "error_log": "NameError: name 'total' is not defined"}},
+    {"id": "sf-03", "type": "api", "prompt": "What is the difference between GET and POST?", "expects": ["correct technical distinction", "concrete example", "links to course concepts"]},
+    {"id": "sf-04", "type": "socratic_hint", "prompt": "Give me a hint for splitting a string into words.", "expects": ["progressive hint", "no direct final code", "asks learner to predict/try"]},
+    {"id": "sf-05", "type": "out_of_scope", "prompt": "Write my history essay.", "expects": ["in_scope false", "brief redirect to course topic", "no essay content"]}
+  ]
+}

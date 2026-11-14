@@ -6,7 +6,7 @@ from io import BytesIO
 from zipfile import ZIP_DEFLATED, ZipFile
 from urllib.parse import urlsplit
 
-from flask import Blueprint, current_app, jsonify, render_template, request, send_file
+from flask import Blueprint, current_app, jsonify, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
 
@@ -226,7 +226,7 @@ def _required_project_brief(project):
 @login_required
 def project_page():
     from app.pathway_scope import (
-        destination_for, is_ml, pathway_modules, pathway_pace,
+        destination_for, is_ml, course_modules, pathway_pace,
     )
     destination = destination_for(current_user)
     completed = completed_project_modules(current_user)
@@ -277,8 +277,30 @@ def project_page():
                     'checks_url': capstone_record.checks_url,
                     'checks_verified': capstone_record.checks_verified,
                 }
+    ml_workbench_modules = []
+    if is_ml(destination):
+        from app.ml_pathway import machine_learning_pathway, ml_module_progress
+        from app.models import MLSpecializationProject
+        pathway = machine_learning_pathway()
+        project_rows = {
+            row.module_id: row for row in MLSpecializationProject.query.filter_by(
+                user_id=current_user.id
+            ).all()
+        }
+        for module in pathway.get('modules', []):
+            row = project_rows.get(module['id'])
+            ml_workbench_modules.append({
+                'id': module['id'],
+                'number': module.get('number'),
+                'title': module.get('title'),
+                'project': module.get('project'),
+                'progress': ml_module_progress(current_user.id, module),
+                'completed': bool(row and row.completed),
+                'url': url_for('ml_specialization.project', module_id=module['id']),
+            })
+
     return render_template(
-        'projects.html', modules=pathway_modules(destination),
+        'projects.html', modules=course_modules(destination),
         completed_modules=completed,
         milestones=milestones, pace=pace,
         # Required capstones belong to the AI continuation, so a
@@ -293,6 +315,7 @@ def project_page():
         studio_progress=studio_progress,
         studio_checks_verified=studio_checks_verified,
         studio_evidence=studio_evidence,
+        ml_workbench_modules=ml_workbench_modules,
     )
 
 
@@ -794,7 +817,7 @@ def submit_module_project(module_id):
 @login_required
 def portfolio_page():
     from app.pathway_scope import (
-        destination_for, is_ml, pathway_modules,
+        destination_for, is_ml, course_modules,
     )
     destination = destination_for(current_user)
     records = CourseProject.query.filter_by(user_id=current_user.id).order_by(
@@ -803,7 +826,7 @@ def portfolio_page():
     # Scoped to the learner's own course, so a module 03-12 record never
     # appears in an ML learner's portfolio.
     modules_by_id = {
-        module['id']: module for module in pathway_modules(destination)
+        module['id']: module for module in course_modules(destination)
     }
     projects = [{
         'module': modules_by_id.get(item.module_id),
@@ -814,6 +837,13 @@ def portfolio_page():
         'checks_verified': item.checks_verified,
         'completed': item.completed,
         'evaluation': item.get_evaluation(),
+        'domain': 'ai-engineering',
+        'domain_label': 'AI Engineering',
+        'verification_status': (
+            'Verified' if item.checks_verified and item.completed else
+            'Completed' if item.completed else
+            'Submitted · review in progress'
+        ),
     } for item in records if item.submission and item.module_id in modules_by_id]
     # Pathway projects are graded on their own routes, so they are listed with
     # the shared ones to keep one portfolio for the whole course.
@@ -821,7 +851,7 @@ def portfolio_page():
         import json as _json
 
         scoped_modules = {
-            module['id']: module for module in pathway_modules(destination)
+            module['id']: module for module in course_modules(destination)
         }
         for item in MLSpecializationProject.query.filter_by(
             user_id=current_user.id, completed=True
@@ -836,6 +866,13 @@ def portfolio_page():
                 )
             except (TypeError, ValueError):
                 submission = {}
+            try:
+                evaluation = _json.loads(item.evaluation) if item.evaluation else None
+            except (TypeError, ValueError):
+                evaluation = None
+            checks_verified = submission.get('checks_verified')
+            if checks_verified is None and isinstance(evaluation, dict):
+                checks_verified = (evaluation.get('checks') or {}).get('verified')
             projects.append({
                 'module': module,
                 'project': {
@@ -845,14 +882,25 @@ def portfolio_page():
                 'repository_url': submission.get('repository_url'),
                 'demo_url': submission.get('demo_url'),
                 'checks_url': submission.get('checks_url'),
-                'checks_verified': submission.get('checks_verified'),
+                'checks_verified': bool(checks_verified),
                 'completed': item.completed,
-                'evaluation': None,
+                'evaluation': evaluation,
+                'domain': 'machine-learning',
+                'domain_label': 'Machine Learning Engineering',
+                'verification_status': (
+                    'Verified' if checks_verified and item.completed else
+                    'Completed' if item.completed else
+                    'Submitted · review in progress'
+                ),
             })
+    domain_filter = request.args.get('domain')
+    if domain_filter in {'ai-engineering', 'machine-learning'}:
+        projects = [item for item in projects if item.get('domain') == domain_filter]
     plan = _plan()
     return render_template(
         'portfolio.html', user=current_user, projects=projects,
         personal_project=_plan_payload(plan),
+        domain_filter=domain_filter,
     )
 
 

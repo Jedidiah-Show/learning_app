@@ -55,10 +55,6 @@
                     <div class="brand-copy">
                         <h1 class="brand-wordmark">RUACH</h1>
 {% if current_user.is_authenticated %}
-  {% set pathway_ids = [] %}
-  {% for _, e in pathway_enrolments %}
-    {% set pathway_ids = pathway_ids + [e.pathway_id] %}
-  {% endfor %}
   {% set has_ml = 'machine-learning' in pathway_ids %}
   {% set has_ai = 'ai-engineering' in pathway_ids %}
   {% set has_shared = 'shared-foundations' in pathway_ids %}
@@ -102,16 +98,21 @@
                         <span class="nav-icon" aria-hidden="true">🏠</span><span class="nav-label">Dashboard</span>
                     </a>
                     <div class="nav-section-label mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Learn</div>
-  <!-- ML Pathway link (only if enrolled in ML) -->
+  <!-- Both specialisations are peers: whichever the learner studies leads,
+       and the other stays directly reachable as an equal option. -->
   {% if has_ml %}
+  <a aria-label="ML pathway" title="ML pathway" href="{{ url_for('main.machine_learning_specialization') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.machine_learning_specialization' or has_ml and not has_ai %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+    <span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">ML Pathway</span>
+  </a>
+  {% endif %}
+  <a aria-label="AI pathway" title="AI pathway" href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.lessons' or (has_ai and not has_ml) or not has_ml %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+    <span class="nav-icon" aria-hidden="true">📖</span><span class="nav-label">AI Pathway</span>
+  </a>
+  {% if not has_ml %}
   <a aria-label="ML pathway" title="ML pathway" href="{{ url_for('main.machine_learning_specialization') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.machine_learning_specialization' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
     <span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">ML Pathway</span>
   </a>
   {% endif %}
-  <!-- AI Pathway link (always shown; highlights if enrolled in AI and not ML) -->
-  <a aria-label="AI pathway" title="AI pathway" href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.lessons' or (has_ai and not has_ml) %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-    <span class="nav-icon" aria-hidden="true">📖</span><span class="nav-label">AI Pathway</span>
-  </a>
                     <a aria-label="Gates" title="Gates" href="{{ url_for('main.gates') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.gates' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🗺️</span><span class="nav-label">Gates</span>
                     </a>
@@ -125,11 +126,14 @@
                     <a aria-label="Practice" title="Practice" href="{{ url_for('main.practice_catalog') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.practice_catalog' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">💻</span><span class="nav-label">Practice Workspace</span>
                     </a>
+                    <a aria-label="Engineering Labs" title="Engineering Labs" href="{{ url_for('main.engineering_labs') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint in ['main.engineering_labs', 'main.engineering_lab_detail'] %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">🧪</span><span class="nav-label">Engineering Labs</span>
+                    </a>
                     <a aria-label="Projects" title="Projects" href="{{ url_for('projects.project_page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'projects.project_page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🧩</span><span class="nav-label">Projects</span>
                     </a>
-                    <a aria-label="Portfolio" title="Portfolio" href="{{ url_for('projects.portfolio_page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'projects.portfolio_page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🗂️</span><span class="nav-label">Portfolio</span>
+                    <a aria-label="Showcase" title="Engineering Showcase" href="{{ url_for('projects.portfolio_page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'projects.portfolio_page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">🗂️</span><span class="nav-label">Showcase</span>
                     </a>
                     <div class="nav-section-label mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Review &amp; progress</div>
                     <a aria-label="Quizzes" title="Quizzes" href="{{ url_for('main.quizzes') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.quizzes' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">

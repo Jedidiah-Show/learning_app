@@ -82,7 +82,7 @@ def _compute_leaderboard(viewer, viewer_dest, limit):
         score, score.user_id == User.id,
     ).filter(User.is_active.is_(True), CoursePlan.leaderboard_opt_in.is_(True)).subquery()
     points = (base.c.lessons * LESSON_POINTS + base.c.projects * PROJECT_POINTS)
-    if viewer_dest == 'ml':
+    if viewer_dest == 'machine-learning':
         points += base.c.ml_lessons * ML_LESSON_POINTS + base.c.ml_projects * ML_PROJECT_POINTS
     points = points.label('points')
     rank = func.row_number().over(order_by=[

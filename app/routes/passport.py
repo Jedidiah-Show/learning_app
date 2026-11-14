@@ -5,18 +5,49 @@ from flask import Blueprint, Response, current_app, jsonify, render_template
 from flask_login import current_user, login_required
 
 from app.integrations import database_status
-from app.services.skill_passport import get_user_all_skill_states
+from app.services.skill_passport import (
+    CURRICULUM_SKILLS, ML_COMPETENCIES, get_user_all_skill_states,
+)
 
 
 passport_bp = Blueprint('passport', __name__)
 
 
+def _skill_domain(skill):
+    sid = (skill.get('id') or '').lower()
+    category = (skill.get('category') or '').lower()
+    title = (skill.get('title') or '').lower()
+    if sid in ML_COMPETENCIES or sid.startswith(('ml-', 'mle.')) or 'machine learning' in category:
+        return 'machine-learning'
+    if sid in CURRICULUM_SKILLS or sid.startswith(('curriculum-', 'lesson-', 'project-studio')):
+        return 'ai-engineering'
+    if category in {'projects', 'curriculum'}:
+        return 'ai-engineering'
+    if category in {'shared-foundations', 'foundations'} or 'foundation' in title:
+        return 'shared-foundations'
+    # Practice arena/problem skills can span tracks; keep explicit when possible.
+    return 'shared-foundations'
+
+
 def _skills():
     states = get_user_all_skill_states(current_user.id)
-    return [
-        {'id': skill_id, **state}
-        for skill_id, state in sorted(states.items())
-    ]
+    skills = []
+    for skill_id, state in sorted(states.items()):
+        item = {'id': skill_id, **state}
+        item['domain'] = _skill_domain(item)
+        skills.append(item)
+    return skills
+
+
+def _skills_by_domain(skills):
+    grouped = {
+        'shared-foundations': [],
+        'ai-engineering': [],
+        'machine-learning': [],
+    }
+    for skill in skills:
+        grouped.setdefault(skill.get('domain') or 'shared-foundations', []).append(skill)
+    return grouped
 
 
 def _passport_schema_ready():
@@ -42,9 +73,13 @@ def _passport_schema_ready():
 def passport():
     if not _passport_schema_ready():
         return render_template(
-            'passport.html', skills=[], passport_unavailable=True,
+            'passport.html', skills=[], skills_by_domain={},
+            passport_unavailable=True,
         ), 503
-    return render_template('passport.html', skills=_skills())
+    skills = _skills()
+    return render_template(
+        'passport.html', skills=skills, skills_by_domain=_skills_by_domain(skills),
+    )
 
 
 @passport_bp.route('/api/passport')
@@ -54,7 +89,11 @@ def passport_api():
         return jsonify({
             'error': 'Skill Passport is temporarily unavailable while the application database is being updated.',
         }), 503
-    return jsonify({'skills': _skills()})
+    skills = _skills()
+    return jsonify({
+        'skills': skills,
+        'skills_by_domain': _skills_by_domain(skills),
+    })
 
 
 @passport_bp.route('/passport/download')

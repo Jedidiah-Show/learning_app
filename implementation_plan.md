@@ -2315,3 +2315,34 @@ Ready for M3 — Foundation evidence validation and competency tracking, or inte
 | 13 remaining pathway_destination references handled | ✅ Complete |
 | All integration tests passing | ✅ Complete |
 | implementation_plan.md updated | ✅ Complete |
+
+## M5 Implementation Summary (updated 2026-11-14)
+
+**Status: partial / in progress (not release-complete).**
+
+### M5.1 — Tutor domain context (partial)
+- `app/services/tutor.py` now assembles richer domain-aware tutor context: explicit active domain (`shared-foundations` / `ai-engineering` / `machine-learning`), pathway/destination, current lesson/module context, recent submissions and error summary, exercise/problem context, and Skill Passport competency evidence (with defensive lookups). Domain profiles provide domain labels, focus areas, and Socratic prompt guidance.
+- `app/routes/practice_arena.py` hint responses now include `pathway_context` for domain-aware consumers.
+
+### M5.2–M5.4 — Domain-specialized tutoring (partial)
+- Lesson tutor flow (`app/routes/lessons.py`, `app/routes/main.py`, `templates/lessons/detail.html`) uses domain-aware greetings and a domain-aware prompt that scopes responses to the learner’s syllabus/pathway, avoids cross-specialisation assumptions, and targets domain focus areas (Shared Foundations: Python/logic/software engineering/APIs/debugging/workflow; AI Engineering: LLM apps/prompting/retrieval/RAG/agents/tools/evaluation/security/deployment; ML Engineering: math/statistics/data/algorithms/evaluation/experimentation/deep learning/MLOps).
+- Progressive hints in `app/services/tutor.py` are domain-aware/Socratic (including ML-specific concept/edge-case/pseudocode guidance when relevant).
+
+### M5.5 — Socratic tutoring (partial)
+- Prompting and hint stages encourage prediction/reasoning, progressive hints, misconception/edge-case attention, and solution withholding before editorial stages; existing guardrails remain in place. Further multi-turn misconception handling and UI surfacing remain.
+
+### M5.6 — Tutor evaluation (artifacts added, measurement pending)
+- Added per-domain evaluation datasets and report: `docs/tutor_evaluation/shared_foundations_eval.json`, `docs/tutor_evaluation/ai_engineering_eval.json`, `docs/tutor_evaluation/machine_learning_eval.json`, `docs/tutor_evaluation/tutor_quality_report.md`.
+- Automated model-backed scoring, latency/cost baselines, and full regression evidence across all tutor surfaces are still pending.
+
+### Validation (this session)
+- Targeted: `tests/test_learning_flows.py::RuachAICourseTests::test_tutor_modes_cover_quality_cases`, ML-aware hint tests in `tests/test_practice_arena.py`, `tests/test_pathway_practice.py`, `tests/test_ml_specialization.py`, `tests/test_skill_passport.py`, and related suites passed after fixes.
+- Previous full-suite baseline in this session: 446 passed, 2 failed (stale parallel-pathway assertions in `tests/test_pathway_fit.py`, since fixed) before final M5/passport edits; full-suite rerun not completed after the latest M5/M6-incremental changes.
+
+### Remaining for M5 completion
+- Complete specialized tutor behavior and context surfacing across all tutor surfaces (including practice/ML surfaces as applicable).
+- Operationalize automated evaluation runs with rubric scoring and measured latency/cost per domain/model tier.
+- Update milestone evidence/docs and verify no regressions with a clean full test run.
+
+**Git tag: `m5-complete` (existing, points to `fb40e1b`) has not been re-pointed; current M5 work is uncommitted.**
+

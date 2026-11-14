@@ -113,11 +113,9 @@
             {% endif %}
         </div>
         {% elif can_request_pathway_change %}
-        {% set pathway_ids = {e.pathway_id for _, e in pathway_enrolments} %}
-        {% set has_ai = 'ai-engineering' in pathway_ids %}
+                {% set has_ai = 'ai-engineering' in pathway_ids %}
         {% set has_ml = 'machine-learning' in pathway_ids %}
-        {% set foundation = foundation_evidence(current_user.id) %}
-        {% set foundation_complete = all(f['complete'] for f in foundation.values()) %}
+        {% set foundation_complete = foundation.complete %}
         {% if foundation_complete %}
         <form method="POST" action="{{ url_for('auth.request_pathway_change') }}" class="mt-4 space-y-3">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -172,6 +170,7 @@
         <p class="mt-4 text-sm text-slate-500">You may request a pathway enrolment change once you have completed the shared foundation lessons ({{ foundation.completed_lessons }} of {{ foundation.total_lessons }} lessons and {{ foundation.completed_projects }} of {{ foundation.total_projects }} projects).</p>
         {% else %}
         <p class="mt-4 text-sm text-slate-500">Your pathway enrolment is not confirmed yet. Take the pathway fit check during onboarding to set it.</p>
+        {% endif %}
         {% endif %}
         {% if ml_credential %}
         <div class="mt-6 p-4 bg-indigo-50 border-l-4 border-indigo-600 rounded-xl">

@@ -161,11 +161,11 @@ class AdminPortalTests(unittest.TestCase):
         with self.app.app_context():
             db.session.add(MLSpecializationLessonCompletion(
                 user_id=enrolled, pathway_id=PATHWAY_ID,
-                lesson_id='mle.data.01',
+                lesson_id='mle.tools.01',
             ))
             db.session.add(MLSpecializationProject(
                 user_id=enrolled, pathway_id=PATHWAY_ID,
-                module_id='mle.data-problem-formulation',
+                module_id='mle.ai-tools',
                 submission=json.dumps({'repository_url': 'https://example.test/repo'}),
                 evaluation=evaluation, completed=True,
             ))
@@ -173,7 +173,7 @@ class AdminPortalTests(unittest.TestCase):
         self._login_admin()
         body = self.client.get('/admin/analytics').get_data(as_text=True)
         self.assertIn('ML Engineering pilot (Modules 1–2)', body)
-        self.assertIn('Frame the prediction problem', body)
+        self.assertIn('What AI, machine learning, and deep learning actually mean', body)
         self.assertIn('1 enrolled learner', body)
         self.assertIn('Passed', body)
         self.assertIn('82', body)
@@ -188,21 +188,21 @@ class AdminPortalTests(unittest.TestCase):
         with self.app.app_context():
             db.session.add(MLSpecializationProject(
                 user_id=enrolled, pathway_id=PATHWAY_ID,
-                module_id='mle.data-problem-formulation',
+                module_id='mle.ai-tools',
                 submission=json.dumps({'repository_url': 'https://example.test/repo'}),
                 failure_stage='report_contract',
                 failure_detail='The submitted report does not meet the fixed dataset checks.',
             ))
             db.session.add(MLSpecializationProject(
                 user_id=second, pathway_id=PATHWAY_ID,
-                module_id='mle.data-problem-formulation',
+                module_id='mle.ai-tools',
                 submission=json.dumps({'repository_url': 'https://example.test/repo2'}),
                 failure_stage='report_contract',
             ))
             # A record from before failure tracking still renders honestly.
             db.session.add(MLSpecializationProject(
                 user_id=enrolled, pathway_id=PATHWAY_ID,
-                module_id='mle.classical-ml',
+                module_id='mle.math-foundations',
                 submission=json.dumps({'repository_url': 'https://example.test/repo3'}),
             ))
             db.session.commit()

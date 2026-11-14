@@ -1,5 +1,8 @@
 """M2 Integration Tests for Parallel Pathways Enrolment Model."""
 
+import os
+import tempfile
+
 import pytest
 from app import create_app, db
 from app.models import LearningPathway, LearnerPathwayEnrollment, User
@@ -11,10 +14,28 @@ from app.pathway_scope import (
 
 @pytest.fixture
 def app():
-    """Create app instance for tests."""
+    """Create an isolated app instance backed by a temporary database."""
+    temp_dir = tempfile.TemporaryDirectory()
+    previous_database_url = os.environ.get('DATABASE_URL')
+    os.environ['DATABASE_URL'] = f"sqlite:///{temp_dir.name}/test.db"
     app = create_app()
+    app.config.update(TESTING=True)
     with app.app_context():
+        db.create_all()
+        from app.pathway_scope import seed_learning_pathways
+        seed_learning_pathways()
+    try:
         yield app
+    finally:
+        with app.app_context():
+            db.session.remove()
+            db.drop_all()
+            db.engine.dispose()
+        if previous_database_url is None:
+            os.environ.pop('DATABASE_URL', None)
+        else:
+            os.environ['DATABASE_URL'] = previous_database_url
+        temp_dir.cleanup()
 
 
 @pytest.fixture

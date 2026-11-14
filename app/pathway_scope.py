@@ -27,7 +27,10 @@ from app.models import (
 from app import db
 
 
+# The six Shared Foundations modules in the standalone manifest (sf.00–sf.05)
+# and the three foundation modules inside the main AI course (00–02).
 FOUNDATION_MODULE_IDS = {'sf.00', 'sf.01', 'sf.02', 'sf.03', 'sf.04', 'sf.05'}
+FOUNDATION_COURSE_MODULE_IDS = ('00', '01', '02')
 
 PATHWAY_LABELS = {
     'shared-foundations': 'Shared Foundations',
@@ -36,7 +39,69 @@ PATHWAY_LABELS = {
 }
 
 
-def active_pathway_enrolments(user_id):
+def pathway_label(pathway_id):
+    """Full discipline name for a pathway id.
+
+    Accepts both explicit ids and legacy destination tokens; an undecided
+    learner falls back to the AI Engineering course they actually study.
+    """
+    canonical = normalize_pathway_id(pathway_id)
+    if canonical is None:
+        # Never present AI Engineering as the default discipline: an
+        # undecided learner is simply not enrolled in a specialisation yet.
+        return 'Undecided'
+    return PATHWAY_LABELS.get(canonical, str(pathway_id))
+
+# The application historically stored ``ai``/``ml``/``undecided`` on
+# ``CoursePlan.pathway_destination``.  Enrolments use the longer, explicit
+# domain identifiers.  Both must describe the same course.
+_LEGACY_ALIASES = {
+    'ai': 'ai-engineering',
+    'ai-engineering': 'ai-engineering',
+    'ml': 'machine-learning',
+    'machine-learning': 'machine-learning',
+    'shared': 'shared-foundations',
+    'foundation': 'shared-foundations',
+    'shared-foundations': 'shared-foundations',
+}
+
+_SPECIALISATION_PRIORITY = (
+    'ai-engineering', 'machine-learning', 'shared-foundations',
+)
+
+
+def _user_id(user):
+    """Normalise a ``User`` object, an id, or ``None`` to an integer id."""
+    if user is None:
+        return None
+    if isinstance(user, int):
+        return user
+    return getattr(user, 'id', user)
+
+
+def _current_user_id():
+    from flask_login import current_user as lc_current_user
+
+    if getattr(lc_current_user, 'is_authenticated', False):
+        return lc_current_user.id
+    return None
+
+
+def normalize_pathway_id(value):
+    """Map legacy destination tokens onto explicit pathway identifiers.
+
+    ``None`` and ``undecided`` mean "no confirmed specialisation" and keep the
+    full AI Engineering course, so they normalise to ``None``.
+    """
+    if value is None:
+        return None
+    key = str(value).strip().lower()
+    if key in ('', 'undecided', 'none'):
+        return None
+    return _LEGACY_ALIASES.get(key, key)
+
+
+def active_pathway_enrolments(user_id=None):
     """Return all active pathway enrolments for a learner.
 
     Yields ``(LearnerPathwayEnrollment, LearningPathway)`` tuples; each enrolment
@@ -44,51 +109,114 @@ def active_pathway_enrolments(user_id):
     'machine-learning') that maps to a curriculum domain definition.
 
     A learner enrolled in both AI Engineering and ML yields two enrolments;
-    pausing one does not affect the other.
+    pausing one does not affect the other.  Accepts either a ``User`` object or
+    an integer id so callers never hand SQLAlchemy a model instance.
     """
-    from flask import has_request_context, g, session
-    from flask_login import current_user as lc_current_user
+    from flask import has_request_context, g
 
-    key = 'active_pathway_enrolments'
-    if has_request_context() and getattr(g, key, None) is not None:
-        return g.pathway_destination  # reuse g key for backward compatibility
+    uid = _user_id(user_id)
+    if uid is None:
+        uid = _current_user_id()
+    if uid is None:
+        return []
+
+    if has_request_context():
+        cache = getattr(g, '_pathway_enrolment_cache', None)
+        if cache is None:
+            cache = {}
+            g._pathway_enrolment_cache = cache
+        if uid in cache:
+            return cache[uid]
 
     enrolments = (
         db.session.query(LearnerPathwayEnrollment, LearningPathway)
         .join(LearningPathway, LearnerPathwayEnrollment.pathway_id == LearningPathway.id)
-        .filter(LearnerPathwayEnrollment.learner_id == user_id)
+        .filter(LearnerPathwayEnrollment.learner_id == uid)
         .filter(LearnerPathwayEnrollment.status.in_(('ENROLLED', 'ACTIVE')))
         .all()
     )
-    g.pathway_destination = enrolments  # reuse g key; templates expect iterable
+    if has_request_context():
+        g._pathway_enrolment_cache[uid] = enrolments
     return enrolments
 
 
 def is_pathway(user_id, pathway_id):
     """Check whether a learner has an active enrolment in the given pathway."""
+    wanted = normalize_pathway_id(pathway_id)
     enrolments = active_pathway_enrolments(user_id)
-    return any(enrolment.pathway_id == pathway_id for enrolment, _ in enrolments)
+    return any(
+        normalize_pathway_id(enrolment.pathway_id) == wanted
+        for enrolment, _ in enrolments
+    )
 
 
 def destination_for(user_id=None):
-    """Deprecated: use active_pathway_enrolments(user_id) instead.
+    """The learner's confirmed destination as an explicit pathway id.
 
-    Returns the first active pathway_id, or ``None`` if the learner has no
-    active enrolments.
+    Active logic prefers pathway enrolments; when a learner has none (legacy
+    accounts or onboarding before enrolment) the deprecated
+    ``CoursePlan.pathway_destination`` column is used for rollback
+    compatibility and normalised onto the same identifiers.  Returns
+    ``'ai-engineering'``, ``'machine-learning'``, ``'shared-foundations'``, or
+    ``None`` (undecided / full AI course).
+
+    Failure-tolerant: a database hiccup behaves like no destination rather than
+    taking a page down.
     """
-    from flask_login import current_user as lc_current_user
+    uid = _user_id(user_id)
+    if uid is None:
+        uid = _current_user_id()
+    if uid is None:
+        return None
 
-    if user_id is None:
-        if lc_current_user.is_authenticated:
-            user_id = lc_current_user.id
-        else:
-            return None
-    enrolments = active_pathway_enrolments(user_id)
+    try:
+        enrolments = active_pathway_enrolments(uid)
+    except Exception:  # pragma: no cover - defensive: never fail a page render
+        enrolments = []
+
     if enrolments:
-        # Return the first enrolment's pathway_id for backward compatibility
-        enrolment, _ = enrolments[0]
-        return enrolment.pathway_id if hasattr(enrolment, 'pathway_id') else str(enrolment[0].pathway_id)
-    return None
+        ids = {
+            normalize_pathway_id(enrolment.pathway_id)
+            for enrolment, _ in enrolments
+        }
+        for candidate in _SPECIALISATION_PRIORITY:
+            if candidate in ids:
+                return candidate
+        # An unknown enrolment id: preserve it verbatim.
+        return next(iter(ids))
+
+    try:
+        plan = CoursePlan.query.filter_by(user_id=uid).first()
+    except Exception:  # pragma: no cover - defensive
+        return None
+    if plan is None or not plan.pathway_destination:
+        return None
+    return normalize_pathway_id(plan.pathway_destination)
+
+
+def pathway_ids_for(user_id=None):
+    """Set of explicit pathway ids the learner can study.
+
+    Learners without enrolments fall back to their legacy destination: an
+    ``ml`` learner studies the ML pathway, everyone else the AI course.
+    """
+    uid = _user_id(user_id)
+    if uid is None:
+        uid = _current_user_id()
+    try:
+        ids = {
+            normalize_pathway_id(enrolment.pathway_id)
+            for enrolment, _ in active_pathway_enrolments(uid)
+        }
+    except Exception:  # pragma: no cover - defensive
+        ids = set()
+    if not ids:
+        destination = destination_for(uid)
+        if destination in ('machine-learning', 'shared-foundations'):
+            ids.add(destination)
+        elif destination == 'ai-engineering':
+            ids.add('ai-engineering')
+    return ids
 
 
 def pathway_modules(pathway_id, user_id=None):
@@ -99,11 +227,14 @@ def pathway_modules(pathway_id, user_id=None):
         user_id: Optional; if provided, foundation evidence is checked for
             prerequisite satisfaction.
 
-    Returns module dicts scoped to the pathway.  For foundation modules,
-    completion status is based on existing ``LessonCompletion`` records.
+    Returns the pathway's *own* authored modules.  This is the workspace view
+    (M2/M3): Shared Foundations, the AI specialisation modules, or the ML
+    pathway modules.  A learner's combined course — foundation plus
+    specialisation — is assembled by :func:`course_modules`.
     """
+    canonical = normalize_pathway_id(pathway_id)
     # Shared Foundations: only foundation modules (sf.00–sf.05)
-    if pathway_id == 'shared-foundations':
+    if canonical == 'shared-foundations':
         curriculum_path = Path(__file__).parent.parent / 'shared_foundations_curriculum.json'
         with open(curriculum_path) as f:
             curriculum = json.load(f)
@@ -127,7 +258,7 @@ def pathway_modules(pathway_id, user_id=None):
     # AI Engineering: modules ai.03–ai.11 (foundation modules 00–02 are shared,
     # not duplicated here; they live in Shared Foundations and are referenced
     # via prerequisites)
-    if pathway_id == 'ai-engineering':
+    if canonical == 'ai-engineering':
         ai_modules = [
             m for m in all_modules()
             if not m['id'].startswith(('00', '01', '02'))
@@ -150,7 +281,7 @@ def pathway_modules(pathway_id, user_id=None):
         return ai_modules
 
     # Machine Learning: the 12 mle.* modules (outside app.curriculum)
-    if pathway_id == 'machine-learning':
+    if canonical == 'machine-learning':
         from app.ml_pathway import machine_learning_pathway
         pathway = machine_learning_pathway()
         modules = []
@@ -193,8 +324,57 @@ def pathway_modules(pathway_id, user_id=None):
                 module['_total_lessons'] = len(lessons)
         return modules
 
+    if canonical is None:
+        # Undecided learners keep the full AI Engineering course exactly as
+        # authored (foundation + specialisation + capstone).
+        return list(all_modules())
+
     # Unknown pathway_id — return empty list
     return []
+
+
+def foundation_course_modules():
+    """The shared foundation modules of the main course (00–02)."""
+    return [
+        module for module in all_modules()
+        if module['id'] in FOUNDATION_COURSE_MODULE_IDS
+    ]
+
+
+def ml_course_modules():
+    """The ready ML pathway modules in their shared-course shape."""
+    return pathway_modules('machine-learning')
+
+
+def course_modules(pathway_id, user_id=None):
+    """The complete course a learner with this destination studies.
+
+    Unlike :func:`pathway_modules` (which returns a pathway's own authored
+    modules), this is the combined catalogue every learner-facing surface
+    renders:
+
+    * ``ml`` → shared foundation (00–02) + the ML pathway modules;
+    * everything else → the full AI Engineering course (13 modules).
+    """
+    if is_ml(pathway_id):
+        modules = foundation_course_modules() + ml_course_modules()
+    else:
+        modules = list(all_modules())
+
+    if user_id:
+        completed_lessons = {
+            row.lesson_id
+            for row in LessonCompletion.query.filter_by(
+                user_id=_user_id(user_id), completed=True
+            ).all()
+        }
+        for module in modules:
+            lessons = module.get('lessons') or []
+            module['_completed_lessons'] = sum(
+                1 for lesson in lessons if lesson['id'] in completed_lessons
+            )
+            module['_total_lessons'] = len(lessons)
+    return modules
 
 
 def pathway_lessons(pathway_id, user_id=None):
@@ -203,9 +383,16 @@ def pathway_lessons(pathway_id, user_id=None):
     Each entry carries ``_ordinal`` and ``_module`` back-reference so the
     shared templates can render "Lesson N of M" and module captions without
     knowing which manifest a lesson came from.
+
+    ``shared-foundations`` lists the standalone foundation manifest; every
+    other destination lists the learner's combined course.
     """
+    if normalize_pathway_id(pathway_id) == 'shared-foundations':
+        modules = pathway_modules('shared-foundations', user_id=user_id)
+    else:
+        modules = course_modules(pathway_id, user_id=user_id)
     lessons = []
-    for module in pathway_modules(pathway_id, user_id=user_id):
+    for module in modules:
         for lesson in module.get('lessons', []):
             entry = dict(lesson)
             entry['_ordinal'] = len(lessons) + 1
@@ -251,99 +438,98 @@ def foundation_evidence(user_id):
     """
     from app.models import CourseProject
 
+    uid = _user_id(user_id)
     completed_lessons = {
         row.lesson_id
         for row in LessonCompletion.query.filter_by(
-            user_id=user_id, completed=True
+            user_id=uid, completed=True
         ).all()
     }
     completed_projects = {
         row.module_id
         for row in CourseProject.query.filter_by(
-            user_id=user_id, completed=True
+            user_id=uid, completed=True
         ).all()
     }
 
-    # Foundation modules: sf.00–sf.05 each have lessons; check completion
-    foundation_evidence = {}
-    for module_id in sorted(FOUNDATION_MODULE_IDS):
-        # Find the module definition from all_modules
-        from app.curriculum import all_modules as _all_modules
-        for m in _all_modules():
-            if m['id'] == module_id:
-                lessons = m.get('lessons') or []
-                done_lessons = sum(
-                    1 for lesson in lessons if lesson['id'] in completed_lessons
-                )
-                done_projects = sum(
-                    module_id in completed_projects
-                )
-                # Domain-specific competency: both AI and ML can claim satisfied
-                # foundation evidence from Shared Foundations regardless of enrolment
-                foundation_evidence[module_id] = {
-                    'completed_lessons': done_lessons,
-                    'total_lessons': len(lessons),
-                    'completed_projects': done_projects,
-                    'complete': done_lessons == len(lessons) and done_projects > 0,
-                    # M3: track competency per pathway (both can claim shared foundation)
-                    'ai_satisfied': done_lessons == len(lessons) and done_projects > 0,
-                    'ml_satisfied': done_lessons == len(lessons) and done_projects > 0,
-                    'evidence_source': 'lesson_completion',  # or 'course_project', 'dual_enrolment'
-                }
-                break
-        if module_id not in foundation_evidence:
-            foundation_evidence[module_id] = {
-                'completed_lessons': 0,
-                'total_lessons': 0,
-                'completed_projects': 0,
-                'complete': False,
-                'ai_satisfied': False,
-                'ml_satisfied': False,
-                'evidence_source': 'none',
-            }
+    evidence = {}
+    for module in foundation_modules():
+        module_id = module['id']
+        if module_id not in FOUNDATION_MODULE_IDS:
+            continue
+        lessons = module.get('lessons') or []
+        done_lessons = sum(1 for lesson in lessons if lesson['id'] in completed_lessons)
+        done_projects = 1 if module_id in completed_projects else 0
+        complete = done_lessons == len(lessons) and done_projects > 0
+        # Foundation evidence is reusable: both specialisations may claim it.
+        evidence[module_id] = {
+            'completed_lessons': done_lessons,
+            'total_lessons': len(lessons),
+            'completed_projects': done_projects,
+            'complete': complete,
+            'ai_satisfied': complete,
+            'ml_satisfied': complete,
+            'evidence_source': 'lesson_completion' if complete else 'none',
+        }
+    return evidence
 
-    return foundation_evidence
+
+def _foundation_state_for(modules, completed_lessons, completed_projects):
+    lessons = [
+        lesson for module in modules for lesson in module.get('lessons') or []
+    ]
+    done_lessons = sum(lesson['id'] in completed_lessons for lesson in lessons)
+    done_projects = sum(
+        module['id'] in completed_projects for module in modules
+    )
+    total_lessons, total_projects = len(lessons), len(modules)
+    return {
+        'completed_lessons': done_lessons,
+        'total_lessons': total_lessons,
+        'completed_projects': done_projects,
+        'total_projects': total_projects,
+        'complete': (
+            total_lessons > 0
+            and done_lessons == total_lessons
+            and done_projects == total_projects
+        ),
+    }
 
 
 def foundation_completion_state(user_id):
-    """Return whether the learner has completed all foundation modules.
+    """Whether the learner has completed the shared foundation.
 
-    A foundation is considered complete if the learner has completed all
-    foundation lessons (via LessonCompletion) AND has completed at least one
-    foundation course project (via CourseProject).
+    Shared foundation evidence is reusable across both specialisations, so
+    either canonical manifestation counts: the standalone Shared Foundations
+    manifest (``sf.*``) or the legacy foundation modules (00-02) inside the
+    original AI course.  The learner's more advanced representation is
+    reported, and completion of either opens the pathway-change gate.
     """
-    from app.models import LessonCompletion, CourseProject
+    from app.models import CourseProject
 
+    uid = _user_id(user_id)
     completed_lessons = {
-        row.lesson_id
-        for row in LessonCompletion.query.filter_by(
-            user_id=user_id, completed=True
+        row.lesson_id for row in LessonCompletion.query.filter_by(
+            user_id=uid, completed=True
         ).all()
     }
     completed_projects = {
-        row.module_id
-        for row in CourseProject.query.filter_by(
-            user_id=user_id, completed=True
+        row.module_id for row in CourseProject.query.filter_by(
+            user_id=uid, completed=True
         ).all()
     }
+    shared = _foundation_state_for(
+        foundation_modules(), completed_lessons, completed_projects)
+    legacy = _foundation_state_for(
+        foundation_course_modules(), completed_lessons, completed_projects)
 
-    # Check all 6 foundation modules (sf.00–sf.05)
-    from app.curriculum import all_modules as _all_modules
-    foundation_modules = [
-        m for m in _all_modules() if m['id'] in {'sf.00', 'sf.01', 'sf.02', 'sf.03', 'sf.04', 'sf.05'}
-    ]
+    def progress_ratio(state):
+        return (
+            state['completed_lessons'] + state['completed_projects']
+        ) / max(1, state['total_lessons'] + state['total_projects'])
 
-    all_complete = True
-    for module in foundation_modules:
-        lessons = module.get('lessons') or []
-        done_lessons = sum(1 for lesson in lessons if lesson['id'] in completed_lessons)
-        if done_lessons != len(lessons):
-            all_complete = False
-            break
-
-    if all_complete and len(completed_projects) > 0:
-        return True
-    return False
+    chosen = shared if progress_ratio(shared) >= progress_ratio(legacy) else legacy
+    return {**chosen, 'complete': shared['complete'] or legacy['complete']}
 
 
 def foundation_modules():
@@ -375,11 +561,19 @@ def pathway_pace(user_id, pathway_id, weekly_hours=None):
     Returns a pacing dict for the given pathway only.  A learner enrolled in
     both AI Engineering and ML can call this twice with different pathway_ids and
     get independent results — no cross-contamination.
+
+    Only the ML pathway gets this plan: its course spans two manifests, so
+    neither the 12/10/5-month AI tracks nor an ML-only plan describes it.  The
+    AI course keeps its monthly milestones, which is why this returns ``None``
+    for every other destination.
     """
     import math
 
-    # Get the curriculum modules for this pathway
-    modules = pathway_modules(pathway_id, user_id=user_id)
+    if not is_ml(pathway_id):
+        return None
+
+    # Get the complete course modules for this pathway
+    modules = course_modules(pathway_id, user_id=user_id)
 
     if not modules:
         return None
@@ -480,7 +674,7 @@ def pathway_pace(user_id, pathway_id, weekly_hours=None):
 
 def pathway_header(pathway_id, user_id=None):
     """Copy for the lesson catalog header, scoped to a given pathway_id."""
-    modules = pathway_modules(pathway_id, user_id=user_id)
+    modules = course_modules(pathway_id, user_id=user_id)
     lessons = [lesson for module in modules for lesson in module.get('lessons', [])]
     hours = round(sum(
         float(module.get('estimated_hours') or 0) for module in modules
@@ -609,29 +803,115 @@ def module_entry(module, completed, project_modules):
 
 # Backward-compatible alias (M0–M2 transition)
 # Original: is_ml(destination)
-# Returns True if the destination is 'ml'.
 def is_ml(destination):
-    """Deprecated: use is_pathway(user_id, 'machine-learning') instead."""
-    return destination == 'ml'
+    """Whether a destination token scopes the learner to the ML pathway.
+
+    Accepts both the legacy ``ml`` token and the explicit ``machine-learning``
+    identifier so old plans and new enrolments agree.
+    """
+    return normalize_pathway_id(destination) == 'machine-learning'
 
 
 # Backward-compatible alias (M0–M2 transition)
 # Original: ml_completion_state(user_id)
-# Returns completed lessons and projects for the ML pathway.
 def ml_completion_state(user_id):
-    """Deprecated: use foundation_evidence(user_id) for foundations,
-    or query MLSpecializationLessonCompletion directly for ML-specific data."""
-    from app.models import LessonCompletion, CourseProject
+    """Lesson and project completions recorded against the ML pathway.
+
+    ML completions live in their own tables — never in ``LessonCompletion`` or
+    ``CourseProject`` — which is what keeps AI and ML progress independent.
+    """
+    from app.ml_pathway import PATHWAY_ID
+    from app.models import MLSpecializationLessonCompletion, MLSpecializationProject
+
+    uid = _user_id(user_id)
     completed_lessons = {
-        row.lesson_id
-        for row in LessonCompletion.query.filter_by(
-            user_id=user_id, completed=True
+        row.lesson_id for row in MLSpecializationLessonCompletion.query.filter_by(
+            user_id=uid, pathway_id=PATHWAY_ID
         ).all()
     }
     completed_projects = {
-        row.module_id
-        for row in CourseProject.query.filter_by(
-            user_id=user_id, completed=True
+        row.module_id for row in MLSpecializationProject.query.filter_by(
+            user_id=uid, pathway_id=PATHWAY_ID, completed=True
         ).all()
     }
     return completed_lessons, completed_projects
+
+
+# --------------------------------------------------------------------------
+# Enrolment service (M2.1 / M2.6)
+# --------------------------------------------------------------------------
+PATHWAY_SEEDS = (
+    {
+        'id': 'shared-foundations',
+        'slug': 'shared-foundations',
+        'name': 'Shared Foundations',
+        'description': 'Core foundational knowledge common to all '
+                       'engineering pathways',
+        'domain_type': 'FOUNDATION',
+    },
+    {
+        'id': 'ai-engineering',
+        'slug': 'ai-engineering',
+        'name': 'AI Engineering',
+        'description': 'Build intelligent applications and systems with LLMs, '
+                       'agents, and production deployment',
+        'domain_type': 'SPECIALIZATION',
+    },
+    {
+        'id': 'machine-learning',
+        'slug': 'machine-learning',
+        'name': 'Machine Learning',
+        'description': 'Learn from data and engineer predictive systems',
+        'domain_type': 'SPECIALIZATION',
+    },
+)
+
+
+def seed_learning_pathways():
+    """Idempotently insert the three canonical pathway rows.
+
+    The Alembic migration does this for a managed database; fresh
+    ``db.create_all()`` databases (tests, local development) need the same
+    rows before enrolments can reference them.
+    """
+    created = []
+    for spec in PATHWAY_SEEDS:
+        if db.session.get(LearningPathway, spec['id']) is None:
+            db.session.add(LearningPathway(version='1.0.0', status='ACTIVE',
+                                           **spec))
+            created.append(spec['id'])
+    if created:
+        db.session.commit()
+    return created
+
+
+def enrol_learner(user_id, pathway_id, status='ENROLLED'):
+    """Create or reactivate a learner's enrolment in a pathway.
+
+    Idempotent: enrolling in a pathway that is already active returns the
+    existing row, so onboarding can be retried safely.  Enrolling in a second
+    specialisation never touches the first — that independence is the point of
+    the Parallel Pathways model.
+    """
+    canonical = normalize_pathway_id(pathway_id)
+    if canonical is None:
+        raise ValueError('A pathway id is required to enrol a learner.')
+    seed_learning_pathways()
+    uid = _user_id(user_id)
+    enrolment = LearnerPathwayEnrollment.query.filter_by(
+        learner_id=uid, pathway_id=canonical).first()
+    if enrolment is None:
+        enrolment = LearnerPathwayEnrollment(
+            learner_id=uid, pathway_id=canonical, status=status)
+        db.session.add(enrolment)
+    elif status in ('ENROLLED', 'ACTIVE') and enrolment.status not in (
+            'ENROLLED', 'ACTIVE'):
+        enrolment.status = status
+    db.session.commit()
+    return enrolment
+
+
+def enrol_learner_in_all(user_id, pathway_ids):
+    """Enrol a learner in several pathways independently (e.g. both
+    specialisations) and return the enrolments."""
+    return [enrol_learner(user_id, pathway_id) for pathway_id in pathway_ids]

@@ -70,16 +70,16 @@ class WorkspaceStarterKitTests(WorkspaceTestCase):
         self.assertEqual(response.status_code, 200)
         data = response.get_json()
         self.assertTrue(data['seeded'])
-        self.assertIn('src/audit.py', data['files'])
-        self.assertIn('tests/test_audit.py', data['files'])
-        self.assertIn('data/orders.csv', data['files'])
+        self.assertIn('src/automation.py', data['files'])
+        self.assertIn('tests/test_automation.py', data['files'])
+        self.assertIn('data/requests.json', data['files'])
         self.assertIn('README.md', data['files'])
 
     def test_put_saves_a_draft_and_it_reloads(self):
         self.register('learner')
         starter = self.client.get('/workspace/api/ml-module-1').get_json()
         files = starter['files']
-        files['src/audit.py'] = 'def build_report():\n    return {"row_count": 12}\n'
+        files['src/automation.py'] = 'def decide(request):\n    return "approve"\n'
         files['notes/fix.md'] = 'Rewrote the audit.\n'
         saved = self.client.put(
             '/workspace/api/ml-module-1',
@@ -88,20 +88,20 @@ class WorkspaceStarterKitTests(WorkspaceTestCase):
         self.assertEqual(saved.status_code, 200, saved.get_json())
         reloaded = self.client.get('/workspace/api/ml-module-1').get_json()
         self.assertFalse(reloaded['seeded'])
-        self.assertEqual(reloaded['files']['src/audit.py'], files['src/audit.py'])
+        self.assertEqual(reloaded['files']['src/automation.py'], files['src/automation.py'])
         self.assertEqual(reloaded['files']['notes/fix.md'], 'Rewrote the audit.\n')
 
     def test_reset_restores_the_starter_kit(self):
         self.register('learner')
         starter = self.client.get('/workspace/api/ml-module-1').get_json()['files']
         files = dict(starter)
-        files['src/audit.py'] = 'def build_report():\n    return {}\n'
+        files['src/automation.py'] = 'def decide(request):\n    return "approve"\n'
         self.client.put('/workspace/api/ml-module-1', json={'files': files})
         reset = self.client.post('/workspace/api/ml-module-1/reset')
         self.assertEqual(reset.status_code, 200)
         payload = reset.get_json()
-        self.assertIn('build_report', payload['files']['src/audit.py'])
-        self.assertIn('raise NotImplementedError', payload['files']['src/audit.py'])
+        self.assertIn('decide', payload['files']['src/automation.py'])
+        self.assertIn('raise NotImplementedError', payload['files']['src/automation.py'])
 
     def test_download_returns_zip_of_saved_draft(self):
         self.register('learner')
@@ -119,8 +119,8 @@ class WorkspaceStarterKitTests(WorkspaceTestCase):
         response = self.client.get('/workspace/api/ml-module-1/download')
         self.assertEqual(response.status_code, 200)
         archive = ZipFile(io.BytesIO(response.data))
-        self.assertIn('src/audit.py', archive.namelist())
-        self.assertIn('data/orders.csv', archive.namelist())
+        self.assertIn('src/automation.py', archive.namelist())
+        self.assertIn('data/requests.json', archive.namelist())
 
 
 class WorkspaceValidationTests(WorkspaceTestCase):

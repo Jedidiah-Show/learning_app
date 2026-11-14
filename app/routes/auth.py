@@ -635,7 +635,8 @@ def logout():
 def profile():
     from app.sms import password_reset_sms_configured
     from app.pathway_scope import (
-        destination_for, foundation_completion_state, pathway_label,
+        destination_for, foundation_completion_state, normalize_pathway_id,
+        pathway_label,
     )
 
     # The destination is a hard lock, so this page only reads it: the card
@@ -663,7 +664,9 @@ def profile():
         foundation=foundation,
         pathway_change_request=request_row,
         can_request_pathway_change=(
-            destination in ('ai', 'ml')
+            normalize_pathway_id(destination) in (
+                'ai-engineering', 'machine-learning'
+            )
             and foundation['complete']
             and request_row is None
         ),
@@ -683,10 +686,13 @@ def request_pathway_change():
     """
     from app.pathway_scope import (
         destination_for, foundation_completion_state, is_ml,
+        normalize_pathway_id,
     )
 
     destination = destination_for(current_user)
-    if destination not in ('ai', 'ml'):
+    if normalize_pathway_id(destination) not in (
+        'ai-engineering', 'machine-learning'
+    ):
         flash('Confirm a pathway during onboarding before requesting a change.', 'error')
         return redirect(url_for('auth.profile'))
     if PathwayChangeRequest.query.filter_by(user_id=current_user.id).first():

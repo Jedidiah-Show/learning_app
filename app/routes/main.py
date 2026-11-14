@@ -139,14 +139,14 @@ def readyz():
 @main_bp.route('/search')
 @login_required
 def search():
-    from app.pathway_scope import destination_for, is_ml, pathway_modules
+    from app.pathway_scope import course_modules, destination_for, is_ml
     query = request.args.get('q', '').strip().lower()[:100]
     module_filter = request.args.get('module', '').strip()
     bookmarked_only = request.args.get('bookmarked') == '1'
     destination = destination_for(current_user)
     # Both the module filter and the index follow the pathway: an ML learner
     # searches the foundation plus their pathway, never the AI continuation.
-    modules = pathway_modules(destination)
+    modules = course_modules(destination)
     index = list(_lesson_search_index())
     if is_ml(destination):
         index.extend(_pathway_search_index())
@@ -253,6 +253,8 @@ def search_api():
 @main_bp.route('/')
 @login_required
 def index():
+    from app.pathway_scope import destination_for
+
     try:
         # Read each completion set once and share it with every consumer below;
         # the dashboard previously re-ran the same queries several times over.
@@ -276,7 +278,11 @@ def index():
         # CoursePlan.pathway_destination column for rollback compatibility.
         pathway_destination = destination_for(current_user.id)
         if pathway_destination is None and plan is not None:
-            pathway_destination = plan.pathway_destination or 'shared-foundations'
+            from app.pathway_scope import normalize_pathway_id
+            pathway_destination = (
+                normalize_pathway_id(plan.pathway_destination)
+                or 'shared-foundations'
+            )
         # Seed the per-request cache the nav shell reads, so rendering the
         # dashboard does not fetch the same plan a second time.
         g.pathway_destination = pathway_destination
@@ -379,7 +385,7 @@ def index():
 @login_required
 def lessons():
     from app.pathway_scope import (
-        destination_for, is_ml, pathway_header, pathway_modules,
+        course_modules, destination_for, is_ml, pathway_header,
     )
     completions = LessonCompletion.query.filter_by(
         user_id=current_user.id, completed=True
@@ -394,7 +400,7 @@ def lessons():
     if is_ml(destination):
         from app.pathway_scope import ml_completion_state
         completed_ids |= ml_completion_state(current_user.id)[0]
-    modules = pathway_modules(destination)
+    modules = course_modules(destination)
     progress = course_progress(
         current_user, completed=completed_ids, destination=destination
     )
@@ -612,7 +618,7 @@ def machine_learning_lesson(lesson_id):
 @main_bp.route('/quizzes')
 @login_required
 def quizzes():
-    from app.pathway_scope import destination_for, pathway_modules
+    from app.pathway_scope import course_modules, destination_for
     existing = {
         quiz.quiz_id: quiz
         for quiz in Quiz.query.filter(
@@ -627,7 +633,7 @@ def quizzes():
         last_scores.setdefault(result.quiz_id, result.score)
     return render_template(
         'quizzes.html', config=get_effective_config_for_user(current_user),
-        user=current_user, modules=pathway_modules(destination_for(current_user)),
+        user=current_user, modules=course_modules(destination_for(current_user)),
         existing_quizzes=existing,
         last_scores=last_scores,
     )
@@ -637,7 +643,7 @@ def quizzes():
 @login_required
 def schedule():
     from app.pathway_scope import (
-        destination_for, lesson_by_id, pathway_modules,
+        course_modules, destination_for, lesson_by_id,
     )
     destination = destination_for(current_user)
     progress = course_progress(current_user, destination=destination)
@@ -656,7 +662,7 @@ def schedule():
     # pathway lesson, which has no ordinal in the AI curriculum.
     next_lesson = lesson_by_id(destination, progress['next_lesson_id'])
     return render_template('schedule.html', config=get_effective_config_for_user(current_user),
-                           user=current_user, modules=pathway_modules(destination),
+                           user=current_user, modules=course_modules(destination),
                            progress=progress,
                            upcoming_events=upcoming_events, scheduled_events=scheduled_events,
                            next_action=progress['next_action'],
@@ -921,6 +927,15 @@ def lesson_detail(lesson_id):
         )
         bookmarked, note = False, None
         flash('Lesson loaded, but saved notes and bookmarks are unavailable until the database update is applied.', 'info')
+    try:
+        from app.services.tutor import pathway_context_for_user
+        tutor_ctx = pathway_context_for_user(current_user.id, lesson_id=lesson_id)
+    except Exception:
+        tutor_ctx = {}
+    tutor_greeting = tutor_ctx.get('tutor_greeting') or (
+        'Hi, I’m Ruach-AI, your tutor for the RUACH AI & ML Engineering course. '
+        'What would you like to understand better in this lesson?'
+    )
     return render_template('lessons/detail.html', lesson=lesson, module=lesson['_module'],
                            completed=completed,
                            setup_checks=SETUP_CHECKS,
@@ -932,6 +947,8 @@ def lesson_detail(lesson_id):
                            video_progress=video_progress,
                            previous_lesson=previous_lesson,
                            next_lesson=next_lesson,
+                           tutor_greeting=tutor_greeting,
+                           tutor_pathway_context=tutor_ctx,
                            next_lesson_available=(
                                next_lesson is not None
                                and (
@@ -1055,6 +1072,8 @@ def achievements():
 @login_required
 def gates():
     """A gate-by-gate view of the learner's course progression."""
+    from app.pathway_scope import destination_for
+
     completed_ids = completed_lesson_ids(current_user)
     completed_project_ids = completed_project_modules(current_user)
     progress = course_progress(
@@ -1066,7 +1085,11 @@ def gates():
     # CoursePlan.pathway_destination column for rollback compatibility.
     pathway_destination = destination_for(current_user.id)
     if pathway_destination is None and plan is not None:
-        pathway_destination = plan.pathway_destination or 'shared-foundations'
+        from app.pathway_scope import normalize_pathway_id
+        pathway_destination = (
+            normalize_pathway_id(plan.pathway_destination)
+            or 'shared-foundations'
+        )
     progress = pathway_dashboard_progress(
         current_user, pathway_destination, progress,
         completed=completed_ids, completed_projects=completed_project_ids,
@@ -1121,4 +1144,53 @@ def gates():
         completed_lessons=progress['completed_lessons'],
         total_lessons=progress['total_lessons'],
         pathway_destination=pathway_destination,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Engineering Labs 2.0 (M7) — MVP catalog, domain scenarios, reset guidance
+# ---------------------------------------------------------------------------
+
+_LABS_CACHE = None
+
+
+def _engineering_labs_data():
+    global _LABS_CACHE
+    if _LABS_CACHE is None:
+        path = current_app.root_path + '/data/engineering_labs.json'
+        with open(path, encoding='utf-8') as handle:
+            _LABS_CACHE = json.load(handle)
+    return _LABS_CACHE
+
+
+@main_bp.route('/labs')
+@login_required
+def engineering_labs():
+    data = _engineering_labs_data()
+    domains = data.get('domains', [])
+    domain = request.args.get('domain')
+    selected = None
+    if domain:
+        selected = next((item for item in domains if item.get('id') == domain), None)
+    return render_template(
+        'labs/index.html',
+        domains=domains,
+        selected_domain=selected,
+    )
+
+
+@main_bp.route('/labs/<domain_id>/<lab_id>')
+@login_required
+def engineering_lab_detail(domain_id, lab_id):
+    data = _engineering_labs_data()
+    domain = next((item for item in data.get('domains', []) if item.get('id') == domain_id), None)
+    if domain is None:
+        abort(404)
+    lab = next((item for item in domain.get('labs', []) if item.get('id') == lab_id), None)
+    if lab is None:
+        abort(404)
+    return render_template(
+        'labs/detail.html',
+        domain=domain,
+        lab=lab,
     )

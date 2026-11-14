@@ -1,0 +1,326 @@
+{
+  "domains": [
+    {
+      "id": "shared-foundations",
+      "label": "Shared Foundations",
+      "description": "Core engineering troubleshooting scenarios shared across pathways.",
+      "labs": [
+        {
+          "id": "sf-python-env",
+          "title": "Python environment mismatch",
+          "scenario": "A script runs locally but fails in CI with ModuleNotFoundError and version conflicts.",
+          "tasks": [
+            "Identify the Python and dependency mismatch",
+            "Reproduce with a clean virtual environment",
+            "Pin dependencies and document the fix"
+          ],
+          "hints": [
+            "Check python --version and pip freeze",
+            "Compare requirements with installed packages",
+            "Use a fresh venv to validate"
+          ],
+          "success_criteria": [
+            "Dependencies install cleanly in a fresh environment",
+            "Tests or script run with the pinned versions"
+          ],
+          "reset_guidance": "Delete and recreate the virtual environment, then reinstall from the pinned requirements file.",
+          "evidence": [
+            "Terminal output showing successful install/run",
+            "Short note explaining root cause and fix"
+          ]
+        },
+        {
+          "id": "sf-git-conflict",
+          "title": "Git merge conflict recovery",
+          "scenario": "Two branches modify the same configuration and tests, producing conflicts.",
+          "tasks": [
+            "Inspect conflicting hunks",
+            "Resolve while preserving required behavior",
+            "Run validation and complete the merge"
+          ],
+          "hints": [
+            "Use git status and git diff",
+            "Prefer preserving intent over blindly choosing one side"
+          ],
+          "success_criteria": [
+            "No conflict markers remain",
+            "Relevant checks pass after resolution"
+          ],
+          "reset_guidance": "Abort the merge/rebase and reapply changes from a clean branch state.",
+          "evidence": [
+            "Resolved diff summary",
+            "Validation command output"
+          ]
+        },
+        {
+          "id": "sf-api-config",
+          "title": "API and configuration failure",
+          "scenario": "An API client returns 401/500 errors due to missing environment configuration and incorrect base URL.",
+          "tasks": [
+            "Trace the failing request path",
+            "Correct configuration and secrets handling",
+            "Verify successful authenticated response"
+          ],
+          "hints": [
+            "Check env vars, base URL, and auth headers",
+            "Avoid logging secrets"
+          ],
+          "success_criteria": [
+            "Configuration validated",
+            "API call succeeds with expected response"
+          ],
+          "reset_guidance": "Restore example configuration values and restart the service/process.",
+          "evidence": [
+            "Sanitized request/response log",
+            "Configuration checklist (no secrets)"
+          ]
+        },
+        {
+          "id": "sf-database-connection",
+          "title": "Database connection failure",
+          "scenario": "The application cannot connect to its database due to host/port, credentials, SSL, or migration-state issues.",
+          "tasks": [
+            "Verify connection configuration and network reachability",
+            "Check credentials/secrets handling and database readiness",
+            "Apply the fix and confirm migrations/queries succeed"
+          ],
+          "hints": [
+            "Inspect DATABASE_URL/components and service logs",
+            "Confirm the database is running and accepting connections",
+            "Test with a minimal connection/check script"
+          ],
+          "success_criteria": [
+            "Connection succeeds with correct configuration",
+            "Required schema/migrations are in expected state"
+          ],
+          "reset_guidance": "Restore known-good local database configuration and rerun initialization/migrations from a clean state as appropriate.",
+          "evidence": [
+            "Sanitized connection diagnostics",
+            "Successful query/migration output"
+          ]
+        },
+        {
+          "id": "sf-docker-troubleshoot",
+          "title": "Docker troubleshooting basics",
+          "scenario": "A containerized service fails to start or communicate because of image/build, port mapping, or volume/config issues.",
+          "tasks": [
+            "Inspect container logs and status",
+            "Identify build/runtime configuration mismatch",
+            "Fix configuration and verify the service is reachable"
+          ],
+          "hints": [
+            "Use docker ps/logs/inspect",
+            "Check exposed ports, env vars, and mounted paths"
+          ],
+          "success_criteria": [
+            "Container starts healthy",
+            "Service behaves as expected on the configured interface/port"
+          ],
+          "reset_guidance": "Stop/remove affected containers, rebuild images if needed, and restart from the baseline compose/run configuration.",
+          "evidence": [
+            "Relevant logs/status output",
+            "Verification of healthy service behavior"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ai-engineering",
+      "label": "AI Engineering",
+      "description": "Troubleshooting scenarios for LLM applications, retrieval, agents, and deployment.",
+      "labs": [
+        {
+          "id": "ai-rag-failure",
+          "title": "Retrieval failure in a RAG pipeline",
+          "scenario": "Relevant documents are not retrieved, causing hallucinated or incomplete answers.",
+          "tasks": [
+            "Inspect chunking/indexing and query embedding flow",
+            "Diagnose retrieval mismatch",
+            "Improve retrieval quality and validate answers"
+          ],
+          "hints": [
+            "Check chunk size/overlap and metadata filters",
+            "Compare retrieved chunks to the question"
+          ],
+          "success_criteria": [
+            "Relevant context retrieved for test queries",
+            "Answers grounded in retrieved evidence"
+          ],
+          "reset_guidance": "Rebuild the index from source documents with baseline settings.",
+          "evidence": [
+            "Retrieved chunks for sample queries",
+            "Before/after answer comparison"
+          ]
+        },
+        {
+          "id": "ai-agent-loop",
+          "title": "Agent tool-calling loop",
+          "scenario": "An agent repeatedly calls tools without converging on a final answer.",
+          "tasks": [
+            "Identify loop condition and missing stop criteria",
+            "Constrain tool use and state handling",
+            "Verify task completion"
+          ],
+          "hints": [
+            "Inspect tool call history and termination logic",
+            "Add max steps and clearer success signals"
+          ],
+          "success_criteria": [
+            "Agent completes within bounds",
+            "No repeated unproductive tool calls"
+          ],
+          "reset_guidance": "Restore baseline agent config and clear transient run state.",
+          "evidence": [
+            "Tool-call trace summary",
+            "Successful run output"
+          ]
+        },
+        {
+          "id": "ai-prompt-injection",
+          "title": "Prompt injection and tool misuse",
+          "scenario": "Untrusted content attempts to override instructions or trigger unsafe tool actions.",
+          "tasks": [
+            "Identify injection vector",
+            "Harden prompts/tool boundaries and input handling",
+            "Validate safe behavior on adversarial cases"
+          ],
+          "hints": [
+            "Separate system instructions from user/content data",
+            "Enforce allowlists and output checks"
+          ],
+          "success_criteria": [
+            "Adversarial inputs do not override policy",
+            "Only permitted tool actions occur"
+          ],
+          "reset_guidance": "Reset to baseline prompts/policies and rerun the adversarial test set.",
+          "evidence": [
+            "Adversarial test cases and outcomes",
+            "Mitigation notes"
+          ]
+        },
+        {
+          "id": "ai-eval-cost",
+          "title": "Evaluation failure and cost anomaly",
+          "scenario": "An AI feature passes ad-hoc tests but fails structured evaluation while token usage and latency spike unexpectedly.",
+          "tasks": [
+            "Reproduce with an evaluation set",
+            "Identify prompt/context/tooling causes of failures and excess cost",
+            "Apply fixes and compare quality/cost metrics"
+          ],
+          "hints": [
+            "Inspect prompts, retrieved context size, retries, and tool loops",
+            "Track tokens/latency per request"
+          ],
+          "success_criteria": [
+            "Evaluation quality improves on target cases",
+            "Cost/latency reduced or bounded with no regression in correctness"
+          ],
+          "reset_guidance": "Restore baseline prompts/configuration and rerun the same evaluation dataset.",
+          "evidence": [
+            "Before/after evaluation results",
+            "Cost/latency comparison"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "machine-learning",
+      "label": "Machine Learning Engineering",
+      "description": "Troubleshooting scenarios for data, training, evaluation, and ML systems.",
+      "labs": [
+        {
+          "id": "ml-data-leakage",
+          "title": "Data leakage in evaluation",
+          "scenario": "Model performance is unrealistically high due to target leakage or improper split/preprocessing.",
+          "tasks": [
+            "Audit features and preprocessing order",
+            "Fix split/pipeline to prevent leakage",
+            "Re-evaluate with a valid protocol"
+          ],
+          "hints": [
+            "Fit transforms on train only",
+            "Check for features derived from the target/future"
+          ],
+          "success_criteria": [
+            "Leakage source removed",
+            "Metrics reflect a valid evaluation setup"
+          ],
+          "reset_guidance": "Recreate train/validation/test splits and refit preprocessing from raw data.",
+          "evidence": [
+            "Pipeline/split description",
+            "Before/after metrics with explanation"
+          ]
+        },
+        {
+          "id": "ml-drift",
+          "title": "Model degradation and data drift",
+          "scenario": "A deployed model’s performance drops as input data distribution changes.",
+          "tasks": [
+            "Compare training vs production distributions",
+            "Identify drift signals and impacted slices",
+            "Propose/validate mitigation"
+          ],
+          "hints": [
+            "Monitor feature distributions and slice metrics",
+            "Consider retraining or threshold/calibration updates"
+          ],
+          "success_criteria": [
+            "Drift diagnosed with evidence",
+            "Mitigation plan validated on held-out/recent data"
+          ],
+          "reset_guidance": "Restore baseline model/monitoring snapshot and rerun evaluation.",
+          "evidence": [
+            "Drift/metric comparison",
+            "Mitigation outcome summary"
+          ]
+        },
+        {
+          "id": "ml-reproducibility",
+          "title": "Reproducibility and pipeline inconsistency",
+          "scenario": "Training results differ across runs due to uncontrolled randomness or inconsistent data/config versions.",
+          "tasks": [
+            "Identify sources of non-determinism",
+            "Fix seeds, versions, and artifact tracking",
+            "Reproduce consistent results"
+          ],
+          "hints": [
+            "Control random seeds and data/config versions",
+            "Log environment and parameters"
+          ],
+          "success_criteria": [
+            "Runs are reproducible within expected tolerance",
+            "Key artifacts and configs recorded"
+          ],
+          "reset_guidance": "Clear generated artifacts/caches and rerun from a versioned baseline.",
+          "evidence": [
+            "Run metadata/config",
+            "Reproduced metrics/artifacts"
+          ]
+        },
+        {
+          "id": "ml-class-imbalance",
+          "title": "Class imbalance and misleading metrics",
+          "scenario": "A classifier reports high accuracy but performs poorly on minority classes due to imbalance and inappropriate metrics.",
+          "tasks": [
+            "Analyze class distribution and confusion matrix",
+            "Choose appropriate metrics and mitigation",
+            "Re-evaluate model performance fairly"
+          ],
+          "hints": [
+            "Use precision/recall/F1/AUCPR per class",
+            "Consider resampling, class weights, or threshold tuning"
+          ],
+          "success_criteria": [
+            "Evaluation reflects minority-class performance",
+            "Mitigation improves relevant metrics without leakage"
+          ],
+          "reset_guidance": "Revert to baseline data split/model configuration and rerun evaluation.",
+          "evidence": [
+            "Distribution/confusion matrix summary",
+            "Metric comparison before/after"
+          ]
+        }
+      ]
+    }
+  ]
+}

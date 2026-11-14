@@ -1,7 +1,54 @@
 {% extends "base.html" %}
-{% block title %}My Portfolio · RUACH{% endblock %}
+{% block title %}Engineering Showcase · RUACH{% endblock %}
 {% block content %}
-<header class="mb-7"><p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Your work</p><h1 class="mt-2 text-3xl font-bold">Learning portfolio</h1><p class="mt-2 text-slate-600">Your personal project stays separate from submitted LMS projects. Add evidence links when you are ready to share your work.</p></header>
+<header class="mb-7">
+  <p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Engineering Showcase</p>
+  <h1 class="mt-2 text-3xl font-bold">Verified engineering portfolio</h1>
+  <p class="mt-2 text-slate-600">Project evidence is grouped by domain with truthful verification status. Your personal project stays separate from submitted LMS projects. Published visibility is learner-controlled; by default this showcase is private to your account.</p>
+</header>
+
+<div class="mb-5 flex flex-wrap gap-2">
+  <a href="{{ url_for('projects.portfolio_page') }}" class="rounded-full px-3 py-1.5 text-sm font-semibold {{ 'bg-indigo-600 text-white' if not domain_filter else 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}">All domains</a>
+  <a href="{{ url_for('projects.portfolio_page', domain='ai-engineering') }}" class="rounded-full px-3 py-1.5 text-sm font-semibold {{ 'bg-indigo-600 text-white' if domain_filter == 'ai-engineering' else 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}">AI Engineering</a>
+  <a href="{{ url_for('projects.portfolio_page', domain='machine-learning') }}" class="rounded-full px-3 py-1.5 text-sm font-semibold {{ 'bg-indigo-600 text-white' if domain_filter == 'machine-learning' else 'bg-slate-100 text-slate-700 hover:bg-slate-200' }}">Machine Learning Engineering</a>
+</div>
+
 {% if personal_project.portfolio_title %}<article class="mb-5 rounded-2xl border border-indigo-100 bg-indigo-50 p-5"><p class="text-xs font-semibold uppercase text-indigo-700">Personal portfolio project</p><h2 class="mt-1 text-xl font-bold">{{ personal_project.portfolio_title }}</h2><p class="mt-2 whitespace-pre-line text-slate-700">{{ personal_project.portfolio_summary }}</p><div class="mt-4 flex flex-wrap gap-3">{% if personal_project.portfolio_repository_url %}<a class="font-semibold text-indigo-700 underline" href="{{ personal_project.portfolio_repository_url }}" target="_blank" rel="noopener noreferrer">View repository ↗</a>{% endif %}{% if personal_project.portfolio_demo_url %}<a class="font-semibold text-indigo-700 underline" href="{{ personal_project.portfolio_demo_url }}" target="_blank" rel="noopener noreferrer">Open demo ↗</a>{% endif %}</div></article>{% else %}<section class="mb-5 rounded-2xl border bg-white p-5"><h2 class="font-bold">Choose a project of your own</h2><p class="mt-1 text-slate-600">Set your personal project on the <a class="font-semibold text-indigo-700 underline" href="{{ url_for('projects.project_page') }}">selected learning-plan page</a>.</p></section>{% endif %}
-{% if projects %}<div class="space-y-4">{% for item in projects %}<article class="rounded-2xl border bg-white p-5"><p class="text-xs font-semibold uppercase text-indigo-600">Module {{ item.module.number }}</p><h2 class="mt-1 text-xl font-bold">{{ item.project.title }}</h2><p class="mt-2 text-slate-600">{{ item.project.brief }}</p><div class="mt-4 flex flex-wrap gap-3">{% if item.repository_url %}<a class="font-semibold text-indigo-700 underline" href="{{ item.repository_url }}" target="_blank" rel="noopener noreferrer">View repository ↗</a>{% endif %}{% if item.demo_url %}<a class="font-semibold text-indigo-700 underline" href="{{ item.demo_url }}" target="_blank" rel="noopener noreferrer">Open demo ↗</a>{% endif %}{% if item.checks_verified %}<p class="mt-2 text-sm font-semibold text-emerald-700">Automated checks verified ✓</p>{% endif %}{% if not item.repository_url and not item.demo_url and not item.checks_url %}<p class="mt-2 text-sm text-slate-500">No evidence links added yet.</p>{% endif %}</div><p class="mt-3 text-sm font-semibold {{ 'text-emerald-700' if item.completed else 'text-amber-700' }}">{{ 'Completed' if item.completed else 'Submitted · review in progress' }}</p></article>{% endfor %}</div>{% elif not personal_project.portfolio_title %}<section class="rounded-2xl border bg-white p-6"><h2 class="font-bold">Your portfolio is ready to grow</h2><p class="mt-2 text-slate-600">Save a personal project or submit a module project to start building your portfolio.</p><a class="mt-4 inline-block font-semibold text-indigo-700" href="{{ url_for('projects.project_page') }}">Open the selected learning-plan page →</a></section>{% endif %}
+
+{% if projects %}
+  {% for domain in ['ai-engineering', 'machine-learning'] %}
+    {% set domain_projects = projects | selectattr('domain', 'equalto', domain) | list %}
+    {% if domain_projects %}
+    <section class="mb-6" aria-labelledby="showcase-{{ domain }}">
+      <h2 id="showcase-{{ domain }}" class="mb-3 text-xl font-bold">{{ 'AI Engineering' if domain == 'ai-engineering' else 'Machine Learning Engineering' }}</h2>
+      <div class="space-y-4">
+        {% for item in domain_projects %}
+        <article class="rounded-2xl border bg-white p-5">
+          <div class="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <p class="text-xs font-semibold uppercase text-indigo-600">{{ item.domain_label }} · Module {{ item.module.number if item.module else item.module_id }}</p>
+              <h3 class="mt-1 text-xl font-bold">{{ item.project.title }}</h3>
+            </div>
+            <span class="rounded-full px-3 py-1 text-xs font-semibold {{ 'bg-emerald-50 text-emerald-800' if item.verification_status == 'Verified' else ('bg-indigo-50 text-indigo-800' if item.completed else 'bg-amber-50 text-amber-800') }}">{{ item.verification_status }}</span>
+          </div>
+          <p class="mt-2 text-slate-600">{{ item.project.brief }}</p>
+          <div class="mt-4 flex flex-wrap gap-3 text-sm">
+            {% if item.repository_url %}<a class="font-semibold text-indigo-700 underline" href="{{ item.repository_url }}" target="_blank" rel="noopener noreferrer">Repository ↗</a>{% endif %}
+            {% if item.demo_url %}<a class="font-semibold text-indigo-700 underline" href="{{ item.demo_url }}" target="_blank" rel="noopener noreferrer">Demo ↗</a>{% endif %}
+            {% if item.checks_url %}<a class="font-semibold text-indigo-700 underline" href="{{ item.checks_url }}" target="_blank" rel="noopener noreferrer">Checks evidence ↗</a>{% endif %}
+            {% if item.checks_verified %}<span class="font-semibold text-emerald-700">Automated checks verified ✓</span>{% endif %}
+            {% if not item.repository_url and not item.demo_url and not item.checks_url %}<span class="text-slate-500">No evidence links recorded yet.</span>{% endif %}
+          </div>
+          {% if item.evaluation and item.evaluation.summary %}
+          <p class="mt-3 text-sm text-slate-700"><strong>Assessment summary:</strong> {{ item.evaluation.summary }}</p>
+          {% endif %}
+        </article>
+        {% endfor %}
+      </div>
+    </section>
+    {% endif %}
+  {% endfor %}
+{% elif not personal_project.portfolio_title %}
+<section class="rounded-2xl border bg-white p-6"><h2 class="font-bold">Your showcase is ready to grow</h2><p class="mt-2 text-slate-600">Complete and verify module projects to build domain-specific engineering evidence in your showcase.</p><a class="mt-4 inline-block font-semibold text-indigo-700" href="{{ url_for('projects.project_page') }}">Open Project Studio →</a></section>
+{% endif %}
 {% endblock %}

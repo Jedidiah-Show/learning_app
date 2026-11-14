@@ -198,32 +198,68 @@ def _normalize_database_url(database_url, production):
 
 
 def active_pathway_enrolments():
-    """Return all active pathway enrolments for the signed-in learner.
+    """Return active pathway enrolments for the signed-in learner.
 
-    Yields ``(LearnerPathwayEnrollment, LearningPathway)`` tuples; each enrolment
-    has a ``pathway_id`` ('shared-foundations', 'ai-engineering',
-    'machine-learning') that maps to a curriculum domain definition.
-
-    A learner enrolled in both AI Engineering and ML yields two enrolments;
-    pausing one does not affect the other.
+    Thin compatibility wrapper around
+    :func:`app.pathway_scope.active_pathway_enrolments`; the scope module owns
+    the query, per-request cache, and ``User``/id normalisation.
     """
-    from app.models import LearnerPathwayEnrollment, LearningPathway
-    from flask import has_request_context, g, session
-    from flask_login import current_user as lc_current_user
+    from app.pathway_scope import active_pathway_enrolments as _enrolments
 
-    key = 'active_pathway_enrolments'
-    if has_request_context() and getattr(g, key, None) is not None:
-        return g.pathway_destination  # reuse g key for backward compatibility
+    return _enrolments()
 
-    enrolments = (
-        db.session.query(LearnerPathwayEnrollment, LearningPathway)
-        .join(LearningPathway, LearnerPathwayEnrollment.pathway_id == LearningPathway.id)
-        .filter(LearnerPathwayEnrollment.learner_id == lc_current_user.id)
-        .filter(LearnerPathwayEnrollment.status.in_(('ENROLLED', 'ACTIVE')))
-        .all()
-    )
-    g.pathway_destination = enrolments  # reuse g key; templates expect iterable
-    return enrolments
+
+def _signed_in_user_id():
+    if getattr(current_user, 'is_authenticated', False):
+        return current_user.id
+    return None
+
+
+def _pathway_enrolments_for_templates():
+    """Active enrolment rows for the signed-in learner (safe outside requests)."""
+    if not _signed_in_user_id():
+        return []
+    try:
+        return active_pathway_enrolments()
+    except Exception:  # pragma: no cover - never let the shell fail on this
+        current_app.logger.exception('Pathway enrolment lookup failed')
+        return []
+
+
+def _pathway_ids_for_templates():
+    """Explicit pathway ids the learner can study, including legacy plans."""
+    uid = _signed_in_user_id()
+    if not uid:
+        return set()
+    try:
+        from app.pathway_scope import pathway_ids_for
+        return pathway_ids_for(uid)
+    except Exception:  # pragma: no cover
+        current_app.logger.exception('Pathway id lookup failed')
+        return set()
+
+
+def _pathway_destination_for_templates():
+    uid = _signed_in_user_id()
+    if not uid:
+        return None
+    try:
+        from app.pathway_scope import destination_for
+        return destination_for(uid)
+    except Exception:  # pragma: no cover
+        return None
+
+
+def _foundation_evidence_for_templates():
+    uid = _signed_in_user_id()
+    if not uid:
+        return {}
+
+    def _lookup(user_id):
+        from app.pathway_scope import foundation_evidence
+        return foundation_evidence(user_id)
+
+    return _lookup
 
 
 def current_review_due_count():
@@ -784,7 +820,12 @@ def create_app(config_override=None):
             'csrf_token': token,
             # Every template can now branch on the learner's pathway, which is
             # what makes the nav shell and the dashboard dynamic.
-            # Pre-compute pathway status from enrolments\n            enrolments = active_pathway_enrolments() if has_request_context() and getattr(g, 'active_pathway_enrolments', None) is not None else []\n            pathway_ids = [e.pathway_id for e in enrolments]\n            has_ml = 'machine-learning' in pathway_ids if pathway_ids else False\n            has_ai = 'ai-engineering' in pathway_ids if pathway_ids else False\n            has_shared = 'shared-foundations' in pathway_ids if pathway_ids else False\n            'pathway_destination': enrolments,  # backward compat\n            'has_ml': has_ml,\n            'has_ai': has_ai,\n            'has_shared': has_shared\n            # Review Center badge: items due now, per learner, hidden from admins.
+            # Templates branch on enrolments, with legacy plan
+            # destinations folded in so old accounts stay scoped.
+            'pathway_enrolments': _pathway_enrolments_for_templates(),
+            'pathway_ids': _pathway_ids_for_templates(),
+            'pathway_destination': _pathway_destination_for_templates(),
+            'foundation_evidence': _foundation_evidence_for_templates(),
             'review_due_count': current_review_due_count(),
             'notifications': current_notifications(),
             'google_calendar_oauth_configured': bool(
