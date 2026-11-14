@@ -291,15 +291,39 @@ def project_page():
                 user_id=current_user.id
             ).all()
         }
+        all_progress = ml_module_progress(current_user.id)
+        found_active = False
         for module in pathway.get('modules', []):
             row = project_rows.get(module['id'])
+            mod_prog = all_progress.get(module['id'], {})
+            lessons_completed = mod_prog.get('completed_lessons', 0)
+            total_lessons = mod_prog.get('total_lessons', 0)
+            project_completed = bool(mod_prog.get('project_completed'))
+            if project_completed:
+                status = 'completed'
+            elif total_lessons and lessons_completed == total_lessons:
+                status = 'project_ready'
+            elif lessons_completed > 0:
+                status = 'in_progress'
+                found_active = True
+            elif not found_active:
+                status = 'in_progress'
+                found_active = True
+            else:
+                status = 'locked'
             ml_workbench_modules.append({
                 'id': module['id'],
                 'number': module.get('number'),
                 'title': module.get('title'),
                 'project': module.get('project'),
-                'progress': ml_module_progress(current_user.id, module),
-                'completed': bool(row and row.completed),
+                'progress': {
+                    **mod_prog,
+                    'status': status,
+                    'lessons_completed': lessons_completed,
+                    'lessons_total': total_lessons,
+                    'ready_lessons': sum(1 for l in module.get('lessons', []) if l.get('status') == 'ready'),
+                },
+                'completed': bool(row and row.completed) or project_completed,
                 'url': url_for('ml_specialization.project', module_id=module['id']),
             })
 
