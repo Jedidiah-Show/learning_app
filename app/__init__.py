@@ -197,26 +197,33 @@ def _normalize_database_url(database_url, production):
     return database_url
 
 
-def current_pathway_destination():
-    """Confirmed pathway destination for the signed-in learner.
+def active_pathway_enrolments():
+    """Return all active pathway enrolments for the signed-in learner.
 
-    The nav shell renders on every page while the destination changes rarely,
-    so the value is cached on ``g``; the dashboard seeds it because it already
-    holds the plan.  Failure-tolerant by design: a missing plan or a database
-    hiccup must never take the shell down with it.
+    Yields ``(LearnerPathwayEnrollment, LearningPathway)`` tuples; each enrolment
+    has a ``pathway_id`` ('shared-foundations', 'ai-engineering',
+    'machine-learning') that maps to a curriculum domain definition.
+
+    A learner enrolled in both AI Engineering and ML yields two enrolments;
+    pausing one does not affect the other.
     """
-    if hasattr(g, 'pathway_destination'):
-        return g.pathway_destination
-    destination = None
-    if current_user.is_authenticated:
-        try:
-            from app.models import CoursePlan
-            plan = CoursePlan.query.filter_by(user_id=current_user.id).first()
-            destination = plan.pathway_destination if plan else None
-        except Exception:
-            current_app.logger.exception('Could not read pathway destination')
-    g.pathway_destination = destination
-    return destination
+    from app.models import LearnerPathwayEnrollment, LearningPathway
+    from flask import has_request_context, g, session
+    from flask_login import current_user as lc_current_user
+
+    key = 'active_pathway_enrolments'
+    if has_request_context() and getattr(g, key, None) is not None:
+        return g.pathway_destination  # reuse g key for backward compatibility
+
+    enrolments = (
+        db.session.query(LearnerPathwayEnrollment, LearningPathway)
+        .join(LearningPathway, LearnerPathwayEnrollment.pathway_id == LearningPathway.id)
+        .filter(LearnerPathwayEnrollment.learner_id == lc_current_user.id)
+        .filter(LearnerPathwayEnrollment.status.in_(('ENROLLED', 'ACTIVE')))
+        .all()
+    )
+    g.pathway_destination = enrolments  # reuse g key; templates expect iterable
+    return enrolments
 
 
 def current_review_due_count():
@@ -777,8 +784,7 @@ def create_app(config_override=None):
             'csrf_token': token,
             # Every template can now branch on the learner's pathway, which is
             # what makes the nav shell and the dashboard dynamic.
-            'pathway_destination': current_pathway_destination(),
-            # Review Center badge: items due now, per learner, hidden from admins.
+            # Pre-compute pathway status from enrolments\n            enrolments = active_pathway_enrolments() if has_request_context() and getattr(g, 'active_pathway_enrolments', None) is not None else []\n            pathway_ids = [e.pathway_id for e in enrolments]\n            has_ml = 'machine-learning' in pathway_ids if pathway_ids else False\n            has_ai = 'ai-engineering' in pathway_ids if pathway_ids else False\n            has_shared = 'shared-foundations' in pathway_ids if pathway_ids else False\n            'pathway_destination': enrolments,  # backward compat\n            'has_ml': has_ml,\n            'has_ai': has_ai,\n            'has_shared': has_shared\n            # Review Center badge: items due now, per learner, hidden from admins.
             'review_due_count': current_review_due_count(),
             'notifications': current_notifications(),
             'google_calendar_oauth_configured': bool(

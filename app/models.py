@@ -797,6 +797,54 @@ class CoursePlan(db.Model):
     )
 
 
+
+class LearningPathway(db.Model):
+    """The three learning domains — Shared Foundations, AI Engineering, Machine Learning."""
+    __tablename__ = 'learning_pathway'
+    id = db.Column(db.String(80), primary_key=True)
+    slug = db.Column(db.String(80), unique=True, nullable=False)
+    name = db.Column(db.String(120), nullable=False)
+    description = db.Column(db.Text, nullable=False)
+    domain_type = db.Column(db.String(20), nullable=False)
+    version = db.Column(db.String(16), nullable=False, server_default='1.0.0')
+    status = db.Column(db.String(16), nullable=False, server_default='ACTIVE')
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+class LearnerPathwayEnrollment(db.Model):
+    """A learner's enrolment in a learning pathway.
+
+    A learner may have zero, one, or multiple active enrolments.  Each enrolment
+    independently scopes the lesson catalog, progress calculations, and pacing.
+    Pausing one enrolment does not affect the other; completing one does not
+    automatically complete the other.
+    """
+    __tablename__ = 'learner_pathway_enrollment'
+    id = db.Column(db.Integer, primary_key=True)
+    learner_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    pathway_id = db.Column(
+        db.String(80), db.ForeignKey('learning_pathway.id'), nullable=False
+    )
+    status = db.Column(
+        db.String(20), nullable=False, server_default='ENROLLED')
+    enrolled_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+    started_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    paused_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint('learner_id', 'pathway_id',
+                            name='unique_learner_pathway_enrollment'),
+    )
+
 class LeaderboardScore(db.Model):
     """Materialized learning totals used by the opt-in leaderboard."""
     __tablename__ = 'leaderboard_score'

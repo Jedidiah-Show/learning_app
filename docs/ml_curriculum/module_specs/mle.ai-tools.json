@@ -1,0 +1,122 @@
+{
+  "module_id": "mle.ai-tools",
+  "number": 1,
+  "title": "AI and the tools you will use",
+  "week": "Week 1",
+  "focus_area": "Intro to AI & Tools",
+  "source_deliverable": "Hello, AI World! - build a simple program that automates a task or makes a decision using logic.",
+  "tools": ["Python", "Jupyter", "GitHub"],
+  "summary": "Start from zero: what artificial intelligence, machine learning, and deep learning actually mean, how a program makes a decision, the Python used every day in this course, and how to keep your work in a notebook and on GitHub.",
+  "estimated_hours": 6,
+  "topics": ["What AI, ML and DL mean", "Real-world AI applications", "Python basics", "Jupyter and Colab notebooks", "Git and GitHub"],
+  "outcomes": [
+    "Explain the difference between AI, machine learning, and deep learning in plain words.",
+    "Write a decision rule in plain language and implement it as a Python function.",
+    "Read and write the Python used in every later module: values, lists, dictionaries, loops, functions.",
+    "Run code in a notebook, commit it to Git, and publish it on GitHub."
+  ],
+  "lessons": [
+    {
+      "id": "mle.tools.01",
+      "title": "What AI, machine learning, and deep learning actually mean",
+      "goal": "Describe the difference between artificial intelligence, machine learning, and deep learning, and name where each one appears in products you already use.",
+      "sections": [
+        {"heading": "A program that follows written rules", "intent": "Start with rule-based software: the computer follows instructions a person wrote, and the same input always gives the same output. Give a concrete example such as a spam filter that blocks any message containing a banned phrase."},
+        {"heading": "A program that learns from examples", "intent": "Introduce machine learning: instead of writing the rule, you show many labelled examples and the program finds a rule that fits them. Use one everyday example such as a phone unlocking by recognising a face."},
+        {"heading": "Where deep learning fits", "intent": "Explain deep learning as machine learning that uses many stacked layers of simple numbers to learn features by itself. Keep it concrete: layers of numbers, trained on many examples."},
+        {"heading": "How to tell what a product really uses", "intent": "Give the learner a checklist for reading product descriptions honestly: is the behaviour a written rule, a learned model, or a deep network? Warn that marketing language is often vague."}
+      ],
+      "task": "Pick one product you use every day. Write three short sentences: the part that works from written rules, the part that learned from examples, and what data each part uses.",
+      "quiz": [
+        "A rule written by a person and a model trained on examples are two different ways to build the same behaviour. What is the key difference between them?",
+        "Which of these is an everyday example of deep learning rather than simple rules?",
+        "A product claims it uses 'AI'. Which question best helps you check whether it is actually a learned model?"
+      ]
+    },
+    {
+      "id": "mle.tools.02",
+      "title": "How a program makes a decision",
+      "goal": "Write a decision rule in plain language and turn it into a Python function that always returns the same answer for the same input.",
+      "sections": [
+        {"heading": "Inputs, rules, outputs", "intent": "Define the three parts of any decision: what you know (inputs), the rule you apply, and the answer you produce (outputs). Use the refund example from the module project."},
+        {"heading": "From a sentence to a table", "intent": "Show how a written rule such as 'approve damaged orders' becomes a table of conditions and results that a person can check."},
+        {"heading": "Writing the decision in Python", "intent": "Teach if / elif / else with a worked example, including why the first matching branch wins and why order changes the answer."},
+        {"heading": "Testing the decision", "intent": "Show why you write down expected answers before coding, then check your function against them. Point out that a decision with no test is just an opinion."}
+      ],
+      "task": "Write a Python function decide(request) that returns 'approve', 'review', or 'decline' for a refund request. Use these rules, and the first one that matches wins: a damaged or wrong item means approve; a late delivery means review; a request that arrived by email means decline; an amount of 50 or more means review; anything else means approve. Test it on four requests.",
+      "quiz": [
+        "Why does the order of the branches matter in an if / elif / else chain?",
+        "For a request with amount 80 and reason 'late_delivery', what does the rule set in the lesson return, and why?",
+        "Which test would catch the classic beginner mistake of swapping the 'amount >= 50' check with the 'email' check?"
+      ]
+    },
+    {
+      "id": "mle.tools.03",
+      "title": "Python essentials for this course",
+      "goal": "Read and write the Python used every day in this course: values, lists, dictionaries, loops, and functions that return a result.",
+      "sections": [
+        {"heading": "Values and variables", "intent": "Introduce variables as labelled boxes, and the basic value types: text (str), whole numbers (int), decimals (float), and true/false (bool). Give a worked example with a refund amount."},
+        {"heading": "Lists and dictionaries", "intent": "Show a list as an ordered row of values and a dictionary as a labelled record, using one email record as the example. Explain when to use each."},
+        {"heading": "Loops", "intent": "Teach the for loop over a list, including the loop variable, and mention the common off-by-one and indentation mistakes."},
+        {"heading": "Functions that return a result", "intent": "Explain a function as a reusable named recipe that takes inputs and returns an output, then show the same three lines of logic written three times and once as a function."}
+      ],
+      "task": "Write a function summarize_rows(rows) that takes a list of dictionaries with 'amount' and 'reason' keys and returns a dictionary with 'count', 'total', and 'approved_count' where amount is 50 or more. Run it on three rows.",
+      "quiz": [
+        "What is the difference between a list and a dictionary in the terms used in this lesson?",
+        "What does a function return, and what happens to a value printed inside a function?",
+        "A loop over a list of three items runs the body three times. What is the value of the loop variable after the loop finishes?"
+      ]
+    },
+    {
+      "id": "mle.tools.04",
+      "title": "Your notebook, your repository, your future employer",
+      "goal": "Run Python in a notebook, keep every change in Git, and publish the work on GitHub so that another person can run it and check your result.",
+      "sections": [
+        {"heading": "Notebook cells and why order matters", "intent": "Explain a notebook cell, that state flows top to bottom, and that a notebook which only works when you click cells in a magic order is broken. Recommend restarting and running all cells."},
+        {"heading": "What Git records", "intent": "Explain a commit as a named snapshot with a message, a branch as a named line of work, and how the history lets you see what changed and when."},
+        {"heading": "Commit, push, pull", "intent": "Walk through the everyday loop with the exact commands and what each one does, including the pull that brings in other people's changes."},
+        {"heading": "A repository a stranger can run", "intent": "Give the four things a reviewer needs: a README that says what the project does and how to run it, pinned dependencies, tests that run with one command, and a licence note for data."}
+      ],
+      "task": "Create a notebook with three cells (imports, a decision function, a call that prints a result), restart it and run all cells from the top, then make two commits with clear messages and push the repository to GitHub.",
+      "quiz": [
+        "What does a Git commit record?",
+        "Why should you restart a notebook and run every cell from the top before sharing it?",
+        "A reviewer opens your repository and cannot tell how to run it. Which file is missing and what should it contain?"
+      ]
+    }
+  ],
+  "project": {
+    "brief": "Build the 'Hello, AI World!' mini-project: a small Python program that automates a task or makes a decision using clear written logic. Use the bundled support-request dataset, decide on every request with your rules, and prove your decision table works.",
+    "deliverables": [
+      "A public GitHub repository with a README that explains the task, the rules, and the exact command that runs it.",
+      "A rules table in src/rules.py with at least three named rules.",
+      "A program that records one decision per request in artifacts/decisions.jsonl.",
+      "A test file that passes in CI on every push."
+    ],
+    "rubric": [
+      {"criterion": "Rules are written down and implemented exactly as described", "weight": 35},
+      {"criterion": "The decision program is correct on every bundled request", "weight": 30},
+      {"criterion": "Repository, README and tests let a stranger run the project", "weight": 35}
+    ],
+    "report_contract": [
+      {"key": "requests_total", "type": "int", "equals": 12},
+      {"key": "decisions_recorded", "type": "int", "equals": 12},
+      {"key": "correct_decisions", "type": "int", "min": 12, "max": 12},
+      {"key": "decision_rules", "type": "int", "min": 3},
+      {"key": "distinct_decisions", "type": "int", "min": 2},
+      {"key": "readme_present", "type": "bool", "equals": true},
+      {"key": "run_script_present", "type": "bool", "equals": true}
+    ],
+    "kit": {
+      "dir": "module_1_ai_tools",
+      "module": "automation",
+      "dataset": "data/requests.json - 12 support requests with id, channel (web, mobile, email, partner), amount, reason (damaged, wrong_item, late_delivery, other) and the expected decision for the rule set in the lesson.",
+      "artifacts": [
+        "src/rules.py - the learner writes RULES, a list of dicts with keys name, when, then.",
+        "src/automation.py - the learner implements decide(request) and run_all().",
+        "artifacts/decisions.jsonl - one JSON object per line with id and decision, written by run_all()."
+      ],
+      "reference": "tests/ml_reference/automation.py"
+    }
+  }
+}

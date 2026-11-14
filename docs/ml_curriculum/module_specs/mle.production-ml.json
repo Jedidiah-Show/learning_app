@@ -1,0 +1,126 @@
+{
+  "module_id": "mle.production-ml",
+  "number": 11,
+  "title": "Deployment and operations",
+  "week": "Week 9",
+  "focus_area": "Model deployment and sharing",
+  "source_deliverable": "A versioned model behind a validated prediction service, with monitoring, a canary decision and a rollback.",
+  "tools": ["Python", "FastAPI", "joblib"],
+  "summary": "Put a model where other people can use it: choose a serving pattern, define a stable prediction contract, protect the boundary with validation, monitor the service and the model separately, and release updates with a canary and a rollback plan.",
+  "estimated_hours": 14,
+  "topics": ["Batch and online inference", "Model serving", "Input validation", "Performance monitoring", "Drift", "Canary releases", "Rollback"],
+  "outcomes": [
+    "Choose between batch and online inference for a decision you have to make.",
+    "Write a prediction contract that says what inputs are required and what comes back.",
+    "Validate inputs at the boundary and reject bad requests clearly.",
+    "Monitor the service and the model separately, and say what each signal means.",
+    "Plan a canary release with stop conditions and a rollback that has been rehearsed."
+  ],
+  "rewrite_existing": true,
+  "existing_source": "app/data/machine_learning_pathway.json, module mle.production-ml, lessons mle.production.01 to mle.production.03",
+  "lessons": [
+    {
+      "id": "mle.production.04",
+      "title": "Test your service the way a user would",
+      "goal": "Write the tests that prove a prediction service behaves correctly for good inputs, bad inputs and edge cases.",
+      "sections": [
+        {"heading": "The happy path is not enough", "intent": "Explain that a service that only works on the example from the documentation is not finished, and list the other cases that matter."},
+        {"heading": "Bad input must fail clearly", "intent": "Show a request with a missing field, a string where a number belongs, and an extra field, and explain what a good error message contains."},
+        {"heading": "Edge cases are where bugs live", "intent": "Explain empty inputs, extreme but valid values, and repeated requests, using the churn features as examples."},
+        {"heading": "Write the test before the fix", "intent": "Explain writing a failing test for each bug you find, and how that keeps the bug from coming back."}
+      ],
+      "task": "Write four tests for the prediction contract of the bundled churn model: a valid request, a request missing a feature, a request with a non-numeric feature, and a request with an unknown extra field. Run them and fix anything they catch.",
+      "quiz": [
+        "Why is testing only the example from the documentation not enough?",
+        "What should a prediction service do when a required field is missing?",
+        "Why does an extra unknown field sometimes deserve an error?"
+      ]
+    },
+    {
+      "id": "mle.production.01",
+      "title": "Choose a prediction serving pattern",
+      "goal": "Choose batch or online inference based on the decision's latency, volume, and reliability needs.",
+      "sections": [
+        {"heading": "Batch and online inference solve different timing needs", "intent": "Compare scoring a file of rows once a night with scoring one row while someone waits."},
+        {"heading": "Define a stable prediction contract", "intent": "Explain the request and response shape as a promise, and why changing it later breaks callers."},
+        {"heading": "Protect the application boundary", "intent": "Explain why validation belongs at the edge and what a good error message tells the caller."}
+      ],
+      "task": "For the bundled churn model, write the prediction contract as you would document it: the request fields, the types, what happens on invalid input, and the response fields.",
+      "quiz": [
+        "When is batch inference the better choice?",
+        "What makes a prediction contract 'stable'?",
+        "Why validate input at the boundary of the service?"
+      ]
+    },
+    {
+      "id": "mle.production.02",
+      "title": "Monitor data and model behavior",
+      "goal": "Detect service failures, input shifts, and changes in model quality with appropriate signals.",
+      "sections": [
+        {"heading": "Monitor the service and the model separately", "intent": "Explain that a healthy service can serve bad predictions, so uptime and latency are not enough."},
+        {"heading": "Drift is a signal to investigate", "intent": "Explain input drift as the incoming data changing shape, and that drift alone does not prove the model is worse."},
+        {"heading": "Set actions before alerts fire", "intent": "Explain that every alert needs a written action, and give examples of who does what when a signal moves."}
+      ],
+      "task": "Write a monitoring plan for the bundled churn model with four signals: the service ones and the model ones, and for each one the threshold, the action and the person responsible.",
+      "quiz": [
+        "Why can a service be up and still serve bad predictions?",
+        "What does input drift tell you and what does it not tell you?",
+        "What must accompany every monitoring alert?"
+      ]
+    },
+    {
+      "id": "mle.production.03",
+      "title": "Release with a canary and rollback",
+      "goal": "Limit the impact of a model update and restore a known-good version safely.",
+      "sections": [
+        {"heading": "Treat model promotion as a release", "intent": "Explain that a new model version is a production change with the same care as a code change."},
+        {"heading": "Use stop and rollback conditions", "intent": "Explain the canary idea: send a small share of traffic to the new version, watch, and stop if a condition is met."},
+        {"heading": "Retraining is a governed decision", "intent": "Explain that retraining on new data needs the same checks as any other release, and that data drift alone is not a reason to retrain."}
+      ],
+      "task": "Write a canary plan for a new version of the bundled churn model: the traffic share, the signals you watch, the number that stops the release, and the exact rollback steps.",
+      "quiz": [
+        "What is a canary release and why is it called that?",
+        "What has to be written down before a release can be stopped automatically?",
+        "Why is data drift on its own not a reason to retrain?"
+      ]
+    }
+  ],
+  "project": {
+    "brief": "Serve and operate a model. Package the versioned churn model behind a validated prediction service, run a batch and an online prediction, demonstrate monitoring with a drift signal, and make a canary decision with a rollback that you have rehearsed.",
+    "deliverables": [
+      "A public GitHub repository with a README that states the prediction contract and the operational plan.",
+      "A service that validates its input and refuses bad requests with a clear message.",
+      "A monitoring demonstration with one drift signal triggered on purpose.",
+      "A test file that passes in CI on every push."
+    ],
+    "rubric": [
+      {"criterion": "The prediction contract is stable, validated and tested", "weight": 35},
+      {"criterion": "Monitoring covers the service and the model with written actions", "weight": 30},
+      {"criterion": "The canary and rollback decision is explicit and rehearsed", "weight": 35}
+    ],
+    "report_contract": [
+      {"key": "health_status", "type": "int", "equals": 200},
+      {"key": "model_version", "type": "string", "equals": "1.0.0"},
+      {"key": "batch_prediction_count", "type": "int", "equals": 2},
+      {"key": "invalid_feature_rejected", "type": "bool", "equals": true},
+      {"key": "extra_feature_rejected", "type": "bool", "equals": true},
+      {"key": "input_drift_detected", "type": "bool", "equals": true},
+      {"key": "drift_proves_quality_failure", "type": "bool", "equals": false},
+      {"key": "canary_promoted", "type": "bool", "equals": false},
+      {"key": "rollback_active_version", "type": "string", "equals": "1.0.0"},
+      {"key": "rollback_triggered", "type": "bool", "equals": true}
+    ],
+    "kit": {
+      "dir": "module_11_production_ml",
+      "module": "production",
+      "dataset": "data/train.csv and data/evaluation.csv - unchanged from the existing production module kit.",
+      "artifacts": [
+        "src/train_model.py, src/service.py, src/monitoring.py and src/project_report.py - unchanged from the existing production module kit.",
+        "The report is produced by the project_report module from a trained model."
+      ],
+      "reference": "tests/ml_reference/project_report.py",
+      "moved_from": "starter_kits/machine_learning/module_4",
+      "note": "The existing kit already has reference solutions for train_model, service, monitoring and project_report. Keep them working after the directory is renamed."
+    }
+  }
+}

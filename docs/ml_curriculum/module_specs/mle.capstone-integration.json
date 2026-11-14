@@ -1,0 +1,179 @@
+{
+  "module_id": "mle.capstone-integration",
+  "number": 12,
+  "title": "Capstone, portfolio and career",
+  "week": "Weeks 9 to 12",
+  "focus_area": "Capstone and career paths",
+  "source_deliverable": "Capstone execution, final presentation and graduation. Build, deploy, and present your end-to-end AI project.",
+  "tools": ["Python", "Streamlit", "GitHub"],
+  "summary": "Finish the course the way an employer sees it: run one end-to-end project from question to deployed app, present it with evidence, publish a portfolio, write a resume and a LinkedIn profile that point at the work, and practise the interviews that follow.",
+  "estimated_hours": 22,
+  "topics": ["Pipeline orchestration", "Model versioning", "Monitoring and drift detection", "Canary deployments", "Rollback", "Deployment with Streamlit or Flask", "Portfolio", "Resume and LinkedIn", "Mock interviews"],
+  "outcomes": [
+    "Run one project end to end, from the question to a deployed application.",
+    "Present a project with a problem, method, evidence, limits and next steps.",
+    "Publish a portfolio that a recruiter can read in two minutes.",
+    "Write a resume line and a LinkedIn post that describe your work accurately.",
+    "Answer the technical questions an interviewer actually asks about your project."
+  ],
+  "rewrite_existing": true,
+  "existing_source": "app/data/machine_learning_pathway.json, module mle.capstone-integration, lessons mle.capstone.01 and mle.capstone.02",
+  "capstone_stages": [
+    "ai_tools_decision",
+    "math_profile",
+    "data_audit",
+    "classical_baseline",
+    "classification_spam",
+    "unsupervised_segmentation",
+    "deep_learning_digits",
+    "computer_vision",
+    "reproducible_training",
+    "pytorch_model",
+    "production_service",
+    "capstone_app"
+  ],
+  "lessons": [
+    {
+      "id": "mle.capstone.03",
+      "title": "Deploy your model as an app",
+      "goal": "Turn a trained model into a small application other people can use, with a clear interface and honest limits.",
+      "sections": [
+        {"heading": "From a script to an app", "intent": "Explain that an app adds an interface, an input path and an output path around the same prediction code, and that the model logic does not change."},
+        {"heading": "A first screen that teaches", "intent": "Describe the elements of a good demo screen: what the model does, one input, one output, and an example to copy."},
+        {"heading": "Show the uncertainty", "intent": "Explain why a demo should show the score and the limitation, and how a short note prevents misuse."},
+        {"heading": "Deploy it and check it", "intent": "Explain the steps to deploy a small app, and the smoke test to run afterwards to prove the deployed copy works."}
+      ],
+      "task": "Build a small application around your churn model that takes two feature values and returns the prediction with its score. Add one line that states what the model cannot do. Run it locally and write the command that starts it.",
+      "quiz": [
+        "What does an application add around the prediction code?",
+        "Why should a demo show the score and not only the label?",
+        "What is a smoke test of a deployed app?"
+      ]
+    },
+    {
+      "id": "mle.capstone.04",
+      "title": "Build a portfolio that gets you interviews",
+      "goal": "Publish a small set of projects that show how you think, and write each one so a stranger understands it in two minutes.",
+      "sections": [
+        {"heading": "Three projects beat twelve", "intent": "Explain what makes a strong portfolio entry: one problem, one method, real numbers and a link that works."},
+        {"heading": "The two-minute read", "intent": "Describe the structure of a project page or README a recruiter can skim: the headline, the picture or table, the method, the numbers, the honesty."},
+        {"heading": "Show your thinking, not only the result", "intent": "Explain that a rejected idea with a reason and a next step is often more convincing than a result with no explanation."},
+        {"heading": "Keep it current", "intent": "Explain that a portfolio is a product with users, so it needs a schedule, a link check and a version history."}
+      ],
+      "task": "Write the README for one of your projects using the six-part structure: problem, data, method, numbers, limits, next step. Ask someone outside the course to read it and tell you what they understood.",
+      "quiz": [
+        "What makes a strong portfolio project entry?",
+        "What does the two-minute read structure cover?",
+        "Why is documenting a rejected idea useful?"
+      ]
+    },
+    {
+      "id": "mle.capstone.05",
+      "title": "Your resume, LinkedIn and GitHub",
+      "goal": "Describe your machine learning work accurately in the three places employers actually look.",
+      "sections": [
+        {"heading": "One project, three lines", "intent": "Show how to write a resume bullet that states the problem, the method and the measured result, and why numbers belong there."},
+        {"heading": "LinkedIn in plain language", "intent": "Explain how to describe a project in a way that a non-specialist reader understands, and to say what the tool did rather than listing libraries."},
+        {"heading": "GitHub is the evidence", "intent": "Explain what a reviewer sees on a repository: the README, the commit history, the tests and the license, and how to make each one work for you."},
+        {"heading": "Be accurate", "intent": "Warn against claiming tools you cannot use, and explain that the interview is where you will be asked to demonstrate them."}
+      ],
+      "task": "Write three versions of the same project description: one resume bullet, one LinkedIn paragraph and one GitHub README opening line. Check that all three say the same thing.",
+      "quiz": [
+        "What three things belong in a resume bullet about a project?",
+        "Why write about what the tool did rather than which libraries you used?",
+        "What does a hiring manager check on your GitHub profile?"
+      ]
+    },
+    {
+      "id": "mle.capstone.06",
+      "title": "Career paths and mock interviews",
+      "goal": "Name the role you are aiming for, prepare its questions, and rehearse answering them about your own work.",
+      "sections": [
+        {"heading": "The roles in this field", "intent": "Introduce the curriculum's career paths: AI engineer, machine learning engineer, data scientist, computer vision engineer, AI researcher and data analyst, and what each one does day to day."},
+        {"heading": "Choosing your direction", "intent": "Explain how the projects you have built point towards a role, and how to test a role by doing a small piece of its work."},
+        {"heading": "Questions you will actually be asked", "intent": "List the common questions: walk me through your project, how did you choose the metric, what went wrong, how would you improve it, and what is a limitation of your approach."},
+        {"heading": "Rehearsing honestly", "intent": "Explain how to practise answering with a timer, how to say 'I do not know' well, and how to prepare a question to ask them."}
+      ],
+      "task": "Pick one career path, write down the three questions you expect for it, and record yourself answering two of them about your capstone project in under three minutes each.",
+      "quiz": [
+        "Name two differences between a machine learning engineer and a data scientist role.",
+        "Which interview question tests whether you understand your own project?",
+        "How should you answer a question you genuinely do not know?"
+      ]
+    },
+    {
+      "id": "mle.capstone.01",
+      "title": "Orchestrate the full ML pipeline",
+      "goal": "Combine data preparation, model training, and evaluation into a single orchestrated pipeline.",
+      "sections": [
+        {"heading": "Pipeline frameworks", "intent": "Explain what a pipeline runner does and the benefit of one command that runs every stage in order."},
+        {"heading": "Artifact management", "intent": "Explain how each stage passes its output to the next and how the artifacts are versioned."},
+        {"heading": "End-to-end test", "intent": "Explain why the whole pipeline needs one test that runs from raw data to a report."}
+      ],
+      "task": "Write a single command or script that runs your data preparation, training and evaluation steps in order and prints the final report, then add one test that runs the whole chain.",
+      "quiz": [
+        "What does a pipeline runner give you that separate scripts do not?",
+        "How do stages pass work to each other?",
+        "Why does the pipeline need an end-to-end test?"
+      ]
+    },
+    {
+      "id": "mle.capstone.02",
+      "title": "Design monitoring and canary deployment",
+      "goal": "Design monitoring signals and a canary deployment strategy for model updates.",
+      "sections": [
+        {"heading": "Monitoring signals", "intent": "Review the four signal families and say which one would catch each failure mode."},
+        {"heading": "Canary deployment strategy", "intent": "Write the canary plan for the capstone model with traffic share, watch window and stop conditions."},
+        {"heading": "Rollback conditions", "intent": "Write the rollback steps and prove the rollback works before the release, not during it."}
+      ],
+      "task": "Write the operating plan for your capstone model: the signals, the thresholds, the actions, the canary plan and the rollback steps, in one page.",
+      "quiz": [
+        "Which monitoring signal would catch a service that is down?",
+        "What must a canary plan state before it is approved?",
+        "When should a rollback be rehearsed?"
+      ]
+    }
+  ],
+  "project": {
+    "brief": "Capstone execution. Build one end-to-end AI project from a question to a deployed application, with the pipeline orchestrated, the monitoring plan written, the story presented and the portfolio updated.",
+    "deliverables": [
+      "A public GitHub repository with a README that states the problem, the data, the method, the numbers, the limits and the next step.",
+      "One command that runs the whole pipeline and prints the report.",
+      "A deployed application, with the URL in the README, plus the smoke test you ran against it.",
+      "A monitoring and rollback plan, a presentation of the project, and the peer review you received.",
+      "A test file that passes in CI on every push."
+    ],
+    "rubric": [
+      {"criterion": "The project runs end to end from data to a deployed app with one command", "weight": 35},
+      {"criterion": "The evidence is honest: metrics, monitoring plan and limits are all reported", "weight": 35},
+      {"criterion": "The presentation, portfolio and career materials are complete", "weight": 30}
+    ],
+    "report_contract": [
+      {"key": "train_rows", "type": "int", "equals": 24},
+      {"key": "evaluation_rows", "type": "int", "equals": 12},
+      {"key": "dataset_sha256", "type": "string", "length": 64},
+      {"key": "feature_columns", "type": "list", "equals": ["support_tickets", "tenure_months"]},
+      {"key": "baseline_accuracy", "type": "float", "equals": 0.6666666667, "tolerance": 0.0000001},
+      {"key": "stages", "type": "list", "length": 12},
+      {"key": "monitoring_signals", "type": "list", "equals": ["error_rate", "latency", "input_drift", "prediction_drift"]},
+      {"key": "canary_rollback_defined", "type": "bool", "equals": true},
+      {"key": "evaluation_set_used_for_fitting", "type": "bool", "equals": false},
+      {"key": "data_split", "type": "string", "equals": "fixed_holdout"},
+      {"key": "classical_accuracy", "type": "float", "min": 0.9, "max": 1},
+      {"key": "pytorch_accuracy", "type": "float", "min": 0.8, "max": 1},
+      {"key": "selected_model", "type": "string", "allowed": ["classical_baseline", "pytorch_mlp"]}
+    ],
+    "kit": {
+      "dir": "module_12_capstone",
+      "module": "pipeline",
+      "dataset": "data/train.csv and data/evaluation.csv - unchanged from the existing capstone module kit.",
+      "artifacts": [
+        "src/pipeline.py - the learner implements build_report().",
+        "The STAGES list in src/pipeline.py must contain the twelve stage names from the module spec."
+      ],
+      "reference": "tests/ml_reference/pipeline.py",
+      "moved_from": "starter_kits/machine_learning/module_6",
+      "note": "This kit has no reference solution today. One must be written so the reference check can prove the kit is satisfiable, and it must produce the twelve stage names above."
+    }
+  }
+}

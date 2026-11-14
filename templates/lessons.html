@@ -12,8 +12,9 @@
     <button id="filter-ai" type="button" class="module-filter-btn" data-module-filter="ai" aria-pressed="false">AI &amp; foundation</button>
     <button id="filter-ml" type="button" class="module-filter-btn" data-module-filter="ml" aria-pressed="false">ML pathway</button>
   </div>
-
-  {% if pathway_destination == 'ml' %}
+  {% set pathway_ids = {e.pathway_id for _, e in pathway_enrolments} %}
+  {% set has_ml = 'machine-learning' in pathway_ids %}
+  {% if has_ml %}
   {# The nav names this page "AI Pathway", but for an ML learner it lists the
      whole course — say so plainly, and point at the pathway home. #}
   <div class="mt-4 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">

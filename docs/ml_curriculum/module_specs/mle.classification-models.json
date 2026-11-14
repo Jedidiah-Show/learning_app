@@ -1,0 +1,146 @@
+{
+  "module_id": "mle.classification-models",
+  "number": 5,
+  "title": "Classification models",
+  "week": "Week 4",
+  "focus_area": "Classification Models",
+  "source_deliverable": "Email Spam Classifier. Build a model to classify emails as spam or not spam.",
+  "tools": ["Python", "scikit-learn", "matplotlib"],
+  "summary": "Turn a label into a prediction: logistic regression, k-nearest neighbours and decision trees, scored with accuracy, precision, recall, F1 and the confusion matrix, then applied to a real spam filter.",
+  "estimated_hours": 14,
+  "topics": ["Logistic regression", "k-nearest neighbours", "Decision trees", "Accuracy", "Precision and recall", "F1 score", "Confusion matrix", "Class imbalance"],
+  "outcomes": [
+    "Say when to use a classifier and what its output means.",
+    "Train logistic regression, k-nearest neighbours and a decision tree on the same data.",
+    "Compute accuracy, precision, recall and F1 from a confusion matrix by hand.",
+    "Explain why precision and recall pull in opposite directions when you change a threshold.",
+    "Build a spam filter that is judged on the errors that actually cost you."
+  ],
+  "new_module": true,
+  "lessons": [
+    {
+      "id": "mle.classification.01",
+      "title": "What a classifier does",
+      "goal": "Explain what a classification model produces, how a probability becomes a label, and where classification fits in a product.",
+      "sections": [
+        {"heading": "A label, not a number", "intent": "Contrast classification with regression using the spam example, and explain that the output is one of a fixed set of labels."},
+        {"heading": "Scores become labels at a threshold", "intent": "Explain that a classifier produces a score, and that you choose the number where it becomes spam, with a concrete example."},
+        {"heading": "Labels need to be right in the data", "intent": "Explain that a model can only learn from the labels you give it, and what happens when labels are noisy."},
+        {"heading": "What good looks like", "intent": "Set expectations: a first spam filter will be wrong often, and the goal is to be wrong in the cheapest direction."}
+      ],
+      "task": "Write down the two labels you would use for the bundled email dataset, state which one your business cares about more, and pick a threshold you would start with and explain why.",
+      "quiz": [
+        "What does a classification model output before you choose a threshold?",
+        "Why does the order of your labels in the data not change the model?",
+        "Which direction of error costs a mail provider more: a spam email that gets through, or a real email that is hidden?"
+      ]
+    },
+    {
+      "id": "mle.classification.02",
+      "title": "Logistic regression: a score that becomes a label",
+      "goal": "Train a logistic regression classifier and explain how its weights turn feature values into a probability.",
+      "sections": [
+        {"heading": "A weighted sum, then a squeeze", "intent": "Connect to the dot product lesson: the model multiplies each feature by a weight, adds them up, and squeezes the result between 0 and 1."},
+        {"heading": "Fitting the weights", "intent": "Explain in words that the weights are chosen to make wrong predictions expensive, and that scikit-learn does the searching."},
+        {"heading": "Reading the coefficient", "intent": "Explain what a coefficient means, that a positive coefficient pushes towards one class, and that the size depends on the units of the feature."},
+        {"heading": "Where it works well", "intent": "Describe the strengths (fast, few assumptions, readable) and the weakness (a straight-line boundary in feature space)."}
+      ],
+      "task": "Train a logistic regression classifier on the bundled email dataset using the subject and body text, then print the predicted probability for three emails and explain what each number means.",
+      "quiz": [
+        "What does the logistic regression model do to the weighted sum of features?",
+        "What does a large positive coefficient for a word tell you?",
+        "Why is logistic regression usually a good first classifier?"
+      ]
+    },
+    {
+      "id": "mle.classification.03",
+      "title": "k-nearest neighbours for labels",
+      "goal": "Classify a new example by the labels of its nearest neighbours, and see how the choice of k changes the answer.",
+      "sections": [
+        {"heading": "The idea in one sentence", "intent": "Explain the nearest-neighbour vote with a spam example and contrast it with the weighted-sum model."},
+        {"heading": "Turning text into something you can measure", "intent": "Introduce counting words as vectors of numbers, which is what makes distance possible for text."},
+        {"heading": "Choosing k", "intent": "Show the effect of k on a small example, and connect it to the regression lesson."},
+        {"heading": "Its limits", "intent": "Explain the cost at prediction time and the effect of irrelevant features."}
+      ],
+      "task": "Train a k-nearest neighbours classifier on the bundled email dataset with k equal to 1 and again with k equal to 7. Compare the two accuracy scores and explain in two sentences why they differ.",
+      "quiz": [
+        "How does a k-nearest neighbours classifier choose a label?",
+        "Why do we count words before using distance on text?",
+        "What happens to a k-nearest neighbours model when the training set grows?"
+      ]
+    },
+    {
+      "id": "mle.classification.04",
+      "title": "Decision trees: rules you can read",
+      "goal": "Train a decision tree and read it as a set of if-then rules that a person could follow.",
+      "sections": [
+        {"heading": "A tree of questions", "intent": "Describe a decision tree as repeated questions about the data, with a small hand-built example."},
+        {"heading": "How the tree chooses its questions", "intent": "Explain that the tree picks the question that splits the labels most usefully, in words rather than formulas."},
+        {"heading": "Reading a tree without over-trusting it", "intent": "Show a small printed tree, explain what each path means, and warn that a tree can memorise noise."},
+        {"heading": "When a tree is a good choice", "intent": "Describe mixed data types, missing values and readability as reasons to reach for a tree, plus the overfitting risk."}
+      ],
+      "task": "Train a decision tree on the bundled email dataset with a maximum depth of three, print the tree, and write down the first rule the tree asks and what it tells you.",
+      "quiz": [
+        "What does each question in a decision tree do?",
+        "Why can a deep decision tree memorise the training data?",
+        "Give one situation where a decision tree is a better fit than logistic regression."
+      ]
+    },
+    {
+      "id": "mle.classification.05",
+      "title": "Accuracy, precision, recall, F1 and the confusion matrix",
+      "goal": "Compute the four standard classification metrics from a confusion matrix and choose the one that matches the decision.",
+      "sections": [
+        {"heading": "The four cells", "intent": "Build the true positive, false positive, true negative and false negative table for the spam example and name each one in plain words."},
+        {"heading": "Accuracy: the simple one", "intent": "Define accuracy as correct predictions over all predictions, and show why it misleads when one class is rare."},
+        {"heading": "Precision and recall: the useful pair", "intent": "Define precision as correct positives over all positives predicted, and recall as correct positives over all real positives, with the sentences each one means."},
+        {"heading": "F1 and the cost of errors", "intent": "Explain F1 as the average of precision and recall, and work an example where you deliberately accept more false positives to catch more spam."}
+      ],
+      "task": "Using the bundled email dataset, print the confusion matrix for your best classifier and compute accuracy, precision, recall and F1 from it. Then lower the threshold, recompute the four numbers, and write one sentence saying which version you would ship.",
+      "quiz": [
+        "A classifier flags 100 emails and 90 of them really are spam. What is its precision?",
+        "Of the 200 spam emails that exist, the classifier caught 120. What is its recall?",
+        "Why can accuracy be a misleading metric when spam is rare?"
+      ]
+    }
+  ],
+  "project": {
+    "brief": "Build an email spam classifier. Train at least two classifiers on the bundled email dataset, compare them with a confusion matrix and precision, recall and F1 on a fixed evaluation set, and choose one threshold with a reason you can defend.",
+    "deliverables": [
+      "A public GitHub repository with a README that states the labels, the two models, the threshold and the reason for the choice.",
+      "A training script that reproduces the reported numbers with one command.",
+      "A predictions file for the evaluation rows that the report is computed from.",
+      "A test file that passes in CI on every push."
+    ],
+    "rubric": [
+      {"criterion": "Two models are trained on the same split and compared on the same evaluation rows", "weight": 30},
+      {"criterion": "Confusion matrix and metrics are correct and the chosen threshold is justified", "weight": 40},
+      {"criterion": "The repository and README let a reviewer rerun and check the result", "weight": 30}
+    ],
+    "report_contract": [
+      {"key": "train_rows", "type": "int", "equals": 24},
+      {"key": "test_rows", "type": "int", "equals": 12},
+      {"key": "baseline_accuracy", "type": "float", "equals": 0.5, "tolerance": 0.0000001},
+      {"key": "accuracy", "type": "float", "min": 0.85, "max": 1},
+      {"key": "precision", "type": "float", "min": 0.8, "max": 1},
+      {"key": "recall", "type": "float", "min": 0.8, "max": 1},
+      {"key": "f1", "type": "float", "min": 0.8, "max": 1},
+      {"key": "confusion_matrix", "type": "list", "length": 4},
+      {"key": "true_positives", "type": "int", "min": 5},
+      {"key": "false_positives", "type": "int", "max": 2},
+      {"key": "model_family", "type": "str", "allowed": ["logistic_regression", "k_neighbors", "decision_tree", "random_forest", "gradient_boosting", "naive_bayes"]},
+      {"key": "used_train_test_split", "type": "bool", "equals": true},
+      {"key": "evaluation_set_used_for_fitting", "type": "bool", "equals": false}
+    ],
+    "kit": {
+      "dir": "module_5_classification",
+      "module": "spam_model",
+      "dataset": "data/emails.csv - 36 synthetic emails with email_id, subject, body and label (1 = spam, 0 = not spam). Rows E001 to E024 are the training rows and T001 to T012 are the evaluation rows. The evaluation rows contain six spam and six not-spam messages.",
+      "artifacts": [
+        "src/spam_model.py - the learner implements train_and_predict() and build_report().",
+        "artifacts/predictions.csv - one row per evaluation email with email_id and predicted_label; the report recomputes the confusion matrix and metrics from this file so the numbers cannot be typed in by hand."
+      ],
+      "reference": "tests/ml_reference/spam_model.py"
+    }
+  }
+}

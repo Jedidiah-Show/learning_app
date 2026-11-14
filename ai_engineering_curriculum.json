@@ -1,0 +1,305 @@
+{
+  "id": "ai-engineering",
+  "slug": "ai-engineering",
+  "name": "AI Engineering",
+  "description": "Build intelligent applications and systems with LLMs, agents, and production deployment",
+  "domain": "SPECIALIZATION",
+  "version": "1.0.0",
+  "status": "ACTIVE",
+  "learning_objectives": [
+    "Design and build LLM-powered applications",
+    "Implement prompt engineering and retrieval-augmented generation",
+    "Create agent systems and tool integration",
+    "Evaluate and deploy AI applications",
+    "Ensure AI application security and observability"
+  ],
+  "modules": [
+    {
+      "id": "ai.03",
+      "number": 3,
+      "title": "LLM Fundamentals",
+      "description": "Core concepts of large language models, prompting, and generation",
+      "estimated_hours": 25,
+      "lessons": [
+        {
+          "id": "ai.03.01",
+          "title": "LLM Architecture"
+        },
+        {
+          "id": "ai.03.02",
+          "title": "Prompt Engineering"
+        },
+        {
+          "id": "ai.03.03",
+          "title": "Generation Strategies"
+        }
+      ],
+      "prerequisites": [
+        "sf.00",
+        "sf.01",
+        "sf.02"
+      ],
+      "competencies": [
+        "llm",
+        "prompt engineering"
+      ]
+    },
+    {
+      "id": "ai.04",
+      "number": 4,
+      "title": "LLM Application Engineering",
+      "description": "Building production LLM applications with routing, fallback, and validation",
+      "estimated_hours": 30,
+      "lessons": [
+        {
+          "id": "ai.04.01",
+          "title": "Context Assembly"
+        },
+        {
+          "id": "ai.04.02",
+          "title": "Request Lifecycle"
+        },
+        {
+          "id": "ai.04.03",
+          "title": "Error Handling"
+        }
+      ],
+      "prerequisites": [
+        "ai.03",
+        "sf.04"
+      ],
+      "competencies": [
+        "llm application",
+        "production"
+      ]
+    },
+    {
+      "id": "ai.05",
+      "number": 5,
+      "title": "RAG (Retrieval-Augmented Generation)",
+      "description": "Retrieval, vector search, and RAG debugging",
+      "estimated_hours": 25,
+      "lessons": [
+        {
+          "id": "ai.05.01",
+          "title": "Retrieval"
+        },
+        {
+          "id": "ai.05.02",
+          "title": "Vector Search"
+        },
+        {
+          "id": "ai.05.03",
+          "title": "RAG Debugging"
+        }
+      ],
+      "prerequisites": [
+        "ai.03",
+        "sf.04"
+      ],
+      "competencies": [
+        "rag",
+        "retrieval"
+      ]
+    },
+    {
+      "id": "ai.06",
+      "number": 6,
+      "title": "AI Agents",
+      "description": "Agent systems, tool integration, and orchestration",
+      "estimated_hours": 30,
+      "lessons": [
+        {
+          "id": "ai.06.01",
+          "title": "Agent Systems"
+        },
+        {
+          "id": "ai.06.02",
+          "title": "Tool Integration"
+        },
+        {
+          "id": "ai.06.03",
+          "title": "Orchestration"
+        }
+      ],
+      "prerequisites": [
+        "ai.05",
+        "sf.03"
+      ],
+      "competencies": [
+        "agents",
+        "tool integration"
+      ]
+    },
+    {
+      "id": "ai.07",
+      "number": 7,
+      "title": "Agent Orchestration",
+      "description": "Multi-agent systems and workflow management",
+      "estimated_hours": 25,
+      "lessons": [
+        {
+          "id": "ai.07.01",
+          "title": "Workflow Patterns"
+        },
+        {
+          "id": "ai.07.02",
+          "title": "State Management"
+        },
+        {
+          "id": "ai.07.03",
+          "title": "Multi-agent coordination"
+        }
+      ],
+      "prerequisites": [
+        "ai.06",
+        "sf.03"
+      ],
+      "competencies": [
+        "orchestration",
+        "multi-agent"
+      ]
+    },
+    {
+      "id": "ai.08",
+      "number": 8,
+      "title": "MCP (Model Context Protocol)",
+      "description": "Standardized context and provenance for LLM applications",
+      "estimated_hours": 20,
+      "lessons": [
+        {
+          "id": "ai.08.01",
+          "title": "Context Tiering"
+        },
+        {
+          "id": "ai.08.02",
+          "title": "Provenance and Citation"
+        },
+        {
+          "id": "ai.08.03",
+          "title": "Permission filtering"
+        }
+      ],
+      "prerequisites": [
+        "ai.07",
+        "sf.05"
+      ],
+      "competencies": [
+        "mcp",
+        "context management"
+      ]
+    },
+    {
+      "id": "ai.09",
+      "number": 9,
+      "title": "Production AI Engineering",
+      "description": "Deployment, monitoring, and observability for AI systems",
+      "estimated_hours": 35,
+      "lessons": [
+        {
+          "id": "ai.09.01",
+          "title": "SLOs and Metrics"
+        },
+        {
+          "id": "ai.09.02",
+          "title": "Load Shedding"
+        },
+        {
+          "id": "ai.09.03",
+          "title": "Model Routing"
+        },
+        {
+          "id": "ai.09.04",
+          "title": "Cost Management"
+        }
+      ],
+      "prerequisites": [
+        "ai.08",
+        "sf.04"
+      ],
+      "competencies": [
+        "production",
+        "observability"
+      ]
+    },
+    {
+      "id": "ai.10",
+      "number": 10,
+      "title": "Docker & Deployment",
+      "description": "Containerization and deployment for AI workloads",
+      "estimated_hours": 20,
+      "lessons": [
+        {
+          "id": "ai.10.01",
+          "title": "Docker fundamentals"
+        },
+        {
+          "id": "ai.10.02",
+          "title": "AI Deployment"
+        },
+        {
+          "id": "ai.10.03",
+          "title": "Cost Optimization"
+        }
+      ],
+      "prerequisites": [
+        "ai.09",
+        "sf.03"
+      ],
+      "competencies": [
+        "docker",
+        "deployment"
+      ]
+    },
+    {
+      "id": "ai.11",
+      "number": 11,
+      "title": "AI System Design",
+      "description": "End-to-end AI system architecture and decision records",
+      "estimated_hours": 30,
+      "lessons": [
+        {
+          "id": "ai.11.01",
+          "title": "System Architecture"
+        },
+        {
+          "id": "ai.11.02",
+          "title": "Decision Records"
+        },
+        {
+          "id": "ai.11.03",
+          "title": "Capstone Connection"
+        }
+      ],
+      "prerequisites": [
+        "ai.10"
+      ],
+      "competencies": [
+        "system design",
+        "architecture"
+      ]
+    }
+  ],
+  "prerequisites": {
+    "foundation": [
+      "sf.00",
+      "sf.01",
+      "sf.02"
+    ],
+    "ai_specific": [
+      "ai.03",
+      "ai.04",
+      "ai.05",
+      "ai.06",
+      "ai.07",
+      "ai.08",
+      "ai.09",
+      "ai.10",
+      "ai.11"
+    ]
+  },
+  "completion_rules": {
+    "requires_foundations": true,
+    "independent_completion": true
+  }
+}

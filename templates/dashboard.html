@@ -7,7 +7,13 @@
    shared next-action cards; every other destination keeps today's order. The
    shared foundation (hero, cards, curriculum grid) is never split or
    reordered — only this section moves. #}
-{% set ml_leads = pathway_destination == 'ml' and ml_overview %}
+{# Determine if learner is enrolled in ML pathway #}
+{% set pathway_ids = [] %}
+  {% for _, e in pathway_enrolments %}
+    {% set pathway_ids = pathway_ids + [e.pathway_id] %}
+  {% endfor %}
+{% set has_ml = 'machine-learning' in pathway_ids %}
+{% set ml_leads = has_ml and ml_overview %}
 {# The hero leads with pathway milestones only once the pathway is actually
    open; while it is locked the shared foundation remains the next step. #}
 {% set ml_hero = ml_leads and ml_overview.prerequisites_met and ml_overview.total_lessons %}
@@ -19,7 +25,8 @@
   <p class="mt-2 text-sm text-violet-900">All {{ ml_overview.total_lessons }} lessons and {{ ml_overview.total_projects }} projects passed. Your specialization credential is ready to claim.</p>
   <a class="mt-4 inline-flex rounded-lg bg-violet-700 px-4 py-2 font-semibold text-white transition hover:bg-violet-600" href="{{ url_for('ml_specialization.credential_page') }}">Claim your credential →</a>
   {% else %}
-  <p class="mt-2 text-sm text-violet-900">{{ ml_overview.completed_lessons }} of {{ ml_overview.total_lessons }} lessons · {{ ml_overview.projects_completed }} of {{ ml_overview.total_projects }} projects complete</p>
+  {% set total = ml_overview.total_lessons if ml_overview.total_lessons > 0 else 1 %}
+  <p class="mt-2 text-sm text-violet-900">{{ ml_overview.completed_lessons }} of {{ total }} lessons · {{ ml_overview.projects_completed }} of {{ ml_overview.total_projects }} projects complete</p>
   {% if ml_overview.next_lesson_id %}
   <a class="mt-4 inline-flex rounded-lg bg-violet-700 px-4 py-2 font-semibold text-white transition hover:bg-violet-600" href="{{ url_for('main.machine_learning_lesson', lesson_id=ml_overview.next_lesson_id) }}">Continue: {{ ml_overview.next_lesson_title }} →</a>
   {% endif %}
@@ -52,7 +59,7 @@
     <span>{{ progress.completed_lessons }} of {{ progress.total_lessons }} lessons complete</span>
     {% endif %}
   </div>
-  <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/15"><div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-gold-400" style="width:{% if ml_hero %}{{ (ml_overview.completed_lessons / ml_overview.total_lessons * 100)|round(1) }}{% else %}{{ (progress.completed_lessons / progress.total_lessons * 100)|round(1) }}{% endif %}%"></div></div>
+  <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/15"><div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-gold-400" style="width:{% if ml_hero %}{{ (ml_overview.completed_lessons / (ml_overview.total_lessons if ml_overview.total_lessons > 0 else 1) * 100)|round(1) }}{% else %}{{ (progress.completed_lessons / (progress.total_lessons if progress.total_lessons > 0 else 1) * 100)|round(1) }}{% endif %}%"></div></div>
 </section>
 {% if ml_leads and ml_card %}{{ ml_card }}{% endif %}
 {% if not progress_error and progress.completed_lessons == 0 and not progress.course_complete %}
@@ -95,7 +102,6 @@
   <a class="mt-4 inline-flex rounded-lg bg-brand-900 px-4 py-2 font-semibold text-white transition hover:bg-brand-800" href="{{ url_for('main.lesson_detail', lesson_id=next_lesson.id) }}">Continue lesson →</a>
 </section>{% elif next_project %}<section class="mt-8 rounded-2xl border border-gold-200 bg-gold-50 p-6 text-gold-950 shadow-sm"><p class="text-xs font-bold uppercase tracking-wider">Project unlock</p><h3 class="mt-2 text-xl font-bold">Complete Module {{ next_project.module_number }} project</h3><p class="mt-2">{{ next_project.module_title }} lessons are complete. Submit the project to unlock the next module.</p><a class="mt-4 inline-flex rounded-lg bg-brand-900 px-4 py-2 font-semibold text-white transition hover:bg-brand-800" href="{{ url_for('projects.project_page') }}#module-{{ next_project.module_id }}">Open module project →</a><a class="mt-4 ml-3 inline-flex rounded-lg border border-gold-300 bg-white px-4 py-2 font-semibold text-gold-950 transition hover:bg-gold-50" href="{{ url_for('projects.download_project_starter', module_id=next_project.module_id) }}">Get the starter kit →</a></section>{% elif progress.course_complete %}<section class="mt-8 rounded-2xl bg-emerald-50 p-6 text-emerald-900 shadow-sm"><h3 class="text-xl font-bold">Course complete 🎉</h3><p>You completed all {{ progress.total_lessons }} lessons and {{ progress.total_projects }} module projects.</p></section>{% endif %}
 {% if ml_overview and not ml_leads and ml_card %}{{ ml_card }}{% endif %}
-
 {% if pathway_comparison %}
 <div class="dashboard-comparison mt-6 p-4 bg-indigo-50 border-l-4 border-indigo-600 rounded-xl">
   <p class="text-xs font-bold uppercase tracking-wider text-indigo-600">Progress comparison</p>

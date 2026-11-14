@@ -1,0 +1,146 @@
+{
+  "module_id": "mle.deep-learning",
+  "number": 7,
+  "title": "Deep learning from scratch",
+  "week": "Week 6",
+  "focus_area": "Intro to Deep Learning",
+  "source_deliverable": "Digit classification with MNIST. Build a neural network to classify handwritten digits (0 to 9).",
+  "tools": ["TensorFlow/Keras", "NumPy"],
+  "summary": "Build a neural network from the neuron upwards: what a layer does, why activation functions are needed, how backpropagation adjusts the weights in plain words, how to train and validate a network, and how the same model looks in Keras.",
+  "estimated_hours": 16,
+  "topics": ["Perceptron", "Neural networks", "Activation functions", "Backpropagation", "Keras basics", "Training and validation"],
+  "outcomes": [
+    "Describe what a neuron computes and what a layer of neurons does.",
+    "Explain why an activation function is needed between layers.",
+    "Describe backpropagation as measuring how much each weight contributed to the error and nudging it in that direction.",
+    "Train a network, read a learning curve, and tell overfitting from learning.",
+    "Build, train and evaluate a digit classifier with Keras or an equivalent library."
+  ],
+  "new_module": true,
+  "lessons": [
+    {
+      "id": "mle.deeplearning.01",
+      "title": "From one neuron to a network",
+      "goal": "Explain what a single artificial neuron computes and how stacking neurons into layers builds a model.",
+      "sections": [
+        {"heading": "One neuron, one number", "intent": "Describe a neuron as a weighted sum plus an offset, connecting directly to the dot product and gradient lessons."},
+        {"heading": "Layers pass numbers to layers", "intent": "Explain that a layer takes a row of numbers and produces a new row of numbers, and that the width of each layer is a choice you make."},
+        {"heading": "Where the numbers come from", "intent": "Explain that the weights start as random values and are the only thing training changes."},
+        {"heading": "Why bother with layers", "intent": "Give a plain comparison: a linear model draws one straight boundary, a network can draw a curved one, at the cost of more numbers to get right."}
+      ],
+      "task": "For a neuron with weights [0.5, -2, 1] and bias 1, compute the output for the input [3, 1, 4] before any activation function. Then say what the bias does.",
+      "quiz": [
+        "What does a single neuron compute before its activation function?",
+        "What changes during training?",
+        "What can a multi-layer network draw that a single linear model cannot?"
+      ]
+    },
+    {
+      "id": "mle.deeplearning.02",
+      "title": "Activation functions",
+      "goal": "Explain what an activation function does and choose between sigmoid, tanh and ReLU for a hidden layer.",
+      "sections": [
+        {"heading": "Why a layer needs an activation", "intent": "Show that without an activation function, stacking linear layers still gives one linear result, so the network gains nothing."},
+        {"heading": "Sigmoid and tanh", "intent": "Describe both as smooth ways to squash a number into a range, and note that they saturate and slow learning when their input is far from the middle."},
+        {"heading": "ReLU", "intent": "Explain ReLU as 'keep what is positive, zero the rest', why it is fast, and when it can get stuck."},
+        {"heading": "Choosing the output activation", "intent": "Explain that a binary task uses one sigmoid output, a multi-class task uses one output per class with softmax, and a regression task uses no activation at all."}
+      ],
+      "task": "Compute the sigmoid of 0 and of 2 to two decimal places, describe in one sentence what ReLU does to a negative number, and say which output activation you would use for the ten digit classes.",
+      "quiz": [
+        "What happens if you stack layers without any activation function?",
+        "What does ReLU do to a negative input?",
+        "Why does a ten class problem need ten outputs instead of one?"
+      ]
+    },
+    {
+      "id": "mle.deeplearning.03",
+      "title": "How a network learns: backpropagation in plain words",
+      "goal": "Describe backpropagation as a two-step loop of measuring each weight's contribution to the error and adjusting it, without needing the calculus behind it.",
+      "sections": [
+        {"heading": "The loss measures how wrong you are", "intent": "Introduce mean squared error and cross-entropy loss as the number the training loop tries to push down."},
+        {"heading": "Step one: blame the weights", "intent": "Explain the backward pass as working backwards from the error to work out how much each weight contributed, using the gradient idea from the maths module."},
+        {"heading": "Step two: nudge the weights", "intent": "Explain the update as subtracting a small part of the gradient, and what the learning rate controls."},
+        {"heading": "Repeat many times, on small batches", "intent": "Explain mini-batch training and why the loss usually falls in a bumpy way rather than straight down."}
+      ],
+      "task": "Write down the training loop in four steps in your own words, using the words 'forward', 'loss', 'backward', 'update'. Then explain what would happen if the learning rate were a hundred times too large.",
+      "quiz": [
+        "What are the four steps of every training loop?",
+        "What does the backward pass calculate?",
+        "What is the likely symptom of a learning rate that is far too large?"
+      ]
+    },
+    {
+      "id": "mle.deeplearning.04",
+      "title": "Training, validating and spotting overfitting",
+      "goal": "Train a network while watching the training and validation curves, and recognise overfitting when you see it.",
+      "sections": [
+        {"heading": "Three sets of data, three jobs", "intent": "Explain the roles of training, validation and test data for a neural network, and why the validation set is not optional."},
+        {"heading": "Reading a learning curve", "intent": "Describe a healthy curve (both losses falling) and a broken one (training loss falling while validation loss rises)."},
+        {"heading": "What is overfitting", "intent": "Explain overfitting as memorising the training examples, with the handwriting digit example."},
+        {"heading": "The four usual cures", "intent": "Introduce more data, data augmentation, dropout and early stopping, in plain words, and say which is the first to try."}
+      ],
+      "task": "Draw a sketch of a healthy learning curve and a sketch of an overfitting one, label both axes, and write one sentence naming the first thing you would try when you see the second one.",
+      "quiz": [
+        "Which set of data is used to decide when to stop training?",
+        "What does a validation loss that rises while the training loss falls tell you?",
+        "Name two ways to reduce overfitting."
+      ]
+    },
+    {
+      "id": "mle.deeplearning.05",
+      "title": "Your first network in Keras",
+      "goal": "Build, compile, train and evaluate a classifier for handwritten digits with a few lines of Keras.",
+      "sections": [
+        {"heading": "The shape of the code", "intent": "Walk through the four Keras steps: build, compile, train, evaluate, with the shape of the data stated at each step."},
+        {"heading": "The compile step is where you choose the loss", "intent": "Explain loss, optimizer and metrics in the terms of the previous lessons."},
+        {"heading": "Pixels are numbers between 0 and 1", "intent": "Explain the standard preparation step of scaling pixel values and reshaping a flat list of pixels into a grid."},
+        {"heading": "Read the evaluation output", "intent": "Explain the test accuracy and test loss, and what a result of 98 percent means for a ten class problem."}
+      ],
+      "task": "Build a small Keras model for the bundled digits data: an input layer of 64 pixels, one hidden layer of 32 ReLU units and an output layer of 10 classes. Train it for five epochs and record the test accuracy.",
+      "quiz": [
+        "What are the four stages of a Keras training script?",
+        "Where do you choose the loss function?",
+        "Why are pixel values usually scaled to the range 0 to 1?"
+      ]
+    }
+  ],
+  "project": {
+    "brief": "Classify handwritten digits. Build a neural network on the bundled digits dataset, train it with a validation split, watch the learning curves, and report the test accuracy with an honest description of what the model does and where it fails.",
+    "deliverables": [
+      "A public GitHub repository with a README that states the architecture, the training settings and the result.",
+      "A training script that reproduces the reported accuracy with one command.",
+      "A predictions file for the test rows that the report recomputes the accuracy from.",
+      "A test file that passes in CI on every push.",
+      "A short section in the README naming two digits the model confuses and why you think that happens."
+    ],
+    "rubric": [
+      {"criterion": "The network is built and trained reproducibly with a stated configuration", "weight": 30},
+      {"criterion": "The reported accuracy is computed from the predictions and beats the majority baseline", "weight": 35},
+      {"criterion": "Overfitting is checked and the failure cases are described honestly", "weight": 35}
+    ],
+    "report_contract": [
+      {"key": "train_rows", "type": "int", "equals": 1200},
+      {"key": "test_rows", "type": "int", "equals": 597},
+      {"key": "classes", "type": "int", "equals": 10},
+      {"key": "accuracy", "type": "float", "min": 0.9, "max": 1},
+      {"key": "beats_majority_baseline", "type": "bool", "equals": true},
+      {"key": "hidden_layers", "type": "int", "min": 1},
+      {"key": "activation_function", "type": "str", "allowed": ["relu", "tanh", "sigmoid"]},
+      {"key": "epochs", "type": "int", "min": 5},
+      {"key": "used_validation_split", "type": "bool", "equals": true},
+      {"key": "confusion_matrix_rows", "type": "int", "equals": 10},
+      {"key": "evaluation_set_used_for_fitting", "type": "bool", "equals": false}
+    ],
+    "kit": {
+      "dir": "module_7_deep_learning",
+      "module": "digit_model",
+      "dataset": "The bundled scikit-learn digits dataset: 1797 images of 8 by 8 greyscale digits with 10 classes, loaded with sklearn.datasets.load_digits. The kit fixes the split: rows 0 to 1199 are the training rows and rows 1200 to 1796 are the evaluation rows.",
+      "artifacts": [
+        "src/digit_model.py - the learner implements train_and_predict() and build_report().",
+        "artifacts/predictions.csv - one row per evaluation digit with index, true label and predicted label; the report recomputes the accuracy and the confusion matrix from this file.",
+        "artifacts/training_config.json - the configuration the learner used, with keys hidden_layers, activation_function, epochs and used_validation_split."
+      ],
+      "reference": "tests/ml_reference/digit_model.py"
+    }
+  }
+}

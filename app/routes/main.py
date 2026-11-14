@@ -272,7 +272,11 @@ def index():
         )
         # Stage D: the confirmed pathway destination decides which section the
         # dashboard leads with; unset keeps today's shared-foundation layout.
-        pathway_destination = plan.pathway_destination if plan else None
+        # Active logic reads from LearnerPathwayEnrollment; fallback to deprecated
+        # CoursePlan.pathway_destination column for rollback compatibility.
+        pathway_destination = destination_for(current_user.id)
+        if pathway_destination is None and plan is not None:
+            pathway_destination = plan.pathway_destination or 'shared-foundations'
         # Seed the per-request cache the nav shell reads, so rendering the
         # dashboard does not fetch the same plan a second time.
         g.pathway_destination = pathway_destination
@@ -1058,7 +1062,11 @@ def gates():
         completed_projects=completed_project_ids,
     )
     plan = CoursePlan.query.filter_by(user_id=current_user.id).first()
-    pathway_destination = plan.pathway_destination if plan else None
+    # Active logic reads from LearnerPathwayEnrollment; fallback to deprecated
+    # CoursePlan.pathway_destination column for rollback compatibility.
+    pathway_destination = destination_for(current_user.id)
+    if pathway_destination is None and plan is not None:
+        pathway_destination = plan.pathway_destination or 'shared-foundations'
     progress = pathway_dashboard_progress(
         current_user, pathway_destination, progress,
         completed=completed_ids, completed_projects=completed_project_ids,

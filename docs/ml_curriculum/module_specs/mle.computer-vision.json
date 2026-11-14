@@ -1,0 +1,163 @@
+{
+  "module_id": "mle.computer-vision",
+  "number": 8,
+  "title": "Computer vision essentials",
+  "week": "Weeks 7 and 10",
+  "focus_area": "Computer Vision Essentials, then Advanced CV and final projects",
+  "source_deliverable": "Classify images using pre-trained models (for example cats against dogs), then an individual CV project with peer review.",
+  "tools": ["TensorFlow/Keras", "OpenCV"],
+  "summary": "How a computer reads an image, how to prepare image data, what a convolutional network does, how to reuse a pre-trained model instead of training from scratch, and the advanced topics of detection, segmentation, fine-tuning and telling the story of a model.",
+  "estimated_hours": 18,
+  "topics": ["Image data and preprocessing", "Convolutional neural networks", "Transfer learning", "Feature extraction", "Object detection", "Image segmentation", "Model fine-tuning", "Project storytelling"],
+  "outcomes": [
+    "Explain how an image becomes numbers and why the numbers need scaling and reshaping.",
+    "Describe what a convolution does and why convolution suits images.",
+    "Use a pre-trained model as a feature extractor and as a starting point for fine-tuning.",
+    "Say the difference between classification, object detection and image segmentation.",
+    "Present a computer vision project and get useful feedback on it."
+  ],
+  "new_module": true,
+  "lessons": [
+    {
+      "id": "mle.vision.01",
+      "title": "How a computer sees an image",
+      "goal": "Explain how an image becomes a grid of numbers and what information is lost when you flatten it.",
+      "sections": [
+        {"heading": "Pixels are numbers", "intent": "Show a small image as a grid of brightness numbers, using the bundled image data."},
+        {"heading": "Colour has three channels", "intent": "Explain red, green and blue channels and how they combine, and why a greyscale image has one channel."},
+        {"heading": "Flattening loses the picture", "intent": "Explain that a flat list of numbers throws away which numbers were neighbours, and that keeping the shape fixes it."},
+        {"heading": "Colour and brightness have different meanings", "intent": "Explain why a red shirt is not simply a bright pixel, and what a colour histogram records."}
+      ],
+      "task": "Take the bundled image data, print the shape of one image as a grid of numbers, and explain in two sentences what information a flat list of those numbers would lose.",
+      "quiz": [
+        "What is a pixel value in a greyscale image?",
+        "Why does flattening an image lose information?",
+        "Why can a red object and a bright grey object look similar in a greyscale image?"
+      ]
+    },
+    {
+      "id": "mle.vision.02",
+      "title": "Preparing image data",
+      "goal": "Resize, scale and organise image data so that every training image looks the same to the model.",
+      "sections": [
+        {"heading": "Every image the same size", "intent": "Explain that a model needs a fixed input size and that resizing is part of preparing data, not an optional extra."},
+        {"heading": "Scaling the numbers", "intent": "Explain dividing pixel values by 255 and why it helps the first training steps."},
+        {"heading": "Labels and folders", "intent": "Explain how images are paired with labels, and the folder-per-class layout that most tools expect."},
+        {"heading": "Augmentation: making new images on purpose", "intent": "Introduce flips, rotations and crops as training-time changes that teach the model to ignore small changes, and warn that a flipped digit is not always valid."}
+      ],
+      "task": "Take the bundled image data, scale every pixel to the range 0 to 1, and describe in writing the steps you would take to prepare a folder of real photographs for training.",
+      "quiz": [
+        "Why must all training images have the same size?",
+        "What does dividing pixel values by 255 achieve?",
+        "What is data augmentation and what is its purpose?"
+      ]
+    },
+    {
+      "id": "mle.vision.03",
+      "title": "Convolutional neural networks",
+      "goal": "Describe what a convolution does to an image and why it lets a model find a feature anywhere in the picture.",
+      "sections": [
+        {"heading": "A small filter slides across the image", "intent": "Explain a filter as a small grid of weights that slides over the pixels and produces a new grid of numbers."},
+        {"heading": "Early filters find edges", "intent": "Explain that the first layers tend to detect edges and textures, and later layers combine them into parts."},
+        {"heading": "Pooling and shrinking", "intent": "Explain pooling as keeping the strongest number in each small region, which reduces size and keeps the most useful signal."},
+        {"heading": "From feature maps to a label", "intent": "Trace the path from convolutions through pooling and dense layers to a final probability per class."}
+      ],
+      "task": "Describe in four numbered steps what happens to an image between the input and the final class scores in a convolutional network, using the words convolution, pooling, dense and softmax.",
+      "quiz": [
+        "What does a convolution filter do as it moves across an image?",
+        "Why is a convolutional network a good fit for images?",
+        "What is pooling for?"
+      ]
+    },
+    {
+      "id": "mle.vision.04",
+      "title": "Transfer learning: start from what is already known",
+      "goal": "Reuse a pre-trained model as a feature extractor or as the starting point for your own training.",
+      "sections": [
+        {"heading": "Why training from scratch is expensive", "intent": "Explain that pre-trained models learned from millions of images, and that fine-tuning needs far less of your own data."},
+        {"heading": "Feature extraction", "intent": "Explain freezing the pre-trained layers and training only a new classifier on top, with the everyday analogy of reusing a trained chef's prep work."},
+        {"heading": "Fine-tuning", "intent": "Explain unfreezing some layers so they adapt to your images, and why a small learning rate is used."},
+        {"heading": "Checking the result", "intent": "Explain how to tell whether transfer learning actually helped by comparing against a simple baseline and looking at the confusion matrix."}
+      ],
+      "task": "Using the bundled image data, build a classifier that extracts features from the images and trains a simple model on top. Record the feature count and the accuracy, then say how a real pre-trained model would fit into the same code.",
+      "quiz": [
+        "What is the main benefit of transfer learning?",
+        "What is the difference between feature extraction and fine-tuning?",
+        "Why is a small learning rate used during fine-tuning?"
+      ]
+    },
+    {
+      "id": "mle.vision.05",
+      "title": "Detection and segmentation: what comes after labels",
+      "goal": "Tell classification, object detection and image segmentation apart, and say what each is used for.",
+      "sections": [
+        {"heading": "One label for the whole image", "intent": "Recap image classification and its limitation: it cannot say where the object is."},
+        {"heading": "Boxes around objects", "intent": "Explain object detection as producing boxes and labels, mention YOLO as a well-known family of detectors, and describe the confidence score."},
+        {"heading": "A label for every pixel", "intent": "Explain semantic segmentation as a mask over the image, and instance segmentation as separate masks per object."},
+        {"heading": "Choosing the right task", "intent": "Give the decision: counting objects needs detection, measuring area needs segmentation, and a yes or no answer needs classification."}
+      ],
+      "task": "For three real tasks, name the task type you would use: counting the cars in a photo, measuring how much of the photo is road, and deciding whether the photo contains a cat.",
+      "quiz": [
+        "What does an object detection model output that a classifier does not?",
+        "What does segmentation produce?",
+        "Which task type would you choose for measuring the area of a road in a photo?"
+      ]
+    },
+    {
+      "id": "mle.vision.06",
+      "title": "Fine-tuning, storytelling and peer review",
+      "goal": "Plan a computer vision project, present it clearly, and use a peer review to find the gaps before an employer does.",
+      "sections": [
+        {"heading": "Scope the project in one sentence", "intent": "Show the structure of a good project sentence: data, task, model, and the decision it supports."},
+        {"heading": "Plan before you train", "intent": "Explain writing down the split, the metric and the baseline first, and how that plan becomes the rubric later."},
+        {"heading": "Tell the story with evidence", "intent": "Explain the shape of a good presentation of a model: the problem, the data, the method, the numbers, the limits, the next step."},
+        {"heading": "Peer review that helps", "intent": "Explain how to review a classmate's project with specific, kind, actionable feedback, and how to receive it."}
+      ],
+      "task": "Write your project in one sentence, then write the six-part story you would present: problem, data, method, numbers, limits and next step. Give the story to a classmate and ask for two pieces of feedback.",
+      "quiz": [
+        "What four things belong in a one-sentence project description?",
+        "Why write down the metric and the baseline before training?",
+        "What makes peer review feedback useful rather than annoying?"
+      ]
+    }
+  ],
+  "project": {
+    "brief": "Classify images using a model that has already learned something. Build an image classifier on the bundled image data with a feature extraction pipeline, report the result honestly, and then extend it into your individual computer vision project with a written story and peer review.",
+    "deliverables": [
+      "A public GitHub repository with a README that states the task, the data, the pipeline and the result.",
+      "A features file with one row per image and the extracted feature values.",
+      "A predictions file for the evaluation images that the report recomputes the metrics from.",
+      "A test file that passes in CI on every push.",
+      "A written project story in the README using the six parts from the last lesson, plus the feedback you received from a reviewer."
+    ],
+    "rubric": [
+      {"criterion": "The image pipeline is correct, documented and reproducible", "weight": 30},
+      {"criterion": "Metrics are computed from the predictions and reported with the confusion matrix", "weight": 30},
+      {"criterion": "The project story explains the limits and shows what peer review changed", "weight": 40}
+    ],
+    "report_contract": [
+      {"key": "images_total", "type": "int", "equals": 30},
+      {"key": "train_images", "type": "int", "equals": 20},
+      {"key": "test_images", "type": "int", "equals": 10},
+      {"key": "feature_count", "type": "int", "min": 8},
+      {"key": "features_extracted", "type": "int", "equals": 30},
+      {"key": "accuracy", "type": "float", "min": 0.8, "max": 1},
+      {"key": "precision", "type": "float", "min": 0.75, "max": 1},
+      {"key": "recall", "type": "float", "min": 0.75, "max": 1},
+      {"key": "confusion_matrix", "type": "list", "length": 4},
+      {"key": "inference_script_present", "type": "bool", "equals": true},
+      {"key": "evaluation_set_used_for_fitting", "type": "bool", "equals": false}
+    ],
+    "kit": {
+      "dir": "module_8_computer_vision",
+      "module": "vision_model",
+      "dataset": "data/images.csv - 30 synthetic 8 by 8 greyscale images with columns image_id, label (0 or 1) and 64 pixel columns p0 to p63. Images I001 to I020 are the training images and T001 to T010 are the evaluation images, with five of each class in the evaluation set.",
+      "artifacts": [
+        "src/vision_model.py - the learner implements extract_features(), train_and_predict() and build_report().",
+        "artifacts/features.csv - one row per image with image_id and the extracted feature values.",
+        "artifacts/predictions.csv - one row per evaluation image with image_id and predicted_label; the report recomputes the metrics from this file."
+      ],
+      "reference": "tests/ml_reference/vision_model.py"
+    }
+  }
+}

@@ -15,6 +15,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app.models import PracticeWorkspace, Submission, utcnow
+from app.pathway_scope import destination_for
 from app.practice_arena import (
     TRACKS,
     all_arena_problems,
@@ -134,12 +135,23 @@ def _render_catalogue(track=None):
 def index():
     problems = list(all_arena_problems().values())
     attempted = _attempted_ids()
+    # Detect learner's active pathway enrolment
+    destination = destination_for(current_user.id)
+    # prioritize track based on enrolment
+    if destination == 'ai-engineering':
+        primary_track_id = 'ai-engineering'
+    elif destination == 'machine-learning':
+        primary_track_id = 'machine-learning'
+    else:
+        primary_track_id = None
     track_cards = []
     for track in TRACKS:
         track_cards.append({
             **track,
             **_track_stats(problems, track['id']),
         })
+    # sort so the primary track appears first
+    track_cards.sort(key=lambda t: (t['id'] != primary_track_id, t['primary']))
     latest = _latest_workspace()
     continue_problem = None
     if latest is not None:
@@ -151,28 +163,32 @@ def index():
         tracks=track_cards,
         continue_problem=continue_problem,
         total_problems=len(problems),
+        destination=destination,
     )
 
 
 @practice_arena_bp.route('/ai-engineering')
 @login_required
 def ai_engineering():
-    return _render_track('ai-engineering')
+    destination = destination_for(current_user.id)
+    return _render_track('ai-engineering', destination=destination)
 
 
 @practice_arena_bp.route('/algorithms')
 @login_required
 def algorithms():
-    return _render_track('algorithms')
+    destination = destination_for(current_user.id)
+    return _render_track('algorithms', destination=destination)
 
 
 @practice_arena_bp.route('/machine-learning')
 @login_required
 def machine_learning():
-    return _render_track('machine-learning')
+    destination = destination_for(current_user.id)
+    return _render_track('machine-learning', destination=destination)
 
 
-def _render_track(track_id):
+def _render_track(track_id, destination=None):
     track = track_by_id(track_id)
     if track is None:
         abort(404)
@@ -191,6 +207,7 @@ def _render_track(track_id):
         stats=_track_stats(problems, track_id),
         groups=grouped,
         total=len(problems),
+        destination=destination,
     )
 
 

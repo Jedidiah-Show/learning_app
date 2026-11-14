@@ -1,0 +1,127 @@
+{
+  "module_id": "mle.reproducible-training",
+  "number": 9,
+  "title": "Reproducible training",
+  "week": "Week 8",
+  "focus_area": "Train it again and get the same answer",
+  "source_deliverable": "A repeatable training run that records its inputs, its parameters and its results.",
+  "tools": ["Python", "scikit-learn", "joblib"],
+  "summary": "Make a training run explainable and repeatable: separate configuration from code, fingerprint the data, version the model files, search parameters without touching your final test set, and reproduce a run on another machine.",
+  "estimated_hours": 12,
+  "topics": ["Experiment tracking", "Dataset versions", "Model artifacts", "Hyperparameter search", "Random seeds", "Environment pinning"],
+  "outcomes": [
+    "List every input a training run needs so it can be repeated.",
+    "Fingerprint a dataset so you can prove which version was used.",
+    "Version the complete inference artifact, not just the model file.",
+    "Search parameters inside training folds and keep the test set untouched.",
+    "Reproduce a run on a clean machine and prove the numbers matched."
+  ],
+  "rewrite_existing": true,
+  "existing_source": "app/data/machine_learning_pathway.json, module mle.reproducible-training, lessons mle.repro.01 to mle.repro.03",
+  "lessons": [
+    {
+      "id": "mle.repro.04",
+      "title": "Reproduce a run on another machine",
+      "goal": "Reproduce a training run on a clean machine and prove the result matched, using pinned versions, fixed seeds and a recorded manifest.",
+      "sections": [
+        {"heading": "The three reasons a rerun differs", "intent": "Explain that a rerun changes because of the code, the data, or the environment, and that each needs its own record."},
+        {"heading": "Pin the versions", "intent": "Explain a requirements file with exact versions and why 'latest' is not reproducible."},
+        {"heading": "Fix the randomness", "intent": "Explain that many libraries take a random seed, and that setting it makes the run repeatable rather than identical across library versions."},
+        {"heading": "Prove it with a manifest", "intent": "Explain the run manifest as a small file listing the code revision, the data fingerprint, the parameters, the package versions and the metrics, and how comparing two manifests shows whether the run really repeated."}
+      ],
+      "task": "Write a manifest file for a training run of your own with the code revision, the data fingerprint, the parameters, the package versions and the metric, then describe how you would prove on another machine that the run repeated.",
+      "quiz": [
+        "What are the three reasons a rerun of the same code can give a different number?",
+        "Why does a requirements file pin exact versions?",
+        "What does a run manifest let you prove?"
+      ]
+    },
+    {
+      "id": "mle.repro.01",
+      "title": "Make a training run repeatable",
+      "goal": "Identify the inputs and controls needed to reproduce a model training run.",
+      "sections": [
+        {"heading": "A model file is not a training record", "intent": "Explain that a saved model says what the answer is but not how it was produced, and what a training record must contain."},
+        {"heading": "Separate configuration from code", "intent": "Explain putting parameters in a config file so a run can be changed without editing code."},
+        {"heading": "Repeat before you trust", "intent": "Explain running the same command twice and comparing the numbers as the cheapest possible check."}
+      ],
+      "task": "For a training script you could write, list the five inputs a run needs and where each one would live. Then describe how you would show that two runs of the same command agree.",
+      "quiz": [
+        "Why is a saved model file not enough to reproduce a training run?",
+        "Why keep parameters in a configuration file rather than inside the code?",
+        "What is the cheapest way to check that a run is repeatable?"
+      ]
+    },
+    {
+      "id": "mle.repro.02",
+      "title": "Version datasets and model artifacts",
+      "goal": "Track which data and model files a run used without placing sensitive raw data in experiment logs.",
+      "sections": [
+        {"heading": "Fingerprint the data you used", "intent": "Explain a checksum as a short fingerprint of a file's contents, and why it is better than a filename for data that changes."},
+        {"heading": "Version the complete inference artifact", "intent": "Explain that the preprocessing steps are part of the model, and that saving only the weights breaks inference later."},
+        {"heading": "Keep an experiment index", "intent": "Explain a simple table of runs with their names, dates, data versions and metrics as the thing you read before a new experiment."}
+      ],
+      "task": "Write a short experiment index for two runs of a model you train or imagine training, with columns for the run name, the date, the data version, the parameters and the metric.",
+      "quiz": [
+        "What does a checksum of a dataset tell you?",
+        "Why is the preprocessing part of the model artifact?",
+        "What is an experiment index for?"
+      ]
+    },
+    {
+      "id": "mle.repro.03",
+      "title": "Search parameters without overfitting validation",
+      "goal": "Tune models on training data while preserving a final evaluation set for one honest comparison.",
+      "sections": [
+        {"heading": "Search inside training folds", "intent": "Explain that a parameter search must be validated inside the training data, using a pipeline so each fold refits the scaler."},
+        {"heading": "Keep the final test set out of the search", "intent": "Explain that a test set used for choosing parameters stops being a test set, and what the score then means."},
+        {"heading": "Promote artifacts deliberately", "intent": "Explain recording which candidate won, saving its artifact, and noting the metric that justified the promotion."}
+      ],
+      "task": "Describe a parameter search over three values of one parameter for a classifier on the bundled orders data, saying exactly which rows each candidate is scored on and which rows are never touched.",
+      "quiz": [
+        "Why must parameter search happen inside the training data?",
+        "What happens to a test set once you use it to choose parameters?",
+        "What should be recorded when a candidate is promoted?"
+      ]
+    }
+  ],
+  "project": {
+    "brief": "Build a repeatable training command. Record the code revision, the data fingerprint, the parameters, the package versions, the cross-validation result and the held-out evaluation metric in a run manifest, and prove that two runs of the same command agree.",
+    "deliverables": [
+      "A public GitHub repository with a README that shows the exact command and the manifest it produces.",
+      "A training script that writes the run manifest.",
+      "A test file that passes in CI on every push.",
+      "Two manifests from two runs, and a short note comparing them."
+    ],
+    "rubric": [
+      {"criterion": "The manifest records every input needed to repeat the run", "weight": 40},
+      {"criterion": "Repeated runs agree and the comparison is shown", "weight": 35},
+      {"criterion": "The evaluation set stayed out of the parameter search", "weight": 25}
+    ],
+    "report_contract": [
+      {"key": "train_rows", "type": "int", "equals": 24},
+      {"key": "evaluation_rows", "type": "int", "equals": 12},
+      {"key": "seed", "type": "int", "equals": 7},
+      {"key": "dataset_sha256", "type": "string", "length": 64},
+      {"key": "feature_columns", "type": "list", "equals": ["support_tickets", "tenure_months"]},
+      {"key": "artifact_version", "type": "string", "equals": "1.0.0"},
+      {"key": "run_manifest_fields", "type": "list", "length": 9},
+      {"key": "repeated_run_predictions_match", "type": "bool", "equals": true},
+      {"key": "evaluation_set_used_for_fitting", "type": "bool", "equals": false},
+      {"key": "accuracy", "type": "float", "min": 0.9, "max": 1},
+      {"key": "f1", "type": "float", "min": 0.8, "max": 1},
+      {"key": "validation_f1_mean", "type": "float", "min": 0.8, "max": 1}
+    ],
+    "kit": {
+      "dir": "module_9_reproducible_training",
+      "module": "run",
+      "dataset": "data/train.csv and data/evaluation.csv - unchanged from the existing reproducible training kit.",
+      "artifacts": [
+        "src/run.py - the learner implements run_training().",
+        "The report is produced by running the training command, not by typing values."
+      ],
+      "reference": "tests/ml_reference/run.py",
+      "moved_from": "starter_kits/machine_learning/module_3"
+    }
+  }
+}

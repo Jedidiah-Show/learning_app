@@ -1,0 +1,192 @@
+{
+  "module_id": "mle.data-problem-formulation",
+  "number": 3,
+  "title": "Clean and prepare your data",
+  "week": "Week 2",
+  "focus_area": "Data Cleaning & Preprocessing",
+  "source_deliverable": "Clean and prepare a real-world dataset. Make an analysis-ready dataset.",
+  "tools": ["Python", "NumPy", "Pandas"],
+  "summary": "Turn a messy table into a dataset you can model on: explore it, fix missing values, turn text columns into numbers, put features on a comparable scale, catch outliers, and split the data so your results are honest.",
+  "estimated_hours": 18,
+  "topics": ["Importing and exploring data", "Handling missing values", "Encoding categorical data", "Feature scaling and normalization", "Outlier detection", "Dataset validation", "Data leakage", "Split design"],
+  "outcomes": [
+    "Load a CSV with pandas and describe its shape, types and missing values.",
+    "Choose and justify a missing-value strategy that does not invent data.",
+    "Encode a categorical column so a model can use it without inventing an order.",
+    "Scale features so no single column dominates the distance.",
+    "Separate development data from evaluation data so results mean something."
+  ],
+  "rewrite_existing": true,
+  "existing_source": "app/data/machine_learning_pathway.json, module mle.data-problem-formulation, lessons mle.data.01 to mle.data.04",
+  "lessons": [
+    {
+      "id": "mle.data.05",
+      "title": "Load a table and look at it",
+      "goal": "Load a CSV file with pandas and describe its shape, column types and missing values before you change anything.",
+      "sections": [
+        {"heading": "Read the file", "intent": "Show read_csv on the bundled orders file and print head() and shape, explaining each number that comes back."},
+        {"heading": "What is in each column", "intent": "Use dtypes and describe() to show that one column is text, one is a number, one is a yes or no flag, and explain why the type matters."},
+        {"heading": "Find what is missing", "intent": "Use isna().sum() to count missing values per column, and explain that a blank cell and the number zero are different things."},
+        {"heading": "Look before you change", "intent": "Explain why you inspect first: cleaning decisions change results, so you want to see the mess before you tidy it, and you keep a copy of the original."}
+      ],
+      "task": "Load the bundled orders dataset with pandas, print its shape, the data type of every column, and the number of missing values per column. Write one sentence about what surprised you.",
+      "quiz": [
+        "What does the shape of a DataFrame tell you?",
+        "A column holds an empty string in one row. How does that differ from a missing value in pandas?",
+        "Why inspect a dataset before cleaning it?"
+      ]
+    },
+    {
+      "id": "mle.data.06",
+      "title": "Fix missing values without inventing data",
+      "goal": "Choose a missing-value strategy for a column and explain what information the choice gives up.",
+      "sections": [
+        {"heading": "Three ways to handle a gap", "intent": "Introduce dropping the row, filling with a constant such as zero, and filling with a summary such as the median, with a concrete row from the orders file."},
+        {"heading": "Fill with the median, not the mean", "intent": "Explain why the median is safer for money values that can be skewed, and show the two numbers on the bundled data."},
+        {"heading": "Add a missing flag instead", "intent": "Explain the pattern of keeping the value filled with the median and adding a column that records whether the value was missing, and what that buys you."},
+        {"heading": "Missing can mean something", "intent": "Warn that a blank may be meaningful, such as a blank refund reason meaning the order was never returned, and that dropping such rows can change the meaning of the data."}
+      ],
+      "task": "For the bundled orders dataset, count the missing order totals, fill them with the median of the present totals, add a column called order_total_was_missing, and explain in one line why you chose to fill instead of drop.",
+      "quiz": [
+        "Why is the median often a better fill value than the mean for money columns?",
+        "What does an extra 'was missing' column let you do later?",
+        "Why can dropping rows with a blank value change what the dataset means?"
+      ]
+    },
+    {
+      "id": "mle.data.07",
+      "title": "Turn text categories into numbers",
+      "goal": "Encode a categorical column so a model can use it, without pretending the categories have an order they do not have.",
+      "sections": [
+        {"heading": "Why a model cannot read a word", "intent": "Explain that a model needs numbers, and that the encoding choice changes what the model can learn."},
+        {"heading": "One number per category", "intent": "Show one-hot encoding on the channel column with the resulting table written out, and explain what each column means."},
+        {"heading": "When a category really has an order", "intent": "Show ordinal encoding for size_small, size_medium, size_large and explain when it is right and when it invents a distance."},
+        {"heading": "Keep the categories you saw", "intent": "Warn about categories that appear only in later data, and about a column with hundreds of unique values, both of which need a plan."}
+      ],
+      "task": "Using pandas, turn the channel column of the bundled orders dataset into one-hot columns, and explain in two sentences why you did not use ordinal encoding for it.",
+      "quiz": [
+        "What does one-hot encoding produce, and what does each new column mean?",
+        "When is ordinal encoding appropriate?",
+        "Why can a category that only appears in new data cause a problem?"
+      ]
+    },
+    {
+      "id": "mle.data.08",
+      "title": "Put features on a comparable scale and catch outliers",
+      "goal": "Scale numeric features so that no single column dominates, and decide whether an unusual value is an error or a real case.",
+      "sections": [
+        {"heading": "Why scale", "intent": "Show a distance calculation where a column measured in thousands drowns one measured in ones, using the orders file."},
+        {"heading": "Standardisation and min-max", "intent": "Explain z-score scaling and min-max scaling with the formula in words, and what each produces."},
+        {"heading": "Fit the scaler on training data only", "intent": "Explain the leakage rule: the scaler learns the mean and spread from training rows, and reusing training statistics at prediction time is the bug that inflates scores."},
+        {"heading": "Outlier or unusual customer", "intent": "Teach the IQR rule in plain words, apply it to order totals, and warn that a genuine large customer is not a mistake to delete."}
+      ],
+      "task": "Scale the order_total column of the bundled dataset with z-score scaling, then apply the 1.5 times IQR rule to find unusual totals. Report the scaled mean and spread and name each unusual row.",
+      "quiz": [
+        "Why do we scale features before using distance-based models such as k-nearest neighbours?",
+        "Where must the scaler's mean and standard deviation come from?",
+        "What is wrong with removing a value just because it is far from the others?"
+      ]
+    },
+    {
+      "id": "mle.data.01",
+      "title": "Frame the prediction problem",
+      "goal": "Write down what decision a model should support before choosing an algorithm.",
+      "sections": [
+        {"heading": "Start with the decision", "intent": "Explain that a model exists to support a decision, and that the decision fixes what you must predict, for whom and how soon."},
+        {"heading": "Choose the target and baseline", "intent": "Define the target column, the features, and the simple rule you would use if you had no model at all."},
+        {"heading": "Write an evaluation contract", "intent": "Explain how to write down in advance which rows you will test on and which number you will report, so you cannot move the goalposts later."}
+      ],
+      "task": "For the bundled orders dataset, write down the decision a model would support, the target column, the features available at that moment, and the rule you would use as a no-model baseline.",
+      "quiz": [
+        "Why write the decision down before choosing an algorithm?",
+        "What is a baseline and what does it tell you?",
+        "What does an evaluation contract fix, and why fix it in advance?"
+      ]
+    },
+    {
+      "id": "mle.data.02",
+      "title": "Inspect and validate a tabular dataset",
+      "goal": "Find structural and quality problems before they silently affect model training.",
+      "sections": [
+        {"heading": "Treat a dataset as a contract", "intent": "Explain that a dataset has a promised shape, columns and meanings, and that a check should fail loudly when the promise breaks."},
+        {"heading": "Inspect with safe summaries", "intent": "Show counts of missing, duplicate and invalid values per column on the orders file, and explain what each count means."},
+        {"heading": "Make failures actionable", "intent": "Explain why a check that only says 'failed' wastes time, and how to attach the reason and the row numbers."}
+      ],
+      "task": "Write a validation function for the bundled orders dataset that reports the row count, the number of unique order ids, the number of missing totals, and the number of non-positive totals. Run it and fix one thing it reports.",
+      "quiz": [
+        "What makes a dataset a contract rather than just a file of numbers?",
+        "Name two quality checks you would run before training on a table.",
+        "Why should a failed check say what went wrong and where?"
+      ]
+    },
+    {
+      "id": "mle.data.03",
+      "title": "Choose a split that matches the real question",
+      "goal": "Evaluate on examples that represent future use without leaking information across splits.",
+      "sections": [
+        {"heading": "Random splits are not always realistic", "intent": "Explain that shuffling is right for some data and wrong for others, using a time-ordered order book as the example."},
+        {"heading": "Keep the test set for final evaluation", "intent": "Explain the three-way split of training, validation and test data and what each one is for."},
+        {"heading": "Check the split itself", "intent": "Show how to confirm the split looks like the real data: same class balance, similar ranges, no shared identifiers."}
+      ],
+      "task": "Split the bundled orders dataset into development rows and evaluation rows in time order, then write three checks that confirm the two parts look alike and share no order ids.",
+      "quiz": [
+        "When is a random split the wrong choice?",
+        "What is the evaluation set for, and why not tune on it?",
+        "Name one check that can reveal a leaky split."
+      ]
+    },
+    {
+      "id": "mle.data.04",
+      "title": "Build features and detect leakage",
+      "goal": "Create useful features only from information available at prediction time.",
+      "sections": [
+        {"heading": "Availability defines a valid feature", "intent": "Explain the rule with the refund_reason column: at order time there is no refund yet, so it cannot be a feature."},
+        {"heading": "Fit transformations on training data", "intent": "Explain why a scaler or encoder must learn from training rows only, in plain words."},
+        {"heading": "Audit suspiciously strong results", "intent": "Explain that a near-perfect score is a warning sign, list the usual causes, and give the check to run."}
+      ],
+      "task": "For the bundled orders dataset, list every column that is available when an order is placed, mark the rest as leakage features, and explain why a model scoring almost perfectly is a reason to check for leakage rather than to celebrate.",
+      "quiz": [
+        "What makes a column a leakage feature?",
+        "A model scores 99 percent accuracy. What should you check first?",
+        "Why must a scaler be fitted on training rows only?"
+      ]
+    }
+  ],
+  "project": {
+    "brief": "Clean and prepare a real-world dataset. Produce a documented audit of the bundled orders dataset and a repeatable preparation pipeline, keeping the time boundary between development and evaluation rows intact.",
+    "deliverables": [
+      "A public GitHub repository with a README that states the dataset contract, the problems found and the decisions taken.",
+      "A preparation pipeline that produces the analysis-ready table from the raw file, runnable with one command.",
+      "A test file that passes in CI on every push.",
+      "The audit report printed as JSON, pasted into the submission form."
+    ],
+    "rubric": [
+      {"criterion": "Dataset contract and quality checks are complete and correct", "weight": 40},
+      {"criterion": "Split and leakage reasoning is explicit and correct", "weight": 35},
+      {"criterion": "The pipeline is reproducible and the evidence is included", "weight": 25}
+    ],
+    "report_contract": [
+      {"key": "row_count", "type": "int", "equals": 12},
+      {"key": "required_columns_present", "type": "bool", "equals": true},
+      {"key": "unique_order_ids", "type": "int", "equals": 12},
+      {"key": "missing_order_total_count", "type": "int", "equals": 1},
+      {"key": "nonpositive_order_total_count", "type": "int", "equals": 1},
+      {"key": "returned_count", "type": "int", "equals": 4},
+      {"key": "development_rows", "type": "int", "equals": 8},
+      {"key": "evaluation_rows", "type": "int", "equals": 4},
+      {"key": "split_strategy", "type": "str", "equals": "time_ordered"},
+      {"key": "leakage_features", "type": "list", "equals": ["refund_reason"]}
+    ],
+    "kit": {
+      "dir": "module_3_data_problem",
+      "module": "audit",
+      "dataset": "data/orders.csv - unchanged from the existing data module kit.",
+      "artifacts": [
+        "src/audit.py - the learner implements build_report().",
+        "The report must be computed from data/orders.csv, never hard-coded."
+      ],
+      "reference": "tests/ml_reference/audit.py",
+      "moved_from": "starter_kits/machine_learning/module_1"
+    }
+  }
+}

@@ -5,7 +5,8 @@ from flask_login import current_user, login_required
 
 from app.learning import course_progress, completed_lesson_ids, completed_project_modules
 from app.pathway_scope import (
-    destination_for, is_ml, ml_completion_state, pathway_lesson_count,
+    active_pathway_enrolments, is_pathway, pathway_lesson_count,
+    pathway_modules, foundation_evidence,
 )
 
 progress_bp = Blueprint('progress', __name__)

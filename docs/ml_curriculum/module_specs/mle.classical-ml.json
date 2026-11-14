@@ -1,0 +1,185 @@
+{
+  "module_id": "mle.classical-ml",
+  "number": 4,
+  "title": "Foundations of machine learning",
+  "week": "Week 3",
+  "focus_area": "Foundations of ML",
+  "source_deliverable": "Predict housing prices (regression). Build a model to predict house prices using features like size, location, etc.",
+  "tools": ["Python", "NumPy", "scikit-learn"],
+  "summary": "The first models you can trust: predict a number with linear regression and read MAE, MSE and R squared; predict a label with k-nearest neighbours; split your data honestly and use cross-validation to compare models without fooling yourself.",
+  "estimated_hours": 16,
+  "topics": ["Supervised versus unsupervised learning", "k-nearest neighbours", "Linear regression", "MAE, MSE and R squared", "Train-test split", "Cross-validation", "Baselines", "scikit-learn pipelines"],
+  "outcomes": [
+    "Say what makes a problem supervised and what makes it unsupervised.",
+    "Fit a linear regression and explain each of MAE, MSE and R squared in plain words.",
+    "Predict a label with k-nearest neighbours and see why the choice of k matters.",
+    "Split data into training and evaluation parts and use cross-validation to compare models.",
+    "Compare any model against a baseline that uses no learning at all."
+  ],
+  "rewrite_existing": true,
+  "existing_source": "app/data/machine_learning_pathway.json, module mle.classical-ml, lessons mle.classical.01 to mle.classical.04",
+  "lessons": [
+    {
+      "id": "mle.classical.05",
+      "title": "Predict a number with linear regression",
+      "goal": "Fit a straight-line model that predicts a number, and read its error with MAE, MSE and R squared.",
+      "sections": [
+        {"heading": "What a straight line can and cannot do", "intent": "Explain the prediction as a weighted sum of features, using the dot product from the maths module, and show that a line through data is a starting point, not the answer."},
+        {"heading": "Fitting the line", "intent": "Show that the fit is the set of weights that makes the squared errors smallest, explain this in words, and point to scikit-learn's LinearRegression so the learner does not need to derive it."},
+        {"heading": "Read the error three ways", "intent": "Define MAE as the average error in the units of the target, MSE as the average squared error which punishes large misses, and R squared as the share of variation explained, each with a small worked example."},
+        {"heading": "Predict a house price", "intent": "Work one prediction end to end on the bundled houses file, then compare MAE to the average price to judge whether the model is worth anything."}
+      ],
+      "task": "Using the bundled houses dataset, fit a linear regression that predicts price from size, bedrooms and location score, then report MAE, MSE and R squared on the evaluation rows. Say whether the model is better than predicting the average price.",
+      "quiz": [
+        "What does MAE measure, and why is it in the units of the target?",
+        "Two models have the same MAE but one has a much larger MSE. What does that tell you?",
+        "What does an R squared of 0.4 mean in plain words?"
+      ]
+    },
+    {
+      "id": "mle.classical.06",
+      "title": "Predict a label with k-nearest neighbours",
+      "goal": "Predict a label by looking at the most similar examples in the training data, and see how the choice of k changes the answer.",
+      "sections": [
+        {"heading": "The idea in one sentence", "intent": "Explain k-nearest neighbours as labelling a new row with the label of its closest training rows, with a concrete example of houses."},
+        {"heading": "Distance needs comparable features", "intent": "Explain why the data module's scaling lesson matters here, using a column in metres and a column in rooms."},
+        {"heading": "Choosing k", "intent": "Show what happens with k equal to 1 and with a large k, and why the middle ground is usually right."},
+        {"heading": "Where it works and where it does not", "intent": "Explain the cost of k-nearest neighbours as data grows, and the cases where it fails such as many irrelevant features."}
+      ],
+      "task": "Using the bundled houses dataset, predict price for two new houses with a k-nearest neighbours regressor, once with k equal to 1 and once with k equal to 5. Explain in two sentences why the answers differ.",
+      "quiz": [
+        "How does a k-nearest neighbours model produce a prediction?",
+        "Why must features be scaled before using distance?",
+        "What happens to a k-nearest neighbours model when you set k to the size of the whole training set?"
+      ]
+    },
+    {
+      "id": "mle.classical.07",
+      "title": "Split your data and cross-validate",
+      "goal": "Compare models on data they were not trained on, and use cross-validation to make a comparison you can trust.",
+      "sections": [
+        {"heading": "Why one test set is fragile", "intent": "Explain that a single split can flatter or punish a model by chance, with a concrete example of a small dataset."},
+        {"heading": "Cross-validation in plain words", "intent": "Explain k-fold cross-validation as taking turns: each fold is the evaluation set once while the rest trains, then the scores are averaged."},
+        {"heading": "Use it for choices, keep the test set for the verdict", "intent": "Explain that cross-validation is for choosing between models, while the untouched evaluation set gives the final honest number."},
+        {"heading": "Report the variation, not just the mean", "intent": "Explain why reporting the mean fold score alone hides risk, and that the spread across folds is information."}
+      ],
+      "task": "Using the bundled orders dataset, run 5-fold cross-validation on a logistic regression classifier, write down the mean F1 score and the spread across folds, then state which model you would pick and why.",
+      "quiz": [
+        "What does cross-validation do that a single split does not?",
+        "Which set should you never tune on?",
+        "Why report the spread of fold scores and not only their average?"
+      ]
+    },
+    {
+      "id": "mle.classical.01",
+      "title": "Build a baseline before a model",
+      "goal": "Compare a candidate model with a simple reference that exposes the value of learning from features.",
+      "sections": [
+        {"heading": "A baseline makes performance interpretable", "intent": "Explain that 90 percent accuracy means nothing until you know what guessing the most common class would have scored."},
+        {"heading": "Compare on the same held-out rows", "intent": "Explain why both models must be scored on exactly the same evaluation rows, and what happens when they are not."},
+        {"heading": "Keep the baseline in the report", "intent": "Explain why the report records the baseline score next to the model score, and what a reviewer looks for there."}
+      ],
+      "task": "Using the bundled orders dataset, score a model that always predicts the most common class, then score your trained model on the same evaluation rows and write both numbers down.",
+      "quiz": [
+        "Why compare a model against a baseline?",
+        "Why must both models be scored on the same rows?",
+        "What does a baseline score of 50 percent and a model score of 85 percent tell you?"
+      ]
+    },
+    {
+      "id": "mle.classical.02",
+      "title": "Keep preprocessing inside a pipeline",
+      "goal": "Fit transformations only on training folds and keep inference behavior reproducible.",
+      "sections": [
+        {"heading": "Preprocessing learns from data", "intent": "Explain that a scaler and an encoder learn numbers from the rows they see, so fitting them on all the data leaks information."},
+        {"heading": "Use a pipeline for mixed columns", "intent": "Introduce scikit-learn's ColumnTransformer and Pipeline with a worked example that handles one numeric and one text column."},
+        {"heading": "Save the whole inference path", "intent": "Explain why you save the fitted pipeline rather than only the model, and what breaks if you only save the model."}
+      ],
+      "task": "Build a scikit-learn pipeline for the bundled orders dataset that scales the numeric columns and one-hot encodes the channel column, fit it on development rows only, and score it on the evaluation rows.",
+      "quiz": [
+        "Why must a scaler be fitted inside a pipeline rather than before it?",
+        "What is a ColumnTransformer used for?",
+        "Why save the whole pipeline and not only the model?"
+      ]
+    },
+    {
+      "id": "mle.classical.03",
+      "title": "Measure model quality for the decision",
+      "goal": "Select metrics that reflect the costs and consequences of model errors.",
+      "sections": [
+        {"heading": "Read the confusion matrix", "intent": "Build the 2 by 2 table for the bundled orders problem and explain each of the four cells in plain words."},
+        {"heading": "Use metrics with clear meanings", "intent": "Define accuracy, precision, recall and F1 as arithmetic on the four cells, and give the sentence each one means in a business report."},
+        {"heading": "Report the threshold", "intent": "Explain that a classifier outputs a score and a threshold turns it into a label, and that the threshold is a decision you own."}
+      ],
+      "task": "For the bundled orders dataset, print the confusion matrix for your classifier and compute accuracy, precision, recall and F1 from it by hand. Say which of the four errors would cost your business most.",
+      "quiz": [
+        "In a confusion matrix, what does a false positive mean?",
+        "Which metric tells you how many of the flagged cases were genuinely positive?",
+        "Why does the threshold matter as much as the model?"
+      ]
+    },
+    {
+      "id": "mle.classical.04",
+      "title": "Validate, compare, and read probabilities carefully",
+      "goal": "Estimate variation, make fair model comparisons, and interpret predicted probabilities carefully.",
+      "sections": [
+        {"heading": "Use cross-validation for model choices", "intent": "Explain comparing models on the same folds so the comparison is fair."},
+        {"heading": "Do not tune on the test set", "intent": "Explain the leak of tuning on the evaluation set and what the resulting score means."},
+        {"heading": "A score is not automatically a probability", "intent": "Explain that a model output of 0.9 is not automatically a 90 percent chance unless it has been checked, and what calibration means."}
+      ],
+      "task": "Compare a logistic regression model and a decision tree on the bundled orders dataset with the same 5-fold cross-validation, then write one sentence about why a high predicted probability needs checking.",
+      "quiz": [
+        "Why must two models be compared on the same folds?",
+        "What goes wrong if you tune hyperparameters on the test set?",
+        "What is calibration?"
+      ]
+    }
+  ],
+  "project": {
+    "brief": "Predict house prices with a regression model and a churn label with a classifier. Build a baseline, a linear regression on house prices, and a cross-validated classifier on customer churn, then report both with honest metrics on a fixed evaluation set.",
+    "deliverables": [
+      "A public GitHub repository with a README that states the two questions, the baselines and the metrics.",
+      "A regression model on the bundled houses data reporting MAE, MSE and R squared.",
+      "A classifier on the bundled churn data with 5-fold cross-validation and a held-out evaluation score.",
+      "A test file that passes in CI on every push.",
+      "The report printed as JSON, pasted into the submission form."
+    ],
+    "rubric": [
+      {"criterion": "Baselines are reported and every model beats its baseline", "weight": 30},
+      {"criterion": "Regression metrics (MAE, MSE, R squared) are computed and interpreted", "weight": 35},
+      {"criterion": "Classifier metrics come from a fixed evaluation set that was never tuned on", "weight": 35}
+    ],
+    "report_contract": [
+      {"key": "train_rows", "type": "int", "equals": 24},
+      {"key": "evaluation_rows", "type": "int", "equals": 12},
+      {"key": "baseline_accuracy", "type": "float", "equals": 0.6666666667, "tolerance": 0.0000001},
+      {"key": "accuracy", "type": "float", "min": 0.9, "max": 1},
+      {"key": "precision", "type": "float", "min": 0.8, "max": 1},
+      {"key": "recall", "type": "float", "min": 0.8, "max": 1},
+      {"key": "f1", "type": "float", "min": 0.8, "max": 1},
+      {"key": "cross_validation_f1_mean", "type": "float", "min": 0.8, "max": 1},
+      {"key": "feature_columns", "type": "list", "equals": ["support_tickets", "tenure_months"]},
+      {"key": "leakage_features", "type": "list", "equals": ["cancelled_after_snapshot"]},
+      {"key": "cross_validation_folds", "type": "int", "equals": 5},
+      {"key": "preprocessing_in_pipeline", "type": "bool", "equals": true},
+      {"key": "evaluation_set_used_for_fitting", "type": "bool", "equals": false},
+      {"key": "data_split", "type": "str", "equals": "fixed_holdout"},
+      {"key": "regression_train_rows", "type": "int", "equals": 12},
+      {"key": "regression_test_rows", "type": "int", "equals": 4},
+      {"key": "regression_mae", "type": "float", "max": 30000},
+      {"key": "regression_r2", "type": "float", "min": 0.85},
+      {"key": "regression_features", "type": "list", "equals": ["size_sqm", "bedrooms", "location_score"]}
+    ],
+    "kit": {
+      "dir": "module_4_classical_ml",
+      "module": "model",
+      "dataset": "data/train.csv and data/evaluation.csv - unchanged from the existing classical module kit - plus a new data/houses.csv with 16 synthetic houses (size_sqm, bedrooms, location_score, price): the first 12 rows train, the last 4 rows test.",
+      "artifacts": [
+        "src/model.py - the learner implements evaluate() and a regression baseline using the houses file.",
+        "The regression may use numpy's least squares; the metrics MAE, MSE and R squared are computed by the learner code from the predictions."
+      ],
+      "reference": "tests/ml_reference/model.py",
+      "moved_from": "starter_kits/machine_learning/module_2"
+    }
+  }
+}

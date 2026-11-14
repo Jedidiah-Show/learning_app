@@ -1,0 +1,131 @@
+{
+  "module_id": "mle.pytorch-advanced",
+  "number": 10,
+  "title": "Neural networks with PyTorch",
+  "week": "Weeks 8 and 9",
+  "focus_area": "Deeper models and honest comparisons",
+  "source_deliverable": "A neural network that beats the classical baseline, with its experiments recorded.",
+  "tools": ["Python", "PyTorch", "NumPy"],
+  "summary": "The hands-on PyTorch module: tensors, autograd, a network you write yourself, a training loop you can read, and the two habits that separate a working network from a lucky one: watching the learning curve and stopping overfitting.",
+  "estimated_hours": 16,
+  "topics": ["PyTorch tensors", "Autograd", "nn.Module", "Activation functions", "Training loops", "Overfitting", "Regularisation", "Experiment tracking"],
+  "outcomes": [
+    "Create tensors, move them between devices and shape them for a model.",
+    "Explain what autograd records and how it produces gradients.",
+    "Write a network as an nn.Module and run its forward pass.",
+    "Write a training loop with a validation split and a learning curve.",
+    "Recognise overfitting and apply dropout, weight decay or early stopping."
+  ],
+  "rewrite_existing": true,
+  "existing_source": "app/data/machine_learning_pathway.json, module mle.pytorch-advanced, lessons mle.pytorch.01 and mle.pytorch.02",
+  "lessons": [
+    {
+      "id": "mle.pytorch.03",
+      "title": "Write a training loop you can read",
+      "goal": "Write and run a PyTorch training loop with a training set, a validation split and a learning curve.",
+      "sections": [
+        {"heading": "The loop in five steps", "intent": "Walk through zeroing the gradients, the forward pass, the loss, the backward pass and the update, in that order, with the reason for zeroing."},
+        {"heading": "Batches that shuffle", "intent": "Explain mini-batches, why the order is shuffled each epoch, and what a batch size trades off."},
+        {"heading": "Watch the curve, not just the number", "intent": "Explain recording the loss after every epoch for both training and validation data, and what a healthy pair of curves looks like."},
+        {"heading": "Keep the evaluation data untouched", "intent": "Explain that the validation split is used to watch progress while the test rows are used once at the end."}
+      ],
+      "task": "Write a PyTorch training loop for a small network on the bundled churn data with a validation split, and record the training and validation loss for ten epochs. Print both curves as lists.",
+      "quiz": [
+        "Why must the gradients be zeroed at the start of each batch?",
+        "What is the purpose of the validation split during training?",
+        "What does a validation loss that stops improving while the training loss keeps falling suggest?"
+      ]
+    },
+    {
+      "id": "mle.pytorch.04",
+      "title": "Stop a network from overfitting",
+      "goal": "Recognise overfitting in the learning curves and apply the standard fixes, then confirm the fix helped.",
+      "sections": [
+        {"heading": "Spot overfitting", "intent": "Define overfitting as the gap between training and validation performance growing, and show it on a small example."},
+        {"heading": "More data and augmentation", "intent": "Explain that more varied examples attack the root cause, and describe what this looks like for tabular and image data."},
+        {"heading": "Dropout and weight decay", "intent": "Explain dropout as randomly switching off some units during training, and weight decay as a penalty on large weights, in plain words."},
+        {"heading": "Early stopping and honest comparison", "intent": "Explain keeping the best validation checkpoint rather than the last one, and re-running the same comparison to check the improvement is real."}
+      ],
+      "task": "Take the network from the previous lesson, add dropout, and record the validation score before and after. Write one sentence saying whether the change helped and how you know.",
+      "quiz": [
+        "What is the sign of overfitting in a learning curve?",
+        "What does dropout do during training?",
+        "Why do you keep the best validation checkpoint rather than the last one?"
+      ]
+    },
+    {
+      "id": "mle.pytorch.01",
+      "title": "Tensors, autograd and where the code runs",
+      "goal": "Understand tensor operations, automatic differentiation, and the PyTorch workflow.",
+      "sections": [
+        {"heading": "Tensors are numbers with a shape", "intent": "Explain a tensor as a grid of numbers with a shape, comparing with a plain list, and show a shape change with view or reshape."},
+        {"heading": "Autograd records the path", "intent": "Explain that PyTorch records the operations on a tensor that requires gradients and replays them backwards to compute gradients, with a worked two-step example."},
+        {"heading": "Device placement", "intent": "Explain moving data and models to a GPU, why it is faster, and the error you get when they are on different devices."}
+      ],
+      "task": "Create a tensor of 12 numbers, reshape it into three rows of four, multiply it by itself and print the result and its shape. Then compute a gradient with torch.autograd and print it.",
+      "quiz": [
+        "What is the difference between a tensor and a plain Python list for this work?",
+        "What does autograd record and replay?",
+        "Why does a device mismatch cause an error?"
+      ]
+    },
+    {
+      "id": "mle.pytorch.02",
+      "title": "Build a neural network in PyTorch",
+      "goal": "Define a neural network module and forward pass for tabular data.",
+      "sections": [
+        {"heading": "A module holds the layers", "intent": "Explain nn.Module as a container for layers that also knows its own parameters, with a small example."},
+        {"heading": "Choosing the shape of the network", "intent": "Explain input size, hidden width, depth and output size, using the churn data numbers."},
+        {"heading": "The forward pass", "intent": "Walk through a forward pass layer by layer with the numbers a small network would produce."}
+      ],
+      "task": "Write a network class for the bundled churn data with one hidden layer of 16 ReLU units and one output unit, then run one forward pass on a batch of four rows and print the output shape.",
+      "quiz": [
+        "What does an nn.Module keep besides the layers?",
+        "How do you decide the number of hidden units?",
+        "What does the forward pass do?"
+      ]
+    }
+  ],
+  "project": {
+    "brief": "Train a PyTorch neural network on the bundled churn data that beats the classical baseline, record your experiments, and check the learning curve for overfitting before you report the result.",
+    "deliverables": [
+      "A public GitHub repository with a README that states the architecture, the training settings and the comparison with the baseline.",
+      "A training script that reproduces the reported numbers with one command.",
+      "An experiment log with at least two runs and the reason you kept the better one.",
+      "A test file that passes in CI on every push."
+    ],
+    "rubric": [
+      {"criterion": "The network and training loop are correct and reproducible", "weight": 35},
+      {"criterion": "The model beats the classical baseline on the fixed evaluation set", "weight": 35},
+      {"criterion": "Overfitting was checked and the experiments are recorded honestly", "weight": 30}
+    ],
+    "report_contract": [
+      {"key": "train_rows", "type": "int", "equals": 24},
+      {"key": "evaluation_rows", "type": "int", "equals": 12},
+      {"key": "dataset_sha256", "type": "string", "length": 64},
+      {"key": "feature_columns", "type": "list", "equals": ["support_tickets", "tenure_months"]},
+      {"key": "baseline_accuracy", "type": "float", "equals": 0.6666666667, "tolerance": 0.0000001},
+      {"key": "model_family", "type": "string", "equals": "pytorch_mlp"},
+      {"key": "experiment_tracking", "type": "bool", "equals": true},
+      {"key": "beats_baseline", "type": "bool", "equals": true},
+      {"key": "evaluation_set_used_for_fitting", "type": "bool", "equals": false},
+      {"key": "data_split", "type": "string", "equals": "fixed_holdout"},
+      {"key": "accuracy", "type": "float", "min": 0.9, "max": 1},
+      {"key": "precision", "type": "float", "min": 0.8, "max": 1},
+      {"key": "recall", "type": "float", "min": 0.8, "max": 1},
+      {"key": "f1", "type": "float", "min": 0.8, "max": 1}
+    ],
+    "kit": {
+      "dir": "module_10_pytorch_advanced",
+      "module": "train_nn",
+      "dataset": "data/train.csv and data/evaluation.csv - unchanged from the existing pytorch module kit.",
+      "artifacts": [
+        "src/train_nn.py - the learner implements train_and_evaluate().",
+        "The metrics are computed from the predictions the model makes on the evaluation rows."
+      ],
+      "reference": "tests/ml_reference/train_nn.py",
+      "moved_from": "starter_kits/machine_learning/module_5",
+      "note": "This kit has no reference solution today. One must be written so the reference check can prove the kit is satisfiable. Because PyTorch is not available in the reference environment, the reference uses scikit-learn's MLPClassifier for the candidate network and the README says so plainly, while the lessons teach PyTorch."
+    }
+  }
+}

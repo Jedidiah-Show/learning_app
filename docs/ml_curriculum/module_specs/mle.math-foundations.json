@@ -1,0 +1,204 @@
+{
+  "module_id": "mle.math-foundations",
+  "number": 2,
+  "title": "The small amount of maths you need",
+  "week": "Foundation for Weeks 2 to 4",
+  "focus_area": "Maths and statistics foundations",
+  "source_deliverable": "Describe a dataset with statistics (foundation mini-project used by the Week 2 data module).",
+  "tools": ["Python", "NumPy"],
+  "summary": "The statistics and linear algebra that the rest of the course leans on, taught from zero: describing a dataset, probability and base rates, vectors and dot products, gradients and gradient descent, matrices, and what a confidence interval really says.",
+  "estimated_hours": 14,
+  "topics": ["Descriptive statistics", "Probability and base rates", "Vectors and dot products", "Gradient descent intuition", "Matrices and matrix-vector products", "Partial derivatives", "Confidence intervals and hypothesis tests", "Probability distributions and sampling"],
+  "outcomes": [
+    "Calculate and interpret a mean, median, range, variance and standard deviation.",
+    "Use a base rate to judge whether a model flag is worth acting on.",
+    "Read a dot product as a weighted sum of features.",
+    "Explain what a gradient and a learning rate do during training.",
+    "Describe honestly what a confidence interval and a p-value do and do not tell you."
+  ],
+  "rewrite_existing": true,
+  "existing_source": "app/data/machine_learning_pathway.json, module mle.data-problem-formulation, lessons mle.math.01 to mle.math.08",
+  "lessons": [
+    {
+      "id": "mle.math.00",
+      "title": "How to read the maths in this course",
+      "goal": "Know which numbers you must be able to work with by hand, which you can leave to Python, and how the lessons in this module connect to the models you will build later.",
+      "sections": [
+        {"heading": "You do not need advanced maths", "intent": "Reassure the learner: this module contains only the handful of ideas that the later models actually use, every one of them explained with a worked number before any formula appears."},
+        {"heading": "The five ideas you will meet", "intent": "List the ideas in plain words: describing a dataset, how likely something is, adding features together, how a model improves by trial, and how sure we are of an estimate."},
+        {"heading": "Where each idea is used later", "intent": "Point forward: base rates matter when you read a spam flag, dot products are what a linear model computes, gradients are how training moves, and confidence intervals are how you report an uncertain estimate."}
+      ],
+      "task": "Write down three questions you want answered by the end of this course, in plain language, and keep them where you will see them at the end of the module.",
+      "quiz": [
+        "Which of these is a real requirement for this course rather than a nice-to-have?",
+        "A dot product is used in this course to do what?",
+        "Why does this module include probability before the models?"
+      ]
+    },
+    {
+      "id": "mle.math.01",
+      "title": "Summarize a distribution before modeling",
+      "goal": "Calculate and interpret basic measures of center and spread before choosing a model.",
+      "sections": [
+        {"heading": "Describe the center", "intent": "Teach mean, median and mode as three different questions about the middle of your data, using the values 2, 3, 3, 4, 8 with the sum and count shown."},
+        {"heading": "Describe the spread", "intent": "Teach range, variance and standard deviation with the same five values and the actual arithmetic for variance 4.4 and standard deviation about 2.1."},
+        {"heading": "Summaries are a starting point", "intent": "Warn that one mean can hide groups, skew and missing values; advise comparing subgroups and checking units before drawing conclusions."}
+      ],
+      "task": "For the values 2, 3, 3, 4, 8, calculate the mean, the median and the range, then explain which measure of center changes least if 8 is replaced by 80.",
+      "quiz": [
+        "For the values 2, 3, 3, 4, 8, what is the mean and why does it differ from the median?",
+        "What does the standard deviation tell you that the mean does not?",
+        "A dataset of yearly incomes has a mean of 60,000 and a median of 42,000. What does the gap suggest?"
+      ]
+    },
+    {
+      "id": "mle.math.02",
+      "title": "Reason with probability, base rates, and samples",
+      "goal": "Use base rates and conditional probabilities to interpret model flags and data samples.",
+      "sections": [
+        {"heading": "Start with the base rate", "intent": "Define the base rate as how often something happens overall, and use a concrete example: 1 in 100 emails is spam, so a flag on one email is not enough to act on."},
+        {"heading": "Keep conditional questions distinct", "intent": "Explain 'given that' questions with a small table of counts, showing how the same flag means very different things at 1 in 100 and at 1 in 2."},
+        {"heading": "Ask how the sample was collected", "intent": "Explain that a percentage only means something if you know who was sampled and how; a sample of one class tells you nothing about the rest."}
+      ],
+      "task": "One hundred emails arrive, one is spam, and a filter flags ten emails. Work out how many flagged emails are actually spam, then repeat the calculation for a mailbox where one email in two is spam.",
+      "quiz": [
+        "When one email in a hundred is spam and a filter flags ten emails, how many flagged emails are spam at most?",
+        "Why is a model's precision as important as its accuracy?",
+        "A survey of 30 people who already use the product reports that 90 percent love it. Why is that number weak evidence?"
+      ]
+    },
+    {
+      "id": "mle.math.03",
+      "title": "Represent features with vectors and dot products",
+      "goal": "Interpret a weighted sum of numeric features as a simple model calculation.",
+      "sections": [
+        {"heading": "A vector keeps values in order", "intent": "Define a vector as an ordered list of numbers where position carries meaning, using [size, rooms, age] as the running example."},
+        {"heading": "Compute a dot product", "intent": "Work one dot product end to end with weights and values, showing every multiplication and the final sum."},
+        {"heading": "Check shapes and meaning", "intent": "Explain that the weights are learned, the numbers are chosen by you, and a dot product is only meaningful if the features were scaled sensibly."}
+      ],
+      "task": "Compute the dot product of the feature vector [120, 3, 10] with the weights [0.5, 10, -1]. Show each multiplication, then say which feature the model is most sensitive to and why.",
+      "quiz": [
+        "What does the dot product of a feature vector and a weight vector produce?",
+        "In the worked example, why must the feature values and the weights be on comparable scales?",
+        "Where do the weights in a dot product come from?"
+      ]
+    },
+    {
+      "id": "mle.math.04",
+      "title": "Understand gradients and gradient descent",
+      "goal": "Explain how a gradient and a learning rate guide a model parameter toward lower loss.",
+      "sections": [
+        {"heading": "A gradient describes local change", "intent": "Define a gradient as the direction in which a quantity changes fastest right now, using the hill metaphor and a concrete one-parameter example."},
+        {"heading": "Work a one-parameter step", "intent": "Run three gradient descent steps on a simple loss with a named learning rate, showing the parameter and the loss at each step."},
+        {"heading": "Check the result, not only the update", "intent": "Warn that too large a learning rate overshoots and oscillates, that too small a learning rate crawls, and that the loss curve is the thing to look at."}
+      ],
+      "task": "Start at 10 with a gradient of 3 and a learning rate of 0.1. Take three steps and write down the parameter and the loss after each step. Then repeat with a learning rate of 1 and describe what changed.",
+      "quiz": [
+        "What does the learning rate control during training?",
+        "The loss goes up after a step. What are the two most likely causes?",
+        "Why do we look at the loss over many steps instead of trusting a single update?"
+      ]
+    },
+    {
+      "id": "mle.math.05",
+      "title": "Understand probability distributions and sampling",
+      "goal": "Distinguish common probability distributions and explain how samples vary.",
+      "sections": [
+        {"heading": "A distribution describes possible values", "intent": "Introduce a distribution as a way of saying how the values could be spread out, with normal, Bernoulli and uniform as three examples in plain words."},
+        {"heading": "Samples have their own variation", "intent": "Explain that two samples from the same distribution give different summaries, and that larger samples vary less."},
+        {"heading": "Match the model to the quantity", "intent": "Show how to pick a distribution that matches the thing being measured, and what happens when the choice is wrong."}
+      ],
+      "task": "Take ten random draws from the values 0 to 9 and then a hundred draws. Write down the mean of each sample and explain in one sentence why the two means differ.",
+      "quiz": [
+        "What does a probability distribution describe?",
+        "Two samples come from the same distribution. Why do their averages differ?",
+        "What happens to the average of a sample as the sample grows?"
+      ]
+    },
+    {
+      "id": "mle.math.06",
+      "title": "Use matrices to combine feature vectors",
+      "goal": "Read matrix shapes and calculate a small matrix-vector product.",
+      "sections": [
+        {"heading": "Rows and columns have meaning", "intent": "Define a matrix of numbers, explain that the shape carries meaning, and use a table of four houses with three features as the running example."},
+        {"heading": "A matrix can apply several weighted sums", "intent": "Work one matrix-vector product cell by cell and connect it to the dot product lesson."},
+        {"heading": "Connect the operation to models", "intent": "Explain that a linear model over many rows is exactly this operation, and that shape errors are the usual beginner bug."}
+      ],
+      "task": "Multiply the matrix [[1, 2], [3, 4], [5, 6]] by the vector [1, 1]. Show every row, then say what shape the result has and why.",
+      "quiz": [
+        "What does the shape of a matrix tell you?",
+        "In a matrix-vector product, how many numbers come out for a matrix with five rows?",
+        "A model expects three features but receives four. What kind of mistake is that?"
+      ]
+    },
+    {
+      "id": "mle.math.07",
+      "title": "Interpret partial derivatives",
+      "goal": "Explain how a partial derivative measures a loss change for one parameter at a time.",
+      "sections": [
+        {"heading": "Vary one parameter while holding others fixed", "intent": "Define a partial derivative as the rate of change with the other parameters held still, with a plain-language analogy."},
+        {"heading": "Read a gradient at a point", "intent": "Explain that the gradient is a vector of partial derivatives, one per parameter, and show how it points downhill."},
+        {"heading": "Use partial derivatives carefully", "intent": "Warn that the gradient is a local direction at one point, not the whole shape of the loss, and that flat regions make progress slow."}
+      ],
+      "task": "For the loss L(w) = (w - 3) squared, write down the partial derivative with respect to w and use it to explain why the value of w moves toward 3 during training.",
+      "quiz": [
+        "In a partial derivative, what is held fixed?",
+        "What does the gradient vector at one point tell you?",
+        "Why can training become very slow in some regions?"
+      ]
+    },
+    {
+      "id": "mle.math.08",
+      "title": "Interpret confidence intervals and hypothesis tests",
+      "goal": "Describe uncertainty in sample estimates and interpret a hypothesis-test p-value without overclaiming.",
+      "sections": [
+        {"heading": "A confidence interval describes a procedure", "intent": "Explain a confidence interval as a range produced by a repeatable method, and what 95 percent confidence does and does not mean."},
+        {"heading": "A p-value is conditional on a null model", "intent": "Define a p-value as the probability of data this extreme if the null hypothesis were true, and show the common misreading with a concrete number."},
+        {"heading": "Association is not a causal explanation", "intent": "Warn that finding a relationship does not prove one thing causes another, and give the classic example of an umbrella and wet streets."}
+      ],
+      "task": "A study of 400 customers finds that users who received onboarding messages kept 12 percent more accounts. Write one sentence a careful analyst could say, and one sentence that overclaims.",
+      "quiz": [
+        "What does a 95 percent confidence interval mean?",
+        "A p-value of 0.03 means what, exactly?",
+        "Why does a strong association between two variables not prove that one causes the other?"
+      ]
+    }
+  ],
+  "project": {
+    "brief": "Describe a dataset with statistics: profile the bundled orders dataset, state its centre and spread, flag its data quality problems, and write down the one outlier rule you applied.",
+    "deliverables": [
+      "A public GitHub repository with a README that explains the dataset and the numbers you report.",
+      "A profiling script that prints the report as JSON.",
+      "A test file that passes in CI on every push.",
+      "A short write-up in the README stating the mean, median and spread of the order totals and why you treated one row as an outlier."
+    ],
+    "rubric": [
+      {"criterion": "Summary statistics are computed correctly from the bundled data", "weight": 40},
+      {"criterion": "Data quality problems are found and explained, not silently fixed", "weight": 30},
+      {"criterion": "The write-up states the numbers and what they mean for the data", "weight": 30}
+    ],
+    "report_contract": [
+      {"key": "row_count", "type": "int", "equals": 12},
+      {"key": "column_count", "type": "int", "equals": 6},
+      {"key": "mean_order_total", "type": "float", "equals": 38.29, "tolerance": 0.005},
+      {"key": "median_order_total", "type": "float", "equals": 29.99, "tolerance": 0.005},
+      {"key": "stdev_order_total", "type": "float", "equals": 30.6929, "tolerance": 0.02},
+      {"key": "missing_order_total_count", "type": "int", "equals": 1},
+      {"key": "nonpositive_order_total_count", "type": "int", "equals": 1},
+      {"key": "returned_count", "type": "int", "equals": 4},
+      {"key": "return_rate", "type": "float", "equals": 0.3333333333, "tolerance": 0.001},
+      {"key": "outlier_rule", "type": "str", "min_length": 10}
+    ],
+    "kit": {
+      "dir": "module_2_math_foundations",
+      "module": "profile",
+      "dataset": "data/orders.csv - the same 12 synthetic orders used by the data module: order_id, order_date, order_total, channel, returned_within_30_days, refund_reason. One total is missing and one total is negative.",
+      "definitions": "The centre and spread figures are computed over the 11 rows where order_total is present, including the negative value, using the population standard deviation (statistics.pstdev). The report states the number of values used so a reader can check it.",
+      "artifacts": [
+        "src/profile.py - the learner implements build_report().",
+        "The report must be produced by reading data/orders.csv at call time, never hard-coded."
+      ],
+      "reference": "tests/ml_reference/profile.py"
+    }
+  }
+}

@@ -348,7 +348,15 @@ def users():
         plans = CoursePlan.query.filter(
             CoursePlan.user_id.in_(user_ids)
         ).all()
-        destination_by_id = {plan.user_id: plan.pathway_destination for plan in plans}
+        # Use enrolment-based lookup (active logic reads from LearnerPathwayEnrollment).
+        # Fall back to deprecated CoursePlan.pathway_destination column for rollback.
+        destination_by_id = {}
+        for plan in plans:
+            dest = destination_for(plan.user_id)
+            if dest is not None:
+                destination_by_id[plan.user_id] = dest
+            else:
+                destination_by_id[plan.user_id] = plan.pathway_destination or 'shared-foundations'
         for account in pagination.items:
             destination = destination_by_id.get(account.id)
             pathway_by_user[account.id] = destination
@@ -1179,14 +1187,22 @@ def pathway_change_requests():
         query = query.filter_by(status=status)
     page = max(1, request.args.get('page', 1, type=int) or 1)
     pagination = query.paginate(page=page, per_page=PAGE_SIZE, error_out=False)
-    destination_by_user = {
-        plan.user_id: plan.pathway_destination
-        for plan in CoursePlan.query.filter(
-            CoursePlan.user_id.in_(
-                [report.user_id for report in pagination.items] or [-1]
-            )
-        ).all()
-    }
+    # Use enrolment-based lookup; fall back to deprecated CoursePlan.pathway_destination for rollback
+    destination_by_user = {}
+    user_ids = [report.user_id for report in pagination.items] or [-1]
+    plans_by_user = {plan.user_id: plan for plan in CoursePlan.query.filter(
+        CoursePlan.user_id.in_(user_ids)
+    ).all()}
+    for report in pagination.items:
+        # Try enrolment-based destination first
+        dest = destination_for(report.user_id)
+        if dest is not None:
+            destination_by_user[report.user_id] = dest
+        elif report.user_id in plans_by_user:
+            # Fall back to deprecated column
+            destination_by_user[report.user_id] = plans_by_user[report.user_id].pathway_destination or 'shared-foundations'
+        else:
+            destination_by_user[report.user_id] = 'shared-foundations'
     return render_template(
         'admin/pathway_requests.html', requests=pagination.items,
         pagination=pagination, status=status,
@@ -1213,6 +1229,12 @@ def pathway_change_request_detail(request_id):
     plan = CoursePlan.query.filter_by(user_id=report.user_id).first()
     current_destination = plan.pathway_destination if plan else None
 
+    # Also sync with the learner's pathway enrolment
+    from app.models import LearnerPathwayEnrollment
+    enrolment = LearnerPathwayEnrollment.query.filter_by(
+        learner_id=report.user_id, pathway_id=current_destination
+    ).first() if current_destination else None
+
     if request.method == 'POST':
         action = (request.form.get('action') or '').strip()
         note = (request.form.get('note') or '').strip()[:2000]
@@ -1235,8 +1257,22 @@ def pathway_change_request_detail(request_id):
             report.resolved_at = _utcnow()
             report.resolution_note = note or None
             if action == 'approve':
+                # Write to deprecated CoursePlan.pathway_destination for rollback
                 plan.pathway_destination = report.requested_destination
                 plan.updated_at = _utcnow()
+                # Also sync with the learner's active enrolment
+                if enrolment:
+                    enrolment.pathway_id = report.requested_destination
+                    enrolment.status = 'ENROLLED'
+                elif plan is not None:
+                    # Create enrolment if one doesn't exist
+                    new_enrolment = LearnerPathwayEnrollment(
+                        learner_id=report.user_id,
+                        pathway_id=report.requested_destination,
+                        status='ENROLLED'
+                    )
+                    from app import db as _db
+                    _db.session.add(new_enrolment)
                 report.status = 'approved'
                 report.resolved_destination = report.requested_destination
                 _record_admin_action(

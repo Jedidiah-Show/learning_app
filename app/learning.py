@@ -10,6 +10,11 @@ from app.curriculum import all_modules
 from app.models import CourseProject, LessonCompletion
 
 
+def _user_id(user):
+    """Extract the integer user_id from a User object or return as-is."""
+    return user.id if hasattr(user, 'id') else user
+
+
 def _scope(user, destination):
     """Resolve this learner's destination once for a bundle of queries."""
     from app.pathway_scope import destination_for
@@ -25,26 +30,29 @@ def _merged_completions(user, destination, completed, project_modules):
     """
     from app.pathway_scope import is_ml, ml_completion_state
 
+    uq = _user_id(user)
     if not is_ml(destination):
         return set(completed), set(project_modules)
-    ml_lessons, ml_projects = ml_completion_state(user.id)
+    ml_lessons, ml_projects = ml_completion_state(uq)
     return set(completed) | ml_lessons, set(project_modules) | ml_projects
 
 
 def completed_lesson_ids(user):
+    uq = _user_id(user)
     return {
         lesson_id for (lesson_id,) in LessonCompletion.query.with_entities(
             LessonCompletion.lesson_id
-        ).filter_by(user_id=user.id, completed=True).all()
+        ).filter_by(user_id=uq, completed=True).all()
     }
 
 
 
 def completed_project_modules(user):
+    uq = _user_id(user)
     return {
         module_id for (module_id,) in CourseProject.query.with_entities(
             CourseProject.module_id
-        ).filter_by(user_id=user.id, completed=True).all()
+        ).filter_by(user_id=uq, completed=True).all()
     }
 
 
@@ -61,8 +69,9 @@ def user_track(user):
 
 def next_unlocked_lesson(user, completed=None, completed_projects=None,
                          destination=None):
+    uq = _user_id(user)
     action = next_course_action(
-        user, completed=completed, completed_projects=completed_projects,
+        uq, completed=completed, completed_projects=completed_projects,
         destination=destination,
     )
     return action['lesson_id'] if action and action['type'] == 'lesson' else None
@@ -70,13 +79,14 @@ def next_unlocked_lesson(user, completed=None, completed_projects=None,
 
 def next_course_action(user, completed=None, completed_projects=None,
                        destination=None):
-    destination = _scope(user, destination)
+    uq = _user_id(user)
+    destination = _scope(uq, destination)
     if completed is None:
-        completed = completed_lesson_ids(user)
+        completed = completed_lesson_ids(uq)
     if completed_projects is None:
-        completed_projects = completed_project_modules(user)
+        completed_projects = completed_project_modules(uq)
     completed, completed_projects = _merged_completions(
-        user, destination, completed, completed_projects
+        uq, destination, completed, completed_projects
     )
     from app.pathway_scope import pathway_modules
     # Scoped to the learner's own modules: for an ML destination the pointer
@@ -114,7 +124,8 @@ def lesson_is_available(user, lesson_id, completed=None, completed_projects=None
     from app.ml_pathway import get_machine_learning_lesson
     from app.pathway_scope import FOUNDATION_MODULE_IDS, is_ml
 
-    destination = _scope(user, None)
+    uq = _user_id(user)
+    destination = _scope(uq, None)
     ai_lesson = get_lesson(lesson_id)
     ml_lesson = get_machine_learning_lesson(lesson_id)
     if ai_lesson is None and ml_lesson is None:
@@ -126,16 +137,16 @@ def lesson_is_available(user, lesson_id, completed=None, completed_projects=None
         return False
 
     if completed is None:
-        completed = completed_lesson_ids(user)
+        completed = completed_lesson_ids(uq)
     if completed_projects is None:
-        completed_projects = completed_project_modules(user)
+        completed_projects = completed_project_modules(uq)
     completed, completed_projects = _merged_completions(
-        user, destination, completed, completed_projects
+        uq, destination, completed, completed_projects
     )
     if lesson_id in completed:
         return True
     return lesson_id == next_unlocked_lesson(
-        user, completed=completed, completed_projects=completed_projects,
+        uq, completed=completed, completed_projects=completed_projects,
         destination=destination,
     )
 
@@ -146,8 +157,9 @@ def module_project_is_available(user, module_id, completed=None):
     module = get_module(module_id)
     if not module:
         return False
+    uq = _user_id(user)
     if completed is None:
-        completed = completed_lesson_ids(user)
+        completed = completed_lesson_ids(uq)
     return all(lesson['id'] in completed for lesson in module['lessons'])
 
 
@@ -164,13 +176,14 @@ def course_progress(user, completed=None, completed_projects=None,
         destination_for, is_ml, module_entry, pathway_modules,
     )
 
-    destination = _scope(user, destination) if destination is None else destination
+    uq = _user_id(user)
+    destination = _scope(uq, destination) if destination is None else destination
     if completed is None:
-        completed = completed_lesson_ids(user)
+        completed = completed_lesson_ids(uq)
     if completed_projects is None:
-        completed_projects = completed_project_modules(user)
+        completed_projects = completed_project_modules(uq)
     completed, completed_projects = _merged_completions(
-        user, destination, completed, completed_projects
+        uq, destination, completed, completed_projects
     )
     modules = pathway_modules(destination)
     lessons = [lesson for module in modules for lesson in module['lessons']]
@@ -193,7 +206,7 @@ def course_progress(user, completed=None, completed_projects=None,
             all(lesson['id'] in completed for lesson in lessons)
             and all(module['id'] in completed_projects for module in modules)
         ),
-        'recalibration': study_recalibration(user, completed, lessons=ai_lessons),
+        'recalibration': study_recalibration(uq, completed, lessons=ai_lessons),
         'modules': [
             module_entry(module, completed, completed_projects)
             for module in modules
@@ -221,7 +234,8 @@ def pathway_dashboard_progress(user, destination, progress,
 
     from app.ml_pathway import machine_learning_pathway, ml_module_progress
 
-    ml_progress = ml_module_progress(user.id)
+    uq = _user_id(user)
+    ml_progress = ml_module_progress(uq)
     modules = []
     for module in machine_learning_pathway()['modules']:
         state = ml_progress.get(module['id'], {})
@@ -358,8 +372,9 @@ def study_recalibration(user, completed=None, completed_projects=None,
     from app.curriculum import all_lessons
     from app.models import LessonCompletion
 
+    uq = _user_id(user)
     if completed is None:
-        completed = completed_lesson_ids(user)
+        completed = completed_lesson_ids(uq)
     estimated_minutes = 0.0
     observed_minutes = 0.0
     counted = set()
@@ -370,7 +385,7 @@ def study_recalibration(user, completed=None, completed_projects=None,
         counted.add(lesson_id)
         estimated_minutes += float(lesson.get('study_minutes') or 0)
         row = LessonCompletion.query.filter_by(
-            user_id=user.id, lesson_id=lesson_id
+            user_id=uq, lesson_id=lesson_id
         ).first()
         if row is not None and row.time_spent_minutes:
             observed_minutes += float(row.time_spent_minutes)

@@ -54,7 +54,32 @@
                     <span class="brand-mark"><img src="{{ url_for('static', filename='img/ruachai.png') }}" alt="" width="40" height="40" loading="eager"></span>
                     <div class="brand-copy">
                         <h1 class="brand-wordmark">RUACH</h1>
-                        {% if current_user.is_authenticated %}<p class="brand-subtitle hidden sm:block lg:block">{% if pathway_destination == 'ml' %}ML Engineering{% elif pathway_destination == 'ai' %}AI Engineering{% else %}AI & ML Engineering{% endif %}</p>{% else %}<p class="brand-subtitle hidden sm:block">Spirit · Connection · Growth</p>{% endif %}
+{% if current_user.is_authenticated %}
+  {% set pathway_ids = [] %}
+  {% for _, e in pathway_enrolments %}
+    {% set pathway_ids = pathway_ids + [e.pathway_id] %}
+  {% endfor %}
+  {% set has_ml = 'machine-learning' in pathway_ids %}
+  {% set has_ai = 'ai-engineering' in pathway_ids %}
+  {% set has_shared = 'shared-foundations' in pathway_ids %}
+  {% if has_ml and has_ai %}
+    <p class="brand-subtitle hidden sm:block lg:block">AI & ML Engineering</p>
+  {% elif has_ml %}
+    <p class="brand-subtitle hidden sm:block lg:block">ML Engineering</p>
+  {% elif has_ai %}
+    <p class="brand-subtitle hidden sm:block lg:block">AI Engineering</p>
+  {% elif has_shared and (not has_ml and not has_ai) %}
+    <p class="brand-subtitle hidden sm:block lg:block">Shared Foundations</p>
+  {% elif has_shared and has_ml %}
+    <p class="brand-subtitle hidden sm:block lg:block">ML Engineering</p>
+  {% elif has_shared and has_ai %}
+    <p class="brand-subtitle hidden sm:block lg:block">AI Engineering</p>
+  {% else %}
+    <p class="brand-subtitle hidden sm:block lg:block">AI & ML Engineering</p>
+  {% endif %}
+{% else %}
+  <p class="brand-subtitle hidden sm:block">Spirit · Connection · Growth</p>
+{% endif %}
                     </div>
                 </a>
                 {% if current_user.is_authenticated %}
@@ -77,21 +102,16 @@
                         <span class="nav-icon" aria-hidden="true">🏠</span><span class="nav-label">Dashboard</span>
                     </a>
                     <div class="nav-section-label mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Learn</div>
-                    {% if pathway_destination == 'ml' %}
-                    <a aria-label="ML pathway" title="ML pathway" href="{{ url_for('main.machine_learning_specialization') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.machine_learning_specialization' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">ML Pathway</span>
-                    </a>
-                    <a aria-label="AI pathway" title="AI pathway" href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.lessons' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">📖</span><span class="nav-label">AI Pathway</span>
-                    </a>
-                    {% else %}
-                    <a aria-label="AI pathway" title="AI pathway" href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.lessons' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">📖</span><span class="nav-label">AI Pathway</span>
-                    </a>
-                    <a aria-label="ML pathway" title="ML pathway" href="{{ url_for('main.machine_learning_specialization') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.machine_learning_specialization' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">ML Pathway</span>
-                    </a>
-                    {% endif %}
+  <!-- ML Pathway link (only if enrolled in ML) -->
+  {% if has_ml %}
+  <a aria-label="ML pathway" title="ML pathway" href="{{ url_for('main.machine_learning_specialization') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.machine_learning_specialization' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+    <span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">ML Pathway</span>
+  </a>
+  {% endif %}
+  <!-- AI Pathway link (always shown; highlights if enrolled in AI and not ML) -->
+  <a aria-label="AI pathway" title="AI pathway" href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.lessons' or (has_ai and not has_ml) %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+    <span class="nav-icon" aria-hidden="true">📖</span><span class="nav-label">AI Pathway</span>
+  </a>
                     <a aria-label="Gates" title="Gates" href="{{ url_for('main.gates') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.gates' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🗺️</span><span class="nav-label">Gates</span>
                     </a>
@@ -160,10 +180,8 @@
             <div id="nav-resize-handle" class="nav-resize-handle" role="separator" aria-orientation="vertical" aria-label="Resize navigation"></div>
             {% endif %}
     </header>
-    
     <!-- Offline banner: bundles still work; authenticated HTML is never cached -->
     <div id="offline-banner" class="offline-banner" role="status" hidden>You&rsquo;re offline — bundles and static pages still work; your progress saves when you reconnect.</div>
-
     <!-- Main Content -->
     <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 {% if current_user.is_authenticated %}lg:ml-64{% endif %} {% if request.endpoint and request.endpoint.startswith('auth.') and request.endpoint != 'auth.profile' %}auth-main{% endif %}">
         {% if current_user.is_authenticated %}
@@ -240,7 +258,6 @@
         {% endwith %}
         {% block content %}{% endblock %}
     </main>
-    
     <!-- Footer -->
     <footer class="bg-white border-t border-slate-200 py-4 mt-8 app-footer {% if current_user.is_authenticated %}lg:ml-64{% endif %}">
         <div class="max-w-7xl mx-auto px-4 text-center text-xs text-slate-500">
@@ -248,7 +265,6 @@
             <span class="app-footer-links"><a href="{{ url_for('main.support') }}">Tech Support &amp; Ideas</a><a href="{{ url_for('community.index') }}">Community</a><a href="{{ url_for('credentials.index') }}">Credential</a></span>
         </div>
     </footer>
-
     {% if current_user.is_authenticated and request.endpoint not in ('main.support', 'main.lesson_detail', 'main.machine_learning_lesson', 'cloud_ai_infrastructure.lesson') %}
     <!-- TN-style floating support shortcut -->
     <a class="support-fab" href="{{ url_for('main.support') }}" aria-label="Need help? Contact support">
@@ -256,7 +272,6 @@
         <span class="support-fab-long">Need help?&nbsp;</span><strong>Contact support</strong>
     </a>
     {% endif %}
-
     {% if current_user.is_authenticated %}
     <!-- Help & keyboard shortcuts modal -->
     <div id="help-backdrop" class="help-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="help-title">
@@ -294,7 +309,6 @@
     </div>
     <script src="{{ url_for('static', filename='js/palette.js') }}"></script>
     {% endif %}
-
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
         if ('serviceWorker' in navigator) {

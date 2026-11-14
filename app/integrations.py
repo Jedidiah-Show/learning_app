@@ -48,6 +48,8 @@ REQUIRED_COLUMNS = {
     ),
     'course_project': ('repository_url', 'demo_url'),
     # Read by the dashboard hero to lead with the confirmed pathway.
+    # Prefer destination_for(user_id) for active logic; fallback to
+    # CoursePlan.pathway_destination kept deprecated for rollback compatibility.
     'course_plan': ('pathway_proposal', 'pathway_destination'),
     # The review center selects whole rows, so an unapplied pathway migration
     # would 500 there instead of failing readiness first.

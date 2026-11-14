@@ -1,0 +1,213 @@
+{
+  "id": "shared-foundations",
+  "slug": "shared-foundations",
+  "name": "Shared Foundations",
+  "description": "Core foundational knowledge common to all engineering pathways",
+  "domain": "FOUNDATION",
+  "version": "1.0.0",
+  "status": "ACTIVE",
+  "learning_objectives": [
+    "Understand fundamental programming concepts",
+    "Apply Python to solve engineering problems",
+    "Use software engineering best practices",
+    "Operate development tools and workflows",
+    "Build and consume APIs",
+    "Think computationally about problem solving"
+  ],
+  "modules": [
+    {
+      "id": "sf.00",
+      "number": 0,
+      "title": "Programming Foundations",
+      "description": "Core programming concepts: variables, control flow, functions, and data structures",
+      "estimated_hours": 15,
+      "lessons": [
+        {
+          "id": "sf.00.01",
+          "title": "Variables and Types"
+        },
+        {
+          "id": "sf.00.02",
+          "title": "Control Flow"
+        },
+        {
+          "id": "sf.00.03",
+          "title": "Functions"
+        },
+        {
+          "id": "sf.00.04",
+          "title": "Data Structures"
+        }
+      ],
+      "prerequisites": [],
+      "competencies": [
+        "programming",
+        "python"
+      ]
+    },
+    {
+      "id": "sf.01",
+      "number": 1,
+      "title": "Python Foundations",
+      "description": "Python language fundamentals for engineering applications",
+      "estimated_hours": 20,
+      "lessons": [
+        {
+          "id": "sf.01.01",
+          "title": "Python Basics"
+        },
+        {
+          "id": "sf.01.02",
+          "title": "Lists and Dictionaries"
+        },
+        {
+          "id": "sf.01.03",
+          "title": "Modules and Packages"
+        },
+        {
+          "id": "sf.01.04",
+          "title": "Error Handling"
+        }
+      ],
+      "prerequisites": [
+        "sf.00"
+      ],
+      "competencies": [
+        "python",
+        "programming"
+      ]
+    },
+    {
+      "id": "sf.02",
+      "number": 2,
+      "title": "Software Engineering Foundations",
+      "description": "Version control, testing, and project structure",
+      "estimated_hours": 18,
+      "lessons": [
+        {
+          "id": "sf.02.01",
+          "title": "Git Basics"
+        },
+        {
+          "id": "sf.02.02",
+          "title": "Repository Workflow"
+        },
+        {
+          "id": "sf.02.03",
+          "title": "Testing fundamentals"
+        },
+        {
+          "id": "sf.02.04",
+          "title": "Project Structure"
+        }
+      ],
+      "prerequisites": [
+        "sf.01"
+      ],
+      "competencies": [
+        "git",
+        "software engineering"
+      ]
+    },
+    {
+      "id": "sf.03",
+      "number": 3,
+      "title": "Development Tools and Workflow",
+      "description": "CI/CD, debugging, and tool integration",
+      "estimated_hours": 12,
+      "lessons": [
+        {
+          "id": "sf.03.01",
+          "title": "CI/CD Basics"
+        },
+        {
+          "id": "sf.03.02",
+          "title": "Debugging"
+        },
+        {
+          "id": "sf.03.03",
+          "title": "Tool Integration"
+        }
+      ],
+      "prerequisites": [
+        "sf.02"
+      ],
+      "competencies": [
+        "ci-cd",
+        "debugging"
+      ]
+    },
+    {
+      "id": "sf.04",
+      "number": 4,
+      "title": "API and Backend Foundations",
+      "description": "HTTP, APIs, and backend fundamentals",
+      "estimated_hours": 15,
+      "lessons": [
+        {
+          "id": "sf.04.01",
+          "title": "HTTP Fundamentals"
+        },
+        {
+          "id": "sf.04.02",
+          "title": "API Design"
+        },
+        {
+          "id": "sf.04.03",
+          "title": "Backend Basics"
+        }
+      ],
+      "prerequisites": [
+        "sf.03"
+      ],
+      "competencies": [
+        "api",
+        "backend"
+      ]
+    },
+    {
+      "id": "sf.05",
+      "number": 5,
+      "title": "Data and Computational Thinking",
+      "description": "Algorithms, data structures, and computational thinking",
+      "estimated_hours": 20,
+      "lessons": [
+        {
+          "id": "sf.05.01",
+          "title": "Algorithmic Thinking"
+        },
+        {
+          "id": "sf.05.02",
+          "title": "Data Structures"
+        },
+        {
+          "id": "sf.05.03",
+          "title": "Complexity Analysis"
+        }
+      ],
+      "prerequisites": [
+        "sf.04"
+      ],
+      "competencies": [
+        "algorithms",
+        "data structures"
+      ]
+    }
+  ],
+  "prerequisites": {
+    "ai_engineering": [
+      "sf.00",
+      "sf.01",
+      "sf.02"
+    ],
+    "machine_learning": [
+      "sf.00",
+      "sf.01",
+      "sf.05"
+    ]
+  },
+  "completion_rules": {
+    "all_foundations_complete": true,
+    "evidence_requirement": "Lesson completion + project"
+  }
+}

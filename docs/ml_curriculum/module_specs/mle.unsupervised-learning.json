@@ -1,0 +1,142 @@
+{
+  "module_id": "mle.unsupervised-learning",
+  "number": 6,
+  "title": "Unsupervised learning",
+  "week": "Week 5",
+  "focus_area": "Unsupervised Learning",
+  "source_deliverable": "Image color segmentation. Segment an image into distinct color regions using K-Means.",
+  "tools": ["Python", "NumPy", "scikit-learn"],
+  "summary": "Find structure in data that has no labels: cluster similar rows with k-means, choose a sensible number of clusters, read the result honestly, and compress the data with PCA.",
+  "estimated_hours": 12,
+  "topics": ["Clustering", "k-means", "Choosing k", "Visualising clusters", "Interpreting results", "Principal component analysis"],
+  "outcomes": [
+    "Say what unsupervised learning is for and how it differs from classification.",
+    "Run k-means and explain every step of the algorithm in plain words.",
+    "Choose a number of clusters with evidence rather than a guess.",
+    "Read a cluster result without claiming more than it shows.",
+    "Use PCA to reduce the number of columns while keeping most of the information."
+  ],
+  "new_module": true,
+  "lessons": [
+    {
+      "id": "mle.unsupervised.01",
+      "title": "What unsupervised learning is for",
+      "goal": "Explain the difference between a labelled problem and an unlabelled one, and name three situations where you would cluster data.",
+      "sections": [
+        {"heading": "No labels, just rows", "intent": "Define unsupervised learning with a concrete example: grouping customer rows without knowing the groups in advance."},
+        {"heading": "Three real uses", "intent": "Give the image colour segmentation, customer grouping and document grouping examples from the curriculum."},
+        {"heading": "The catch: you decide what a group means", "intent": "Explain that without labels, the meaning of a cluster comes from your interpretation, and that a cluster is not automatically a useful segment."},
+        {"heading": "How you will know it worked", "intent": "Set the standard: a cluster is useful when it is stable, separated, and you can say something actionable about it."}
+      ],
+      "task": "Take the bundled pixel data and write down two questions you would ask of the groups you expect to find, and how you would check whether the answer is useful.",
+      "quiz": [
+        "What is the difference between a supervised and an unsupervised problem?",
+        "Why does a cluster need a human interpretation?",
+        "Give one reason a clustering result can be a failure even when the code runs."
+      ]
+    },
+    {
+      "id": "mle.unsupervised.02",
+      "title": "k-means clustering, step by step",
+      "goal": "Run the k-means algorithm by hand on a small example and explain each of its four steps.",
+      "sections": [
+        {"heading": "Pick k starting points", "intent": "Explain the initial group centres and why a bad start can give a poor answer."},
+        {"heading": "Assign each point to its nearest centre", "intent": "Show one assignment using a colour distance, and say why distance in colour space is a choice you must make."},
+        {"heading": "Move each centre to the middle of its group", "intent": "Show the average of the assigned points and explain that this is the mean in the k-means name."},
+        {"heading": "Repeat until nothing moves", "intent": "Explain the stopping rule and the risk of stopping in a poor arrangement."}
+      ],
+      "task": "Run k-means by hand on three points with two clusters, showing the assignment and the new centre for each of two rounds. Then run the same algorithm in code on the bundled pixels and compare.",
+      "quiz": [
+        "What are the four steps of the k-means algorithm?",
+        "Why can the starting points change the final answer?",
+        "What does the k in k-means refer to?"
+      ]
+    },
+    {
+      "id": "mle.unsupervised.03",
+      "title": "Choosing how many groups",
+      "goal": "Choose a number of clusters with evidence from the data instead of a guess, and report the trade-off.",
+      "sections": [
+        {"heading": "More groups always fits better", "intent": "Explain that with enough groups every point can be its own group, so a perfect fit means nothing."},
+        {"heading": "The elbow", "intent": "Explain the elbow method with a worked example of how much the within-group spread drops as k grows, and where the bend is."},
+        {"heading": "The silhouette score", "intent": "Explain the silhouette idea in plain words: how well separated a point is from its own group compared with the next group."},
+        {"heading": "Choose and justify", "intent": "Show how to pick k with a stated reason, and how to check that the answer is stable when the data changes slightly."}
+      ],
+      "task": "On the bundled pixel data, run k-means for k between 1 and 8, record the within-group spread for each k, and write down the k you would choose and the sentence you would use to defend it.",
+      "quiz": [
+        "Why does a larger k always reduce the within-group spread?",
+        "What is the elbow method looking for?",
+        "What does a high silhouette score mean?"
+      ]
+    },
+    {
+      "id": "mle.unsupervised.04",
+      "title": "Look at and read your clusters",
+      "goal": "Visualise a clustering result and describe it without overclaiming what the algorithm found.",
+      "sections": [
+        {"heading": "Draw the clusters", "intent": "Show a simple scatter plot of two features with different colours per cluster, and how to make it readable."},
+        {"heading": "Describe each group", "intent": "Explain how to summarise a group with real examples and with the average value of each feature."},
+        {"heading": "The label problem", "intent": "Explain that cluster numbers are arbitrary, so cluster 2 in one run may not be cluster 2 in another, and how to name groups in a way that survives a rerun."},
+        {"heading": "What you may claim", "intent": "Give the wording that is honest: the data has structure that this method found, not that you discovered the truth."}
+      ],
+      "task": "Make a scatter plot of the bundled pixel data coloured by cluster, and write three sentences describing the groups: one for each region, with the average colour of each.",
+      "quiz": [
+        "Why can cluster numbers not be compared across two different runs?",
+        "What is a good way to describe a group to a reader who cannot see the plot?",
+        "Which wording about a clustering result is too strong?"
+      ]
+    },
+    {
+      "id": "mle.unsupervised.05",
+      "title": "Fewer columns with PCA",
+      "goal": "Reduce many features to a few combined features with PCA, and judge how much information was kept.",
+      "sections": [
+        {"heading": "Why squeeze the columns", "intent": "Explain the practical reasons to reduce dimensions: speed, plotting, and noise."},
+        {"heading": "The idea of a principal component", "intent": "Explain that PCA finds the direction in which the data varies most, and that each new column is a weighted combination of the old ones."},
+        {"heading": "How much did you keep", "intent": "Explain the explained variance ratio and how to choose the number of components that keeps most of the variation."},
+        {"heading": "When not to use it", "intent": "Warn that the new columns cannot be read directly, that the method is linear, and that it does not work on mixed units without scaling."}
+      ],
+      "task": "Apply PCA to the bundled pixel colours, keep two components, and report the explained variance of each. Then say what you could and could not say about the result in plain words.",
+      "quiz": [
+        "What does a principal component represent?",
+        "What does the explained variance ratio tell you?",
+        "Why must features be scaled before PCA?"
+      ]
+    }
+  ],
+  "project": {
+    "brief": "Segment an image into distinct colour regions with k-means. Cluster the bundled pixel data, choose the number of clusters with evidence, save the segmentation as a new image, and describe each region in words.",
+    "deliverables": [
+      "A public GitHub repository with a README that states the clustering method, the choice of k and the reason for it.",
+      "A script that clusters the pixels and writes a segmentation image.",
+      "A clusters file with one row per pixel and its group, so the report can be recomputed from it.",
+      "A test file that passes in CI on every push."
+    ],
+    "rubric": [
+      {"criterion": "The k-means implementation is correct and deterministic", "weight": 30},
+      {"criterion": "The number of clusters is chosen with evidence and explained", "weight": 30},
+      {"criterion": "The segmentation output and the written description match each other", "weight": 40}
+    ],
+    "report_contract": [
+      {"key": "pixels_total", "type": "int", "equals": 144},
+      {"key": "pixels_clustered", "type": "int", "equals": 144},
+      {"key": "distinct_clusters", "type": "int", "equals": 3},
+      {"key": "pixels_matching_region", "type": "int", "min": 140, "max": 144},
+      {"key": "cluster_sizes", "type": "list", "length": 3},
+      {"key": "region_sizes", "type": "list", "equals": [48, 48, 48]},
+      {"key": "feature_columns", "type": "list", "equals": ["r", "g", "b"]},
+      {"key": "segmentation_image_saved", "type": "bool", "equals": true}
+    ],
+    "kit": {
+      "dir": "module_6_unsupervised",
+      "module": "segmentation",
+      "dataset": "data/pixels.csv - 144 rows, one per pixel of a 12 by 12 synthetic image, with columns pixel_index, x, y, r, g, b and region. The image has three colour regions of 48 pixels each: a blue band at the top, a red block in the middle and a green band at the bottom.",
+      "artifacts": [
+        "src/segmentation.py - the learner implements kmeans(points, k, ...) and build_report().",
+        "artifacts/clusters.csv - one row per pixel with pixel_index and cluster; the report recomputes the agreement with the true regions from this file.",
+        "artifacts/segmentation.ppm - the segmented image saved as a plain PPM image (the standard library can write this without any extra package); the report checks that the file exists and has the right number of pixels.",
+      ],
+      "reference": "tests/ml_reference/segmentation.py"
+    }
+  }
+}

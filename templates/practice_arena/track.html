@@ -19,7 +19,18 @@
     <span class="problem-diff is-beginner">Beginner {{ stats.beginner }}</span>
     <span class="problem-diff is-intermediate">Intermediate {{ stats.intermediate }}</span>
     <span class="problem-diff is-advanced">Advanced {{ stats.advanced }}</span>
+    {% if destination %}
+    {% if destination == 'ai-engineering' and track.id != 'ai-engineering' %}
+    {% else %}
     <a class="font-semibold text-indigo-700 hover:underline dark:text-indigo-300" href="{{ url_for('practice_arena.problems', track=track.id) }}">Search and filter this track →</a>
+    {% endif %}
+    {% elif destination == 'machine-learning' and track.id != 'machine-learning' %}
+    {% else %}
+    <a class="font-semibold text-indigo-700 hover:underline dark:text-indigo-300" href="{{ url_for('practice_arena.problems', track=track.id) }}">Search and filter this track →</a>
+    {% endif %}
+    {% else %}
+    <a class="font-semibold text-indigo-700 hover:underline dark:text-indigo-300" href="{{ url_for('practice_arena.problems', track=track.id) }}">Search and filter this track →</a>
+    {% endif %}
   </div>
 
   {% for group in groups %}

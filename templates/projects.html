@@ -4,13 +4,14 @@
 <header class="mb-7">
   <p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Guided builds and project evidence</p>
   <h2 class="mt-2 text-3xl font-bold">Project Studio</h2>
-  {% if pathway_destination == 'ml' %}
+  {% set pathway_ids = {e.pathway_id for _, e in pathway_enrolments} %}
+  {% set has_ml = 'machine-learning' in pathway_ids %}
+  {% if has_ml %}
   <p class="mt-2 max-w-3xl text-slate-600">Your projects are the shared foundation (modules 0-2) plus the six ML pathway modules. A module project completes only when it has a public repository, a verified passing automated-checks run, and a passing AI evaluation against every rubric criterion.</p>
   {% else %}
   <p class="mt-2 max-w-3xl text-slate-600">Follow the milestones for your selected track. Choose one required capstone for your final module project and keep a separate personal project in your portfolio. A module project completes only when it has a public repository, a verified passing automated-checks run, and a passing AI evaluation against every rubric criterion.</p>
   {% endif %}
 </header>
-
 {% if tracks %}
 <section class="mb-7 rounded-2xl border border-indigo-100 bg-indigo-50 p-5" aria-labelledby="track-title">
   <h3 id="track-title" class="text-xl font-bold">Choose your learning-plan track</h3>
@@ -34,7 +35,6 @@
   <p class="mt-3 rounded-xl border border-violet-200 bg-white px-4 py-3 text-sm text-violet-900">About <strong>{{ pace.total_hours }} hours</strong> in total · roughly <strong>{{ pace.estimated_weeks }} weeks</strong> ({{ pace.estimated_months }} {{ 'month' if pace.estimated_months == 1 else 'months' }}) · {{ pace.review_hours }} review hours set aside.</p>
 </section>
 {% endif %}
-
 {% if required_projects %}
 <section class="mb-7 rounded-2xl border border-indigo-100 bg-white p-5" aria-labelledby="required-capstone-title">
   <h3 id="required-capstone-title" class="text-xl font-bold">Choose your required capstone</h3>
@@ -48,7 +48,6 @@
   <p id="required-project-status" class="mt-3 text-sm" role="status" aria-live="polite"></p>
 </section>
 {% endif %}
-
 {% if required_projects %}
 <section id="project-studio" class="mb-7 rounded-2xl border border-violet-200 bg-violet-50 p-5" aria-labelledby="project-studio-title">
   <p class="text-xs font-bold uppercase tracking-wider text-violet-700">Flagship build workflow</p>
@@ -105,7 +104,6 @@
   {% endif %}
 </section>
 {% endif %}
-
 <section class="mb-7 rounded-2xl border bg-white p-5" aria-labelledby="portfolio-project-title">
   <h3 id="portfolio-project-title" class="text-xl font-bold">Your personal portfolio project</h3>
   <p class="mt-1 text-sm text-slate-600">Track a project you care about. It stays separate from the LMS-required capstone.</p>
@@ -117,7 +115,6 @@
     <div class="md:col-span-2"><button class="rounded-lg bg-indigo-600 px-4 py-2 font-semibold text-white">Save portfolio project</button><span id="portfolio-project-status" class="ml-3 text-sm" role="status" aria-live="polite"></span></div>
   </form>
 </section>
-
 {% if not pace %}
 <section class="mb-8" aria-labelledby="monthly-milestones-title">
   <div class="mb-4">
@@ -131,7 +128,6 @@
   <div class="grid gap-4 xl:grid-cols-2">{% for month in milestones %}<article class="rounded-2xl border bg-white p-5"><div class="flex items-start justify-between gap-3"><div><p class="text-xs font-bold uppercase text-indigo-600">Month {{ month.number }}</p><h4 class="mt-1 text-lg font-bold">{{ month.title }}</h4></div><span class="shrink-0 rounded-full px-3 py-1 text-xs font-semibold {{ 'bg-emerald-50 text-emerald-700' if month.complete else 'bg-slate-100 text-slate-700' }}">{{ 'Complete ✓' if month.complete else month.status }}</span></div><p class="mt-2 text-sm text-slate-600">{{ month.summary }}</p><p class="mt-3 text-sm"><strong>Estimated effort:</strong> {{ month.estimated_hours }} hours (about {{ month.estimated_weekly_hours }} hours/week averaged across the month; reading about {{ month.estimated_weekly_hours_low }} hours/week). Catch-up time: {{ month.review_hours }} hours.{% if month.calibrated_weekly_hours %} Your observed pace suggests about {{ month.calibrated_weekly_hours }} hours/week for this month.{% endif %}</p><p class="mt-2 text-sm"><strong>Key concepts:</strong> {{ month.concepts|join(' · ') }}</p><ol class="mt-3 list-inside list-decimal space-y-1 text-sm text-slate-600">{% for week in month.weeks %}<li>{{ week }}</li>{% endfor %}</ol><p class="mt-3 rounded-lg bg-indigo-50 p-3 text-sm text-indigo-950"><strong>Month {{ month.number }} milestone:</strong> {{ month.milestone }}</p><p class="mt-2 text-xs text-slate-500">Course modules: {{ month.module_titles|join(' · ') }}</p></article>{% endfor %}</div>
 </section>
 {% endif %}
-
 <div class="mb-4"><h3 class="text-2xl font-bold">Required module projects</h3><p class="mt-1 text-sm text-slate-600">Complete these in sequence to unlock later lessons. {% if required_projects %}The final module uses the capstone you selected above. {% endif %}Every submission needs a public repository and a public automated-checks page showing a successful build.</p></div>
 <div class="space-y-4">{% for module in modules %}<section id="module-{{ module.id }}" class="rounded-2xl border bg-white p-5"><div class="flex flex-wrap items-center justify-between gap-3"><div><p class="text-xs font-semibold uppercase text-indigo-600">{% if module.badge %}{{ module.badge }}{% else %}Module {{ module.number }}{% endif %}</p><h3 class="text-lg font-bold">{{ module.title }}</h3><p class="mt-1 text-sm text-slate-600">{{ module.project }}</p><p class="mt-2 text-xs text-slate-600"><strong>Estimate:</strong> {{ module.estimated_hours }} hours including the project</p><p class="mt-1 text-xs text-slate-600"><strong>Readiness:</strong> {{ module.readiness_check }}</p></div>{% if module.id in completed_modules %}<span class="rounded-full bg-emerald-50 px-3 py-1 text-sm font-semibold text-emerald-700">Complete ✓</span>{% endif %}</div><div class="mt-4 flex flex-wrap gap-3">{% if module.source == 'ml' %}{# Pathway projects are submitted on their own routes, so this card links there instead of the AI project flow. #}<a class="rounded-lg border border-violet-200 bg-violet-50 px-4 py-2 font-semibold text-violet-800" href="{{ url_for('main.machine_learning_specialization') }}#projects">Open project</a>{% else %}<button class="rounded-lg border border-indigo-200 px-4 py-2 font-semibold text-indigo-700" data-open="{{ module.id }}">Open project</button><a class="rounded-lg border border-slate-200 px-4 py-2 font-semibold text-slate-700" href="{{ url_for('projects.download_project_starter', module_id=module.id) }}">Download starter kit</a>{% endif %}</div><p class="mt-2 text-xs text-slate-500">{% if module.source == 'ml' %}Submit this project on the ML Pathway; its evaluation runs there.{% elif module.id == '00' %}Module 0 is a documentation project: the starter kit gives you a glossary, an architecture sketch, and a docs checklist.{% else %}Build and test locally first. Publish the repository and checks when you are ready to submit.{% endif %}</p><div id="project-{{ module.id }}" class="mt-4" aria-live="polite"></div></section>{% endfor %}</div>
 {% endblock %}
@@ -141,7 +137,6 @@ const readJson = async (response) => {
     try { return await response.json(); } catch (error) { return {}; }
 };
 const needsSignIn = (response) => response.redirected || response.status === 401;
-
 const trackForm = document.getElementById('track-form');
 trackForm?.addEventListener('change', async (event) => {
     const status = document.getElementById('track-status');
@@ -157,7 +152,6 @@ trackForm?.addEventListener('change', async (event) => {
         window.location.reload();
     } catch (error) { status.textContent = error.message || 'Could not save track. Retry.'; }
 });
-
 document.querySelectorAll('[name="required_project_id"]').forEach((input) => {
     input.addEventListener('change', async () => {
         const status = document.getElementById('required-project-status');
@@ -174,7 +168,6 @@ document.querySelectorAll('[name="required_project_id"]').forEach((input) => {
         } catch (error) { status.textContent = error.message || 'Could not save your choice. Retry.'; }
     });
 });
-
 document.querySelectorAll('[data-studio-milestone]').forEach((input) => {
     input.addEventListener('change', async () => {
         const status = document.getElementById('project-studio-status');
@@ -204,7 +197,6 @@ document.querySelectorAll('[data-studio-milestone]').forEach((input) => {
         }
     });
 });
-
 document.getElementById('portfolio-project-form').addEventListener('submit', async (event) => {
     event.preventDefault();
     const form = event.currentTarget;
@@ -223,7 +215,6 @@ document.getElementById('portfolio-project-form').addEventListener('submit', asy
     } catch (error) { status.textContent = error.message || 'Could not save. Check your connection and retry.'; }
     finally { button.disabled = false; }
 });
-
 function renderProject(area, data) {
     area.replaceChildren();
     const project = data.project || {};
@@ -295,7 +286,6 @@ function renderProject(area, data) {
         });
     }
 }
-
 function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = '', savedChecks = '', savedDemo = '', rubric = []) {
     let hasSubmission = Boolean(savedSubmission);
     const form = document.createElement('form');
@@ -424,7 +414,6 @@ function appendSubmissionForm(area, id, savedSubmission = '', savedRepository = 
     });
     area.append(form);
 }
-
 document.querySelectorAll('[data-open]').forEach((button) => {
     button.addEventListener('click', async () => {
         const id = button.dataset.open;
