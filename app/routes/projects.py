@@ -6,7 +6,7 @@ from io import BytesIO
 from zipfile import ZIP_DEFLATED, ZipFile
 from urllib.parse import urlsplit
 
-from flask import Blueprint, current_app, jsonify, render_template, request, send_file, url_for
+from flask import Blueprint, abort, current_app, jsonify, render_template, request, send_file, url_for
 from flask_login import current_user, login_required
 from sqlalchemy.exc import IntegrityError
 
@@ -833,18 +833,12 @@ def submit_module_project(module_id):
     })
 
 
-@projects_bp.route('/portfolio')
-@login_required
-def portfolio_page():
-    from app.pathway_scope import (
-        destination_for, is_ml, course_modules,
-    )
-    destination = destination_for(current_user)
-    records = CourseProject.query.filter_by(user_id=current_user.id).order_by(
+def _build_portfolio_data(user, domain_filter=None):
+    from app.pathway_scope import destination_for, is_ml, course_modules
+    destination = destination_for(user)
+    records = CourseProject.query.filter_by(user_id=user.id).order_by(
         CourseProject.updated_at.desc()
     ).all()
-    # Scoped to the learner's own course, so a module 03-12 record never
-    # appears in an ML learner's portfolio.
     modules_by_id = {
         module['id']: module for module in course_modules(destination)
     }
@@ -874,7 +868,7 @@ def portfolio_page():
             module['id']: module for module in course_modules(destination)
         }
         for item in MLSpecializationProject.query.filter_by(
-            user_id=current_user.id, completed=True
+            user_id=user.id, completed=True
         ).order_by(MLSpecializationProject.updated_at.desc()).all():
             module = scoped_modules.get(item.module_id)
             if not module:
@@ -913,14 +907,48 @@ def portfolio_page():
                     'Submitted · review in progress'
                 ),
             })
-    domain_filter = request.args.get('domain')
     if domain_filter in {'ai-engineering', 'machine-learning'}:
         projects = [item for item in projects if item.get('domain') == domain_filter]
+    return projects
+
+
+@projects_bp.route('/portfolio')
+@login_required
+def portfolio_page():
+    domain_filter = request.args.get('domain')
+    projects = _build_portfolio_data(current_user, domain_filter=domain_filter)
     plan = _plan()
     return render_template(
         'portfolio.html', user=current_user, projects=projects,
         personal_project=_plan_payload(plan),
         domain_filter=domain_filter,
+        is_public_view=False,
+    )
+
+
+@projects_bp.route('/showcase/u/<public_id>')
+def public_showcase(public_id):
+    """Public/unlisted showcase view respecting learner visibility controls."""
+    from app.models import User
+    user = User.query.filter_by(public_id=public_id).first()
+    if user is None:
+        abort(404)
+    plan = CoursePlan.query.filter_by(user_id=user.id).first()
+    payload = _plan_payload(plan)
+    visibility = payload.get('showcase_visibility', 'private')
+    if visibility not in {'unlisted', 'public'}:
+        abort(404)
+    domain_filter = request.args.get('domain')
+    projects = _build_portfolio_data(user, domain_filter=domain_filter)
+    projects = [item for item in projects if item.get('completed')]
+    return render_template(
+        'portfolio.html',
+        user=user,
+        projects=projects,
+        personal_project=payload,
+        domain_filter=domain_filter,
+        is_public_view=True,
+        showcase_visibility=visibility,
     )
 
 
