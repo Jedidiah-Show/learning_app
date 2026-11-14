@@ -770,6 +770,9 @@ class CoursePlan(db.Model):
     portfolio_summary = db.Column(db.Text)
     portfolio_repository_url = db.Column(db.String(500))
     portfolio_demo_url = db.Column(db.String(500))
+    showcase_visibility = db.Column(
+        db.String(20), nullable=False, default='private', server_default='private'
+    )
     leaderboard_opt_in = db.Column(
         db.Boolean, nullable=False, default=False, server_default=db.false()
     )
@@ -1190,4 +1193,25 @@ class TutorConversation(db.Model):
     __table_args__ = (
         db.Index('idx_tutor_conversation_user_lesson', 'user_id', 'lesson_id'),
         db.Index('idx_tutor_conversation_user', 'user_id'),
+    )
+
+
+class EngineeringLabCompletion(db.Model):
+    """Persisted completion/reset evidence for Engineering Labs 2.0 scenarios."""
+    __tablename__ = 'engineering_lab_completion'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False)
+    domain_id = db.Column(db.String(40), nullable=False)
+    lab_id = db.Column(db.String(80), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='in_progress')  # in_progress, completed, reset
+    evidence_notes = db.Column(db.Text)
+    completed_at = db.Column(db.DateTime(timezone=True))
+    reset_at = db.Column(db.DateTime(timezone=True))
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = db.Column(db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'domain_id', 'lab_id', name='uq_engineering_lab_completion_user_lab'),
+        db.Index('idx_engineering_lab_completion_user', 'user_id'),
     )

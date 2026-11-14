@@ -1148,7 +1148,7 @@ def gates():
 
 
 # ---------------------------------------------------------------------------
-# Engineering Labs 2.0 (M7) — MVP catalog, domain scenarios, reset guidance
+# Engineering Labs 2.0 (M7) — catalog, scenarios, reset/completion evidence
 # ---------------------------------------------------------------------------
 
 _LABS_CACHE = None
@@ -1163,6 +1163,17 @@ def _engineering_labs_data():
     return _LABS_CACHE
 
 
+def _find_lab(domain_id, lab_id):
+    data = _engineering_labs_data()
+    domain = next((item for item in data.get('domains', []) if item.get('id') == domain_id), None)
+    if domain is None:
+        return None, None
+    lab = next((item for item in domain.get('labs', []) if item.get('id') == lab_id), None)
+    if lab is None:
+        return domain, None
+    return domain, lab
+
+
 @main_bp.route('/labs')
 @login_required
 def engineering_labs():
@@ -1172,25 +1183,112 @@ def engineering_labs():
     selected = None
     if domain:
         selected = next((item for item in domains if item.get('id') == domain), None)
+    # Load completion status for current user (best-effort).
+    completions = {}
+    try:
+        from app.models import EngineeringLabCompletion
+        rows = EngineeringLabCompletion.query.filter_by(user_id=current_user.id).all()
+        completions = {(r.domain_id, r.lab_id): r for r in rows}
+    except Exception:
+        current_app.logger.exception('Failed to load engineering lab completions')
     return render_template(
         'labs/index.html',
         domains=domains,
         selected_domain=selected,
+        completions=completions,
     )
 
 
 @main_bp.route('/labs/<domain_id>/<lab_id>')
 @login_required
 def engineering_lab_detail(domain_id, lab_id):
-    data = _engineering_labs_data()
-    domain = next((item for item in data.get('domains', []) if item.get('id') == domain_id), None)
-    if domain is None:
+    domain, lab = _find_lab(domain_id, lab_id)
+    if domain is None or lab is None:
         abort(404)
-    lab = next((item for item in domain.get('labs', []) if item.get('id') == lab_id), None)
-    if lab is None:
-        abort(404)
+    completion = None
+    try:
+        from app.models import EngineeringLabCompletion
+        completion = EngineeringLabCompletion.query.filter_by(
+            user_id=current_user.id, domain_id=domain_id, lab_id=lab_id
+        ).first()
+    except Exception:
+        current_app.logger.exception('Failed to load engineering lab completion')
     return render_template(
         'labs/detail.html',
         domain=domain,
         lab=lab,
+        completion=completion,
     )
+
+
+@main_bp.route('/labs/<domain_id>/<lab_id>/complete', methods=['POST'])
+@login_required
+def engineering_lab_complete(domain_id, lab_id):
+    domain, lab = _find_lab(domain_id, lab_id)
+    if domain is None or lab is None:
+        abort(404)
+    data = get_json_object() or {}
+    notes = data.get('evidence_notes', '')
+    if not isinstance(notes, str):
+        notes = ''
+    notes = notes.strip()[:5000]
+    try:
+        from app.models import EngineeringLabCompletion
+        record = EngineeringLabCompletion.query.filter_by(
+            user_id=current_user.id, domain_id=domain_id, lab_id=lab_id
+        ).first()
+        now = datetime.now(timezone.utc)
+        if record is None:
+            record = EngineeringLabCompletion(
+                user_id=current_user.id, domain_id=domain_id, lab_id=lab_id,
+            )
+            db.session.add(record)
+        record.status = 'completed'
+        record.evidence_notes = notes or record.evidence_notes
+        record.completed_at = now
+        record.updated_at = now
+        db.session.commit()
+        return jsonify({
+            'status': 'completed',
+            'domain_id': domain_id,
+            'lab_id': lab_id,
+            'completed_at': now.isoformat(),
+            'evidence_notes': record.evidence_notes or '',
+        })
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Failed to save engineering lab completion')
+        return jsonify({'error': 'Could not save lab completion evidence'}), 500
+
+
+@main_bp.route('/labs/<domain_id>/<lab_id>/reset', methods=['POST'])
+@login_required
+def engineering_lab_reset(domain_id, lab_id):
+    domain, lab = _find_lab(domain_id, lab_id)
+    if domain is None or lab is None:
+        abort(404)
+    try:
+        from app.models import EngineeringLabCompletion
+        record = EngineeringLabCompletion.query.filter_by(
+            user_id=current_user.id, domain_id=domain_id, lab_id=lab_id
+        ).first()
+        now = datetime.now(timezone.utc)
+        if record is None:
+            record = EngineeringLabCompletion(
+                user_id=current_user.id, domain_id=domain_id, lab_id=lab_id,
+            )
+            db.session.add(record)
+        record.status = 'reset'
+        record.reset_at = now
+        record.updated_at = now
+        db.session.commit()
+        return jsonify({
+            'status': 'reset',
+            'domain_id': domain_id,
+            'lab_id': lab_id,
+            'reset_at': now.isoformat(),
+        })
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Failed to reset engineering lab')
+        return jsonify({'error': 'Could not reset lab state'}), 500

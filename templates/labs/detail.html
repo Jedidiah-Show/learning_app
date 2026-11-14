@@ -3,8 +3,15 @@
 {% block content %}
 <a href="{{ url_for('main.engineering_labs', domain=domain.id) }}" class="text-sm font-semibold text-indigo-700 hover:underline">← Back to {{ domain.label }} labs</a>
 <header class="mt-3 mb-6 rounded-2xl bg-brand-950 p-6 text-white">
-  <p class="text-xs font-semibold uppercase tracking-wide text-emerald-200">{{ domain.label }} · Engineering Lab</p>
-  <h1 class="mt-2 text-3xl font-bold">{{ lab.title }}</h1>
+  <div class="flex flex-wrap items-start justify-between gap-3">
+    <div>
+      <p class="text-xs font-semibold uppercase tracking-wide text-emerald-200">{{ domain.label }} · Engineering Lab</p>
+      <h1 class="mt-2 text-3xl font-bold">{{ lab.title }}</h1>
+    </div>
+    <span id="lab-status-badge" class="rounded-full px-3 py-1 text-xs font-semibold {{ 'bg-emerald-100 text-emerald-900' if completion and completion.status == 'completed' else ('bg-amber-100 text-amber-900' if completion and completion.status == 'reset' else 'bg-white/15 text-white') }}">
+      {{ 'Completed' if completion and completion.status == 'completed' else ('Reset' if completion and completion.status == 'reset' else 'In progress') }}
+    </span>
+  </div>
   <p class="mt-3 text-emerald-50">{{ lab.scenario }}</p>
 </header>
 
@@ -37,5 +44,50 @@
   </section>
 </div>
 
-<p class="mt-6 rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900"><strong>Note:</strong> This is a deterministic learning scenario. Use the reset guidance to return to a clean baseline before retrying. Record evidence (notes, outputs, artifacts) in your project/showcase workflow for verification.</p>
+<section class="mt-6 rounded-2xl border bg-white p-5" aria-labelledby="lab-evidence-title">
+  <h2 id="lab-evidence-title" class="text-lg font-bold">Completion evidence & reset</h2>
+  <p class="mt-1 text-sm text-slate-600">Record your investigation and verification evidence when you complete the lab. Reset returns the lab to a clean baseline state for another attempt.</p>
+  <label for="lab-evidence-notes" class="mt-4 block text-sm font-semibold text-slate-900">Evidence notes</label>
+  <textarea id="lab-evidence-notes" rows="5" class="mt-2 w-full rounded-lg border border-slate-300 p-3 text-sm" placeholder="Root cause, fix applied, commands/output summaries, verification results...">{{ completion.evidence_notes if completion and completion.evidence_notes else '' }}</textarea>
+  <div class="mt-4 flex flex-wrap gap-3">
+    <button type="button" id="lab-complete-btn" class="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700">Mark completed</button>
+    <button type="button" id="lab-reset-btn" class="rounded-lg border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-semibold text-amber-900 hover:bg-amber-100">Reset lab</button>
+    <span id="lab-action-status" class="self-center text-sm text-slate-600" role="status" aria-live="polite"></span>
+  </div>
+  <p class="mt-3 text-xs text-slate-500">Deterministic learning scenario. Evidence is saved to your account for traceable progress; use reset guidance above to restore a clean baseline before retrying.</p>
+</section>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
+  const notes = document.getElementById('lab-evidence-notes');
+  const status = document.getElementById('lab-action-status');
+  const badge = document.getElementById('lab-status-badge');
+  async function act(url, body, successText, badgeText, badgeClass) {
+    status.textContent = 'Saving…';
+    status.className = 'self-center text-sm text-slate-600';
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+        body: JSON.stringify(body || {})
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Request failed');
+      status.textContent = successText;
+      status.className = 'self-center text-sm text-emerald-700';
+      if (badge) { badge.textContent = badgeText; badge.className = 'rounded-full px-3 py-1 text-xs font-semibold ' + badgeClass; }
+    } catch (error) {
+      status.textContent = error.message;
+      status.className = 'self-center text-sm text-red-700';
+    }
+  }
+  document.getElementById('lab-complete-btn')?.addEventListener('click', () => {
+    act('{{ url_for("main.engineering_lab_complete", domain_id=domain.id, lab_id=lab.id) }}', {evidence_notes: notes?.value || ''}, 'Completion evidence saved.', 'Completed', 'bg-emerald-100 text-emerald-900');
+  });
+  document.getElementById('lab-reset-btn')?.addEventListener('click', () => {
+    act('{{ url_for("main.engineering_lab_reset", domain_id=domain.id, lab_id=lab.id) }}', {}, 'Lab reset recorded. Use the reset guidance to restore a clean baseline.', 'Reset', 'bg-amber-100 text-amber-900');
+  });
+});
+</script>
 {% endblock %}

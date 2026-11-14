@@ -195,12 +195,16 @@ def _plan(create=False):
 
 
 def _plan_payload(record):
+    visibility = (getattr(record, 'showcase_visibility', None) if record else None) or 'private'
+    if visibility not in {'private', 'unlisted', 'public'}:
+        visibility = 'private'
     return {
         'required_project_id': record.required_project_id if record else None,
         'portfolio_title': record.portfolio_title if record else '',
         'portfolio_summary': record.portfolio_summary if record else '',
         'portfolio_repository_url': record.portfolio_repository_url if record else '',
         'portfolio_demo_url': record.portfolio_demo_url if record else '',
+        'showcase_visibility': visibility,
         'track': record.track if record and record.track in TRACKS else 'standard',
     }
 
@@ -449,6 +453,18 @@ def save_portfolio_project():
     data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'error': 'Request body must be a JSON object'}), 400
+
+    record = _plan(create=True)
+
+    # Allow updating showcase visibility independently (learner-controlled privacy).
+    if 'showcase_visibility' in data and set(data.keys()) <= {'showcase_visibility'}:
+        visibility = data.get('showcase_visibility')
+        if visibility not in {'private', 'unlisted', 'public'}:
+            return jsonify({'error': 'Showcase visibility must be private, unlisted, or public'}), 400
+        record.showcase_visibility = visibility
+        db.session.commit()
+        return jsonify({'plan': _plan_payload(record)})
+
     title = data.get('portfolio_title', '')
     summary = data.get('portfolio_summary', '')
     if not isinstance(title, str) or len(title.strip()) > 160:
@@ -475,7 +491,11 @@ def save_portfolio_project():
         return jsonify({'error': str(error)}), 400
     if bool(title.strip()) != bool(summary.strip()):
         return jsonify({'error': 'Enter both a project title and a short summary'}), 400
-    record = _plan(create=True)
+    if 'showcase_visibility' in data:
+        visibility = data.get('showcase_visibility')
+        if visibility not in {'private', 'unlisted', 'public'}:
+            return jsonify({'error': 'Showcase visibility must be private, unlisted, or public'}), 400
+        record.showcase_visibility = visibility
     record.portfolio_title = title.strip() or None
     record.portfolio_summary = summary.strip() or None
     record.portfolio_repository_url = repository_url
