@@ -3,12 +3,17 @@
 Provides Socratic hinting, knowledge gap diagnosis, and context-aware
 responses spanning execution errors, recent submissions, and skill passport
 state. Features a 5-stage progressive hinting engine for practice troubleshooting.
+
+Supports domain-aware tutoring: AI Engineering and Machine Learning learners
+receive domain-appropriate hints and guidance based on their active pathway
+enrolment.
 """
 
 import re
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 from app.models import TutorConversation
+from app.pathway_scope import destination_for
 
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -215,6 +220,7 @@ class TutorContext:
     socratic_guardrail: bool = True  # Prevent direct solution output
     recent_submissions: List[Dict[str, Any]] = field(default_factory=list)
     lesson_context: Dict[str, Any] = field(default_factory=dict)
+    pathway_context: Dict[str, Any] = field(default_factory=dict)
 
 
 class SocraticGuardrail:
@@ -341,6 +347,31 @@ def assemble_tutor_context(
             ).limit(5)
         ]
 
+    # M5.1: Domain-aware tutoring - detect learner's pathway and include
+    # domain-appropriate hints in the context
+    destination = destination_for(user_id) if user_id else None
+    pathway_context = {}
+    if destination:
+        if destination == 'ai-engineering':
+            pathway_context['ai_focus'] = True
+            pathway_context['tutor_greeting'] = (
+                'Hello! I\'m Ruach-AI, your AI Engineering tutor. '
+                'I can help you with Python, data, LLMs, RAG, agents, and deployment.'
+            )
+        elif destination == 'machine-learning':
+            pathway_context['ai_focus'] = False
+            pathway_context['tutor_greeting'] = (
+                'Hello! I\'m Ruach-AI, your Machine Learning tutor. '
+                'I can help you with statistics, data preparation, classification, '
+                'regression, and deep learning.'
+            )
+        else:
+            pathway_context['ai_focus'] = None
+            pathway_context['tutor_greeting'] = (
+                'Hello! I\'m Ruach-AI, your tutor. I can help you with both '
+                'AI Engineering and Machine Learning concepts.'
+            )
+
     problem = None
     if problem_id:
         from app.practice_arena import all_arena_problems
@@ -407,6 +438,7 @@ def assemble_tutor_context(
         socratic_guardrail=True,
         recent_submissions=list(recent_submissions),
         lesson_context=lesson_context,
+        pathway_context=pathway_context,
     )
 
 
