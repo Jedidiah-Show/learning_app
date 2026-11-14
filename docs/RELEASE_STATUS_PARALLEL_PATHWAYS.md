@@ -1,7 +1,7 @@
 # Parallel Pathways Release — Implementation Status
 
 **Snapshot:** 2026-11-14 (in-progress; pushed to `upstream/main`)  
-**Commits (this continuation):** `aab8294`, `aff96f2`, `2ebfed2`, `1801dab` (HEAD).  
+**Commits (this continuation):** `aab8294`, `aff96f2`, `2ebfed2`, `1801dab`, `2c24f95`, `b0d4042`, `db691f7` (HEAD).  
 **Tag:** `m5-complete` exists at `fb40e1b` (not re-pointed). Current work is **not deployed** and production host verification is not possible from this environment.
 
 > This document records observed progress in the workspace. It does **not** claim milestone completion unless deliverables, acceptance criteria, docs, security, regression, and deployment/tagging evidence are satisfied per `milestones.md` and `goals.md`.
@@ -58,8 +58,9 @@
 ## Open release blockers
 - No production host/log access for deploy and live verification.
 - M5/M6/M7 not feature-complete per milestone acceptance criteria.
-- Possible need for DB migrations/models for full M6/M7 evidence, publication/privacy, and persistent lab completion/reset.
-- Uncommitted changes; push/tag/deploy not executed.
+- Further schema/migrations/features may be needed for full M6/M7 acceptance (complete workbenches/provenance/verification/invalidation/history, broader domain-isolated evidence enforcement, and any additional lab engine requirements).
+- No clean full-suite rerun after `db691f7` yet; security/accessibility/performance checks and migration verification on a production-like copy remain incomplete.
+- `m5-complete` not re-pointed; deployment/tagging and live verification on both production hosts not executed (no host/log access).
 
 
 ## Additional progress (after initial status draft)
@@ -68,4 +69,4 @@
 - **M7.4 lab completion/reset evidence:** added `EngineeringLabCompletion` model/migration and lab APIs (`/labs/<domain>/<lab>/complete`, `/labs/<domain>/<lab>/reset`) with UI to record evidence notes and reset state; lab index/detail show persisted status. (`app/models.py`, `app/routes/main.py`, `templates/labs/*`, migration `b7c8d9e0f1a2`)
 - **M5.6 evaluation harness:** added `docs/tutor_evaluation/run_tutor_eval.py` for dataset-driven dry-run prompt/metadata generation (live scoring/latency/cost capture still requires provider integration and execution).
 - **Migration graph:** added merge migration `c9d0e1f2a3b4` to unify heads (`b7c8d9e0f1a2`, `d4e2f3a4b5c6`). Fresh-DB upgrade attempt (`flask db upgrade heads` on temp SQLite) failed on pre-existing migration `c231009e995c` (`ValueError: Constraint must have a name` in `calendar_event` batch alter) — **M8 migration verification finding** requiring follow-up; not introduced by this change.
-- **Full regression suite:** background run `pytest -q -p no:cacheprovider` started (`/tmp/fulltest.out`); result pending at time of last update.
+- **Full regression suite:** `pytest -q -p no:cacheprovider` completed as **445 passed, 3 failed, 2 warnings** (`/tmp/fulltest.out`). All 3 failures (`tests/test_learning_flows.py::RuachAICourseTests::test_registration_with_safe_destination_routes_through_onboarding`, `tests/test_pathway_fit.py::PathwayFitOnboardingFlowTests::test_confirmation_stores_the_destination_and_opens_the_gate`, `tests/test_project_studio.py::ProjectStudioTests::test_ml_pathway_projects_page_omits_track_form_safely`) were caused by incorrect ML workbench progress data passed to `templates/projects.html`; fixed in `db691f7` and the 3 tests now pass individually. A clean full-suite rerun after the fix is still required for M8 evidence.
