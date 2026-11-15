@@ -70,7 +70,7 @@
 - **M5:** full specialized tutor behavior/context across all surfaces, stronger multi-turn misconception/prediction flows, and automated model-backed rubric scoring with measured latency/cost baselines.
 - **M6:** complete shared/AI/ML workbenches, full experiment/provenance/verification/invalidation/history, stronger domain-isolated evidence enforcement (including reassessment/invalidation/historical cases), and fully specified publication/privacy controls/tests.
 - **M7:** fuller lab engine semantics and required scenario coverage; security/privacy validation for labs/showcase.
-- **M8:** migration verification on production-like copy + rollback procedure evidence, security/accessibility/performance checks, judge-worker/monitoring/health evidence, full release/tag/deploy checklist reconciliation, and explicit sign-off evidence per milestone acceptance criteria.
+- **M8:** migration verification on a production-like copy + rollback procedure evidence (beyond shared-prod upgrade), resolution of fresh-SQLite migration portability blockers (e.g. `d4e2f3a4b5c6` `now()` usage), security/accessibility/performance checks, judge-worker/monitoring/health evidence, full release/tag/deploy checklist reconciliation, and explicit sign-off evidence per milestone acceptance criteria.
 - **Tagging:** `m5-complete` remains at `fb40e1b`; no new milestone/release tags created/re-pointed in this continuation.
 
 ## Additional progress (2026-11-15 continuation)

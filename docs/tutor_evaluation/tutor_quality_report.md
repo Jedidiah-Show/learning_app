@@ -34,8 +34,9 @@ Assess each response against:
   - Dry run: `.venv/bin/python docs/tutor_evaluation/run_tutor_eval.py --domain all --dry-run`
   - JSONL output: `.venv/bin/python docs/tutor_evaluation/run_tutor_eval.py --domain all --dry-run --out /tmp/tutor_eval.jsonl`
   - Baseline dry-run result (2026-11-14): **15 cases** across `shared-foundations`, `ai-engineering`, `machine-learning`.
+  - Evidence re-run (2026-11-15, HEAD `7b21963` context): `wrote 15 records to /tmp/opencode/tutor_eval_dryrun.jsonl` (dry-run prompt/metadata generation; no live responses/scores/latency/cost).
 - **Model-backed qualitative scoring:** live model execution, rubric scoring, and latency/cost capture are not yet fully automated in-repo; run generated cases through the live tutor with representative learner contexts and record scores per dimension (1–5) plus latency/token/cost observations per domain and model tier.
-- **Regression:** targeted M5-related and pathway/practice suites passed in batched runs during this implementation cycle; a full-suite regression run is required for release evidence.
+- **Regression:** targeted M5-related and pathway/practice suites passed in batched runs during this implementation cycle; a clean full-suite regression run from HEAD is in progress (`/tmp/fulltest_head.out`) for M8 evidence.
 
 ## Known gaps / follow-up
 - Add an automated harness to execute dataset cases against `assemble_tutor_context`/tutor prompts and capture rubric scores consistently.
