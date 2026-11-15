@@ -606,12 +606,19 @@ def machine_learning_lesson(lesson_id):
         user_id=current_user.id, lesson_id=lesson_id
     ).first()
     from app.practice import pathway_exercises_for_lesson
+    from app.services.tutor import pathway_context_for_user
+    tutor_ctx = pathway_context_for_user(current_user.id, lesson_id=lesson_id)
+    tutor_greeting = tutor_ctx.get('tutor_greeting') or (
+        "Hi, I’m Ruach-AI, your Machine Learning tutor. I can help you with this lesson, "
+        "including the concepts, task, and how to reason through mistakes."
+    )
     return render_template(
         'specializations/machine_learning_lesson.html',
         lesson=lesson, completed=existing,
         bookmarked=bookmark is not None,
         lesson_note=note.content if note else '',
         practice_exercises=pathway_exercises_for_lesson(lesson_id),
+        tutor_greeting=tutor_greeting,
     )
 
 
