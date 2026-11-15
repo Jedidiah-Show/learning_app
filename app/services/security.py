@@ -271,12 +271,6 @@ def safe_fetch(url: str, timeout: float = 10.0, *,
     parsed = urlparse(url)
     hostname = parsed.hostname.rstrip('.').lower()
     port = parsed.port or 443
-    if check_rebinding:
-        check_dns_rebinding(url)
-    addresses = _resolve_public_addresses(hostname, port)
-    path = parsed.path or '/'
-    if parsed.query:
-        path = f'{path}?{parsed.query}'
     request_headers = {
         'Host': hostname if port == 443 else f'{hostname}:{port}',
         'Connection': 'close',
@@ -291,6 +285,12 @@ def safe_fetch(url: str, timeout: float = 10.0, *,
         ):
             raise ValueError("Invalid or restricted request header")
         request_headers[name] = value
+    if check_rebinding:
+        check_dns_rebinding(url)
+    addresses = _resolve_public_addresses(hostname, port)
+    path = parsed.path or '/'
+    if parsed.query:
+        path = f'{path}?{parsed.query}'
     connection = _PinnedHTTPSConnection(
         hostname, str(addresses[0]), port, timeout,
     )
