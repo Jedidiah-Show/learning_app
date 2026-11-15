@@ -848,6 +848,121 @@ class LearnerPathwayEnrollment(db.Model):
                             name='unique_learner_pathway_enrollment'),
     )
 
+
+class AISpecializationProject(db.Model):
+    """Independent progress record for an AI Engineering module project.
+
+    AI Engineering project records live in their own table and never share
+    rows with Machine Learning project records; AI evidence cannot credit
+    ML competencies and vice versa.
+    """
+    __tablename__ = 'ai_specialization_project'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    pathway_id = db.Column(db.String(80), nullable=False)
+    module_id = db.Column(db.String(100), nullable=False)
+    submission = db.Column(db.Text)
+    evaluation = db.Column(db.Text)
+    completed = db.Column(db.Boolean, nullable=False, default=False, server_default=db.false())
+    failure_stage = db.Column(db.String(32))
+    failure_detail = db.Column(db.String(300))
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
+    )
+    __table_args__ = (
+        db.UniqueConstraint(
+            'user_id', 'pathway_id', 'module_id',
+            name='unique_user_ai_pathway_project',
+        ),
+        db.Index('idx_ai_project_user_pathway', 'user_id', 'pathway_id'),
+    )
+
+
+class AIPromptVersion(db.Model):
+    """Prompt versions for an AI Engineering project."""
+    __tablename__ = 'ai_prompt_version'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    pathway_id = db.Column(db.String(80), nullable=False)
+    module_id = db.Column(db.String(100), nullable=False)
+    version = db.Column(db.Integer, nullable=False)
+    prompt_content = db.Column(db.Text, nullable=False)
+    model_configuration = db.Column(db.Text)  # JSON string
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    __table_args__ = (
+        db.UniqueConstraint(
+            'user_id', 'pathway_id', 'module_id', 'version',
+            name='unique_ai_prompt_version',
+        ),
+        db.Index('idx_ai_prompt_version_user_module', 'user_id', 'module_id'),
+    )
+
+
+class AIRetrievalConfiguration(db.Model):
+    """Retrieval configurations for an AI Engineering project."""
+    __tablename__ = 'ai_retrieval_configuration'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    pathway_id = db.Column(db.String(80), nullable=False)
+    module_id = db.Column(db.String(100), nullable=False)
+    chunking_configuration = db.Column(db.Text)  # JSON string
+    embedding_configuration = db.Column(db.Text)  # JSON string
+    retrieval_parameters = db.Column(db.Text)  # JSON string
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    __table_args__ = (
+        db.UniqueConstraint(
+            'user_id', 'pathway_id', 'module_id',
+            name='unique_ai_retrieval_configuration',
+        ),
+        db.Index('idx_ai_retrieval_config_user_module', 'user_id', 'module_id'),
+    )
+
+
+class AIAgentExecutionRecord(db.Model):
+    """Agent execution traces for an AI Engineering project."""
+    __tablename__ = 'ai_agent_execution_record'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    pathway_id = db.Column(db.String(80), nullable=False)
+    module_id = db.Column(db.String(100), nullable=False)
+    execution_id = db.Column(db.String(64), nullable=False)
+    status = db.Column(db.String(32), nullable=False)
+    tool_calls = db.Column(db.Text)  # JSON string
+    duration = db.Column(db.Integer)  # milliseconds
+    error_summary = db.Column(db.Text)
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    __table_args__ = (
+        db.Index('idx_ai_agent_execution_user_module', 'user_id', 'module_id'),
+    )
+
+
+class AIEvaluationRecord(db.Model):
+    """Evaluation results for an AI Engineering project."""
+    __tablename__ = 'ai_evaluation_record'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    pathway_id = db.Column(db.String(80), nullable=False)
+    module_id = db.Column(db.String(100), nullable=False)
+    evaluation_dataset = db.Column(db.String(200))
+    evaluation_results = db.Column(db.Text)  # JSON string
+    metric_summary = db.Column(db.Text)  # JSON string
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    __table_args__ = (
+        db.Index('idx_ai_evaluation_user_module', 'user_id', 'module_id'),
+    )
+
+
 class LeaderboardScore(db.Model):
     """Materialized learning totals used by the opt-in leaderboard."""
     __tablename__ = 'leaderboard_score'

@@ -574,6 +574,7 @@ def create_app(config_override=None):
     from app.routes.workspace import workspace_bp
     from app.routes.passport import passport_bp
     from app.routes.ml_specialization import ml_specialization_bp
+    from app.routes.ai_specialization import ai_specialization_bp
     from app.routes.cloud_ai_infrastructure import cloud_ai_infrastructure_bp
     from app.routes.pathway_practice import pathway_practice_bp
 
@@ -593,6 +594,7 @@ def create_app(config_override=None):
     app.register_blueprint(integrations_bp, url_prefix='/api/integrations')
     app.register_blueprint(credentials_bp)
     app.register_blueprint(ml_specialization_bp)
+    app.register_blueprint(ai_specialization_bp)
     app.register_blueprint(cloud_ai_infrastructure_bp)
     app.register_blueprint(practice_arena_bp)
     app.register_blueprint(workspace_bp)

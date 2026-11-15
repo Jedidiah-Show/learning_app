@@ -26,8 +26,8 @@ def upgrade():
         sa.Column('domain_type', sa.String(20), nullable=False),
         sa.Column('version', sa.String(16), nullable=False, server_default='1.0.0'),
         sa.Column('status', sa.String(16), nullable=False, server_default='ACTIVE'),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), onupdate=sa.text('now()')),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.text('now()')),
     )
 
     # Create LearnerPathwayEnrollment table
@@ -41,8 +41,8 @@ def upgrade():
         sa.Column('started_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('paused_at', sa.DateTime(timezone=True), nullable=True),
         sa.Column('completed_at', sa.DateTime(timezone=True), nullable=True),
-        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.text('now()')),
-        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.text('now()'), onupdate=sa.text('now()')),
+        sa.Column('created_at', sa.DateTime(timezone=True), server_default=sa.func.now()),
+        sa.Column('updated_at', sa.DateTime(timezone=True), server_default=sa.func.now(), onupdate=sa.text('now()')),
         sa.ForeignKeyConstraint(['learner_id'], ['user.id'], ondelete='CASCADE'),
         sa.ForeignKeyConstraint(['pathway_id'], ['learning_pathway.id'], ondelete='CASCADE'),
         sa.UniqueConstraint('learner_id', 'pathway_id', name='unique_learner_pathway_enrollment'),

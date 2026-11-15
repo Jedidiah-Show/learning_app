@@ -1,0 +1,102 @@
+{% extends 'base.html' %}
+{% block title %}Module {{ module.number }} workbench · AI Engineering · RUACH{% endblock %}
+{% block content %}
+<div class="mx-auto max-w-5xl">
+  <nav class="mb-4 flex items-center gap-2 text-sm text-slate-600">
+    <a href="{{ url_for('ai_specialization.dashboard') }}" class="text-indigo-600 hover:underline">← AI Engineering workbench</a>
+    <span class="text-slate-400">/</span>
+    <span class="font-semibold">{{ module.title }}</span>
+  </nav>
+
+  <section class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+    <h2 class="text-xl font-bold">Module {{ module.number }} project</h2>
+    <p class="mt-2 text-sm text-slate-600">{{ module.description }}</p>
+
+    <form id="project-form" action="{{ url_for('ai_specialization.submit_project', module_id=module.id) }}" method="POST" class="mt-6 space-y-4" novalidate>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Reflection</label>
+        <textarea name="reflection" rows="5" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ submission.reflection or '' }}</textarea>
+        <p class="mt-1 text-xs text-slate-500">What you built, the approach you took, and what you learned (80–12000 characters).</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Architecture decisions</label>
+        <textarea name="architecture_decisions" rows="5" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ submission.architecture_decisions or '' }}</textarea>
+        <p class="mt-1 text-xs text-slate-500">Model choices, retrieval strategy, agent design, cost/latency trade-offs.</p>
+      </div>
+      <button type="submit" class="inline-flex rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800">Save project draft</button>
+      <p id="form-message" class="mt-2 text-sm"></p>
+    </form>
+
+    {% if record.completed %}
+    <p class="mt-4 text-sm font-semibold text-emerald-700">Project marked complete ✓</p>
+    {% elif evaluation %}
+    <p class="mt-4 text-sm text-slate-600">Evaluation on file: {{ evaluation.get('metric_summary', '')[:160] }}</p>
+    {% endif %}
+  </section>
+
+  <section class="mt-8 grid gap-6 md:grid-cols-2">
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h3 class="text-lg font-bold mb-4">Prompt versions</h3>
+      <div id="prompt-versions" class="text-sm text-slate-600">Loading…</div>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h3 class="text-lg font-bold mb-4">Retrieval configuration</h3>
+      <div id="retrieval-configs" class="text-sm text-slate-600">Loading…</div>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h3 class="text-lg font-bold mb-4">Agent executions</h3>
+      <div id="agent-executions" class="text-sm text-slate-600">Loading…</div>
+    </div>
+    <div class="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+      <h3 class="text-lg font-bold mb-4">Evaluation results</h3>
+      <div id="evaluations" class="text-sm text-slate-600">Loading…</div>
+    </div>
+  </section>
+</div>
+<script>
+(function () {
+  const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+  function api(path, body) {
+    const headers = { 'Content-Type': 'application/json' };
+    if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
+    return fetch(path, { method: body ? 'POST' : 'GET', headers, body: body ? JSON.stringify(body) : undefined })
+      .then(r => r.ok ? r.json() : r.json().then(e => { throw new Error(e.error || 'failed'); }));
+  }
+  function list(endpoint, el, render) {
+    api(endpoint).then(data => {
+      el.innerHTML = (data || []).map(render).join('') || '<p class="text-xs text-slate-400">None recorded yet.</p>';
+    }).catch(err => { el.innerHTML = '<p class="text-xs text-red-600">Unable to load.</p>'; console.error(err); });
+  }
+  function row(label, value) {
+    return `<p class="text-xs"><span class="font-medium text-slate-700">${label}:</span> ${value || '—'}</p>`;
+  }
+  list('/api/ai-engineering/prompt-versions', document.getElementById('prompt-versions'), r =>
+    `<div class="border-b border-slate-100 pb-2 last:border-0"><p class="text-xs text-slate-500">v${r.version} · ${r.created_at || ''}</p><p class="text-xs truncate max-w-[34rem]">${(r.prompt_content || '').slice(0, 200)}</p></div>`);
+  list('/api/ai-engineering/retrieval-configs', document.getElementById('retrieval-configs'), r =>
+    `<div class="border-b border-slate-100 pb-2 last:border-0"><p class="text-xs text-slate-500">${r.created_at || ''}</p>${row('Chunking', r.chunking_configuration)}${row('Embedding', r.embedding_configuration)}${row('Parameters', r.retrieval_parameters)}</div>`);
+  list('/api/ai-engineering/agent-executions', document.getElementById('agent-executions'), r =>
+    `<div class="border-b border-slate-100 pb-2 last:border-0"><p class="text-xs text-slate-500">${r.execution_id} · ${r.status} · ${r.created_at || ''}</p>${row('Duration (ms)', r.duration)}${row('Tools', r.tool_calls)}${row('Error', r.error_summary)}</div>`);
+  list('/api/ai-engineering/evaluations', document.getElementById('evaluations'), r =>
+    `<div class="border-b border-slate-100 pb-2 last:border-0"><p class="text-xs text-slate-500">${r.evaluation_dataset || 'dataset'} · ${r.created_at || ''}</p>${row('Metrics', r.metric_summary)}${row('Results', r.evaluation_results)}</div>`);
+
+  document.getElementById('project-form').addEventListener('submit', async (ev) => {
+    ev.preventDefault();
+    const form = ev.target;
+    const msg = document.getElementById('form-message');
+    msg.textContent = 'Saving…';
+    try {
+      const result = await api(form.action, {
+        reflection: form.reflection.value,
+        architecture_decisions: form.architecture_decisions.value,
+      });
+      msg.className = 'mt-2 text-sm text-emerald-700';
+      msg.textContent = 'Draft saved.';
+      form.reset();
+    } catch (err) {
+      msg.className = 'mt-2 text-sm text-red-600';
+      msg.textContent = err.message;
+    }
+  });
+})();
+</script>
+{% endblock %}
