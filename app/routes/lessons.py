@@ -13,6 +13,7 @@ from sqlalchemy.exc import IntegrityError
 from app import db
 from app.course_data import SETUP_CHECKS
 from app.curriculum import curriculum, get_lesson, lesson_context
+from app.ml_pathway import get_machine_learning_lesson, machine_learning_lesson_is_open
 from app.learning import lesson_is_available, next_course_action, next_unlocked_lesson
 from app.models import (
     CoursePlan, LessonCompletion, LessonTaskProgress, PracticeUsageDaily,
@@ -748,10 +749,13 @@ def update_video_progress():
     if not isinstance(data, dict):
         return jsonify({'error': 'Request body must be a JSON object'}), 400
     lesson_id = data.get('lesson_id')
-    lesson = get_lesson(lesson_id) if isinstance(lesson_id, str) else None
+    lesson, lesson_kind = _resolve_tutor_lesson(lesson_id)
     if not lesson:
         return jsonify({'error': 'Lesson not found'}), 404
-    if not lesson_is_available(current_user, lesson_id):
+    if lesson_kind == 'ml':
+        if not machine_learning_lesson_is_open(current_user.id, lesson_id):
+            return jsonify({'error': 'Lesson is locked'}), 403
+    elif not lesson_is_available(current_user, lesson_id):
         return jsonify({'error': 'Lesson is locked'}), 403
     video = lesson.get('video')
     if not video:
@@ -820,13 +824,28 @@ def update_video_progress():
     })
 
 
+def _resolve_tutor_lesson(lesson_id):
+    if not isinstance(lesson_id, str):
+        return None, 'ai'
+    lesson = get_lesson(lesson_id)
+    if lesson:
+        return lesson, 'ai'
+    ml_lesson = get_machine_learning_lesson(lesson_id)
+    if ml_lesson:
+        return ml_lesson, 'ml'
+    return None, None
+
+
 @lessons_bp.route('/tutor/history/<lesson_id>', methods=['GET', 'DELETE'])
 @login_required
 def get_tutor_history(lesson_id):
-    lesson = get_lesson(lesson_id) if isinstance(lesson_id, str) else None
+    lesson, kind = _resolve_tutor_lesson(lesson_id)
     if not lesson:
         return jsonify({'error': 'Lesson not found'}), 404
-    if not lesson_is_available(current_user, lesson_id):
+    if kind == 'ml':
+        if not machine_learning_lesson_is_open(current_user.id, lesson_id):
+            return jsonify({'error': 'Lesson is locked'}), 403
+    elif not lesson_is_available(current_user, lesson_id):
         return jsonify({'error': 'Lesson is locked'}), 403
     if request.method == 'DELETE':
         TutorConversation.query.filter_by(
@@ -855,10 +874,13 @@ def ask_lesson_question():
     learner_code = data.get('code', '')
     error_log = data.get('error_log', '')
     hint_stage = data.get('hint_stage')
-    lesson = get_lesson(lesson_id) if isinstance(lesson_id, str) else None
+    lesson, lesson_kind = _resolve_tutor_lesson(lesson_id)
     if not lesson:
         return jsonify({'error': 'Lesson not found'}), 404
-    if not lesson_is_available(current_user, lesson_id):
+    if lesson_kind == 'ml':
+        if not machine_learning_lesson_is_open(current_user.id, lesson_id):
+            return jsonify({'error': 'Lesson is locked'}), 403
+    elif not lesson_is_available(current_user, lesson_id):
         return jsonify({'error': 'Lesson is locked'}), 403
     if not isinstance(question, str) or not question.strip() or len(question) > 2000:
         return jsonify({'error': 'Enter a question of 1 to 2000 characters'}), 400
@@ -968,14 +990,24 @@ def ask_lesson_question():
             'pathway_context': assembled_context.pathway_context,
         })
     from app.gemini import GeminiError, generate_json
-    tutor_context_keys = (
-        'title', 'subtitle', 'why_it_matters', 'outcomes', 'core_concepts',
-        'key_terms', 'mental_model', 'worked_example', 'steps', 'code',
-        'tasks', 'questions', 'common_mistakes', 'production_notes', 'checklist'
-    )
-    tutor_context = {
-        key: lesson[key] for key in tutor_context_keys if lesson.get(key)
-    }
+    if lesson_kind == 'ml':
+        tutor_context = {
+            'title': lesson.get('title'),
+            'module': lesson.get('module_title'),
+            'goal': lesson.get('goal'),
+            'task': lesson.get('task'),
+            'sections': lesson.get('sections', []),
+            'module_number': lesson.get('module_number'),
+        }
+    else:
+        tutor_context_keys = (
+            'title', 'subtitle', 'why_it_matters', 'outcomes', 'core_concepts',
+            'key_terms', 'mental_model', 'worked_example', 'steps', 'code',
+            'tasks', 'questions', 'common_mistakes', 'production_notes', 'checklist'
+        )
+        tutor_context = {
+            key: lesson[key] for key in tutor_context_keys if lesson.get(key)
+        }
     learner_context_payload = {
         'code': assembled_context.code.code[:8000],
         'error_log': assembled_context.code.error_log,
@@ -994,7 +1026,10 @@ def ask_lesson_question():
     from app.pathway_scope import course_modules, destination_for
     destination = destination_for(current_user)
     syllabus_modules = [module.get('title', '') for module in course_modules(destination)]
-    module_info = lesson.get('_module') or {}
+    if lesson_kind == 'ml':
+        module_info = {'title': lesson.get('module_title', ''), 'number': lesson.get('module_number', '')}
+    else:
+        module_info = lesson.get('_module') or {}
     pathway_ctx = assembled_context.pathway_context or {}
     domain = pathway_ctx.get('active_domain', 'shared-foundations')
     domain_focus = pathway_ctx.get('domain_focus', '')
