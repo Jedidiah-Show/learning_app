@@ -1,5 +1,6 @@
 """Course pages and learner preferences."""
 
+import json
 import os
 from datetime import datetime, timezone
 from functools import lru_cache
