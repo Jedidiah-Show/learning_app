@@ -1,15 +1,22 @@
 # Parallel Pathways Release — Implementation Status
 
-**Snapshot:** 2026-11-14 (in-progress; pushed to `upstream/main`)  
-**Commits (this continuation):** `aab8294`, `aff96f2`, `2ebfed2`, `1801dab`, `2c24f95`, `b0d4042`, `db691f7` (HEAD).  
-**Tag:** `m5-complete` exists at `fb40e1b` (not re-pointed). Current work is **not deployed** and production host verification is not possible from this environment.
+**Snapshot:** 2026-11-15 (in-progress; pushed to `upstream/main`)  
+**Latest HEAD:** `7a0df1d` (`Fix labs route import and harden c231009e995c migration for Postgres`). Prior continuation commits include `2eedf0d`, `c621391`, `98a73fa`, `f2bf2f3`, etc.  
+**Tag:** `m5-complete` exists at `fb40e1b` (not re-pointed). Retagging/release tagging per `goals.md`/`milestones.md` has **not** been completed.
 
-> This document records observed progress in the workspace. It does **not** claim milestone completion unless deliverables, acceptance criteria, docs, security, regression, and deployment/tagging evidence are satisfied per `milestones.md` and `goals.md`.
+> This document records observed progress in the workspace. It does **not** claim milestone completion unless deliverables, acceptance criteria, docs, security, regression, deployment/tagging, and verification evidence are satisfied per `milestones.md` and `goals.md`.
 
-## Environment / access constraints
-- Working directory: `/home/ayomideshogbesan/learning_app` (git repo, branch `main`, remote `upstream`).
-- Python: `.venv/bin/python` (system `python` unavailable).
-- No access to the two production hosts or their logs; live deployment, 500-log verification, and host health checks cannot be completed from this environment.
+## Environment / access / production state
+- Working directory: `/home/ayomideshogbesan/learning_app` (git repo, branch `main`, remote `upstream`, clean at snapshot).
+- Python: `.venv/bin/python`.
+- **Production hosts (verified 2026-11-15):**
+  - Vercel: `https://learning-app-psi-black.vercel.app/` — `/healthz` `200 {"commit":"7a0df1d","status":"ok","version":"1.0.0"}`.
+  - Render: `https://ruach-learning-app.onrender.com/` — `/healthz` `200 {"commit":"7a0df1d","status":"ok","version":"1.0.0"}`.
+- **Database (shared Neon DB for Vercel+Render, confirmed):** migrated from `8c1f3d5b7e26` to head **`c9d0e1f2a3b4`** (explicit approval provided). Migration path applied: `8c1f3d5b7e26 -> c231009e995c -> d4e2f3a4b5c6`, `fa84b7c1d2e3 -> b7c8d9e0f1a2`, merge `b7c8d9e0f1a2,d4e2f3a4b5c6 -> c9d0e1f2a3b4`.
+- **Migration fix:** `migrations/versions/c231009e995c_add_learningpathway_and_.py` hardened for Postgres/Neon (replaced autogen unnamed-constraint drops with inspector-based named/idempotent FK/index handling). This resolved the previously observed fresh/prod-upgrade blocker on that revision.
+- **Authenticated smoke verification (test accounts, both hosts, 2026-11-15):** `/` 200, `/onboarding` 200, `/lessons` 200, `/projects` 200, `/labs` 200, `/portfolio` 200, `/specializations/machine-learning` 200, `/passport` 200, `/progress` 200, `/settings` 200. Prior 503 “Your progress is temporarily unavailable” and widespread authenticated 500s were resolved by migration + `/labs` import fix.
+- **Access caveats:** Vercel runtime function tracebacks were not fully retrievable via API; Render log windows retrieved showed partial traces (secondary `InFailedSqlTransaction` cascades) rather than the earliest root cause. Post-fix behavior is healthy, but deeper log-based evidence is limited.
+- **Security:** deployment/platform/DB credentials were shared during remediation; rotate/revoke exposed tokens/secrets after use.
 
 ## M0–M4 (baseline / prior context)
 - Prior session/context addressed deployed 500/root-cause and parallel-pathway fixes (app init context processor, per-request enrolment cache, canonical pathway handling, ML completion/course helpers, onboarding fit-check UI, profile/admin pathway display, parallel-pathway nav/dashboard/lessons labeling).
@@ -41,33 +48,33 @@
 - `templates/base.html`: visible **Engineering Labs** and **Showcase** navigation.
 - Showcase view enhanced via `templates/portfolio.html` (domain grouping, verification status, evidence links).
 
-**Notes:** Existing arena "troubleshooting labs" with judged fixes and debrief/LAB evidence (`docs/TROUBLESHOOTING_LABS.md`, `lab_debrief`) remain separate. M7 MVP scenarios are deterministic learning scenarios; persisted lab completion/reset evidence and learner-controlled publication/privacy controls are **not yet fully implemented** and may require schema/migrations.
+**Notes:** Existing arena "troubleshooting labs" with judged fixes and debrief/LAB evidence (`docs/TROUBLESHOOTING_LABS.md`, `lab_debrief`) remain separate. M7 MVP scenarios and persisted completion/reset evidence APIs/UI are in place; full lab engine semantics, broader scenario coverage, and security/privacy hardening tests remain incomplete.
 
-**Remaining:** full lab engine with persistent reset/completion evidence, additional scenarios per M7.1–M7.3 as required, showcase publication visibility/privacy controls (persisted), and security/privacy tests.
+**Remaining:** additional scenarios/coverage per M7.1–M7.3 acceptance, stronger reset/completion semantics and evidence validation, and lab/showcase security/privacy tests.
 
-## M8 — Integration, Verification and Release (not complete)
-**Not satisfied:** architectural and migration verification, full regression/security/accessibility/performance checks, release operations (backup/rollback/monitoring/health/judge-worker), production deployment to both hosts, live health/no-500 verification, milestone evidence reconciliation, commit/push/retag per `goals.md`.
+## M8 — Integration, Verification and Release (in progress, not complete)
+**Progress (2026-11-15):**
+- Production code deployed to **Vercel** and **Render** at **`7a0df1d`** (`/healthz` verified on both hosts).
+- Shared Neon production DB migrated to head **`c9d0e1f2a3b4`** (approved); `c231009e995c` upgrade blocker fixed for Postgres/Neon in repo.
+- Authenticated smoke checks passed on both hosts for key routes (`/`, `/onboarding`, `/lessons`, `/projects`, `/labs`, `/portfolio`, `/specializations/machine-learning`, `/passport`, `/progress`, `/settings`) with no 500/503 and no “progress unavailable”/“Something broke on our side”.
+- `/labs` production 500 (`NameError: json`) fixed and redeployed.
 
-## Test evidence (this session)
-- Targeted passes observed: `tests/test_skill_passport.py` (3), `tests/test_practice_arena.py` selected (1), `tests/test_ml_specialization.py` (18), portfolio-related checks in `tests/test_learning_flows.py` (1 selected), `tests/test_credentials.py` + `tests/test_workspace.py` + `tests/test_pathway_practice.py` (22) — run at different points during edits.
-- Batch 2 (`tests/test_skill_passport.py tests/test_pathway_fit.py tests/test_m2_enrolment.py tests/test_dynamic_shell.py`): **50 passed** (recorded in `/tmp/tf2.out`).
-- Batch 1 (`tests/test_learning_flows.py`): **67 passed** (recorded in `/tmp/tf.out`).
-- Batch 3 (`tests/test_practice_arena.py tests/test_pathway_practice.py tests/test_ml_specialization.py tests/test_credentials.py tests/test_workspace.py tests/test_admin_portal.py`): **133 passed** (recorded in `/tmp/tf3.out`).
-- A clean full-suite rerun after latest changes is required for M8.
+**Not satisfied:** complete milestone acceptance reconciliation for M5/M6/M7, clean full regression evidence from current HEAD, migration verification on a production-like copy + rollback evidence, security/accessibility/performance checks, judge-worker/monitoring/health operational evidence, comprehensive live end-to-end verification across all pathway/tutor/workbench/showcase/lab behaviors, and release operations/tagging per `goals.md`.
 
-## Open release blockers
-- No production host/log access for deploy and live verification.
-- M5/M6/M7 not feature-complete per milestone acceptance criteria.
-- Further schema/migrations/features may be needed for full M6/M7 acceptance (complete workbenches/provenance/verification/invalidation/history, broader domain-isolated evidence enforcement, and any additional lab engine requirements).
-- No clean full-suite rerun after `db691f7` yet; security/accessibility/performance checks and migration verification on a production-like copy remain incomplete.
-- `m5-complete` not re-pointed; deployment/tagging and live verification on both production hosts not executed (no host/log access).
+## Test evidence
+- Prior targeted/batch passes recorded in-session: 67 (`/tmp/tf.out`), 50 (`/tmp/tf2.out`), 133 (`/tmp/tf3.out`) across key flows.
+- Prior full runs: **445 passed, 3 failed, 2 warnings** (`/tmp/fulltest.out`, failures fixed) and **447 passed, 1 failed, 2 warnings** (`/tmp/fulltest_final.out`, env-DNS case later addressed in code; not rerun from HEAD at that point).
+- **Current clean full-suite rerun from HEAD (`7a0df1d`) in progress:** `.venv/bin/python -m pytest -q -p no:cacheprovider` → `/tmp/fulltest_head.out` (results pending in this snapshot).
 
+## Open gaps / blockers
+- **M5:** full specialized tutor behavior/context across all surfaces, stronger multi-turn misconception/prediction flows, and automated model-backed rubric scoring with measured latency/cost baselines.
+- **M6:** complete shared/AI/ML workbenches, full experiment/provenance/verification/invalidation/history, stronger domain-isolated evidence enforcement (including reassessment/invalidation/historical cases), and fully specified publication/privacy controls/tests.
+- **M7:** fuller lab engine semantics and required scenario coverage; security/privacy validation for labs/showcase.
+- **M8:** migration verification on production-like copy + rollback procedure evidence, security/accessibility/performance checks, judge-worker/monitoring/health evidence, full release/tag/deploy checklist reconciliation, and explicit sign-off evidence per milestone acceptance criteria.
+- **Tagging:** `m5-complete` remains at `fb40e1b`; no new milestone/release tags created/re-pointed in this continuation.
 
-## Additional progress (after initial status draft)
-- **M5 tutor surface expansion:** extended `/api/lessons/tutor/history` and `/api/lessons/ask` to support ML specialization lessons and added a domain-aware tutor chat UI to ML specialization lesson pages (`app/routes/lessons.py`, `app/routes/main.py`, `templates/specializations/machine_learning_lesson.html`).
-- **M6.5 / M7.5 showcase privacy & publication:** added persisted `CoursePlan.showcase_visibility` (`private`/`unlisted`/`public`, learner-controlled) via migration `b7c8d9e0f1a2`, API support in `/api/course-plan/portfolio`, and showcase UI controls with shareable link when publishable.
-- **Public showcase route:** `/showcase/u/<public_id>` serves public/unlisted showcases respecting visibility settings and displays completed project evidence only (owner controls hidden). (`app/routes/projects.py`, `templates/portfolio.html`)
-- **M7.4 lab completion/reset evidence:** added `EngineeringLabCompletion` model/migration and lab APIs (`/labs/<domain>/<lab>/complete`, `/labs/<domain>/<lab>/reset`) with UI to record evidence notes and reset state; lab index/detail show persisted status. (`app/models.py`, `app/routes/main.py`, `templates/labs/*`, migration `b7c8d9e0f1a2`)
-- **M5.6 evaluation harness:** added `docs/tutor_evaluation/run_tutor_eval.py` for dataset-driven dry-run prompt/metadata generation (live scoring/latency/cost capture still requires provider integration and execution).
-- **Migration graph:** added merge migration `c9d0e1f2a3b4` to unify heads (`b7c8d9e0f1a2`, `d4e2f3a4b5c6`). Fresh-DB upgrade attempt (`flask db upgrade heads` on temp SQLite) failed on pre-existing migration `c231009e995c` (`ValueError: Constraint must have a name` in `calendar_event` batch alter) — **M8 migration verification finding** requiring follow-up; not introduced by this change.
-- **Full regression suite:** earlier run completed as **445 passed, 3 failed, 2 warnings** (`/tmp/fulltest.out`); all 3 failures were due to incorrect ML workbench progress data and were fixed in `db691f7` (the 3 tests pass individually). A clean full-suite rerun after subsequent fixes/tutor-surface changes is now running in background: `.venv/bin/python -m pytest -q -p no:cacheprovider` → `/tmp/fulltest_final.out` (results pending).
+## Additional progress (2026-11-15 continuation)
+- **Production remediation:** diagnosed and resolved shared-DB schema mismatch (Alembic behind head) causing authenticated 503/500s on both hosts; applied migrations to `c9d0e1f2a3b4` and fixed `c231009e995c` for Postgres/Neon upgrade compatibility.
+- **Production fix:** resolved `/labs` 500 due to missing `json` import in `app/routes/main.py`; deployed `7a0df1d` and verified `/labs` 200 on Vercel and Render.
+- **Verification:** confirmed healthy deploy (`/healthz` commit `7a0df1d`) and authenticated access across core learner routes on both production hosts.
+- **Previously delivered (earlier in session/context):** ML tutor API/UI support for specialization lessons, showcase visibility/public route, lab completion/reset persistence/APIs/UI, tutor evaluation harness/datasets, migration-head merge `c9d0e1f2a3b4`, ML workbench/status fixes, and `safe_fetch` header validation hardening.
