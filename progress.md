@@ -95,7 +95,7 @@ provision or verify them by itself:
 - M5: Complete core (domain-aware Tutor; evaluation harness + structural scoring evidence).
 - M6: Complete core (Project Studio + Skill Passport incl. AI Engineering workbench & verification workflow).
 - M7: Core present (Labs catalog 13 scenarios across 3 domains; complete/reset evidence; Showcase). Remaining: labs/showcase security & privacy tests.
-- M8: In progress — full regression 448 passed; migrations verified + rollback round-trip; deployed to Vercel + Render with smoke checks passing; tag `parallel-pathways-1.0.0` at commit `7ef3ab8`; release notes written.
+- M8: Complete — full regression **473 passed, 0 failed** (commit e390585); migrations verified + rollback round-trip on fresh SQLite; tag `parallel-pathways-1.0.0` (annotated) at HEAD e390585; release notes written.
 
 - **M7 Labs/Showcase security & privacy tests complete:** `tests/test_labs_showcase_security.py` — 9 tests pass (labs complete/reset require auth; learner-scoped completions; 404 for unknown lab/domain; private showcase → 404; public/unlisted → 200; unknown user → 404; portfolio requires auth).
 
