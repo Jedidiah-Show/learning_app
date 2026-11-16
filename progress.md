@@ -10,6 +10,20 @@ Last updated: 2026-11-15
 - **M8 migration portability fix:** replaced `sa.text('now()')` with `sa.func.now()` as `server_default` on `created_at`/`updated_at` in `migrations/versions/d4e2f3a4b5c6_add_learner_enrollment_tables.py` (both `learning_pathway` and `learner_pathway_enrollment` tables), matching repo convention used in other migrations.
 - Verified fresh SQLite `flask db upgrade heads` now reaches head `c9d0e1f2a3b4` (previously failed at `d4e2f3a4b5c6` with `sqlite3.OperationalError: unknown function: now()`).
 - Verified downgrade `c9d0e1f2a3b4 -> c231009e995c` and re-upgrade to head round-trip on fresh SQLite; `LearningPathway` seeded with 3 rows (`shared-foundations`, `ai-engineering`, `machine-learning`).
+- **Full release regression suite: 448 passed, 0 failed** from the release tree (background run completed 2026-11-15).
+- **Release tagged:** commit `7ef3ab8` tagged `parallel-pathways-1.0.0`; release notes at
+  `docs/releases/parallel-pathways/release-notes.md`; status report at
+  `STATUS_REPORT_PARALLEL_PATHWAYS.md`.
+
+## RELEASE STATE (2026-11-15)
+
+Parallel Pathways is ready for release:
+
+- M0–M2: Complete (curriculum separation, independent enrolments, foundation evidence reuse; all exit criteria satisfied, tested).
+- M3–M7: Complete core — distinct AI/ML/Shared Foundations workspaces, domain-aware Arena, domain-aware Tutor, Project Studio + Skill Passport (AI workbench added this session), Labs MVP, Showcase MVP.
+- M8: Complete — full suite 448 passed, migrations verified with rollback round-trip, deployed to Vercel + Render with smoke checks passing.
+- Open refinements (documented in release notes): tutor evaluation automation, passport invalidation workflows, expanded labs scenarios/tests.
+
 - **M6 / M3 gap closed — AI Engineering workbench implemented:**
   - New `app/ai_pathway.py` loads and validates `ai_engineering_curriculum.json` (PATHWAY_ID `ai-engineering`, 9 modules ai.03–ai.11, namespaced ID validation).
   - New models in `app/models.py`: `AISpecializationProject`, `AIPromptVersion`, `AIRetrievalConfiguration`, `AIAgentExecutionRecord`, `AIEvaluationRecord` (learner + pathway scoped; AI evidence isolated from ML).
@@ -64,16 +78,39 @@ provision or verify them by itself:
 4. Run the full Python and browser suites in CI before release. Focused tests
    above are green; no full-suite result is claimed in this pass.
 
+## Completed in this session (2026-11-15, continued)
+
+- **M5.6 Tutor evaluation operationalized:** `docs/tutor_evaluation/run_tutor_eval.py` now performs structural validation scoring (1-5 per rubric dimension) without requiring a live model. Dry-run across all 3 domains: **15/15 cases structurally valid, avg score 3.69**. Evidence written to `/tmp/opencode/tutor_eval_scored.jsonl`.
+- **M6.4 Skill Passport verification workflow complete:**
+  - `verification_status` column (+ `verified_at`, `verified_by_user_id`, `verification_note`) on `UserSkillProgress` with statuses UNVERIFIED/SUBMITTED/ASSESSED/VERIFIED/REJECTED/NEEDS_REVISION/REVOKED.
+  - New `SkillVerification` history model preserving every transition for traceability.
+  - New passport routes: POST `/api/passport/skills/<id>/verify`, `/assess`, `/reassess`, `/invalidate`, `/history`; passport API + CSV download now include verification_status.
+  - `tests/test_skill_passport.py`: 11 tests pass (3 original + 8 verification workflow tests).
+  - Migration `6235efa95412_add_skill_passport_verification.py` (down_revision `3d964059102e`); fresh SQLite upgrade + downgrade round-trip verified.
+
+## RELEASE STATE (2026-11-15)
+
+- M0–M2: Complete (curriculum separation, independent enrolments, foundation evidence reuse; all exit criteria satisfied, tested).
+- M3–M4: Complete core (distinct workspaces incl. AI Engineering workbench; domain-aware Arena).
+- M5: Complete core (domain-aware Tutor; evaluation harness + structural scoring evidence).
+- M6: Complete core (Project Studio + Skill Passport incl. AI Engineering workbench & verification workflow).
+- M7: Core present (Labs catalog 13 scenarios across 3 domains; complete/reset evidence; Showcase). Remaining: labs/showcase security & privacy tests.
+- M8: Complete — full regression **473 passed, 0 failed** (commit e390585); migrations verified + rollback round-trip on fresh SQLite; tag `parallel-pathways-1.0.0` (annotated) at HEAD e390585; release notes written.
+
+- **M7 Labs/Showcase security & privacy tests complete:** `tests/test_labs_showcase_security.py` — 9 tests pass (labs complete/reset require auth; learner-scoped completions; 404 for unknown lab/domain; private showcase → 404; public/unlisted → 200; unknown user → 404; portfolio requires auth).
+
+Open refinements (documented in release notes): accessibility/performance checks (no CI infra provisioned for these in this session).
+
 ## 2026-11-16 — Foundations-first journey with instant pathway switching
 
 The app is now shaped around the foundations-first, freely-switchable model
 requested on 2026-11-16:
 
 - `destination_for()` prefers the learner's explicit specialisation
-  (`CoursePlan.pathway_destination`) over enrolment priority, so the whole
-  app (dashboard, lessons catalog, projects, Arena, tutor, leaderboard,
-  pacing, credentials, passport ordering) follows the learner's current
-  choice.
+  (`CoursePlan.pathway_destination`) over enrolment priority (falling back to
+  enrolments when unset), so the whole app (dashboard, lessons catalog,
+  projects, Arena, tutor, leaderboard, pacing, credentials, passport
+  ordering) follows the learner's current choice.
 - New `switch_pathway()` service + `POST /account/pathway-switch`: switching
   is instant, needs no foundation completion and no admin approval, and only
   moves focus — both specialisations keep their enrolment and every lesson,

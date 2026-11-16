@@ -15,6 +15,7 @@ pausing one does not affect the other.
 """
 
 from app.curriculum import all_modules
+from flask import g
 import json
 from pathlib import Path
 from app.models import (
@@ -25,6 +26,23 @@ from app.models import (
     LearningPathway,
 )
 from app import db
+
+
+# Per-request cache for completed lesson IDs, keyed by user_id.  Avoids
+# re-scanning LessonCompletion on every pathway_modules / course_modules call
+# within the same request.
+def _completed_lesson_ids(user_id):
+    """Return the set of completed lesson ids for a user, cached per request."""
+    cache = getattr(g, '_completed_lesson_ids_cache', None)
+    if cache is None:
+        cache = {}
+        g._completed_lesson_ids_cache = cache
+    if user_id not in cache:
+        rows = LessonCompletion.query.filter_by(
+            user_id=user_id, completed=True
+        ).all()
+        cache[user_id] = {row.lesson_id for row in rows}
+    return cache[user_id]
 
 
 # The six Shared Foundations modules in the standalone manifest (sf.00–sf.05)
@@ -153,12 +171,16 @@ def is_pathway(user_id, pathway_id):
 def destination_for(user_id=None):
     """The learner's chosen specialization as an explicit pathway id.
 
-    The confirmed choice on ``CoursePlan.pathway_destination`` is the single
-    source of truth for which pathway the whole app leads with; the learner
-    may change it at any time (see :func:`switch_pathway`).  When the column
-    is unset, pathway enrolments decide — one active specialisation enrolment
-    wins, and two fall back to the historical AI Engineering priority.
-    Returns ``'ai-engineering'``, ``'machine-learning'``,
+    The learner's chosen specialisation is the single source of truth for
+    which pathway the whole app leads with.  The explicit
+    ``CoursePlan.pathway_destination`` column — written by onboarding or by the
+    instant pathway switcher — wins when set; the learner may change it at any
+    time (see :func:`switch_pathway`).  When the column is unset, active
+    ``LearnerPathwayEnrollment`` rows decide — one active specialisation
+    enrolment wins, and two fall back to the historical AI Engineering
+    priority.  Learners without enrolments *and* without an explicit choice
+    have ``None`` — they are not silently assigned a specialisation via the
+    deprecated column.  Returns ``'ai-engineering'``, ``'machine-learning'``,
     ``'shared-foundations'``, or ``None`` (undecided).
 
     Failure-tolerant: a database hiccup behaves like no destination rather than
@@ -200,8 +222,10 @@ def destination_for(user_id=None):
 def pathway_ids_for(user_id=None):
     """Set of explicit pathway ids the learner can study.
 
-    Learners without enrolments fall back to their legacy destination: an
-    ``ml`` learner studies the ML pathway, everyone else the AI course.
+    Returns only pathway ids from active ``LearnerPathwayEnrollment`` rows.
+    Learners without enrolments have an empty set — they are not silently
+    assigned to a specialisation via the deprecated
+    ``CoursePlan.pathway_destination`` column.
     """
     uid = _user_id(user_id)
     if uid is None:
@@ -213,12 +237,6 @@ def pathway_ids_for(user_id=None):
         }
     except Exception:  # pragma: no cover - defensive
         ids = set()
-    if not ids:
-        destination = destination_for(uid)
-        if destination in ('machine-learning', 'shared-foundations'):
-            ids.add(destination)
-        elif destination == 'ai-engineering':
-            ids.add('ai-engineering')
     return ids
 
 
@@ -244,12 +262,7 @@ def pathway_modules(pathway_id, user_id=None):
         foundation = curriculum['modules']
         # Optionally annotate completion status if user_id given
         if user_id:
-            completed_lessons = {
-                row.lesson_id
-                for row in LessonCompletion.query.filter_by(
-                    user_id=user_id, completed=True
-                ).all()
-            }
+            completed_lessons = _completed_lesson_ids(user_id)
             for module in foundation:
                 lessons = module.get('lessons') or []
                 module['_completed_lessons'] = sum(
@@ -269,12 +282,7 @@ def pathway_modules(pathway_id, user_id=None):
             and not m['id'].startswith('mle.')
         ]
         if user_id:
-            completed_lessons = {
-                row.lesson_id
-                for row in LessonCompletion.query.filter_by(
-                    user_id=user_id, completed=True
-                ).all()
-            }
+            completed_lessons = _completed_lesson_ids(user_id)
             for module in ai_modules:
                 lessons = module.get('lessons') or []
                 module['_completed_lessons'] = sum(
@@ -313,12 +321,7 @@ def pathway_modules(pathway_id, user_id=None):
                 'outcome': module.get('summary') or module.get('title', ''),
             })
         if user_id:
-            completed_lessons = {
-                row.lesson_id
-                for row in LessonCompletion.query.filter_by(
-                    user_id=user_id, completed=True
-                ).all()
-            }
+            completed_lessons = _completed_lesson_ids(user_id)
             for module in modules:
                 lessons = module.get('lessons') or []
                 module['_completed_lessons'] = sum(
@@ -365,12 +368,7 @@ def course_modules(pathway_id, user_id=None):
         modules = list(all_modules())
 
     if user_id:
-        completed_lessons = {
-            row.lesson_id
-            for row in LessonCompletion.query.filter_by(
-                user_id=_user_id(user_id), completed=True
-            ).all()
-        }
+        completed_lessons = _completed_lesson_ids(_user_id(user_id))
         for module in modules:
             lessons = module.get('lessons') or []
             module['_completed_lessons'] = sum(
@@ -442,12 +440,7 @@ def foundation_evidence(user_id):
     from app.models import CourseProject
 
     uid = _user_id(user_id)
-    completed_lessons = {
-        row.lesson_id
-        for row in LessonCompletion.query.filter_by(
-            user_id=uid, completed=True
-        ).all()
-    }
+    completed_lessons = _completed_lesson_ids(uid)
     completed_projects = {
         row.module_id
         for row in CourseProject.query.filter_by(
@@ -511,11 +504,7 @@ def foundation_completion_state(user_id):
     from app.models import CourseProject
 
     uid = _user_id(user_id)
-    completed_lessons = {
-        row.lesson_id for row in LessonCompletion.query.filter_by(
-            user_id=uid, completed=True
-        ).all()
-    }
+    completed_lessons = _completed_lesson_ids(uid)
     completed_projects = {
         row.module_id for row in CourseProject.query.filter_by(
             user_id=uid, completed=True
@@ -593,12 +582,7 @@ def pathway_pace(user_id, pathway_id, weekly_hours=None):
         weekly_hours = 6
 
     # Get completed lessons for this user
-    completed_lessons = {
-        row.lesson_id
-        for row in LessonCompletion.query.filter_by(
-            user_id=user_id, completed=True
-        ).all()
-    }
+    completed_lessons = _completed_lesson_ids(user_id)
 
     # Get completed project modules
     from app.models import CourseProject
@@ -757,13 +741,7 @@ def lesson_href(lesson, lesson_id):
 
 
 def _ai_completions(user_id):
-    from app.models import LessonCompletion
-
-    return {
-        lesson_id for (lesson_id,) in LessonCompletion.query.with_entities(
-            LessonCompletion.lesson_id
-        ).filter_by(user_id=user_id, completed=True).all()
-    }
+    return _completed_lesson_ids(user_id)
 
 
 def _ai_project_modules(user_id):

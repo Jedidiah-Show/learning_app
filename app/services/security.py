@@ -243,7 +243,9 @@ class _PinnedHTTPSConnection(http.client.HTTPSConnection):
 def safe_fetch(url: str, timeout: float = 10.0, *,
                allowed_schemes: Optional[List[str]] = None,
                check_rebinding: bool = True,
-               headers: Optional[dict] = None) -> str:
+               headers: Optional[dict] = None,
+               method: str = 'GET',
+               body: Optional[bytes] = None) -> str:
     """Safely fetch a URL with SSRF and DNS-rebinding protection.
 
     This wrapper should be used instead of raw ``requests.get()`` or
@@ -256,6 +258,8 @@ def safe_fetch(url: str, timeout: float = 10.0, *,
         check_rebinding: Whether to check for DNS-rebinding.
         headers: Additional request headers. Host and connection framing are
             controlled by this function and cannot be overridden.
+        method: HTTP method ('GET', 'POST', 'PUT', 'PATCH', 'DELETE').
+        body: Request body for POST/PUT/PATCH methods.
 
     Returns:
         Response body as text.
@@ -268,6 +272,9 @@ def safe_fetch(url: str, timeout: float = 10.0, *,
     validate_url(url, allowed_schemes=schemes)
     if 'https' not in schemes:
         raise ValueError("Safe fetch only supports HTTPS")
+    method_upper = method.upper()
+    if method_upper not in ('GET', 'POST', 'PUT', 'PATCH', 'DELETE'):
+        raise ValueError(f"Unsafe HTTP method {method!r} for safe_fetch")
     parsed = urlparse(url)
     hostname = parsed.hostname.rstrip('.').lower()
     port = parsed.port or 443
@@ -295,7 +302,12 @@ def safe_fetch(url: str, timeout: float = 10.0, *,
         hostname, str(addresses[0]), port, timeout,
     )
     try:
-        connection.request('GET', path, headers=request_headers)
+        if method_upper in ('POST', 'PUT', 'PATCH') and body is not None:
+            if 'Content-Type' not in {k.lower() for k in request_headers}:
+                request_headers['Content-Type'] = 'application/octet-stream'
+            connection.request(method_upper, path, body=body, headers=request_headers)
+        else:
+            connection.request(method_upper, path, headers=request_headers)
         response = connection.getresponse()
         if 300 <= response.status < 400:
             raise RuntimeError("Redirects are not allowed for safe fetches")

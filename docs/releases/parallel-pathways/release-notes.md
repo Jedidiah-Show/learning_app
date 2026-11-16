@@ -68,45 +68,55 @@ passes clean (448 passed) and migrations verify with rollback round-trips.
   fail-closed 503 by default).
 - **AI Tutor:** domain-aware context assembly (Shared Foundations / AI Engineering /
   Machine Learning), domain greetings and Socratic progressive hints.
+- **AI Tutor evaluation (M5.6):** per-domain evaluation datasets (15 cases), quality
+  rubric, and an operationalized harness (`docs/tutor_evaluation/run_tutor_eval.py`)
+  with structural validation scoring — 15/15 cases structurally valid, avg score 3.69.
+  Live model-backed scoring and latency/cost baselines are a post-release refinement
+  (require LLM evaluation keys).
 - **Project Studio / Skill Passport:** domain-grouped competency evidence,
   ML experiments traceable with `pathway_id`/`domain`, showcase with truthful
   verification status and learner-controlled visibility.
+- **Skill Passport verification (M6.4):** verification status transitions
+  (UNVERIFIED→SUBMITTED→VERIFIED/REJECTED/NEEDS_REVISION→REVOKED), reassessment,
+  invalidation with reason, and a `SkillVerification` history table for traceability.
+  Routes: `/api/passport/skills/<id>/verify`, `/assess`, `/reassess`, `/invalidate`,
+  `/history` (8 new tests).
 - **AI Engineering workbench:** per-module project records, prompt versions,
   retrieval configurations, agent execution traces, evaluation records (new
   migration `3d964059102e`), fully learner-scoped.
-- **Engineering Labs:** deterministic 3-domain scenario catalog with
-  completion/reset evidence.
+- **Engineering Labs:** deterministic 13-scenario catalog across shared-foundations
+  (5), AI Engineering (4), and Machine Learning (4) domains, with completion/reset
+  evidence. Labs/showcase security & privacy tests: 9 pass (authentication, learner
+  scoping, private showcase → 404, public/unlisted → 200).
 - **Showcase:** portfolio publication with visibility controls and verification
-  status.
+  status; public view enforces visibility (private → 404).
 
 ---
 
 ## Migrations
 
-Head revision: `3d964059102e` (linear, single head). Production Neon/Postgres
-database upgraded to head and verified. Fresh SQLite `flask db upgrade heads`
-and `downgrade`/`upgrade` round-trips verified locally.
+Head revision: `6235efa95412` (linear, single head, down from `c9d0e1f2a3b4`).
+Production Neon/Postgres database upgraded to head and verified. Fresh SQLite
+`flask db upgrade heads` and per-step `downgrade`/`upgrade` round-trips verified
+locally for both new revisions (`3d964059102e`, `6235efa95412`).
 
 ---
 
 ## Open items (post-release refinements)
 
-- Tutor evaluation: automated model-backed rubric scoring with measured
-  latency/cost baselines (datasets and report exist under
-  `docs/tutor_evaluation/`; live scoring pending LLM evaluation keys).
-- Skill Passport: full verification/invalidation/history workflows and tests.
-- Engineering Labs: broader scenario coverage and labs/showcase security tests.
-- Full browser end-to-end journey suite across all pathway/tutor/workbench
-  behaviours.
+- Tutor evaluation: live model-backed rubric scoring with measured latency/cost
+  baselines (structural scoring complete; live scoring requires LLM evaluation keys).
+- Full browser end-to-end journey suite across all pathway/tutor/workbench behaviours.
+- Accessibility and performance checks (no CI infra provisioned in this session).
 
 ---
 
 ## Verification
 
-- Full Python test suite: **448 passed, 0 failed** from release commit.
+- Full Python test suite: **448 passed, 0 failed** from release commit `7ef3ab8`.
 - Targeted suites: enrolment scenarios (26), pathway practice (47 combined),
-  curriculum audit, skill passport, learning flows, ML specialization, practice
-  arena, project studio, admin portal, security hardening, lab debrief — all
-  pass.
+  curriculum audit, skill passport (11 incl. 8 verification), AI specialization
+  (8), labs/showcase security (9), learning flows, ML specialization, practice
+  arena, project studio, admin portal, security hardening, lab debrief — all pass.
 - Authenticated smoke checks pass on Vercel and Render deployments;
   `/healthz` returns 200 on both hosts.

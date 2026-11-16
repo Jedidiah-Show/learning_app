@@ -3,8 +3,9 @@
 
 **Release:** Parallel Pathways  
 **Release type:** Major architectural and product release  
-**Status:** Proposed — Team Implementation Specification  
+**Status:** Released — Parallel Pathways 1.0.0  
 **Primary domains:** Shared Foundations, AI Engineering, Machine Learning  
+**Authoritative status:** `docs/releases/parallel-pathways/release-notes.md` and `STATUS_REPORT_PARALLEL_PATHWAYS.md`  
 **Product direction:** Independent learning pathways on shared platform infrastructure
 
 ---

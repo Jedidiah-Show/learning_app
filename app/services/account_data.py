@@ -19,21 +19,19 @@ The registry is verified against the schema by
 without deciding what happens to it.
 """
 
-from datetime import datetime, timezone
-
 from app import db
 from app.models import (
-    AIBackgroundJob, AdminAuditLog, CalendarEvent, CommunityPost,
-    CommunityReply, CoursePlan, CourseProject, Credential, GeminiUsageBucket,
-    LearningProject, LessonBookmark, LessonCompletion, LessonNote,
-    LessonTaskProgress, MLSpecializationCredential,
+    AIBackgroundJob, AdminAuditLog, AppConfigOverride, CalendarEvent,
+    CommunityPost, CommunityReply, CoursePlan, CourseProject, Credential,
+    GeminiUsageBucket, LearningProject, LessonBookmark, LessonCompletion,
+    LessonNote, LessonTaskProgress, MLSpecializationCredential,
     MLSpecializationLessonCompletion, MLSpecializationProject,
     MLProjectExperiment, PasswordResetToken, PathwayChangeRequest,
     PhoneVerificationCode, PracticeWorkspace, Progress, ProficiencyTest,
     QuizResult, ReviewItem, Submission, StudySession, SubjectCurriculum,
     SupportRequest, TutorConversation, User, UserConfig, UserProfilePhoto,
     UserSchedule, UserSkillProgress, UserSubject, UserSubjectConfig,
-    VideoProgress,
+    VideoProgress, utcnow,
 )
 
 
@@ -101,10 +99,6 @@ USER_OWNED_MODELS = tuple(
 )
 
 
-def _utcnow():
-    return datetime.now(timezone.utc)
-
-
 def purge_user_data(user_id, session=None):
     """Apply the reset policy for one learner.
 
@@ -124,7 +118,7 @@ def purge_user_data(user_id, session=None):
             model.user_id == user_id, model.deleted_at.is_(None),
         ).all()
         for row in rows:
-            row.deleted_at = _utcnow()
+            row.deleted_at = utcnow()
         if rows:
             removed[model.__tablename__] = len(rows)
     return {
@@ -148,7 +142,7 @@ def reset_profile_counters(user, session=None):
 def export_user_data(user_id, session=None):
     """Return everything the learner owns as a JSON-serialisable dict."""
     session = session or db.session
-    export = {'generated_at': _utcnow().isoformat()}
+    export = {'generated_at': utcnow().isoformat()}
     for model in USER_OWNED_MODELS:
         if model in RETAIN_ON_RESET:
             continue

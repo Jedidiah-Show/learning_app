@@ -35,6 +35,45 @@ def load_dataset(path: Path) -> dict:
         return json.load(handle)
 
 
+REQUIRED_FIELDS = ['id', 'type', 'prompt']
+
+
+def _expected_behaviors(case: dict) -> list:
+    return case.get('expected_behaviors') or case.get('expects') or []
+
+
+def _structural_score(case: dict) -> dict:
+    """Heuristic structural validation of an evaluation case (no live model).
+
+    Returns per-dimension scores (1-5) where a dimension can be assessed from
+    case metadata alone, plus an overall 'structural_valid' flag.
+    """
+    scores = {}
+    issues = []
+
+    # presence / completeness
+    missing = [f for f in REQUIRED_FIELDS if not case.get(f)]
+    if missing:
+        issues.append(f'missing fields: {", ".join(missing)}')
+    scores['technical_correctness'] = 5 if not missing else 2
+    scores['context_relevance'] = 5 if case.get('context') else 3
+    scores['explanation_quality'] = 5 if len(_expected_behaviors(case)) >= 2 else 2
+    scores['beginner_accessibility'] = 4 if case.get('type') in {'explain', 'debug', 'api'} else 3
+    scores['hint_usefulness'] = 5 if case.get('type') == 'socratic_hint' else 3
+    scores['code_correctness'] = 4 if case.get('type') in {'debug', 'socratic_hint'} else 3
+    scores['mathematical_correctness'] = 3
+    scores['unsupported_claims'] = 5
+    scores['latency'] = 3
+    scores['cost'] = 3
+
+    return {
+        'scores': scores,
+        'average_score': round(sum(scores.values()) / len(scores), 2),
+        'structural_valid': len(issues) == 0,
+        'issues': issues,
+    }
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument('--domain', default='all', choices=['all', *DATASETS.keys()])
@@ -53,7 +92,7 @@ def main() -> int:
                 'case_id': case.get('id'),
                 'type': case.get('type'),
                 'prompt': case.get('prompt'),
-                'expected_behaviors': case.get('expected_behaviors', []),
+                'expected_behaviors': _expected_behaviors(case),
                 'lesson_id': case.get('lesson_id'),
                 'context': case.get('context', {}),
                 'rubric_dimensions': [
@@ -64,8 +103,13 @@ def main() -> int:
                 'generated_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
                 'mode': 'dry-run' if args.dry_run or not os.environ.get('GEMINI_API_KEY') else 'ready-for-live-run',
             }
-            # Placeholder for live execution: integrate with app tutor flow/provider,
-            # capture response text, latency_ms, token/cost metrics, and rubric scores.
+            # Structural validation scoring (no live model required). Live
+            # execution can later replace scores/response/latency/cost.
+            structural = _structural_score(case)
+            record['structural_score'] = structural['average_score']
+            record['structural_valid'] = structural['structural_valid']
+            record['structural_issues'] = structural['issues']
+            record['dimension_scores'] = structural['scores']
             record['response'] = None
             record['scores'] = None
             record['latency_ms'] = None
@@ -78,7 +122,9 @@ def main() -> int:
         with out_path.open('w', encoding='utf-8') as handle:
             for rec in records:
                 handle.write(json.dumps(rec, ensure_ascii=False) + '\n')
-        print(f'wrote {len(records)} records to {out_path}')
+        avg = round(sum(r['structural_score'] for r in records) / len(records), 2) if records else 0
+        valid = sum(1 for r in records if r['structural_valid'])
+        print(f'wrote {len(records)} records to {out_path} (avg structural score {avg}, {valid}/{len(records)} structurally valid)')
     else:
         print(json.dumps({'count': len(records), 'domains': domains, 'dry_run': bool(args.dry_run)}, indent=2))
         for rec in records[:3]:

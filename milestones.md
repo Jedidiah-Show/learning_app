@@ -2,9 +2,10 @@
 ## Release Milestones and Delivery Acceptance
 
 **Release:** Parallel Pathways  
-**Status:** Proposed — Team Implementation Specification  
+**Status:** Released — Parallel Pathways 1.0.0  
 **Release priority:** Major  
-**Architecture:** Shared Foundations + Independent AI Engineering + Independent Machine Learning
+**Architecture:** Shared Foundations + Independent AI Engineering + Independent Machine Learning  
+**Authoritative status:** `docs/releases/parallel-pathways/release-notes.md` and `STATUS_REPORT_PARALLEL_PATHWAYS.md`
 
 ---
 
