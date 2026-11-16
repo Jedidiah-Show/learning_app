@@ -356,6 +356,14 @@ class UserSkillProgress(db.Model):
     )
     evidence_type = db.Column(db.String(32)) # "PROBLEM", "PROJECT", "LESSON", "LAB"
     evidence_id = db.Column(db.String(64)) # problem_id, project_id, or lesson_id
+    verification_status = db.Column(
+        db.String(24), nullable=False, server_default='UNVERIFIED'
+    )
+    verified_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    verified_by_user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id'), nullable=True
+    )
+    verification_note = db.Column(db.Text)
     updated_at = db.Column(
         db.DateTime(timezone=True), default=utcnow, onupdate=utcnow
     )
@@ -366,6 +374,38 @@ class UserSkillProgress(db.Model):
         ),
         db.Index('idx_skillprogress_user', 'user_id'),
         db.Index('idx_skillprogress_skill', 'skill_id'),
+    )
+
+
+class SkillVerification(db.Model):
+    """Historical record of every verification transition for a competency.
+
+    Preserved forever so evidence remains traceable across reassessment,
+    invalidation, and revocation (G7 acceptance criteria).
+    """
+    __tablename__ = 'skill_verification'
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    skill_id = db.Column(
+        db.String(64), db.ForeignKey('skill_node.id'), nullable=False
+    )
+    from_status = db.Column(db.String(24))
+    to_status = db.Column(db.String(24), nullable=False)
+    requested_by_user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id'), nullable=True
+    )
+    assessed_by_user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id'), nullable=True
+    )
+    note = db.Column(db.Text)
+    created_at = db.Column(
+        db.DateTime(timezone=True), default=utcnow, nullable=False
+    )
+    __table_args__ = (
+        db.Index('idx_skillverification_user_skill', 'user_id', 'skill_id'),
+        db.Index('idx_skillverification_created', 'created_at'),
     )
 
 

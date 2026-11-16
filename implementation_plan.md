@@ -3,9 +3,10 @@
 ## Technical Implementation Plan and Engineering Work Breakdown
 
 **Release:** Parallel Pathways  
-**Status:** Proposed — Engineering Team Specification  
+**Status:** Released — Parallel Pathways 1.0.0  
 **Architecture:** Shared Foundations + Independent AI Engineering + Independent Machine Learning  
-**Implementation approach:** Incremental, migration-first, test-driven
+**Implementation approach:** Incremental, migration-first, test-driven  
+**Authoritative status:** `docs/releases/parallel-pathways/release-notes.md` and `STATUS_REPORT_PARALLEL_PATHWAYS.md`
 
 ---
 
