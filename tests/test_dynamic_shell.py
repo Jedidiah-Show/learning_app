@@ -147,15 +147,27 @@ class DashboardCurriculumGridTests(DynamicShellTestCase):
         self.assertIn('ML pathway · Module 6', html)
 
     def test_ai_and_unset_destinations_keep_the_full_course(self):
-        for destination in ('ai', None):
+        for destination, expected in (
+            ('ai', '10 modules · 163 lessons'),
+            (None, '3 modules · 50 lessons'),
+        ):
             with self.subTest(destination=destination):
                 self._set_destination(destination)
                 html = self._page()
 
-                self.assertIn('13 modules · 213 lessons', html)
-                self.assertIn('LLM Fundamentals', html)
-                self.assertNotIn('ML pathway · Module 1', html)
-                self.assertNotIn('Shared foundation · Module 0', html)
+                # The shared foundation is never part of a specialization's
+                # grid; an undecided learner's grid is the foundation itself.
+                self.assertIn(expected, html)
+                grid = html.split('dashboard-curriculum', 1)[1]
+                if destination == 'ai':
+                    self.assertIn('LLM Fundamentals', grid)
+                    for title in FOUNDATION_TITLES:
+                        self.assertNotIn(title, grid)
+                else:
+                    for title in FOUNDATION_TITLES:
+                        self.assertIn(title, grid)
+                    self.assertNotIn('LLM Fundamentals', grid)
+                self.assertNotIn('ML pathway · Module 1', grid)
 
     def test_foundation_complete_ml_learner_is_never_pointed_at_an_ai_module(self):
         # Once the shared foundation is finished the AI course's own next step

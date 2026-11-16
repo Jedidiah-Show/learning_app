@@ -56,13 +56,15 @@ def _active_credential(user_id):
 @credentials_bp.route('/credential')
 @login_required
 def index():
-    # The AI Engineering credential stays gated on the full AI course: a
+    # The AI Engineering credential stays gated on the full AI journey: a
     # learner on the ML pathway must never claim it after the shared
     # foundation alone, so the scope is pinned rather than pathway-derived.
-    # The eligibility snapshot uses the AI course scope; the numbers shown to
-    # the learner use their own destination so ML learners never see AI course
-    # denominators (all 213 lessons and 13 modules) for their credential.
-    eligibility = course_progress(current_user, destination='ai')
+    # The eligibility snapshot uses the whole AI journey (foundation plus the
+    # AI specialization); the numbers shown to the learner use their own
+    # destination so ML learners never see AI course denominators for their
+    # own progress.
+    eligibility = course_progress(current_user, destination='ai-engineering',
+                                  include_journey=True)
     progress = course_progress(
         current_user, destination=destination_for(current_user),
     )
@@ -76,9 +78,10 @@ def index():
 @credentials_bp.route('/api/credentials/issue', methods=['POST'])
 @login_required
 def issue():
-    # Pinned to the full AI course, matching index(): the credential must not
-    # be issuable to an ML learner who finished only the shared foundation.
-    progress = course_progress(current_user, destination='ai')
+    # Pinned to the full AI journey, matching index(): the credential must
+    # not be issuable to an ML learner who finished only the shared foundation.
+    progress = course_progress(current_user, destination='ai-engineering',
+                               include_journey=True)
     if not progress['course_complete']:
         return jsonify({
             'error': (

@@ -67,7 +67,7 @@
   <p class="mt-2 max-w-3xl text-sm text-slate-600">Both courses start with the same shared foundations (modules 0–2), so nothing you learn is wasted. Pick the specialization the app should lead with — you can switch at any time, and your progress in each pathway is kept separately.</p>
   <div class="mt-4 grid gap-3 sm:grid-cols-2">
     {% for target, label, blurb in [
-      ('ai-engineering', 'AI Engineering', 'LLMs, RAG, agents, MCP, and production AI systems — the full AI course, modules 3–13.'),
+      ('ai-engineering', 'AI Engineering', 'LLMs, RAG, agents, MCP, and production AI systems — the AI Engineering specialization, modules 3–12.'),
       ('machine-learning', 'Machine Learning', 'Math foundations, classical ML, deep learning from scratch, PyTorch, deployment, and a capstone.'),
     ] %}
     <form method="POST" action="{{ url_for('auth.switch_pathway_route') }}" class="rounded-xl border border-slate-200 bg-slate-50 p-4 flex flex-col transition hover:border-indigo-300 hover:shadow-sm">
@@ -117,7 +117,7 @@
 </aside>
 {% endif %}
 {% if next_lesson %}<section class="dashboard-next-step mt-8 rounded-2xl border border-brand-100 bg-white p-6 shadow-sm transition hover:shadow-md">
-  <p class="text-xs font-bold uppercase tracking-wider text-gold-700">Continue your course · Lesson {{ next_lesson._ordinal }}</p>
+  <p class="text-xs font-bold uppercase tracking-wider text-gold-700">{{ 'Continue your foundation' if next_is_foundation else 'Continue your course' }} · Lesson {{ next_lesson._ordinal }}</p>
   <h3 class="mt-2 text-xl font-bold text-slate-900">{{ next_lesson.title }}</h3>
   <p class="mt-2 text-slate-600">Module {{ next_lesson._module.number }} · {{ next_lesson._module.title }}</p>
   <a class="mt-4 inline-flex rounded-lg bg-brand-900 px-4 py-2 font-semibold text-white transition hover:bg-brand-800" href="{{ url_for('main.lesson_detail', lesson_id=next_lesson.id) }}">Continue lesson →</a>
@@ -143,7 +143,7 @@
       {% if pathway_destination != 'machine-learning' %}<form method="POST" action="{{ url_for('auth.switch_pathway_route') }}" class="mt-2"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="pathway_id" value="machine-learning"><input type="hidden" name="next" value="{{ url_for('main.index') }}"><button type="submit" class="text-xs font-semibold text-violet-700 underline hover:text-violet-900">Make ML active →</button></form>{% endif %}
     </div>
   </div>
-  <p class="mt-3 text-xs text-slate-600">AI counts the full AI Engineering curriculum. ML counts the shared foundation plus ML specialization lessons.</p>
+  <p class="mt-3 text-xs text-slate-600">AI counts your AI Engineering specialization modules. ML counts your Machine Learning pathway modules. The shared foundation is tracked separately on the Foundations page.</p>
 </div>
 {% endif %}
 <section class="dashboard-curriculum mt-8"><div class="mb-4 flex flex-wrap items-end justify-between gap-3"><div><p class="text-xs font-bold uppercase tracking-wider text-gold-700">Your curriculum</p><h3 class="text-2xl font-bold text-slate-900">{{ progress.total_projects }} modules · {{ progress.total_lessons }} lessons</h3></div><div class="flex gap-4"><a href="{{ url_for('projects.project_page') }}" class="font-semibold text-brand-700">View learning plan →</a><a href="{{ url_for('main.progress') }}" class="font-semibold text-brand-700">View detailed progress →</a></div></div>

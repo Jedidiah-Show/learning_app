@@ -5,36 +5,25 @@
   <p class="text-xs font-bold uppercase tracking-widest text-gold-700">{{ header.kicker }}</p>
   <h2 class="mt-2 text-3xl font-bold text-slate-900">{{ header.title }}</h2>
   <p class="mt-2 max-w-3xl text-slate-600">{{ header.blurb }}</p>
-  <!-- Module filter -->
-  <div class="mt-2 rounded-xl border border-slate-200 bg-white p-3 flex flex-wrap items-center gap-2" role="group" aria-label="Filter modules by pathway">
-    <span class="text-xs font-semibold uppercase tracking-wide text-slate-500">Show</span>
-    <button id="filter-all" type="button" class="module-filter-btn" data-module-filter="all" aria-pressed="true">All modules</button>
-    <button id="filter-ai" type="button" class="module-filter-btn" data-module-filter="ai" aria-pressed="false">AI &amp; foundation</button>
-    <button id="filter-ml" type="button" class="module-filter-btn" data-module-filter="ml" aria-pressed="false">ML pathway</button>
-  </div>
-
   {% if pathway_destination not in ('ai-engineering', 'machine-learning') %}
-  {# Undecided: foundations first, choose any time — an open invitation, not a gate. #}
+  {# No specialization chosen: this catalog is the shared foundation. #}
   <div class="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-950">
-    <strong>You haven’t chosen a specialization yet.</strong> Start with the shared foundations — they count toward both pathways — and pick <strong>AI Engineering</strong> or <strong>Machine Learning</strong> whenever you’re ready. Switching is instant and free, any time.
+    <strong>You haven’t chosen a specialization yet.</strong> Start with the shared foundations — they unlock the AI Engineering specialization, and they count toward both pathways — and pick <strong>AI Engineering</strong> or <strong>Machine Learning</strong> whenever you’re ready. Switching is instant and free, any time.
     <span class="mt-2 flex flex-wrap gap-2">
       <form method="POST" action="{{ url_for('auth.switch_pathway_route') }}" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="pathway_id" value="ai-engineering"><input type="hidden" name="next" value="{{ url_for('main.lessons') }}"><button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">Choose AI Engineering</button></form>
       <form method="POST" action="{{ url_for('auth.switch_pathway_route') }}" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="pathway_id" value="machine-learning"><input type="hidden" name="next" value="{{ url_for('main.machine_learning_specialization') }}"><button type="submit" class="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-xs font-semibold text-violet-800 hover:bg-violet-100">Choose Machine Learning</button></form>
     </span>
   </div>
   {% elif pathway_destination == 'machine-learning' %}
-  {# The nav names this page "AI Pathway", but for an ML learner it lists the
-     whole course — say so plainly, and point at the pathway home. #}
+  {# The nav names this page "ML Pathway". #}
   <div class="mt-4 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
-    You are on the <strong>ML Pathway</strong>. This page lists your shared
-    foundation and your ML pathway lessons together; the AI Engineering
-    continuation belongs to the AI Pathway.
-    <a class="ml-1 font-semibold underline" href="{{ url_for('main.machine_learning_specialization') }}">Open your ML Pathway →</a>
+    You are on the <strong>ML Pathway</strong>. This page lists your Machine Learning pathway lessons; your module projects unlock each new module in sequence.
+    <a class="ml-1 font-semibold underline" href="{{ url_for('main.foundations') }}">The shared foundations live here →</a>
   </div>
   {% elif pathway_destination == 'ai-engineering' %}
   <div class="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-950">
-    You are on the <strong>AI Pathway</strong>. This page is your AI Engineering course: the shared foundations, then the AI specialization modules.
-    <a class="ml-1 font-semibold underline" href="{{ url_for('main.machine_learning_specialization') }}">Switch to the ML Pathway any time →</a>
+    You are on the <strong>AI Pathway</strong>. This page is your AI Engineering specialization — it opens once the Shared Foundations are complete.
+    <a class="ml-1 font-semibold underline" href="{{ url_for('main.foundations') }}">Finish the shared foundations →</a>
   </div>
   {% endif %}
   <div class="mt-4 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-900">
@@ -88,13 +77,13 @@
 </header>
 {% if ml_overview %}
 <section class="mb-7 rounded-2xl border {% if ml_overview.prerequisites_met %}border-violet-200 bg-violet-50{% else %}border-slate-200 bg-white{% endif %} p-5 shadow-sm">
-  <p class="text-xs font-bold uppercase tracking-wider {% if ml_overview.prerequisites_met %}text-violet-700{% else %}text-slate-500{% endif %}">Parallel pathway</p>
+  <p class="text-xs font-bold uppercase tracking-wider {% if ml_overview.prerequisites_met %}text-violet-700{% else %}text-slate-500{% endif %}">Also available: Machine Learning</p>
   <h3 class="mt-2 text-lg font-bold text-slate-900">{{ ml_overview.title }}</h3>
   {% if ml_overview.complete %}
   <p class="mt-2 text-sm text-violet-900">All {{ ml_overview.total_lessons }} lessons and {{ ml_overview.total_projects }} projects passed. Your credential is ready to claim.</p>
   <a class="mt-3 inline-flex rounded-lg bg-violet-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-600" href="{{ url_for('ml_specialization.credential_page') }}">Claim your credential →</a>
   {% else %}
-  <p class="mt-2 text-sm text-violet-900">{{ ml_overview.completed_lessons }} of {{ ml_overview.total_lessons }} lessons · {{ ml_overview.projects_completed }} of {{ ml_overview.total_projects }} projects complete. This course page shows the AI Engineering catalog only.</p>
+  <p class="mt-2 text-sm text-violet-900">{{ ml_overview.completed_lessons }} of {{ ml_overview.total_lessons }} lessons · {{ ml_overview.projects_completed }} of {{ ml_overview.total_projects }} projects complete. This page lists the AI Engineering specialization only.</p>
   {% if ml_overview.next_lesson_id %}
   <a class="mt-3 inline-flex rounded-lg bg-violet-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-600" href="{{ url_for('main.machine_learning_lesson', lesson_id=ml_overview.next_lesson_id) }}">Continue: {{ ml_overview.next_lesson_title }} →</a>
   {% endif %}
@@ -103,9 +92,8 @@
 </section>
 {% endif %}
 <div class="space-y-5" id="module-list">
-<p id="module-filter-empty" class="rounded-xl border border-dashed bg-white p-6 text-sm text-slate-600" hidden>No ML pathway modules appear in this catalog for your current plan. The shared foundation lives here, and the ML pathway is one click away on the ML Pathway page.</p>
 {% for module in modules %}
-  <section id="module-{{ module.id }}" class="scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white" data-module-source="{{ module.source or 'ai' }}">
+  <section id="module-{{ module.id }}" class="scroll-mt-24 overflow-hidden rounded-2xl border border-slate-200 bg-white">
     <div class="border-b border-slate-100 bg-slate-50 px-5 py-4">
       <p class="text-xs font-bold uppercase text-indigo-600">{% if module.badge %}{{ module.badge }}{% else %}Module {{ module.number }}{% endif %}</p>
       <h3 class="text-lg font-bold text-slate-900">{{ module.title }}</h3>
@@ -274,30 +262,5 @@ document.querySelector('[data-open-placement]')?.addEventListener('click', () =>
   placement.open = true;
   placement.scrollIntoView({behavior: 'smooth', block: 'start'});
 });
-</script>
-<script>
-// Module filter: AI + foundation vs the ML pathway. Purely presentational.
-(() => {
-  const buttons = document.querySelectorAll('[data-module-filter]');
-  const sections = document.querySelectorAll('[data-module-source]');
-  const empty = document.getElementById('module-filter-empty');
-  if (!buttons.length || !sections.length) return;
-  const apply = (mode) => {
-    let shown = 0;
-    sections.forEach((section) => {
-      const source = section.dataset.moduleSource || 'ai';
-      const visible = mode === 'all' || source === mode;
-      section.hidden = !visible;
-      if (visible) shown += 1;
-    });
-    buttons.forEach((button) => {
-      button.setAttribute('aria-pressed', String(button.dataset.moduleFilter === mode));
-    });
-    if (empty) empty.hidden = shown !== 0;
-  };
-  buttons.forEach((button) => {
-    button.addEventListener('click', () => apply(button.dataset.moduleFilter));
-  });
-})();
 </script>
 {% endblock %}

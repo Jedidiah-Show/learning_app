@@ -26,11 +26,11 @@ def lesson_progress():
     completed_projects = completed_project_modules(current_user)
     destination = destination_for(current_user)
     if is_ml(destination):
-        # Pathway completions live in their own tables; union them so the
-        # counts and the next-step pointer describe the whole course.
+        # ML completions live in their own tables only; the AI course never
+        # credits toward them.
         ml_lessons, ml_projects = ml_completion_state(current_user.id)
-        completed |= ml_lessons
-        completed_projects |= ml_projects
+        completed = ml_lessons
+        completed_projects = ml_projects
     return jsonify({
         'total_lessons': pathway_lesson_count(destination),
         'completed_lessons': len(completed),

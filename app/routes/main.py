@@ -19,8 +19,7 @@ from app.ml_pathway import ml_module_progress
 from app.ml_pathway import ml_pathway_pacing, record_pathway_review
 from app.learning import (
     completed_lesson_ids, completed_project_modules, course_progress,
-    lesson_is_available, monthly_milestone_progress,
-    pathway_dashboard_progress, user_track,
+    lesson_is_available, monthly_milestone_progress, user_track,
 )
 from app.course_data import SETUP_CHECKS, TRACKS, track_label
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
@@ -281,13 +280,15 @@ def index():
         g.pathway_destination = pathway_destination
         # An ML destination's curriculum is fully independent; AI Engineering
         # modules never appear in its grid, totals, or completion claims.
-        progress = pathway_dashboard_progress(
-            current_user, pathway_destination, progress,
-            completed=completed_ids, completed_projects=completed_project_ids,
-        )
+        # course_progress() is already scoped to the learner's own pathway,
+        # so no re-scoping is needed here.
         # Derived after the swap above: an ML learner's "continue" pointers must
         # come from their own curriculum, never from a module 03-12 lesson.
         next_lesson = get_lesson(progress['next_lesson_id']) if progress['next_lesson_id'] else None
+        from app.pathway_scope import FOUNDATION_COURSE_MODULE_IDS
+        next_is_foundation = bool(
+            next_lesson and next_lesson.get('module_id') in FOUNDATION_COURSE_MODULE_IDS
+        )
         next_project = progress['next_action'] if progress['next_action'] and progress['next_action']['type'] == 'project' else None
         next_module_id = None
         if progress.get('next_action'):
@@ -324,7 +325,11 @@ def index():
             ml_overview = None
         pathway_comparison = None
         if ml_overview:
-            ai_lessons = all_lessons()
+            from app.pathway_scope import ai_specialization_modules
+            ai_lessons = [
+                lesson for module in ai_specialization_modules()
+                for lesson in module['lessons']
+            ]
             pathway_comparison = {
                 'ai': {
                     'completed': sum(
@@ -344,6 +349,7 @@ def index():
         return render_template('dashboard.html', config=config, user=current_user,
                                course=curriculum(),
                                progress=progress, next_lesson=next_lesson,
+                               next_is_foundation=next_is_foundation,
                                next_project=next_project, setup_checks=setup_checks,
                                setup_states=setup_states, setup_done=setup_done,
                                onboarding_complete=onboarding_complete,
@@ -367,6 +373,7 @@ def index():
                                    'next_lesson_id': None, 'next_action': None,
                                },
                                next_lesson=None, next_project=None,
+                               next_is_foundation=False,
                                onboarding_complete=True, next_module_id=None,
                                due_reviews=0, ml_overview=None,
                                pathway_comparison=None,
@@ -1055,6 +1062,35 @@ def notifications_page():
     return render_template('notifications.html', items=items)
 
 
+@main_bp.route('/foundations')
+@login_required
+def foundations():
+    """The shared foundations — the common start of every pathway."""
+    from app.pathway_scope import (
+        destination_for, foundation_completion_state, pathway_modules,
+    )
+
+    destination = destination_for(current_user)
+    modules = pathway_modules('shared-foundations', user_id=current_user.id)
+    completed = {
+        row.lesson_id for row in LessonCompletion.query.filter_by(
+            user_id=current_user.id, completed=True
+        ).all()
+    }
+    for module in modules:
+        next_lesson = next(
+            (lesson for lesson in module['lessons']
+             if lesson['id'] not in completed),
+            module['lessons'][0] if module['lessons'] else None,
+        )
+        module['_next_lesson_id'] = next_lesson['id'] if next_lesson else None
+    state = foundation_completion_state(current_user.id)
+    return render_template(
+        'foundations.html', modules=modules, foundation=state,
+        pathway_destination=destination,
+    )
+
+
 @main_bp.route('/achievements')
 @login_required
 def achievements():
@@ -1090,10 +1126,6 @@ def gates():
             normalize_pathway_id(plan.pathway_destination)
             or 'shared-foundations'
         )
-    progress = pathway_dashboard_progress(
-        current_user, pathway_destination, progress,
-        completed=completed_ids, completed_projects=completed_project_ids,
-    )
     next_action = progress.get('next_action') or {}
     next_module_id = None
     if next_action.get('type') == 'project':

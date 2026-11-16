@@ -327,10 +327,28 @@ def project_page():
                 'url': url_for('ml_specialization.project', module_id=module['id']),
             })
 
+    foundation_progress = None
+    if not is_ml(destination):
+        from app.pathway_scope import foundation_course_modules, \
+            foundation_completion_state, module_entry
+        from app.learning import completed_lesson_ids
+        foundation_modules = foundation_course_modules()
+        foundation_progress = {
+            'modules': [
+                module_entry(m, completed_lesson_ids(current_user), completed)
+                for m in foundation_modules
+            ],
+            'completed_projects': sum(
+                1 for m in foundation_modules if m['id'] in completed
+            ),
+            'state': foundation_completion_state(current_user.id),
+        }
+
     return render_template(
         'projects.html', modules=course_modules(destination),
         completed_modules=completed,
         milestones=milestones, pace=pace,
+        foundation_progress=foundation_progress,
         # Required capstones belong to the AI continuation, so a
         # learner on the ML pathway is never asked to choose one.
         required_projects=() if is_ml(destination) else REQUIRED_PROJECTS,

@@ -1,9 +1,10 @@
 """Sequential lesson and module-project unlock rules.
 
-The unlock rules are pathway-aware: a learner who confirmed ``ml`` studies the
-shared foundation plus the ML pathway, so their pointer, availability checks,
-and progress totals never reach an AI-only module 03-12 lesson.  ``ai``,
-``undecided``, and unset destinations keep the full AI Engineering course.
+The unlock rules are pathway-aware.  Every learner starts on the shared
+foundation (modules 00–02); the AI Engineering specialization opens once it is
+complete; the Machine Learning pathway follows its own sequence from the start.
+Pointers, availability and progress totals never cross into a specialization
+the learner is not in.
 """
 
 from app.curriculum import all_modules
@@ -84,11 +85,12 @@ def next_course_action(user, completed=None, completed_projects=None,
     completed, completed_projects = _merged_completions(
         uq, destination, completed, completed_projects
     )
-    from app.pathway_scope import course_modules
-    # Scoped to the learner's own course: for an ML destination the pointer
-    # walks the foundation straight into the pathway and stops there.
+    from app.pathway_scope import journey_modules
+    # The pointer walks the learner's journey: foundations first, then the
+    # specialization; for ML that is the ML sequence, for foundations-only
+    # destinations the foundation.
     return _next_course_action(
-        completed, completed_projects, modules=course_modules(destination)
+        completed, completed_projects, modules=journey_modules(destination)
     )
 
 
@@ -105,7 +107,6 @@ def _next_course_action(completed, project_modules, modules=None):
                     'module_title': module['title'],
                     'module_number': module['number']}
     return None
-
 
 def lesson_is_available(user, lesson_id, completed=None, completed_projects=None):
     """Whether one catalog lesson may be opened by this learner.
@@ -147,6 +148,12 @@ def lesson_is_available(user, lesson_id, completed=None, completed_projects=None
         module['id'] for module in foundation_course_modules()
     }
     if ai_lesson is not None and ai_lesson['module_id'] not in foundation_ids:
+        # The AI specialization opens only after the shared foundation is
+        # complete — the foundation is its own pathway, and it is the gate.
+        from app.pathway_scope import foundation_completion_state
+        foundation_done = foundation_completion_state(uq).get('complete')
+        if not foundation_done:
+            return False
         if not has_ai:
             return False
     if ml_lesson is not None and not has_ml:
@@ -161,9 +168,31 @@ def lesson_is_available(user, lesson_id, completed=None, completed_projects=None
     )
     if lesson_id in completed:
         return True
-    return lesson_id == next_unlocked_lesson(
-        uq, completed=completed, completed_projects=completed_projects,
-        destination=destination,
+    # Foundation lessons are the shared start: they stay open in study order
+    # for every learner, forever.  Specialization lessons unlock in their own
+    # sequence — the AI specialization once the foundation is complete, the ML
+    # pathway within its own order.  Pointer equality within each sequence is
+    # the gate, so completed lessons always stay revisitable.
+    from app.pathway_scope import (
+        ai_specialization_modules, foundation_course_modules, ml_course_modules,
+    )
+    foundation_ids = {module['id'] for module in foundation_course_modules()}
+    if ai_lesson is not None:
+        module_id = ai_lesson['module_id']
+        pointer_modules = (
+            foundation_course_modules()
+            if module_id in foundation_ids
+            else ai_specialization_modules()
+        )
+    else:
+        pointer_modules = ml_course_modules()
+    action = _next_course_action(
+        completed, completed_projects, modules=pointer_modules
+    )
+    return (
+        action is not None
+        and action.get('type') == 'lesson'
+        and action.get('lesson_id') == lesson_id
     )
 
 
@@ -180,16 +209,19 @@ def module_project_is_available(user, module_id, completed=None):
 
 
 def course_progress(user, completed=None, completed_projects=None,
-                    destination=None):
+                    destination=None, include_journey=False):
     """Progress over the learner's own course, not a fixed catalog.
 
-    Defaults to the confirmed pathway, so every caller — the dashboard, the
-    lesson catalog, the projects page, the admin portal — reports the same
-    denominators without re-deriving the scope.  Callers that need the AI
-    course as authored (credential eligibility) pass ``destination='ai'``.
+    Defaults to the confirmed pathway's own modules (each pathway counts only
+    its modules), so every caller — the dashboard, the lesson catalog, the
+    projects page, the admin portal — reports the same denominators without
+    re-deriving the scope.  Pass ``include_journey=True`` to measure the full
+    journey instead (foundation plus the AI specialization) — used for the AI
+    credential, which certifies the whole course.  Callers that need exactly
+    this shape pass ``destination`` explicitly.
     """
     from app.pathway_scope import (
-        course_modules, is_ml, module_entry,
+        course_modules, is_ml, journey_modules, module_entry,
     )
 
     uq = _user_id(user)
@@ -201,12 +233,17 @@ def course_progress(user, completed=None, completed_projects=None,
     completed, completed_projects = _merged_completions(
         uq, destination, completed, completed_projects
     )
-    modules = course_modules(destination)
+    modules = (
+        journey_modules(destination) if include_journey
+        else course_modules(destination)
+    )
     lessons = [lesson for module in modules for lesson in module['lessons']]
     # Reuse these sets for all progress fields. Re-querying through
     # next_course_action() and next_unlocked_lesson() made dashboard renders
     # issue the same two completion queries three times.
-    action = _next_course_action(completed, completed_projects, modules=modules)
+    pointer_modules = journey_modules(destination)
+    action = _next_course_action(completed, completed_projects,
+                                 modules=pointer_modules)
     ai_lessons = [
         lesson for module in modules if module.get('source') != 'ml'
         for lesson in module['lessons']
@@ -232,67 +269,6 @@ def course_progress(user, completed=None, completed_projects=None,
 
 
 SHARED_FOUNDATION_MODULES = ('00', '01', '02')
-
-
-def pathway_dashboard_progress(user, destination, progress,
-                               completed=None, completed_projects=None):
-    """Re-scope the dashboard's course block onto a confirmed ML destination.
-
-    An ``ml`` learner's course is the ML pathway's six modules. AI Engineering
-    is a separate course, so none of its modules appear in the ML grid, totals,
-    or completion claims; every other destination keeps the full AI curriculum.
-
-    ``progress`` comes from :func:`course_progress` and is left untouched, so a
-    caller can still compare against the shared-course numbers.
-    """
-    from app.pathway_scope import is_ml
-
-    if not is_ml(destination):
-        return progress
-
-    from app.ml_pathway import machine_learning_pathway, ml_module_progress
-
-    uq = _user_id(user)
-    ml_progress = ml_module_progress(uq)
-    modules = []
-    for module in machine_learning_pathway()['modules']:
-        state = ml_progress.get(module['id'], {})
-        modules.append({
-            'id': module['id'], 'number': module['number'],
-            'title': module['title'],
-            'total_lessons': state.get('total_lessons', len(module['lessons'])),
-            'estimated_hours': module.get('estimated_hours', 0),
-            'project_completed': bool(state.get('project_completed')),
-            'outcome': module.get('summary') or module.get('title', ''),
-            'study_minutes': sum(
-                (lesson.get('study_minutes') or 0)
-                for lesson in module['lessons']
-            ),
-            'completed_lessons': state.get('completed_lessons', 0),
-            'badge': f'ML pathway · Module {module["number"]}',
-        })
-
-    pathway_complete = all(
-        module['completed_lessons'] == module['total_lessons']
-        and module['project_completed']
-        for module in modules
-    )
-    return {
-        **progress,
-        'total_lessons': sum(module['total_lessons'] for module in modules),
-        'completed_lessons': sum(
-            module['completed_lessons'] for module in modules
-        ),
-        'total_projects': len(modules),
-        'completed_projects': sum(
-            1 for module in modules if module['project_completed']
-        ),
-        'course_complete': pathway_complete,
-        # ML continuation is intentionally rendered by the ML pathway card.
-        'next_lesson_id': None,
-        'next_action': None,
-        'modules': modules,
-    }
 
 
 def monthly_milestone_progress(

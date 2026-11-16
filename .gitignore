@@ -25,3 +25,38 @@ backup*.dump
 
 # Local editor/tool settings
 .qoder/
+
+# Private keys & credential files (defence in depth — .env* above covers env files,
+# client_secret*.json covers Google OAuth client secrets)
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+*.asc
+id_rsa*
+id_ed25519*
+credentials*.json
+*credential*.json
+*service-account*.json
+*secret*.json
+token.json
+
+# Databases / dumps (beyond data/*.db above)
+*.sqlite
+*.sqlite3
+*.dump
+*.dump.sql
+*.sql.gz
+
+# Test / coverage output
+.coverage*
+htmlcov/
+coverage/
+.pytest_cache/
+
+# Root-level scratch: design iterations, screenshots, one-off artifacts
+/tmp/
+/leetcode.png
+/=

@@ -91,6 +91,9 @@
                         <span class="nav-icon" aria-hidden="true">🏠</span><span class="nav-label">Dashboard</span>
                     </a>
                     <div class="nav-section-label mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Learn</div>
+  <a aria-label="Foundations" title="Shared Foundations — the common start of both pathways" href="{{ url_for('main.foundations') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.foundations' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+    <span class="nav-icon" aria-hidden="true">🧱</span><span class="nav-label">Foundations</span>
+  </a>
   <!-- Both specialisations stay directly reachable; the active one leads. -->
   {% set ai_link %}
   <a aria-label="AI pathway" title="AI pathway — the app leads with whichever specialisation you activate" href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if pathway_destination == 'ai-engineering' or request.endpoint == 'main.lessons' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">

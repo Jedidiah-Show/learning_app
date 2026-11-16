@@ -46,7 +46,7 @@ def _completed_lesson_ids(user_id):
 
 
 # The six Shared Foundations modules in the standalone manifest (sf.00–sf.05)
-# and the three foundation modules inside the main AI course (00–02).
+# and the three foundation modules of the bundled manifest (00–02).
 FOUNDATION_MODULE_IDS = {'sf.00', 'sf.01', 'sf.02', 'sf.03', 'sf.04', 'sf.05'}
 FOUNDATION_COURSE_MODULE_IDS = ('00', '01', '02')
 
@@ -254,13 +254,17 @@ def pathway_modules(pathway_id, user_id=None):
     specialisation — is assembled by :func:`course_modules`.
     """
     canonical = normalize_pathway_id(pathway_id)
-    # Shared Foundations: only foundation modules (sf.00–sf.05)
+    # Shared Foundations: the common course every specialisation builds on.
+    # The legacy foundation modules (00–02) of the bundled manifest carry every
+    # lesson and project record, so the learner-facing foundations course is
+    # assembled from them; the sf.* authoring manifest remains available for
+    # evidence and passport grouping.
     if canonical == 'shared-foundations':
-        curriculum_path = Path(__file__).parent.parent / 'shared_foundations_curriculum.json'
-        with open(curriculum_path) as f:
-            curriculum = json.load(f)
-        foundation = curriculum['modules']
-        # Optionally annotate completion status if user_id given
+        foundation = [
+            {**module, 'source': 'foundations',
+             'badge': f'Foundations · Module {module["number"]}'}
+            for module in foundation_course_modules()
+        ]
         if user_id:
             completed_lessons = _completed_lesson_ids(user_id)
             for module in foundation:
@@ -271,16 +275,10 @@ def pathway_modules(pathway_id, user_id=None):
                 module['_total_lessons'] = len(lessons)
         return foundation
 
-    # AI Engineering: modules ai.03–ai.11 (foundation modules 00–02 are shared,
-    # not duplicated here; they live in Shared Foundations and are referenced
-    # via prerequisites)
+    # AI Engineering: modules 03–12 (foundation modules 00–02 live in Shared
+    # Foundations and are referenced via prerequisites).
     if canonical == 'ai-engineering':
-        ai_modules = [
-            m for m in all_modules()
-            if not m['id'].startswith(('00', '01', '02'))
-            and m['id'] != '12'
-            and not m['id'].startswith('mle.')
-        ]
+        ai_modules = ai_specialization_modules()
         if user_id:
             completed_lessons = _completed_lesson_ids(user_id)
             for module in ai_modules:
@@ -331,12 +329,38 @@ def pathway_modules(pathway_id, user_id=None):
         return modules
 
     if canonical is None:
-        # Undecided learners keep the full AI Engineering course exactly as
-        # authored (foundation + specialisation + capstone).
-        return list(all_modules())
+        # Undecided learners are foundations learners: the common course only.
+        modules = [
+            {**module, 'source': 'foundations',
+             'badge': f'Foundations · Module {module["number"]}'}
+            for module in foundation_course_modules()
+        ]
+        if user_id:
+            completed_lessons = _completed_lesson_ids(user_id)
+            for module in modules:
+                lessons = module.get('lessons') or []
+                module['_completed_lessons'] = sum(
+                    1 for lesson in lessons if lesson['id'] in completed_lessons
+                )
+                module['_total_lessons'] = len(lessons)
+        return modules
 
     # Unknown pathway_id — return empty list
     return []
+
+
+def ai_specialization_modules():
+    """The AI Engineering specialization modules (03–12) as authored.
+
+    The three shared-foundation modules (00–02) are deliberately not part of
+    this list: the foundation is its own pathway and both specializations draw
+    on it.  Module 12 (the capstone) belongs to the AI pathway.
+    """
+    return [
+        module for module in all_modules()
+        if not module['id'].startswith(('00', '01', '02'))
+        and not module['id'].startswith('mle.')
+    ]
 
 
 def foundation_course_modules():
@@ -353,20 +377,57 @@ def ml_course_modules():
 
 
 def course_modules(pathway_id, user_id=None):
-    """The complete course a learner with this destination studies.
+    """The catalogue every learner-facing surface renders for a pathway.
 
-    Unlike :func:`pathway_modules` (which returns a pathway's own authored
-    modules), this is the combined catalogue every learner-facing surface
-    renders:
+    Each pathway **counts only its own modules**:
 
-    * ``ml`` → shared foundation (00–02) + the ML pathway modules;
-    * everything else → the full AI Engineering course (13 modules).
+    * ``shared-foundations`` (and undecided) → the shared foundation only;
+    * ``ai-engineering`` → the AI specialization modules only;
+    * ``machine-learning`` → the ML pathway modules only.
+
+    The combined journey — foundation first, then the specialization — is
+    assembled by :func:`journey_modules`, e.g. for sequential pointers and
+    credential eligibility.
     """
-    if is_ml(pathway_id):
-        modules = foundation_course_modules() + ml_course_modules()
+    canonical = normalize_pathway_id(pathway_id)
+    if canonical == 'machine-learning':
+        modules = ml_course_modules()
+    elif canonical == 'ai-engineering':
+        modules = ai_specialization_modules()
+    elif canonical in ('shared-foundations', None):
+        modules = foundation_course_modules()
     else:
-        modules = list(all_modules())
+        modules = []
 
+    if user_id:
+        completed_lessons = _completed_lesson_ids(_user_id(user_id))
+        for module in modules:
+            lessons = module.get('lessons') or []
+            module['_completed_lessons'] = sum(
+                1 for lesson in lessons if lesson['id'] in completed_lessons
+            )
+            module['_total_lessons'] = len(lessons)
+    return modules
+
+
+def journey_modules(pathway_id, user_id=None):
+    """The full learning journey for a destination, in study order.
+
+    The foundation is always first; the specialization follows.  Used for
+    sequential pointers, credential eligibility and full-course checks —
+    never rendered as a single catalogue.
+    """
+    canonical = normalize_pathway_id(pathway_id)
+    if canonical == 'machine-learning':
+        # The ML pathway is independently sequenced from the start.
+        return ml_course_modules()
+    if canonical == 'shared-foundations':
+        modules = foundation_course_modules()
+    else:
+        # Unknown or undecided destinations walk the AI journey: foundations
+        # first, then the AI specialization (both specialisations draw on the
+        # same foundation).
+        modules = foundation_course_modules() + ai_specialization_modules()
     if user_id:
         completed_lessons = _completed_lesson_ids(_user_id(user_id))
         for module in modules:
@@ -385,8 +446,8 @@ def pathway_lessons(pathway_id, user_id=None):
     shared templates can render "Lesson N of M" and module captions without
     knowing which manifest a lesson came from.
 
-    ``shared-foundations`` lists the standalone foundation manifest; every
-    other destination lists the learner's combined course.
+    ``shared-foundations`` lists the foundations catalogue; every other
+    destination lists that pathway's own modules.
     """
     if normalize_pathway_id(pathway_id) == 'shared-foundations':
         modules = pathway_modules('shared-foundations', user_id=user_id)
@@ -667,16 +728,17 @@ def pathway_header(pathway_id, user_id=None):
         float(module.get('estimated_hours') or 0) for module in modules
     ), 1)
 
-    if pathway_id == 'shared-foundations':
+    if pathway_id == 'shared-foundations' or pathway_id is None:
         return {
-            'kicker': 'Shared foundation',
+            'kicker': 'Everyone starts here',
             'title': 'RUACH Shared Foundations',
             'blurb': (
-                'Core foundational knowledge common to all engineering pathways: '
-                'Programming Foundations, Python Foundations, Software Engineering '
-                'Foundations, Development Tools and Workflow, API and Backend '
-                'Foundations, and Data and Computational Thinking. Complete these '
-                'modules before or alongside either specialisation.'
+                'The common start of every RUACH specialization: Engineering '
+                'Foundations, Python for Engineers, and Backend Engineering. '
+                'Complete these modules and their projects to unlock the '
+                'AI Engineering specialization; the Machine Learning pathway '
+                'carries its own on-ramp and can be started now. Your choice '
+                'of specialization stays open — switch at any time.'
             ),
             'module_count': len(modules),
             'lesson_count': len(lessons),
@@ -684,14 +746,15 @@ def pathway_header(pathway_id, user_id=None):
         }
     elif pathway_id == 'ai-engineering':
         return {
-            'kicker': 'Complete curriculum',
-            'title': 'RUACH AI & ML Engineering',
+            'kicker': 'AI Engineering specialization',
+            'title': 'RUACH AI Engineering',
             'blurb': (
-                'A focused path from foundations to production systems. Start with '
-                'the beginner route if programming is new to you; it explains what '
-                'to expect and where to get support. Your pace is chosen separately '
-                'on the Projects page. Lessons unlock in order, and each module '
-                'project helps you apply what you learned.'
+                'The AI Engineering specialization: LLM foundations, application '
+                'engineering, RAG, agents, orchestration, MCP, production AI, '
+                'deployment, system design, and the capstone. Finish the Shared '
+                'Foundations first — they unlock this course. Your pace is chosen '
+                'separately on the Projects page. Lessons unlock in order, and '
+                'each module project helps you apply what you learned.'
             ),
             'module_count': len(modules),
             'lesson_count': len(lessons),
@@ -699,20 +762,18 @@ def pathway_header(pathway_id, user_id=None):
         }
     elif pathway_id == 'machine-learning':
         return {
-            'kicker': 'Shared foundation and your ML pathway',
-            'title': 'RUACH ML Engineering',
+            'kicker': 'Machine Learning specialization',
+            'title': 'RUACH Machine Learning Engineering',
             'blurb': (
-                'The shared foundation — Programming Foundations, Python Foundations, '
-                'Software Engineering Foundations, Development Tools and Workflow, '
-                'API and Backend Foundations, and Data and Computational Thinking — '
-                'then the 12 ML pathway modules: AI tools, math foundations, data '
-                'and problem formulation, classical ML, classification models, '
-                'unsupervised learning, deep learning from scratch, computer vision, '
-                'reproducible training, Neural Networks with PyTorch, deployment and '
-                'operations, and Capstone Integration. The AI Engineering continuation '
-                'belongs to the AI Engineering pathway and is not part of your course. '
-                'Lessons unlock in order, and each module project helps you apply what '
-                'you learned.'
+                'The 12-module Machine Learning specialization: AI tools, math '
+                'foundations, data and problem formulation, classical ML, '
+                'classification models, unsupervised learning, deep learning from '
+                'scratch, computer vision, reproducible training, Neural Networks '
+                'with PyTorch, deployment and operations, and Capstone '
+                'Integration. This pathway is sequenced from day one and does not '
+                'depend on the AI Engineering pathway — switch at any time. '
+                'Lessons unlock in order, and each module project helps you '
+                'apply what you learned.'
             ),
             'module_count': len(modules),
             'lesson_count': len(lessons),

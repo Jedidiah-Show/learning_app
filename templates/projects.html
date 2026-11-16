@@ -6,11 +6,34 @@
   <h2 class="mt-2 text-3xl font-bold">Project Studio</h2>
     {% set has_ml = pathway_destination == 'machine-learning' %}
   {% if has_ml %}
-  <p class="mt-2 max-w-3xl text-slate-600">Your projects are the shared foundation (modules 0-2) plus the six ML pathway modules. A module project completes only when it has a public repository, a verified passing automated-checks run, and a passing AI evaluation against every rubric criterion.</p>
+  <p class="mt-2 max-w-3xl text-slate-600">Your projects are the twelve Machine Learning pathway modules — your module projects unlock each new module in sequence. A module project completes only when it has a public repository, a verified passing automated-checks run, and a passing AI evaluation against every rubric criterion.</p>
   {% else %}
-  <p class="mt-2 max-w-3xl text-slate-600">Follow the milestones for your selected track. Choose one required capstone for your final module project and keep a separate personal project in your portfolio. A module project completes only when it has a public repository, a verified passing automated-checks run, and a passing AI evaluation against every rubric criterion.</p>
+  <p class="mt-2 max-w-3xl text-slate-600">Follow the milestones for your selected track — Stage 0 below covers the shared foundation; the AI specialization modules need their own finish line. Choose one required capstone for your final module project and keep a separate personal project in your portfolio. A module project completes only when it has a public repository, a verified passing automated-checks run, and a passing AI evaluation against every rubric criterion.</p>
   {% endif %}
 </header>
+{% if foundation_progress and not foundation_progress.state.complete %}
+<section class="mb-7 rounded-2xl border border-amber-200 bg-amber-50 p-5" aria-labelledby="foundation-stage-title">
+  <p class="text-xs font-bold uppercase tracking-wider text-amber-700">Stage 0 · Shared Foundations — finish these first</p>
+  <h3 id="foundation-stage-title" class="mt-1 text-xl font-bold text-amber-950">Three module projects unlock the AI specialization</h3>
+  <p class="mt-1 text-sm text-amber-900">Work through the lessons, then submit each module project. The foundation is shared by both specializations.</p>
+  <div class="mt-4 grid gap-3 sm:grid-cols-3">
+    {% for module in foundation_progress.modules %}
+    <div class="rounded-xl border border-amber-200 bg-white p-4" id="module-{{ module.id }}">
+      <p class="text-xs font-semibold uppercase text-slate-500">Module {{ module.number }}{% if module.project_completed %} · project ✓{% endif %}</p>
+      <h4 class="mt-1 font-bold text-slate-900">{{ module.title }}</h4>
+      <p class="mt-2 text-xs text-slate-600">{{ module.completed_lessons }} / {{ module.total_lessons }} lessons</p>
+      <div class="mt-2 h-1.5 rounded-full bg-slate-100"><div class="h-full rounded-full bg-amber-500" style="width:{{ (module.completed_lessons / (module.total_lessons if module.total_lessons else 1) * 100)|round }}%"></div></div>
+      <a class="mt-3 inline-flex rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-900 transition hover:bg-amber-100" href="{{ url_for('main.foundations') }}#module-{{ module.id }}">Open module →</a>
+    </div>
+    {% endfor %}
+  </div>
+</section>
+{% elif foundation_progress %}
+<section class="mb-7 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
+  <p class="text-xs font-bold uppercase tracking-wider text-emerald-700">Stage 0 · Shared Foundations ✓ complete</p>
+  <p class="mt-1 text-sm text-emerald-900">All foundation lessons and projects passed — the AI Engineering specialization is unlocked.</p>
+</section>
+{% endif %}
 {% if tracks %}
 <section class="mb-7 rounded-2xl border border-indigo-100 bg-indigo-50 p-5" aria-labelledby="track-title">
   <h3 id="track-title" class="text-xl font-bold">Choose your learning-plan track</h3>
@@ -30,7 +53,7 @@
    manifests, so an ML learner gets one weekly-hours plan instead. #}
 <section class="mb-7 rounded-2xl border border-violet-100 bg-violet-50 p-5" aria-labelledby="pace-title">
   <h3 id="pace-title" class="text-xl font-bold">Your {{ pace.label }} pathway pace</h3>
-  <p class="mt-1 text-sm text-slate-700">One plan across your whole course — the shared foundation and your ML pathway — derived from the <strong>{{ pace.weekly_hours }} hours a week</strong> you chose during onboarding.</p>
+  <p class="mt-1 text-sm text-slate-700">One plan derived from the <strong>{{ pace.weekly_hours }} hours a week</strong> you chose during onboarding. It covers the Machine Learning pathway only; the Shared Foundations progress is reported on the Foundations page.</p>
   <p class="mt-3 rounded-xl border border-violet-200 bg-white px-4 py-3 text-sm text-violet-900">About <strong>{{ pace.total_hours }} hours</strong> in total · roughly <strong>{{ pace.estimated_weeks }} weeks</strong> ({{ pace.estimated_months }} {{ 'month' if pace.estimated_months == 1 else 'months' }}) · {{ pace.review_hours }} review hours set aside.</p>
 </section>
 {% endif %}
