@@ -273,19 +273,11 @@ def index():
         onboarding_complete = bool(
             plan and plan.skill_level and plan.weekly_hours
         )
-        # Stage D: the confirmed pathway destination decides which section the
-        # dashboard leads with; unset keeps today's shared-foundation layout.
-        # Active logic reads from LearnerPathwayEnrollment; fallback to deprecated
-        # CoursePlan.pathway_destination column for rollback compatibility.
+        # The explicit destination (or None for undecided) is passed through
+        # as-is so the brand, nav ordering, and chooser read the same value
+        # on every page.
         pathway_destination = destination_for(current_user.id)
-        if pathway_destination is None and plan is not None:
-            from app.pathway_scope import normalize_pathway_id
-            pathway_destination = (
-                normalize_pathway_id(plan.pathway_destination)
-                or 'shared-foundations'
-            )
-        # Seed the per-request cache the nav shell reads, so rendering the
-        # dashboard does not fetch the same plan a second time.
+        # Seed the per-request value the nav shell reads for g caching.
         g.pathway_destination = pathway_destination
         # An ML destination's curriculum is fully independent; AI Engineering
         # modules never appear in its grid, totals, or completion claims.

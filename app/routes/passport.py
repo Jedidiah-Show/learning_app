@@ -77,8 +77,10 @@ def passport():
             passport_unavailable=True,
         ), 503
     skills = _skills()
+    from app.pathway_scope import destination_for
     return render_template(
         'passport.html', skills=skills, skills_by_domain=_skills_by_domain(skills),
+        active_pathway=destination_for(current_user),
     )
 
 

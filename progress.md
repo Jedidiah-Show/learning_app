@@ -63,3 +63,36 @@ provision or verify them by itself:
    This is a learner-product decision, so no access rule was changed here.
 4. Run the full Python and browser suites in CI before release. Focused tests
    above are green; no full-suite result is claimed in this pass.
+
+## 2026-11-16 — Foundations-first journey with instant pathway switching
+
+The app is now shaped around the foundations-first, freely-switchable model
+requested on 2026-11-16:
+
+- `destination_for()` prefers the learner's explicit specialisation
+  (`CoursePlan.pathway_destination`) over enrolment priority, so the whole
+  app (dashboard, lessons catalog, projects, Arena, tutor, leaderboard,
+  pacing, credentials, passport ordering) follows the learner's current
+  choice.
+- New `switch_pathway()` service + `POST /account/pathway-switch`: switching
+  is instant, needs no foundation completion and no admin approval, and only
+  moves focus — both specialisations keep their enrolment and every lesson,
+  project, and credential record.
+- Onboarding confirm/skip now enrol the learner in Shared Foundations (and
+  the confirmed specialisation when chosen); the fit check and onboarding
+  copy no longer call the choice permanent.
+- Nav gains a one-click AI/ML toggle; the dashboard gained a "Choose your
+  specialization" callout for undecided learners and "Make AI/ML active"
+  buttons in the progress comparison; lessons, projects, passport, brand
+  subtitle and nav ordering follow the active pathway.
+- The learner-facing pathway change request flow is removed; the admin
+  `/admin/pathway-requests` inbox is retained as a legacy inbox, and approving
+  a legacy row applies the same canonical switch (fixing the previous
+  enrolment-rename bug).
+- Tests: new `tests/test_pathway_switch.py` (13 cases); admin-portal pathway
+  tests rewritten for instant switching; dynamic-shell subtitle expectation
+  updated to the foundations-first brand.
+- Fixed the eight broken absolute-path symlinks under `starter_kits/machine_learning/`
+  (they pointed at the original author's machine and broke the ML report-contract
+  check `_dataset_sha256`); they are now relative symlinks, and
+  `test_ml_specialization.py` passes 18/18.

@@ -9,7 +9,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from sqlalchemy.exc import IntegrityError
 from app import db
 from app.models import (
-    CoursePlan, PasswordResetToken, PathwayChangeRequest, PhoneVerificationCode,
+    CoursePlan, PasswordResetToken, PhoneVerificationCode,
     User, UserProfilePhoto,
 )
 from app.phone import PhoneError, normalize_phone
@@ -568,11 +568,17 @@ def onboarding_pathway():
     if request.method == 'POST':
         action = request.form.get('action')
         if action == 'skip':
+            try:
+                from app.pathway_scope import enrol_learner
+                enrol_learner(current_user.id, 'shared-foundations')
+            except Exception:
+                current_app.logger.exception('Foundation enrolment skipped')
             session['_onboarding_done'] = True
             session.pop('_post_setup_next', None)
             flash(
-                'Pathway check skipped. Your dashboard keeps the shared '
-                'foundation in the lead until you choose a pathway.', 'info',
+                'Pathway check skipped. You are enrolled in the shared '
+                'foundations — choose AI Engineering or Machine Learning '
+                'any time; your choice is never final.', 'info',
             )
             next_page = request.form.get('next') or ''
             return (
@@ -595,6 +601,17 @@ def onboarding_pathway():
                     },
                 ), 200
             plan.pathway_destination = destination
+            try:
+                # The learner commits to foundations now and to a
+                # specialisation below; both enrolments are independent, and
+                # neither is final — the learner may switch at any time.
+                from app.pathway_scope import enrol_learner, normalize_pathway_id
+                enrol_learner(current_user.id, 'shared-foundations')
+                chosen = normalize_pathway_id(destination)
+                if chosen is not None:
+                    enrol_learner(current_user.id, chosen)
+            except Exception:
+                current_app.logger.exception('Pathway enrolment failed')
             db.session.commit()
             session['_onboarding_done'] = True
             session.pop('_post_setup_next', None)
@@ -635,18 +652,13 @@ def logout():
 def profile():
     from app.sms import password_reset_sms_configured
     from app.pathway_scope import (
-        destination_for, foundation_completion_state, normalize_pathway_id,
-        pathway_label,
+        destination_for, foundation_completion_state, pathway_label,
     )
 
-    # The destination is a hard lock, so this page only reads it: the card
-    # shows the confirmed pathway and, once the shared foundation is finished,
-    # offers the single change request an admin must resolve.
+    # The learner may switch their active pathway at any time; this page only
+    # reads the current choice. The card below offers the switch directly.
     destination = destination_for(current_user)
     foundation = foundation_completion_state(current_user.id)
-    request_row = PathwayChangeRequest.query.filter_by(
-        user_id=current_user.id
-    ).first()
 
     # Check for ML specialization credential
     from app.models import MLSpecializationCredential
@@ -662,71 +674,47 @@ def profile():
         pathway_destination=destination,
         pathway_label=pathway_label(destination),
         foundation=foundation,
-        pathway_change_request=request_row,
-        can_request_pathway_change=(
-            normalize_pathway_id(destination) in (
-                'ai-engineering', 'machine-learning'
-            )
-            and foundation['complete']
-            and request_row is None
-        ),
         ml_credential=credential,
     )
 
 
-@auth_bp.route('/account/pathway-change-request', methods=['POST'])
+@auth_bp.route('/account/pathway-switch', methods=['POST'])
 @login_required
-def request_pathway_change():
-    """Record the learner's single pathway-change request.
+def switch_pathway_route():
+    """Switch the learner's active specialisation — instantly, at any time.
 
-    The destination is permanent after onboarding; the one way back out is a
-    request, opened only once the shared foundation is complete, that an admin
-    reviews. The one-shot rule is enforced here (and by the table's unique
-    constraint) rather than only in the template.
+    Switching changes only which pathway the app leads with. The other
+    specialisation keeps its enrolment and every lesson, project, and
+    credential record, so the learner can move back and forth freely.
     """
-    from app.pathway_scope import (
-        destination_for, foundation_completion_state, is_ml,
-        normalize_pathway_id,
-    )
+    from app.pathway_scope import switch_pathway
 
-    destination = destination_for(current_user)
-    if normalize_pathway_id(destination) not in (
-        'ai-engineering', 'machine-learning'
-    ):
-        flash('Confirm a pathway during onboarding before requesting a change.', 'error')
-        return redirect(url_for('auth.profile'))
-    if PathwayChangeRequest.query.filter_by(user_id=current_user.id).first():
-        flash('You have already used your one-time pathway change request.', 'error')
-        return redirect(url_for('auth.profile'))
-    foundation = foundation_completion_state(current_user.id)
-    if not foundation['complete']:
-        flash(
-            'Finish the shared foundation (modules 0-2) before requesting a '
-            'pathway change.', 'error'
-        )
-        return redirect(url_for('auth.profile'))
-    requested = (request.form.get('requested_destination') or '').strip()
-    if requested not in ('ai', 'ml') or is_ml(requested) == is_ml(destination):
-        flash('Choose the other pathway to request a change.', 'error')
-        return redirect(url_for('auth.profile'))
-    reason = (request.form.get('reason') or '').strip()[:2000]
-    row = PathwayChangeRequest(
-        user_id=current_user.id,
-        requested_destination=requested,
-        reason=reason or None,
-    )
-    db.session.add(row)
+    target = (request.form.get('pathway_id') or '').strip()
     try:
-        db.session.commit()
+        canonical = switch_pathway(current_user.id, target)
+    except ValueError:
+        flash('Choose AI Engineering or Machine Learning to switch pathways.', 'error')
+        return redirect(url_for('auth.profile'))
     except IntegrityError:
         db.session.rollback()
-        flash('You have already used your one-time pathway change request.', 'error')
+        current_app.logger.exception('Pathway switch failed for user %s',
+                                     current_user.id)
+        flash('Your pathway could not be switched right now. Please retry.', 'error')
         return redirect(url_for('auth.profile'))
+    labels = {'ai-engineering': 'AI Engineering', 'machine-learning': 'Machine Learning'}
+    other = 'machine-learning' if canonical == 'ai-engineering' else 'ai-engineering'
     flash(
-        'Your pathway change request was sent. An admin will review it; your '
-        'current pathway stays in place until then.', 'info'
+        f'Switched to {labels[canonical]}. The whole app now leads with it; '
+        f'your {labels[other]} progress is untouched, and you can switch back '
+        'any time.',
+        'info',
     )
-    return redirect(url_for('auth.profile'))
+    next_page = request.form.get('next') or ''
+    return (
+        redirect(next_page)
+        if safe_local_redirect(next_page)
+        else redirect(url_for('main.index'))
+    )
 
 
 @auth_bp.route('/account/verify-phone', methods=['POST'])

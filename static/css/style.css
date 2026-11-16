@@ -253,6 +253,15 @@ html[data-theme="dark"] .app-brand .text-slate-500 { color:var(--app-muted); }
 .top-right-cluster .top-right-profile { padding:.25rem .5rem; font-size:.875rem; }
 .top-right-cluster .top-right-profile .nav-label { display:none; }
 
+/* Pathway switch: one-tap focus toggle in the top-right cluster. */
+.pathway-switch .pathway-switch-btn { padding:5px 12px;border-radius:9999px;border:0;background:transparent;color:var(--app-muted,#64748b);font-size:11px;font-weight:800;letter-spacing:.06em;cursor:pointer;transition:background .15s ease,color .15s ease,box-shadow .15s ease; }
+.pathway-switch .pathway-switch-btn:hover { color:var(--app-text,#1e293b); }
+.pathway-switch .pathway-switch-btn.is-active { background:#4f46e5;color:#fff;box-shadow:0 1px 3px rgba(79,70,229,.4); }
+.pathway-switch .pathway-switch-btn:focus-visible { outline:2px solid #6366f1;outline-offset:2px; }
+@media (max-width:640px) { .pathway-switch { display:none; } }
+html[data-theme="dark"] .pathway-switch { background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.09); }
+html[data-theme="dark"] .pathway-switch .pathway-switch-btn.is-active { background:#6366f1;color:#0b0623; }
+
 /* Arena editor container — dark background to match the VS Code Dark+
    editor theme so light text stays readable on both site themes. */
 #arena-editor {

@@ -6,6 +6,15 @@
 
 A Flask learning app for the RUACH engineering course: 13 modules and 213 bundled lessons mapped to selectable AI engineering plans. Learners can choose a 12-month steady, 10-month standard, or five-month accelerated pace; experience level is guided separately through beginner and experienced routes. The curriculum covers multimodal model inputs, RAG, agent workflows, versioned MCP, security, evaluation, data governance, and deployment. Learners choose one of four project briefs and can justify omitting optional architecture components; the plan is a guide, not a completion guarantee. The app also tracks a separate portfolio project, module work, quizzes, progress, study schedules, and optional Google Calendar sync. Historical subject-based progress and weekly projects remain stored as legacy records and are not mixed into the new course.
 
+## Foundations first, switchable AI/ML pathways
+
+Every learner starts with the **shared foundations** (modules 0–2): programming, Python, software engineering, tooling, APIs and backends, and data/computational thinking. From there the learner specialises in one of two independent tracks:
+
+- **AI Engineering** — LLM application engineering: RAG, agents, MCP, production AI, and system design (modules 3–12).
+- **Machine Learning** — the 12-module ML pathway: AI tools, math, data and classical ML, deep learning, PyTorch, deployment, and a capstone.
+
+The specialisation is chosen during onboarding (a pathway-fit check proposes, the learner confirms or overrides) or at any point afterwards — it is never locked in. Learners can **switch their active pathway at any time**, from the top-bar AI/ML toggle, the dashboard comparison card, the lessons catalog banner, or their profile. Switching only changes which pathway the app **leads with** (dashboard, lessons catalog, projects, Practice Arena, tutor persona, leaderboard, pacing, credentials): the other pathway keeps its enrolment and every lesson, project, and credential, so nothing is ever deleted, locked, or mixed in. Foundation progress counts toward both. `CoursePlan.pathway_destination` is the explicit focus the app reads; `LearningPathway`/`LearnerPathwayEnrollment` record what the learner has opted into, and legacy `pathway_change_request` rows (from the pre-switching admin-approval flow) remain resolvable in the admin portal.
+
 ## Run locally
 
 ```bash

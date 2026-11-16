@@ -7,8 +7,8 @@
    shared next-action cards; every other destination keeps today's order. The
    shared foundation (hero, cards, curriculum grid) is never split or
    reordered — only this section moves. #}
-{# Determine if learner is enrolled in ML pathway #}
-{% set has_ml = 'machine-learning' in pathway_ids %}
+{# Lead with the machine-learning experience only when it is the active pathway focus. #}
+{% set has_ml = pathway_destination == 'machine-learning' %}
 {% set ml_leads = has_ml and ml_overview %}
 {# The hero leads with pathway milestones only once the pathway is actually
    open; while it is locked the shared foundation remains the next step. #}
@@ -58,6 +58,31 @@
   <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/15"><div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-gold-400" style="width:{% if ml_hero %}{{ (ml_overview.completed_lessons / (ml_overview.total_lessons if ml_overview.total_lessons > 0 else 1) * 100)|round(1) }}{% else %}{{ (progress.completed_lessons / (progress.total_lessons if progress.total_lessons > 0 else 1) * 100)|round(1) }}{% endif %}%"></div></div>
 </section>
 {% if ml_leads and ml_card %}{{ ml_card }}{% endif %}
+{# Foundations-first: until the learner picks a specialisation, invite the
+   choice here — it is free, instant, and reversible at any time. #}
+{% if pathway_destination not in ('ai-engineering', 'machine-learning') %}
+<section class="mt-8 rounded-2xl border border-indigo-200 bg-white p-6 shadow-sm" aria-labelledby="choose-pathway-title">
+  <p class="text-xs font-bold uppercase tracking-wider text-indigo-600">Choose your specialization</p>
+  <h3 id="choose-pathway-title" class="mt-2 text-xl font-bold text-slate-900">Foundations come first — then pick your path</h3>
+  <p class="mt-2 max-w-3xl text-sm text-slate-600">Both courses start with the same shared foundations (modules 0–2), so nothing you learn is wasted. Pick the specialization the app should lead with — you can switch at any time, and your progress in each pathway is kept separately.</p>
+  <div class="mt-4 grid gap-3 sm:grid-cols-2">
+    {% for target, label, blurb in [
+      ('ai-engineering', 'AI Engineering', 'LLMs, RAG, agents, MCP, and production AI systems — the full AI course, modules 3–13.'),
+      ('machine-learning', 'Machine Learning', 'Math foundations, classical ML, deep learning from scratch, PyTorch, deployment, and a capstone.'),
+    ] %}
+    <form method="POST" action="{{ url_for('auth.switch_pathway_route') }}" class="rounded-xl border border-slate-200 bg-slate-50 p-4 flex flex-col transition hover:border-indigo-300 hover:shadow-sm">
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+      <input type="hidden" name="pathway_id" value="{{ target }}">
+      <input type="hidden" name="next" value="{{ url_for('main.index') }}">
+      <p class="text-sm font-bold text-slate-900">{{ label }}</p>
+      <p class="mt-1 text-xs text-slate-600">{{ blurb }}</p>
+      <button type="submit" class="mt-3 self-start rounded-lg bg-indigo-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-indigo-700">Start with {{ label }} →</button>
+    </form>
+    {% endfor %}
+  </div>
+  <p class="mt-3 text-xs text-slate-500">Not sure yet? Keep going with the foundations and decide later — the choice stays open forever.</p>
+</section>
+{% endif %}
 {% if not progress_error and progress.completed_lessons == 0 and not progress.course_complete %}
 <section class="dashboard-getting-started mt-8 rounded-2xl border border-indigo-100 bg-indigo-50 p-6 shadow-sm">
     <p class="text-xs font-bold uppercase tracking-wider text-indigo-700">Getting started</p>
@@ -103,17 +128,19 @@
   <p class="text-xs font-bold uppercase tracking-wider text-indigo-600">Progress comparison</p>
   <h3 class="mt-2 text-sm font-semibold text-slate-900">AI vs ML Pathway</h3>
   <div class="grid gap-2">
-    <div class="p-3 rounded-xl border border-indigo-200 bg-indigo-50">
-      <p class="font-semibold text-indigo-600">AI Engineering</p>
+    <div class="p-3 rounded-xl border {% if pathway_destination == 'ai-engineering' %}border-indigo-400 ring-1 ring-indigo-300{% else %}border-indigo-200{% endif %} bg-indigo-50">
+      <p class="font-semibold text-indigo-600">AI Engineering{% if pathway_destination == 'ai-engineering' %} · active{% endif %}</p>
       <p class="mt-1 text-lg font-bold" id="ai-lessons-completed">{{ pathway_comparison.ai.completed }}</p>
       <div class="mt-2 h-2 rounded-full bg-indigo-100"><div class="h-full rounded-full bg-indigo-600" style="width:{{ (pathway_comparison.ai.completed / pathway_comparison.ai.total * 100)|round(1) }}%"></div></div>
       <p class="text-xs text-indigo-500">{{ pathway_comparison.ai.completed }} of {{ pathway_comparison.ai.total }} lessons · {{ (pathway_comparison.ai.completed / pathway_comparison.ai.total * 100)|round(1) }}% complete</p>
+      {% if pathway_destination != 'ai-engineering' %}<form method="POST" action="{{ url_for('auth.switch_pathway_route') }}" class="mt-2"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="pathway_id" value="ai-engineering"><input type="hidden" name="next" value="{{ url_for('main.index') }}"><button type="submit" class="text-xs font-semibold text-indigo-700 underline hover:text-indigo-900">Make AI active →</button></form>{% endif %}
     </div>
-    <div class="p-3 rounded-xl border border-violet-200 bg-violet-50">
-      <p class="font-semibold text-violet-600">ML Engineering</p>
+    <div class="p-3 rounded-xl border {% if pathway_destination == 'machine-learning' %}border-violet-400 ring-1 ring-violet-300{% else %}border-violet-200{% endif %} bg-violet-50">
+      <p class="font-semibold text-violet-600">ML Engineering{% if pathway_destination == 'machine-learning' %} · active{% endif %}</p>
       <p class="mt-1 text-lg font-bold" id="ml-lessons-completed">{{ pathway_comparison.ml.completed }}</p>
       <div class="mt-2 h-2 rounded-full bg-violet-100"><div class="h-full rounded-full bg-violet-600" style="width:{{ (pathway_comparison.ml.completed / pathway_comparison.ml.total * 100)|round(1) }}%"></div></div>
       <p class="text-xs text-violet-500">{{ pathway_comparison.ml.completed }} of {{ pathway_comparison.ml.total }} lessons · {{ (pathway_comparison.ml.completed / pathway_comparison.ml.total * 100)|round(1) }}% complete</p>
+      {% if pathway_destination != 'machine-learning' %}<form method="POST" action="{{ url_for('auth.switch_pathway_route') }}" class="mt-2"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="pathway_id" value="machine-learning"><input type="hidden" name="next" value="{{ url_for('main.index') }}"><button type="submit" class="text-xs font-semibold text-violet-700 underline hover:text-violet-900">Make ML active →</button></form>{% endif %}
     </div>
   </div>
   <p class="mt-3 text-xs text-slate-600">AI counts the full AI Engineering curriculum. ML counts the shared foundation plus ML specialization lessons.</p>

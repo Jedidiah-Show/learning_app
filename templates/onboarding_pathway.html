@@ -4,17 +4,17 @@
 <header class="mb-6 max-w-2xl">
   <p class="text-xs font-bold uppercase tracking-widest text-indigo-600">First-run setup · Step 2 of 2</p>
   <h2 class="mt-2 text-3xl font-bold">Which pathway fits you?</h2>
-  <p class="mt-2 text-slate-600">Five short scenarios about what you want to build — no technical knowledge needed. The course proposes a pathway from your answers; you decide whether to follow it. Both pathways share the same foundations, so nothing is locked in.</p>
+  <p class="mt-2 text-slate-600">Five short scenarios about what you want to build — no technical knowledge needed. The course proposes a pathway from your answers; you decide whether to follow it. Both pathways share the same foundations, so nothing is locked in: you can switch your active pathway at any time, and both keep your progress separately.</p>
 </header>
 {% if result %}
 <section class="max-w-2xl rounded-2xl border border-violet-200 bg-violet-50 p-6">
   <p class="text-xs font-bold uppercase tracking-wider text-violet-700">Your proposal</p>
   {% if result.proposal == 'undecided' %}
   <h3 class="mt-2 text-xl font-bold text-slate-900">Your answers fit both pathways</h3>
-  <p class="mt-2 text-sm text-slate-700">You scored {{ result.ai_score }} toward AI Engineering and {{ result.ml_score }} toward Machine Learning Engineering — too close to call. Pick the one your dashboard should lead with. This choice is permanent after you confirm; once you have finished the shared foundation you may request a single change, which an admin reviews.</p>
+  <p class="mt-2 text-sm text-slate-700">You scored {{ result.ai_score }} toward AI Engineering and {{ result.ml_score }} toward Machine Learning Engineering — too close to call. Pick the one your dashboard should lead with, or decide later — you can switch between pathways at any time, and your progress in each is kept separately.</p>
   {% else %}
   <h3 class="mt-2 text-xl font-bold text-slate-900">We propose: {{ destinations[result.proposal] }}</h3>
-  <p class="mt-2 text-sm text-slate-700">You scored {{ result.ai_score }} toward AI Engineering and {{ result.ml_score }} toward Machine Learning Engineering. Follow the proposal or choose a different destination — nothing is written until you confirm. This choice is permanent after you confirm; once you have finished the shared foundation you may request a single change, which an admin reviews.</p>
+  <p class="mt-2 text-sm text-slate-700">You scored {{ result.ai_score }} toward AI Engineering and {{ result.ml_score }} toward Machine Learning Engineering. Follow the proposal or choose a different destination — nothing is written until you confirm, and you can switch your active pathway at any time afterwards. Your progress in each pathway is kept separately.</p>
   {% endif %}
   <form method="post" action="{{ url_for('auth.onboarding_pathway') }}" class="mt-4">
     <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
@@ -53,6 +53,6 @@
     <button class="rounded-lg border border-slate-300 px-4 py-2 font-semibold text-slate-700" type="submit" name="action" value="skip" formnovalidate>Skip for now</button>
   </div>
 </form>
-<p class="mt-4 text-sm text-slate-500">Skipping keeps your destination unset — your dashboard leads with the shared AI Engineering foundation, and you can take this check any time.</p>
+<p class="mt-4 text-sm text-slate-500">Skipping keeps your destination unset — your trip starts with the shared foundations, and you can choose AI Engineering or Machine Learning at any time (dashboard, profile, or the switch in the top bar). Both pathways stay open forever and keep your progress separately.</p>
 {% endif %}
 {% endblock %}

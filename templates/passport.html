@@ -21,11 +21,14 @@
       'ai-engineering': 'AI Engineering',
       'machine-learning': 'Machine Learning'
     } %}
-    {% for domain in ['shared-foundations', 'ai-engineering', 'machine-learning'] %}
+    {# Foundations lead; the learner's active pathway follows, then the other. #}
+    {% set active = active_pathway if active_pathway in ('ai-engineering', 'machine-learning') else 'ai-engineering' %}
+    {% set other = 'machine-learning' if active == 'ai-engineering' else 'ai-engineering' %}
+    {% for domain in ['shared-foundations', active, other] %}
       {% set domain_skills = (skills_by_domain.get(domain) if skills_by_domain else []) or [] %}
       <section class="mt-8" aria-labelledby="passport-{{ domain }}">
         <div class="flex items-center justify-between gap-3">
-          <h2 id="passport-{{ domain }}" class="text-xl font-bold">{{ domain_labels.get(domain, domain|title) }}</h2>
+          <h2 id="passport-{{ domain }}" class="text-xl font-bold">{{ domain_labels.get(domain, domain|title) }}{% if domain == active %}<span class="ml-2 align-middle rounded-full bg-indigo-600 px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">Your pathway</span>{% endif %}</h2>
           <span class="text-sm text-slate-500">{{ domain_skills|length }} competencies</span>
         </div>
         <div class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

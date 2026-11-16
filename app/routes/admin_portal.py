@@ -1214,26 +1214,20 @@ def pathway_change_requests():
 @admin_portal_bp.route('/pathway-requests/<int:request_id>', methods=['GET', 'POST'])
 @admin_required
 def pathway_change_request_detail(request_id):
-    """Resolve a learner's one-time pathway change request.
+    """Resolve a legacy pathway change request.
 
-    The request is the learner's only route out of a confirmed pathway and the
-    table allows one row per learner, so resolution is terminal: once approved
-    or declined it cannot be reopened, and a second POST is refused rather than
-    silently re-resolved. Approving writes the destination that the rest of the
-    app already reads from ``CoursePlan.pathway_destination``; declining leaves
-    it untouched. Both record who decided, when, and the note the learner sees.
+    Learners now switch pathways instantly from the nav, dashboard, or profile,
+    so no new requests are created. This inbox only holds requests opened
+    before instant switching shipped, and resolution stays terminal: approving
+    applies the same switch the learner could have made themselves; declining
+    leaves the pathway untouched. Both record who decided, when, and the note
+    the learner sees.
     """
     from app.pathway_scope import pathway_label
 
     report = db.get_or_404(PathwayChangeRequest, request_id)
     plan = CoursePlan.query.filter_by(user_id=report.user_id).first()
     current_destination = plan.pathway_destination if plan else None
-
-    # Also sync with the learner's pathway enrolment
-    from app.models import LearnerPathwayEnrollment
-    enrolment = LearnerPathwayEnrollment.query.filter_by(
-        learner_id=report.user_id, pathway_id=current_destination
-    ).first() if current_destination else None
 
     if request.method == 'POST':
         action = (request.form.get('action') or '').strip()
@@ -1257,22 +1251,15 @@ def pathway_change_request_detail(request_id):
             report.resolved_at = _utcnow()
             report.resolution_note = note or None
             if action == 'approve':
-                # Write to deprecated CoursePlan.pathway_destination for rollback
-                plan.pathway_destination = report.requested_destination
-                plan.updated_at = _utcnow()
-                # Also sync with the learner's active enrolment
-                if enrolment:
-                    enrolment.pathway_id = report.requested_destination
-                    enrolment.status = 'ENROLLED'
-                elif plan is not None:
-                    # Create enrolment if one doesn't exist
-                    new_enrolment = LearnerPathwayEnrollment(
-                        learner_id=report.user_id,
-                        pathway_id=report.requested_destination,
-                        status='ENROLLED'
-                    )
-                    from app import db as _db
-                    _db.session.add(new_enrolment)
+                from app.pathway_scope import switch_pathway
+                try:
+                    switch_pathway(report.user_id, report.requested_destination)
+                except ValueError:
+                    flash('Unknown pathway requested on this report.', 'error')
+                    return redirect(url_for(
+                        'admin_portal.pathway_change_request_detail',
+                        request_id=report.id,
+                    ))
                 report.status = 'approved'
                 report.resolved_destination = report.requested_destination
                 _record_admin_action(

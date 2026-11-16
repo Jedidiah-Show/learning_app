@@ -12,8 +12,17 @@
     <button id="filter-ai" type="button" class="module-filter-btn" data-module-filter="ai" aria-pressed="false">AI &amp; foundation</button>
     <button id="filter-ml" type="button" class="module-filter-btn" data-module-filter="ml" aria-pressed="false">ML pathway</button>
   </div>
-    {% set has_ml = 'machine-learning' in pathway_ids %}
-  {% if has_ml %}
+
+  {% if pathway_destination not in ('ai-engineering', 'machine-learning') %}
+  {# Undecided: foundations first, choose any time — an open invitation, not a gate. #}
+  <div class="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-950">
+    <strong>You haven’t chosen a specialization yet.</strong> Start with the shared foundations — they count toward both pathways — and pick <strong>AI Engineering</strong> or <strong>Machine Learning</strong> whenever you’re ready. Switching is instant and free, any time.
+    <span class="mt-2 flex flex-wrap gap-2">
+      <form method="POST" action="{{ url_for('auth.switch_pathway_route') }}" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="pathway_id" value="ai-engineering"><input type="hidden" name="next" value="{{ url_for('main.lessons') }}"><button type="submit" class="rounded-lg bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700">Choose AI Engineering</button></form>
+      <form method="POST" action="{{ url_for('auth.switch_pathway_route') }}" class="inline"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="pathway_id" value="machine-learning"><input type="hidden" name="next" value="{{ url_for('main.machine_learning_specialization') }}"><button type="submit" class="rounded-lg border border-violet-300 bg-white px-3 py-1.5 text-xs font-semibold text-violet-800 hover:bg-violet-100">Choose Machine Learning</button></form>
+    </span>
+  </div>
+  {% elif pathway_destination == 'machine-learning' %}
   {# The nav names this page "AI Pathway", but for an ML learner it lists the
      whole course — say so plainly, and point at the pathway home. #}
   <div class="mt-4 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-900">
@@ -21,6 +30,11 @@
     foundation and your ML pathway lessons together; the AI Engineering
     continuation belongs to the AI Pathway.
     <a class="ml-1 font-semibold underline" href="{{ url_for('main.machine_learning_specialization') }}">Open your ML Pathway →</a>
+  </div>
+  {% elif pathway_destination == 'ai-engineering' %}
+  <div class="mt-4 rounded-xl border border-indigo-200 bg-indigo-50 px-4 py-3 text-sm text-indigo-950">
+    You are on the <strong>AI Pathway</strong>. This page is your AI Engineering course: the shared foundations, then the AI specialization modules.
+    <a class="ml-1 font-semibold underline" href="{{ url_for('main.machine_learning_specialization') }}">Switch to the ML Pathway any time →</a>
   </div>
   {% endif %}
   <div class="mt-4 rounded-xl border border-brand-100 bg-brand-50 px-4 py-3 text-sm text-brand-900">

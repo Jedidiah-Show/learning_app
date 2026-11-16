@@ -151,14 +151,15 @@ def is_pathway(user_id, pathway_id):
 
 
 def destination_for(user_id=None):
-    """The learner's confirmed destination as an explicit pathway id.
+    """The learner's chosen specialization as an explicit pathway id.
 
-    Active logic prefers pathway enrolments; when a learner has none (legacy
-    accounts or onboarding before enrolment) the deprecated
-    ``CoursePlan.pathway_destination`` column is used for rollback
-    compatibility and normalised onto the same identifiers.  Returns
-    ``'ai-engineering'``, ``'machine-learning'``, ``'shared-foundations'``, or
-    ``None`` (undecided / full AI course).
+    The confirmed choice on ``CoursePlan.pathway_destination`` is the single
+    source of truth for which pathway the whole app leads with; the learner
+    may change it at any time (see :func:`switch_pathway`).  When the column
+    is unset, pathway enrolments decide — one active specialisation enrolment
+    wins, and two fall back to the historical AI Engineering priority.
+    Returns ``'ai-engineering'``, ``'machine-learning'``,
+    ``'shared-foundations'``, or ``None`` (undecided).
 
     Failure-tolerant: a database hiccup behaves like no destination rather than
     taking a page down.
@@ -168,6 +169,15 @@ def destination_for(user_id=None):
         uid = _current_user_id()
     if uid is None:
         return None
+
+    try:
+        plan = CoursePlan.query.filter_by(user_id=uid).first()
+    except Exception:  # pragma: no cover - defensive
+        plan = None
+    if plan is not None and plan.pathway_destination:
+        explicit = normalize_pathway_id(plan.pathway_destination)
+        if explicit is not None:
+            return explicit
 
     try:
         enrolments = active_pathway_enrolments(uid)
@@ -184,14 +194,7 @@ def destination_for(user_id=None):
                 return candidate
         # An unknown enrolment id: preserve it verbatim.
         return next(iter(ids))
-
-    try:
-        plan = CoursePlan.query.filter_by(user_id=uid).first()
-    except Exception:  # pragma: no cover - defensive
-        return None
-    if plan is None or not plan.pathway_destination:
-        return None
-    return normalize_pathway_id(plan.pathway_destination)
+    return None
 
 
 def pathway_ids_for(user_id=None):
@@ -883,6 +886,73 @@ def seed_learning_pathways():
     if created:
         db.session.commit()
     return created
+
+
+SPECIALIZATION_IDS = ('ai-engineering', 'machine-learning')
+
+
+def _ensure_enrolled(uid, pathway_id):
+    """Create or reactivate an enrolment without committing.
+
+    Internal helper for :func:`switch_pathway`, which commits once at the end.
+    Mirrors :func:`enrol_learner` semantics: an existing paused row in the
+    target pathway is reactivated; other pathways are never touched.
+    """
+    enrolment = LearnerPathwayEnrollment.query.filter_by(
+        learner_id=uid, pathway_id=pathway_id).first()
+    if enrolment is None:
+        db.session.add(LearnerPathwayEnrollment(
+            learner_id=uid, pathway_id=pathway_id, status='ENROLLED'))
+    elif enrolment.status not in ('ENROLLED', 'ACTIVE'):
+        enrolment.status = 'ENROLLED'
+
+
+def switch_pathway(user_id, pathway_id):
+    """Switch the learner's active specialization, at any time.
+
+    The switch updates only the learner's *focus*: it writes the explicit
+    ``CoursePlan.pathway_destination`` the whole app reads, and makes sure the
+    learner is enrolled in the shared foundations and the target
+    specialisation.  The other specialisation — and its enrolment, progress,
+    projects, and credential — is left exactly as it was, so the learner can
+    move back and forth freely without losing work.
+
+    Returns the canonical pathway id that is now active.  Raises ``ValueError``
+    for anything other than the two specialisations.
+    """
+    canonical = normalize_pathway_id(pathway_id)
+    if canonical not in SPECIALIZATION_IDS:
+        raise ValueError(
+            "Choose 'ai-engineering' or 'machine-learning' to switch pathways."
+        )
+    uid = _user_id(user_id)
+    if uid is None:
+        raise ValueError('A learner id is required to switch pathways.')
+
+    plan = CoursePlan.query.filter_by(user_id=uid).first()
+    if plan is None:
+        plan = CoursePlan(user_id=uid, track='standard')
+        db.session.add(plan)
+    plan.pathway_destination = canonical
+
+    seed_learning_pathways()
+    # Foundations are the shared start of both courses, so make sure the
+    # learner is enrolled in them; the untouched specialisation keeps its
+    # enrolment and all of its progress.
+    _ensure_enrolled(uid, 'shared-foundations')
+    _ensure_enrolled(uid, canonical)
+    db.session.commit()
+    # The enrolment list changed; drop the per-request cache so the nav and
+    # the very next render reflect the switch.
+    try:
+        from flask import has_request_context, g
+        if has_request_context():
+            cache = getattr(g, '_pathway_enrolment_cache', None)
+            if cache:
+                cache.pop(uid, None)
+    except Exception:  # pragma: no cover - cache hygiene only
+        pass
+    return canonical
 
 
 def enrol_learner(user_id, pathway_id, status='ENROLLED'):
