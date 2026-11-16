@@ -12,7 +12,9 @@ import unittest
 from unittest.mock import patch
 
 from app import create_app, db
-from app.models import CoursePlan, CourseProject, User
+from app.models import (
+    CoursePlan, CourseProject, LearnerPathwayEnrollment, LearningPathway, User,
+)
 from app.pathway_fit import (
     PATHWAY_DESTINATIONS, PATHWAY_FIT_QUESTIONS, PROPOSAL_MIN_LEAD,
     PathwayFitError, pathway_fit_question, score_pathway_fit,
@@ -297,7 +299,27 @@ class DashboardPathwayLeadTests(unittest.TestCase):
                 db.session.add(plan)
             plan.skill_level = 'new'
             plan.weekly_hours = 10
+            # Keep the deprecated column for rollback compatibility, but drive
+            # the dashboard through enrolments (M2: destination no longer
+            # controls access).
             plan.pathway_destination = destination
+            # Create the corresponding enrolment so destination_for() resolves.
+            enrolment = LearnerPathwayEnrollment.query.filter_by(
+                learner_id=user.id,
+                pathway_id={
+                    'ai': 'ai-engineering',
+                    'ml': 'machine-learning',
+                }.get(destination, destination),
+            ).first()
+            if enrolment is None:
+                db.session.add(LearnerPathwayEnrollment(
+                    learner_id=user.id,
+                    pathway_id={
+                        'ai': 'ai-engineering',
+                        'ml': 'machine-learning',
+                    }.get(destination, destination),
+                    status='ENROLLED',
+                ))
             db.session.commit()
 
     def _complete_shared_prerequisites(self):
@@ -319,19 +341,20 @@ class DashboardPathwayLeadTests(unittest.TestCase):
         self._set_destination('ml')
         html = self._dashboard()
         # Section promoted above the shared next-action cards, exactly once.
-        self.assertIn('Your pathway', html)
+        self.assertIn('Machine Learning pathway', html)
         self.assertNotIn('Optional pathway', html)
         self.assertEqual(html.count('Machine Learning Engineering specialization'), 1)
-        self.assertLess(html.index('Your pathway'), html.index('Getting started'))
+        self.assertLess(html.index('Getting started'), html.index('Machine Learning pathway'))
         # ML is independently accessible and leads with its own next lesson:
         # there is no separate "continue your course" card for the pathway.
-        self.assertIn('Continue your pathway', html)
+        self.assertIn('Continue:', html)
+        self.assertIn('machine-learning/lessons', html)
 
     def test_unlocked_ml_destination_leads_the_hero_with_the_pathway(self):
         self._set_destination('ml')
         html = self._dashboard()
-        self.assertIn('Continue your pathway', html)
-        self.assertIn('pathway lessons', html)
+        self.assertIn('Continue:', html)
+        self.assertIn('Open pathway', html)
 
     def test_unset_destination_keeps_the_current_order(self):
         html = self._dashboard()

@@ -140,6 +140,7 @@ class LessonCompletion(db.Model):
         db.UniqueConstraint('user_id', 'lesson_id', name='unique_user_lesson_completion'),
         db.Index('idx_lessoncomp_user_subject_day', 'user_id', 'subject_id', 'day_number'),
         db.Index('idx_lessoncomp_completed_user', 'completed', 'user_id'),
+        db.Index('idx_lessoncomp_user_completed', 'user_id', 'completed'),
     )
 
 
@@ -250,6 +251,7 @@ class Submission(db.Model):
 
     __table_args__ = (
         db.Index('idx_submission_user', 'user_id'),
+        db.Index('idx_submission_user_submitted', 'user_id', 'submitted_at'),
         db.Index('idx_submission_problem', 'problem_id'),
         db.Index('idx_submission_verdict', 'verdict'),
         db.Index('idx_submission_queue', 'verdict', 'submitted_at'),
@@ -1237,6 +1239,39 @@ class AdminAuditLog(db.Model):
     )
 
     admin = db.relationship('User', foreign_keys=[admin_user_id])
+
+
+class AppConfigOverride(db.Model):
+    """Durable administrator configuration overrides stored in the database.
+
+    Overrides persist across worker restarts and are merged into the effective
+    configuration on every request via ``app.config_store``.
+    """
+    __tablename__ = 'app_config_override'
+    key = db.Column(db.String(128), primary_key=True)
+    value = db.Column(db.Text, nullable=False)
+    updated_by = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True
+    )
+    created_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utcnow, index=True
+    )
+    updated_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=utcnow,
+        onupdate=utcnow,
+        index=True,
+    )
+    updated_by_user = db.relationship('User', foreign_keys=[updated_by])
+
+    def get_value(self):
+        """Deserialize the stored JSON value, falling back to raw text."""
+        import json
+        try:
+            return json.loads(self.value)
+        except (ValueError, TypeError):
+            return self.value
 
 
 class LessonBookmark(db.Model):

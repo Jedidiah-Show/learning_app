@@ -19,6 +19,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app import db
 from app import _is_api_path
+from app.models import utcnow
 
 
 # Centralized rate limit configuration
@@ -63,10 +64,6 @@ class RateLimitExceeded(Exception):
         self.name = name
         self.limit = limit
         self.window_seconds = window_seconds
-
-
-def _utcnow():
-    return datetime.now(timezone.utc)
 
 
 def client_ip():
@@ -139,7 +136,7 @@ def check_rate_limit(name, identity=None, *, limit=None, window_seconds=None):
             config['window_seconds'] = window_seconds
         limit = config['limit']
         window_seconds = config['window_seconds']
-        aware_now = _utcnow()
+        aware_now = utcnow()
         epoch = int(aware_now.timestamp())
         window_start = datetime.fromtimestamp(
             epoch - (epoch % window_seconds), tz=timezone.utc

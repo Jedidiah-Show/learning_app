@@ -27,9 +27,8 @@ from app.learning import course_progress
 from app.models import (
     AdminAuditLog, CoursePlan, CourseProject, Credential, LessonCompletion,
     MLSpecializationCredential, MLSpecializationLessonCompletion,
-    MLSpecializationProject,
-    PasswordResetToken, PathwayChangeRequest, QuizResult, StudySession,
-    SupportRequest, User,
+    MLSpecializationProject, PasswordResetToken, PathwayChangeRequest,
+    QuizResult, StudySession, SupportRequest, User, utcnow,
 )
 from app.phone import PhoneError, normalize_phone
 from app.rate_limit import client_ip, enforce_rate_limit, identity_hash
@@ -38,11 +37,6 @@ admin_portal_bp = Blueprint('admin_portal', __name__)
 
 ADMIN_SESSION_MINUTES = 30
 PAGE_SIZE = 20
-
-
-def _utcnow():
-    """UTC now in the aware form used by every application timestamp column."""
-    return datetime.now(timezone.utc)
 
 
 def _password_matches(user, password):
@@ -119,7 +113,7 @@ def _record_admin_action(action, target_user_id=None, detail=None):
         target_user_id=target_user_id,
         detail=(detail or '')[:2000] or None,
         ip_address=client_ip(),
-        created_at=_utcnow(),
+        created_at=utcnow(),
     )
     db.session.add(entry)
     return entry
@@ -193,7 +187,7 @@ def login():
             session['admin_authenticated_at'] = datetime.now(
                 timezone.utc
             ).timestamp()
-            account.last_active = _utcnow()
+            account.last_active = utcnow()
             _record_admin_action(
                 'admin.login', target_user_id=account.id,
                 detail='Administrator signed in to the portal.',
@@ -243,7 +237,7 @@ def exit_portal():
 @admin_portal_bp.route('/')
 @admin_required
 def dashboard():
-    since = _utcnow() - timedelta(days=30)
+    since = utcnow() - timedelta(days=30)
     total_users = User.query.count()
     active_accounts = User.query.filter(User.is_active.is_(True)).count()
     active_admins = User.query.filter(
@@ -803,7 +797,7 @@ def revoke_credential(public_id):
     if credential is None:
         abort(404)
     if credential.revoked_at is None:
-        credential.revoked_at = _utcnow()
+        credential.revoked_at = utcnow()
         _record_admin_action(
             'credential.revoke', target_user_id=credential.user_id,
             detail=f'Revoked credential {credential.public_id}.',
@@ -977,7 +971,7 @@ def _ml_pilot_snapshot():
 @admin_portal_bp.route('/analytics')
 @admin_required
 def analytics():
-    since = _utcnow() - timedelta(days=30)
+    since = utcnow() - timedelta(days=30)
     completions = db.session.query(
         func.date(LessonCompletion.completed_at).label('date'),
         func.count(LessonCompletion.id).label('count'),
@@ -1144,11 +1138,11 @@ def support_request_detail(request_id):
                 flash('Write a reply before sending it.', 'error')
             else:
                 report.admin_reply = reply
-                report.replied_at = _utcnow()
+                report.replied_at = utcnow()
                 report.replied_by_user_id = current_user.id
                 if status in allowed_statuses:
                     report.status = status
-                report.updated_at = _utcnow()
+                report.updated_at = utcnow()
                 _record_admin_action(
                     'support.reply', target_user_id=report.user_id,
                     detail=f'Replied to support request #{report.id}.',
@@ -1162,7 +1156,7 @@ def support_request_detail(request_id):
             flash('Choose a valid status.', 'error')
         else:
             report.status = status
-            report.updated_at = _utcnow()
+            report.updated_at = utcnow()
             db.session.commit()
             flash('Support request updated.', 'success')
             return redirect(url_for(
@@ -1254,12 +1248,12 @@ def pathway_change_request_detail(request_id):
             )
         else:
             report.resolved_by = current_user.id
-            report.resolved_at = _utcnow()
+            report.resolved_at = utcnow()
             report.resolution_note = note or None
             if action == 'approve':
                 # Write to deprecated CoursePlan.pathway_destination for rollback
                 plan.pathway_destination = report.requested_destination
-                plan.updated_at = _utcnow()
+                plan.updated_at = utcnow()
                 # Also sync with the learner's active enrolment
                 if enrolment:
                     enrolment.pathway_id = report.requested_destination

@@ -8,11 +8,7 @@ and progress totals never reach an AI-only module 03-12 lesson.  ``ai``,
 
 from app.curriculum import all_modules
 from app.models import CourseProject, LessonCompletion
-
-
-def _user_id(user):
-    """Extract the integer user_id from a User object or return as-is."""
-    return user.id if hasattr(user, 'id') else user
+from app.pathway_scope import _user_id
 
 
 def _scope(user, destination):

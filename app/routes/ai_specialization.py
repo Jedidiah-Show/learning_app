@@ -128,12 +128,14 @@ def _artefact_model(model_class, json_fields, int_fields=None, id_field=None,
 @login_required
 def dashboard():
     pathway = ai_engineering_pathway()
+    # Fetch all project records in one query instead of one per module (N+1).
+    records = AISpecializationProject.query.filter_by(
+        user_id=current_user.id, pathway_id=PATHWAY_ID,
+    ).all()
+    record_by_module = {r.module_id: r for r in records}
     modules = []
     for module in pathway['modules']:
-        record = AISpecializationProject.query.filter_by(
-            user_id=current_user.id, pathway_id=PATHWAY_ID,
-            module_id=module['id'],
-        ).first()
+        record = record_by_module.get(module['id'])
         modules.append({
             'module': module,
             'project_completed': bool(record and record.completed),
