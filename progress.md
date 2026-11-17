@@ -133,3 +133,32 @@ requested on 2026-11-16:
   (they pointed at the original author's machine and broke the ML report-contract
   check `_dataset_sha256`); they are now relative symlinks, and
   `test_ml_specialization.py` passes 18/18.
+
+## 2026-11-17 — Foundations extracted; each pathway counts only itself
+
+Addresses the remaining structural bias that made AI the default journey:
+
+- New **Shared Foundations** pathway (modules 00–02, 50 lessons) as the
+  separate, canonical starting course: `/foundations` page, nav entry, badge
+  (`Foundations · Module N`), own progress UI, and undecided learners land
+  there by default.
+- `course_modules()` is now single-domain per pathway: AI = modules 03–12
+  (including the previously excluded capstone), ML = the 12 ml.* modules,
+  foundations/undecided = modules 00–02 only.
+- New `journey_modules()` for the combined journey used only by sequential
+  pointers and credential eligibility.
+- AI Engineering specialization opens only after the foundation is complete:
+  `lesson_is_available` requires `foundation_completion_state(...).complete`
+  for any module-03+ lesson.
+- Foundation lessons stay revisitable forever; availability pointer equality
+  is computed per sequence (foundation / AI / ML).
+- Credentials: AI credential requires the full AI journey; credential page
+  shows AI-journey eligibility plus the learner's own pathway progress.
+- Projects page: "Stage 0 · Shared Foundations" section (lessons/projects per
+  module + project CTA) for AI and undecided learners; ML learners see their
+  workbench only.
+- Nav: Foundations entry added under Learn; ML CTA in AI lessons page copy
+  rephrased ("Also available: Machine Learning"); ML specialization no longer
+  labelled "optional… pilot"; foundation outcome rendered from outcomes[].
+- Undecided brand is "AI & ML Engineering"; ML-as-active leads nav and brand;
+  no "optional/pilot/parallel" ML language remains in learner-facing pages.

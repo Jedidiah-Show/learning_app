@@ -361,14 +361,14 @@ class DashboardPathwayLeadTests(unittest.TestCase):
         html = self._dashboard()
         self.assertIn('Machine Learning pathway', html)
         self.assertNotIn('Your pathway', html)
-        self.assertLess(html.index('Continue your course'), html.index('Machine Learning pathway'))
+        self.assertLess(html.index('Continue your'), html.index('Machine Learning pathway'))
 
     def test_ai_destination_keeps_the_current_order(self):
         self._set_destination('ai')
         html = self._dashboard()
         self.assertIn('Machine Learning pathway', html)
         self.assertNotIn('Your pathway', html)
-        self.assertLess(html.index('Continue your course'), html.index('Machine Learning pathway'))
+        self.assertLess(html.index('Continue your'), html.index('Machine Learning pathway'))
 
     def test_ml_destination_with_a_failing_overview_stays_contained(self):
         self._set_destination('ml')

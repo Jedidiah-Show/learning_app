@@ -663,10 +663,10 @@ class MLSpecializationFlowTests(unittest.TestCase):
         response = self.client.get('/lessons')
         self.assertEqual(response.status_code, 200)
         page = response.get_data(as_text=True)
-        # The AI lesson catalog keeps a parallel-pathway card that names the ML
-        # pathway and links to it; AI course projects do not gate it.
+        # The AI lesson catalog keeps a card naming the ML pathway and
+        # linking to it; AI course projects do not gate it.
         self.assertIn('Machine Learning Engineering', page)
-        self.assertIn('Parallel pathway', page)
+        self.assertIn('Also available: Machine Learning', page)
         self.assertIn('Open ML pathway', page)
         self.assertIn('Continue: ', page)
 

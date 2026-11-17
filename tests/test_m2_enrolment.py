@@ -148,20 +148,32 @@ class TestPathwayModules:
     """Test pathway_modules returns correct modules."""
     
     def test_shared_foundations_modules(self, app):
-        """M2.2: pathway_modules for shared-foundations."""
+        """The foundations course is its own pathway (modules 00–02)."""
         modules = pathway_modules('shared-foundations')
-        assert len(modules) == 6
+        assert len(modules) == 3
         module_ids = {m['id'] for m in modules}
-        assert module_ids == {'sf.00', 'sf.01', 'sf.02', 'sf.03', 'sf.04', 'sf.05'}
-    
+        assert module_ids == {'00', '01', '02'}
+
+    def test_shared_foundations_course_view(self, app):
+        """The foundations catalog counts only foundation lessons."""
+        from app.pathway_scope import course_modules
+        modules = course_modules('shared-foundations')
+        assert [m['id'] for m in modules] == ['00', '01', '02']
+
+    def test_undecided_catalog_is_the_foundation(self, app):
+        """An undecided learner's catalog is the shared foundation only."""
+        from app.pathway_scope import course_modules
+        modules = course_modules(None)
+        assert [m['id'] for m in modules] == ['00', '01', '02']
+
     def test_ai_engineering_modules(self, app):
-        """M2.2: pathway_modules for ai-engineering."""
+        """The AI specialization is its own modules (03–12 incl. capstone)."""
         modules = pathway_modules('ai-engineering')
-        assert len(modules) == 9
+        assert len(modules) == 10
         # Should not include foundation modules (00-02)
         assert not any(m['id'] in ('00', '01', '02') for m in modules)
-        # Should not include capstone (12)
-        assert not any(m['id'] == '12' for m in modules)
+        # The capstone belongs to the AI pathway
+        assert any(m['id'] == '12' for m in modules)
     
     def test_ml_engineering_modules(self, app):
         """M2.2: pathway_modules for machine-learning."""

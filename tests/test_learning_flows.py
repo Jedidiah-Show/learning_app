@@ -1353,7 +1353,11 @@ class RuachAICourseTests(unittest.TestCase):
         self.register()
         with self.app.app_context():
             user = User.query.one()
-            progress = course_progress(user)
+            # The full 13-module journey (foundation + AI specialization),
+            # which is what the month partitions were built from.
+            progress = course_progress(
+                user, destination='ai-engineering', include_journey=True
+            )
             months = monthly_milestone_progress(
                 progress, set(), 'accelerated', calibration_multiplier=1.5
             )
