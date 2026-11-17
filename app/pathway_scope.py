@@ -168,6 +168,29 @@ def is_pathway(user_id, pathway_id):
     )
 
 
+def get_user_course_plan(user_id):
+    """Return the CoursePlan for a user, cached per request in flask.g."""
+    from flask import has_request_context, g
+
+    uid = _user_id(user_id)
+    if uid is None:
+        return None
+    if has_request_context():
+        cache = getattr(g, '_course_plan_cache', None)
+        if cache is None:
+            cache = {}
+            g._course_plan_cache = cache
+        if uid in cache:
+            return cache[uid]
+    try:
+        plan = CoursePlan.query.filter_by(user_id=uid).first()
+    except Exception:
+        plan = None
+    if has_request_context():
+        g._course_plan_cache[uid] = plan
+    return plan
+
+
 def destination_for(user_id=None):
     """The learner's chosen specialization as an explicit pathway id.
 
@@ -186,37 +209,51 @@ def destination_for(user_id=None):
     Failure-tolerant: a database hiccup behaves like no destination rather than
     taking a page down.
     """
+    from flask import has_request_context, g
+
     uid = _user_id(user_id)
     if uid is None:
         uid = _current_user_id()
     if uid is None:
         return None
 
-    try:
-        plan = CoursePlan.query.filter_by(user_id=uid).first()
-    except Exception:  # pragma: no cover - defensive
-        plan = None
+    if has_request_context():
+        dest_cache = getattr(g, '_destination_cache', None)
+        if dest_cache is None:
+            dest_cache = {}
+            g._destination_cache = dest_cache
+        if uid in dest_cache:
+            return dest_cache[uid]
+
+    plan = get_user_course_plan(uid)
+    result = None
     if plan is not None and plan.pathway_destination:
         explicit = normalize_pathway_id(plan.pathway_destination)
         if explicit is not None:
-            return explicit
+            result = explicit
 
-    try:
-        enrolments = active_pathway_enrolments(uid)
-    except Exception:  # pragma: no cover - defensive: never fail a page render
-        enrolments = []
+    if result is None:
+        try:
+            enrolments = active_pathway_enrolments(uid)
+        except Exception:  # pragma: no cover - defensive: never fail a page render
+            enrolments = []
 
-    if enrolments:
-        ids = {
-            normalize_pathway_id(enrolment.pathway_id)
-            for enrolment, _ in enrolments
-        }
-        for candidate in _SPECIALISATION_PRIORITY:
-            if candidate in ids:
-                return candidate
-        # An unknown enrolment id: preserve it verbatim.
-        return next(iter(ids))
-    return None
+        if enrolments:
+            ids = {
+                normalize_pathway_id(enrolment.pathway_id)
+                for enrolment, _ in enrolments
+            }
+            for candidate in _SPECIALISATION_PRIORITY:
+                if candidate in ids:
+                    result = candidate
+                    break
+            if result is None:
+                # An unknown enrolment id: preserve it verbatim.
+                result = next(iter(ids))
+
+    if has_request_context():
+        g._destination_cache[uid] = result
+    return result
 
 
 def pathway_ids_for(user_id=None):

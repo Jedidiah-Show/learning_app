@@ -14,7 +14,10 @@ from app import db
 from app.course_data import SETUP_CHECKS
 from app.curriculum import curriculum, get_lesson, lesson_context
 from app.ml_pathway import get_machine_learning_lesson, machine_learning_lesson_is_open
-from app.learning import lesson_is_available, next_course_action, next_unlocked_lesson
+from app.learning import (
+    invalidate_completion_caches, lesson_is_available,
+    next_course_action, next_unlocked_lesson,
+)
 from app.models import (
     CoursePlan, LessonCompletion, LessonTaskProgress, PracticeUsageDaily,
     PracticeWorkspace, StudySession, Submission, VideoProgress, utcnow,
@@ -666,6 +669,7 @@ def complete_lesson():
     ).first()
     now = datetime.now(timezone.utc)
     if completion and completion.completed:
+        invalidate_completion_caches()
         return jsonify({'status': 'success', 'already_completed': True,
                         **_next_course_payload()})
     if completion is None:
@@ -723,6 +727,7 @@ def complete_lesson():
                 completed=True,
             ))
             db.session.commit()
+        invalidate_completion_caches()
         return jsonify({
             'status': 'success',
             'already_completed': True,
@@ -730,6 +735,7 @@ def complete_lesson():
             'new_badges': [],
             'completed_lesson_id': lesson_id,
         })
+    invalidate_completion_caches()
     earned_badges = new_badges_since(current_user, before_achievements)
     return jsonify({'status': 'success', **_next_course_payload(),
                     'new_badges': earned_badges,

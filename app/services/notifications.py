@@ -50,12 +50,17 @@ def build_notifications(user):
         now = datetime.now(timezone.utc)
 
         # Review Center: spaced repetition decays when answers are late.
-        due = (
-            ReviewItem.query
-            .filter_by(user_id=user.id, active=True)
-            .filter(ReviewItem.due_at <= now)
-            .count()
-        )
+        from flask import g
+        if hasattr(g, 'review_due_count'):
+            due = g.review_due_count
+        else:
+            due = (
+                ReviewItem.query
+                .filter_by(user_id=user.id, active=True)
+                .filter(ReviewItem.due_at <= now)
+                .count()
+            )
+            g.review_due_count = due
         if due:
             items.append({
                 'icon': '🧠',

@@ -35,30 +35,60 @@ def _merged_completions(user, destination, completed, project_modules):
 
 
 def completed_lesson_ids(user):
+    from flask import has_request_context, g
+
     uq = _user_id(user)
-    return {
+    if uq is None:
+        return set()
+    if has_request_context():
+        cache = getattr(g, '_completed_lesson_ids_cache', None)
+        if cache is None:
+            cache = {}
+            g._completed_lesson_ids_cache = cache
+        if uq in cache:
+            return set(cache[uq])
+
+    results = {
         lesson_id for (lesson_id,) in LessonCompletion.query.with_entities(
             LessonCompletion.lesson_id
         ).filter_by(user_id=uq, completed=True).all()
     }
+    if has_request_context():
+        g._completed_lesson_ids_cache[uq] = set(results)
+    return results
 
 
 
 def completed_project_modules(user):
+    from flask import has_request_context, g
+
     uq = _user_id(user)
-    return {
+    if uq is None:
+        return set()
+    if has_request_context():
+        cache = getattr(g, '_completed_project_modules_cache', None)
+        if cache is None:
+            cache = {}
+            g._completed_project_modules_cache = cache
+        if uq in cache:
+            return set(cache[uq])
+
+    results = {
         module_id for (module_id,) in CourseProject.query.with_entities(
             CourseProject.module_id
         ).filter_by(user_id=uq, completed=True).all()
     }
+    if has_request_context():
+        g._completed_project_modules_cache[uq] = set(results)
+    return results
 
 
 def user_track(user):
     """Return the learner's selected plan track, defaulting to standard."""
     from app.course_data import TRACK_IDS
-    from app.models import CoursePlan
+    from app.pathway_scope import get_user_course_plan
 
-    plan = CoursePlan.query.filter_by(user_id=user.id).first()
+    plan = get_user_course_plan(user)
     if plan and plan.track in TRACK_IDS:
         return plan.track
     return 'standard'
@@ -195,6 +225,46 @@ def lesson_is_available(user, lesson_id, completed=None, completed_projects=None
         and action.get('lesson_id') == lesson_id
     )
 
+
+
+def invalidate_completion_caches():
+    """Drop the per-request memoized completion sets after a write.
+
+    Completing a lesson or project during a request must not hand the rest of
+    that same request the pre-write snapshot — the progress payload built
+    right after the commit would otherwise point at the lesson just finished.
+    """
+    from flask import has_request_context, g
+
+    if not has_request_context():
+        return
+    g._completed_lesson_ids_cache = {}
+    g._completed_project_modules_cache = {}
+
+
+def module_lessons_missing(user, module_id, completed=None):
+    """Return the module's incomplete lessons in study order.
+
+    Each entry carries the lesson id, title and research ordinal so a caller
+    can render exactly what stands between the learner and the module project.
+    Returns None for unknown module ids.
+    """
+    from app.curriculum import get_module
+
+    module = get_module(module_id)
+    if not module:
+        return None
+    if completed is None:
+        completed = completed_lesson_ids(user)
+    return [
+        {
+            'id': lesson['id'],
+            'title': lesson.get('title') or lesson['id'],
+            'ordinal': lesson.get('_ordinal'),
+        }
+        for lesson in module['lessons']
+        if lesson['id'] not in completed
+    ]
 
 
 def module_project_is_available(user, module_id, completed=None):
@@ -372,17 +442,32 @@ def study_recalibration(user, completed=None, completed_projects=None,
     estimated_minutes = 0.0
     observed_minutes = 0.0
     counted = set()
-    for lesson in all_lessons() if lessons is None else lessons:
+    candidate_lessons = all_lessons() if lessons is None else lessons
+    relevant_ids = [
+        lesson['id'] for lesson in candidate_lessons
+        if lesson.get('id') and lesson['id'] in completed
+    ]
+    time_spent_by_lesson = {}
+    if relevant_ids:
+        rows = (
+            LessonCompletion.query
+            .filter(
+                LessonCompletion.user_id == uq,
+                LessonCompletion.lesson_id.in_(relevant_ids),
+            )
+            .all()
+        )
+        for r in rows:
+            if r.time_spent_minutes:
+                time_spent_by_lesson[r.lesson_id] = float(r.time_spent_minutes)
+
+    for lesson in candidate_lessons:
         lesson_id = lesson.get('id')
-        if lesson_id in counted or lesson_id not in completed:
+        if not lesson_id or lesson_id in counted or lesson_id not in completed:
             continue
         counted.add(lesson_id)
         estimated_minutes += float(lesson.get('study_minutes') or 0)
-        row = LessonCompletion.query.filter_by(
-            user_id=uq, lesson_id=lesson_id
-        ).first()
-        if row is not None and row.time_spent_minutes:
-            observed_minutes += float(row.time_spent_minutes)
+        observed_minutes += time_spent_by_lesson.get(lesson_id, 0.0)
     estimated_hours = estimated_minutes / 60
     observed_hours = observed_minutes / 60
     multiplier = round(observed_hours / estimated_hours, 2) if estimated_hours > 0 else None

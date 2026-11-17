@@ -565,27 +565,32 @@ def stream_execution(run_id):
         with app.app_context():
             last_verdict = None
             start_time = time.monotonic()
-            while time.monotonic() - start_time < 30.0:
-                sub = db.session.get(Submission, run_id)
-                if sub is None:
-                    break
-                if sub.verdict != last_verdict:
-                    last_verdict = sub.verdict
-                    payload = {
-                        'run_id': sub.id,
-                        'verdict': sub.verdict,
-                        'output': sub.output or '',
-                        'error_details': sub.error_details or '',
-                        'execution_time_ms': sub.execution_time_ms,
-                        'memory_kb': sub.memory_kb,
-                        'tests_passed': sub.tests_passed,
-                        'total_tests': sub.total_tests,
-                    }
-                    yield f"data: {json.dumps(payload)}\n\n"
-                    if sub.verdict not in ('PENDING', 'RUNNING'):
+            poll_interval = 0.2
+            try:
+                while time.monotonic() - start_time < 20.0:
+                    sub = db.session.get(Submission, run_id)
+                    if sub is None:
                         break
-                db.session.expire(sub)
-                time.sleep(0.1)
+                    if sub.verdict != last_verdict:
+                        last_verdict = sub.verdict
+                        payload = {
+                            'run_id': sub.id,
+                            'verdict': sub.verdict,
+                            'output': sub.output or '',
+                            'error_details': sub.error_details or '',
+                            'execution_time_ms': sub.execution_time_ms,
+                            'memory_kb': sub.memory_kb,
+                            'tests_passed': sub.tests_passed,
+                            'total_tests': sub.total_tests,
+                        }
+                        yield f"data: {json.dumps(payload)}\n\n"
+                        if sub.verdict not in ('PENDING', 'RUNNING'):
+                            break
+                    db.session.expire(sub)
+                    time.sleep(poll_interval)
+                    poll_interval = min(poll_interval * 1.5, 1.0)
+            finally:
+                db.session.remove()
 
     response = Response(generate(), mimetype='text/event-stream')
     response.headers['Cache-Control'] = 'no-cache, no-transform'

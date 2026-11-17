@@ -55,6 +55,12 @@
     <span>{{ progress.completed_lessons }} of {{ progress.total_lessons }} lessons complete</span>
     {% endif %}
   </div>
+  {% if not ml_hero and next_module_id %}
+  {% set current_module = (progress.modules | selectattr('id', 'equalto', next_module_id) | first) %}
+  {% if current_module and not current_module.project_completed and current_module.completed_lessons < current_module.total_lessons %}
+  <p class="mt-2 text-xs text-brand-200">Module {{ current_module.number }}: {{ current_module.total_lessons - current_module.completed_lessons }} lesson{{ 's' if current_module.total_lessons - current_module.completed_lessons != 1 }} left to unlock the Module {{ current_module.number }} project.</p>
+  {% endif %}
+  {% endif %}
   <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/15"><div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-gold-400" style="width:{% if ml_hero %}{{ (ml_overview.completed_lessons / (ml_overview.total_lessons if ml_overview.total_lessons > 0 else 1) * 100)|round(1) }}{% else %}{{ (progress.completed_lessons / (progress.total_lessons if progress.total_lessons > 0 else 1) * 100)|round(1) }}{% endif %}%"></div></div>
 </section>
 {% if ml_leads and ml_card %}{{ ml_card }}{% endif %}

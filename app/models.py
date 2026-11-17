@@ -888,6 +888,7 @@ class LearnerPathwayEnrollment(db.Model):
     __table_args__ = (
         db.UniqueConstraint('learner_id', 'pathway_id',
                             name='unique_learner_pathway_enrollment'),
+        db.Index('idx_enrolment_learner_status', 'learner_id', 'status'),
     )
 
 

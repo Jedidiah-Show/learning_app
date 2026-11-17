@@ -13,7 +13,8 @@ from sqlalchemy.exc import IntegrityError
 from app import db
 from app.curriculum import all_modules, get_module, curriculum
 from app.learning import (
-    module_project_is_available, completed_project_modules, course_progress,
+    module_lessons_missing, module_project_is_available,
+    completed_lesson_ids, completed_project_modules, course_progress,
     monthly_milestone_progress, user_track,
 )
 from app.course_data import (
@@ -331,7 +332,6 @@ def project_page():
     if not is_ml(destination):
         from app.pathway_scope import foundation_course_modules, \
             foundation_completion_state, module_entry
-        from app.learning import completed_lesson_ids
         foundation_modules = foundation_course_modules()
         foundation_progress = {
             'modules': [
@@ -344,8 +344,28 @@ def project_page():
             'state': foundation_completion_state(current_user.id),
         }
 
+    module_list = course_modules(destination)
+    completed_ids = completed_lesson_ids(current_user) if not is_ml(destination) else set()
+    module_status = {}
+    for module in module_list:
+        if module.get('source') == 'ml':
+            continue
+        missing = [
+            lesson for lesson in module['lessons']
+            if lesson['id'] not in completed_ids
+        ]
+        module_status[module['id']] = {
+            'ready': not missing,
+            'missing': [
+                {'id': lesson['id'], 'title': lesson.get('title') or lesson['id']}
+                for lesson in missing
+            ],
+            'total_lessons': len(module['lessons']),
+        }
+
     return render_template(
-        'projects.html', modules=course_modules(destination),
+        'projects.html', modules=module_list,
+        module_status=module_status,
         completed_modules=completed,
         milestones=milestones, pace=pace,
         foundation_progress=foundation_progress,
@@ -553,7 +573,11 @@ def get_module_project(module_id):
     if not module:
         return jsonify({'error': 'Module not found'}), 404
     if not module_project_is_available(current_user, module_id):
-        return jsonify({'error': 'Complete every lesson in this module before its project'}), 409
+        missing = module_lessons_missing(current_user, module_id) or []
+        return jsonify({
+            'error': 'Complete every lesson in this module before its project',
+            'missing_lessons': missing,
+        }), 409
     is_capstone = module_id == all_modules()[-1]['id']
     plan = _plan()
     selected_project = PROJECT_BY_ID.get(plan.required_project_id) if plan else None

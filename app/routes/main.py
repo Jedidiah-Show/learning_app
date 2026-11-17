@@ -253,7 +253,8 @@ def search_api():
 @main_bp.route('/')
 @login_required
 def index():
-    from app.pathway_scope import destination_for
+    from app.pathway_scope import destination_for, get_user_course_plan
+    from app import current_review_due_count
 
     try:
         # Read each completion set once and share it with every consumer below;
@@ -268,7 +269,7 @@ def index():
         setup_checks = SETUP_CHECKS
         setup_states = stored_setup_checks(current_user)
         setup_done = sum(1 for check in setup_checks if setup_states.get(check['id']))
-        plan = CoursePlan.query.filter_by(user_id=current_user.id).first()
+        plan = get_user_course_plan(current_user.id)
         onboarding_complete = bool(
             plan and plan.skill_level and plan.weekly_hours
         )
@@ -298,9 +299,7 @@ def index():
             elif action.get('lesson_id'):
                 focused = get_lesson(action['lesson_id'])
                 next_module_id = focused.get('module_id') if focused else None
-        due_reviews = ReviewItem.query.filter_by(
-            user_id=current_user.id, active=True
-        ).filter(ReviewItem.due_at <= datetime.now(timezone.utc)).count()
+        due_reviews = current_review_due_count()
         module_states = {}
         for module in progress['modules']:
             if (
@@ -385,13 +384,13 @@ def index():
 @login_required
 def lessons():
     from app.pathway_scope import (
-        course_modules, destination_for, is_ml, pathway_header,
+        course_modules, destination_for, get_user_course_plan, is_ml, pathway_header,
     )
     completions = LessonCompletion.query.filter_by(
         user_id=current_user.id, completed=True
     ).all()
     completed_ids = {item.lesson_id for item in completions}
-    plan = CoursePlan.query.filter_by(user_id=current_user.id).first()
+    plan = get_user_course_plan(current_user.id)
     # The destination decides which modules this page lists at all: an ML
     # learner's catalog is the shared foundation plus their pathway, never the
     # AI continuation, and progress is scoped to match so the totals, the
@@ -1077,6 +1076,12 @@ def foundations():
             user_id=current_user.id, completed=True
         ).all()
     }
+    from app.models import CourseProject
+    completed_projects = {
+        row.module_id for row in CourseProject.query.filter_by(
+            user_id=current_user.id, completed=True
+        ).all()
+    }
     for module in modules:
         next_lesson = next(
             (lesson for lesson in module['lessons']
@@ -1084,6 +1089,13 @@ def foundations():
             module['lessons'][0] if module['lessons'] else None,
         )
         module['_next_lesson_id'] = next_lesson['id'] if next_lesson else None
+        module['_missing_lessons'] = [
+            {'id': lesson['id'], 'title': lesson.get('title') or lesson['id']}
+            for lesson in module['lessons']
+            if lesson['id'] not in completed
+        ]
+        module['_project_ready'] = not module['_missing_lessons']
+        module['_project_completed'] = module['id'] in completed_projects
     state = foundation_completion_state(current_user.id)
     return render_template(
         'foundations.html', modules=modules, foundation=state,

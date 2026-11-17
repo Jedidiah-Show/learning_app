@@ -783,6 +783,9 @@ def create_app(config_override=None):
             # The sandboxed iframe has an opaque origin, so its public runner
             # script must be embeddable despite the app-wide same-origin policy.
             response.headers['Cross-Origin-Resource-Policy'] = 'cross-origin'
+            response.headers.setdefault('Cache-Control', 'public, max-age=86400')
+        elif request.path.startswith('/static/'):
+            response.headers.setdefault('Cache-Control', 'public, max-age=86400')
         # Keep the policy report-only until the remaining inline scripts and
         # styles are migrated to nonces/hashed files.  Report-only still makes
         # violations visible without breaking existing lessons or YouTube.
@@ -803,6 +806,42 @@ def create_app(config_override=None):
             "https://www.youtube-nocookie.com; "
             "connect-src 'self';",
         )
+        return response
+
+    import gzip
+
+    @app.after_request
+    def compress_response(response):
+        if (
+            response.is_streamed
+            or response.status_code not in range(200, 300)
+            or 'Content-Encoding' in response.headers
+        ):
+            return response
+        content_type = response.headers.get('Content-Type', '')
+        if content_type.startswith('text/event-stream'):
+            return response
+        if not any(
+            t in content_type for t in (
+                'text/', 'application/json', 'application/javascript', 'image/svg+xml'
+            )
+        ):
+            return response
+        accept_encoding = request.headers.get('Accept-Encoding', '')
+        if 'gzip' not in accept_encoding.lower():
+            return response
+        data = response.get_data()
+        if len(data) < 500:
+            return response
+        compressed = gzip.compress(data, compresslevel=6)
+        if len(compressed) < len(data):
+            response.set_data(compressed)
+            response.headers['Content-Encoding'] = 'gzip'
+            response.headers['Content-Length'] = str(len(compressed))
+            response.headers['Vary'] = (
+                f"{response.headers.get('Vary')}, Accept-Encoding"
+                if response.headers.get('Vary') else 'Accept-Encoding'
+            )
         return response
 
     from app.videos import format_duration

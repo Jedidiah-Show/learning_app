@@ -1643,3 +1643,56 @@ class SearchAndDashboardChromeTests(unittest.TestCase):
         self._set_streak_and_opt_in(7, True)
         page = self.client.get('/')
         self.assertNotIn('data-leaderboard-nudge', page.get_data(as_text=True))
+
+
+class FoundationProjectFlowTests(RuachAICourseTests):
+    """The foundations → module-project hand-off is always explained."""
+
+    def complete_module(self, module_number):
+        module = next(
+            item for item in all_modules() if item['number'] == module_number
+        )
+        for index, lesson in enumerate(module['lessons'], start=1):
+            response = self.client.post('/api/lessons/complete', json={
+                'lesson_id': lesson['id'], 'time_spent_minutes': 5,
+            })
+            self.assertEqual(response.status_code, 200, response.get_json())
+        return module
+
+    def test_incomplete_module_pages_explain_what_is_left(self):
+        self.register()
+        for lesson in all_modules()[0]['lessons'][:6]:
+            self.complete_lesson(lesson['id'])
+
+        locked = self.client.get('/api/projects/module/00')
+        self.assertEqual(locked.status_code, 409)
+        payload = locked.get_json()
+        self.assertEqual(
+            [item['id'] for item in payload['missing_lessons']],
+            ['0.07', '0.08', '0.09', '0.10', '0.11'],
+        )
+        self.assertIn('title', payload['missing_lessons'][0])
+
+        for path in ('/foundations', '/projects', '/'):
+            html = self.client.get(path).get_data(as_text=True)
+            self.assertEqual(html.count('0.07') > 0, True, path)
+        self.assertIn('Project locked', self.client.get('/foundations').get_data(as_text=True))
+        self.assertIn('5 of 11 lessons left', self.client.get('/projects').get_data(as_text=True))
+        self.assertIn('5 lessons left', self.client.get('/progress').get_data(as_text=True))
+        self.assertIn('to unlock the Module 0 project', self.client.get('/').get_data(as_text=True))
+
+    def test_ready_module_pages_link_straight_to_the_project(self):
+        self.register()
+        self.complete_module(0)
+
+        foundations = self.client.get('/foundations').get_data(as_text=True)
+        self.assertIn('project unlocked', foundations)
+        self.assertIn('Module 0 project', foundations)
+
+        projects = self.client.get('/projects').get_data(as_text=True)
+        self.assertIn('this project is ready to open', projects)
+        self.assertIn('All 11 lessons complete', projects)
+        self.assertIn('/projects#module-00', self.client.get('/progress').get_data(as_text=True))
+
+        unlocked = self.client.get('/api/projects/module/00')
+        self.assertEqual(unlocked.status_code, 200)

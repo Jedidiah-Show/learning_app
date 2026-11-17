@@ -8,8 +8,10 @@ from time import monotonic
 from app.videos import build_lesson_video
 
 
-# Cache configuration
-CURRICULUM_TTL_SECONDS = 300  # 5 minutes - curriculum changes are rare
+# Cache configuration: curriculum data is cached indefinitely in-process
+# to eliminate recurrent 6.7 MB JSON parsing and regex text processing.
+# Invalidate explicitly via invalidate_curriculum_cache() when overrides change.
+CURRICULUM_TTL_SECONDS = None
 _curriculum_cache = {'data': None, 'fetched_at': None}
 CURRICULUM_PATH = Path(__file__).parent / 'data' / 'dynamoai_curriculum.json'
 EXTRAS_PATH = Path(__file__).parent / 'data' / 'lesson_extras.json'
@@ -233,12 +235,20 @@ def _attach_extras(lesson, extras):
 
 
 def _is_cache_stale():
-    """Check if the cached curriculum data is older than the TTL."""
+    """Check if the cached curriculum data is missing or stale."""
     global _curriculum_cache
     if _curriculum_cache['data'] is None:
         return True
+    if CURRICULUM_TTL_SECONDS is None:
+        return False
     elapsed = monotonic() - _curriculum_cache['fetched_at']
     return elapsed > CURRICULUM_TTL_SECONDS
+
+
+def invalidate_curriculum_cache():
+    """Explicitly invalidate the curriculum cache (e.g. after admin updates)."""
+    global _curriculum_cache
+    _curriculum_cache = {'data': None, 'fetched_at': None}
 
 
 def _load_curriculum():
@@ -333,11 +343,7 @@ def _refresh_curriculum():
 
 
 def curriculum():
-    """Return the bundled RUACH course curriculum with TTL-based caching.
-    
-    Curriculum data is cached for %d seconds to avoid repeated disk I/O
-    across server instances. The cache automatically refreshes when stale.
-    """ % CURRICULUM_TTL_SECONDS
+    """Return the bundled RUACH course curriculum with in-memory caching."""
     if _is_cache_stale():
         _refresh_curriculum()
     return _curriculum_cache['data']
