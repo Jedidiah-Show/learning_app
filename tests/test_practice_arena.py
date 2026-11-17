@@ -145,13 +145,47 @@ class ArenaTaxonomyTests(unittest.TestCase):
                 for prerequisite in problem['prerequisites']:
                     self.assertIn(prerequisite, problems)
 
+    def test_every_track_has_at_least_100_problems_and_difficulty_floors(self):
+        problems = all_arena_problems()
+        for track in ('ai-engineering', 'algorithms', 'machine-learning'):
+            track_problems = [
+                problem for problem in problems.values()
+                if problem['track'] == track
+            ]
+            self.assertGreaterEqual(
+                len(track_problems), 100,
+                f'{track} track must publish at least 100 problems',
+            )
+            by_difficulty = {
+                difficulty: sum(
+                    1 for problem in track_problems
+                    if problem['difficulty'] == difficulty
+                )
+                for difficulty in DIFFICULTIES
+            }
+            self.assertGreaterEqual(
+                by_difficulty['beginner'], 50,
+                f"{track} track needs at least 50 beginner problems, "
+                f"found {by_difficulty['beginner']}",
+            )
+            self.assertGreaterEqual(
+                by_difficulty['intermediate'], 30,
+                f"{track} track needs at least 30 intermediate problems, "
+                f"found {by_difficulty['intermediate']}",
+            )
+            self.assertGreaterEqual(
+                by_difficulty['advanced'], 20,
+                f"{track} track needs at least 20 advanced problems, "
+                f"found {by_difficulty['advanced']}",
+            )
+
     def test_algorithms_problems_are_published_and_solutions_pass_checks(self):
         problems = all_arena_problems()
         algorithms = [
             problem for problem in problems.values()
             if problem['track'] == 'algorithms'
         ]
-        self.assertGreaterEqual(len(algorithms), 6)
+        self.assertGreaterEqual(len(algorithms), 100)
         for problem in algorithms:
             with self.subTest(problem=problem['id']):
                 namespace = {}
@@ -164,7 +198,7 @@ class ArenaTaxonomyTests(unittest.TestCase):
             problem for problem in problems.values()
             if problem['track'] == 'machine-learning'
         ]
-        self.assertEqual(len(ml), 15)
+        self.assertGreaterEqual(len(ml), 100)
         for problem in ml:
             with self.subTest(problem=problem['id']):
                 self.assertIn(problem['difficulty'], DIFFICULTIES)
@@ -313,7 +347,14 @@ class ArenaTaxonomyTests(unittest.TestCase):
             track='algorithms', difficulty='beginner', query='frequency',
         )
         ids = [problem['id'] for problem in result['problems']]
-        self.assertEqual(ids, ['algo-count-word-frequency'])
+        self.assertEqual(
+            ids,
+            [
+                'algo-count-word-frequency',
+                'algo-b2-valid-anagram',
+                'algo-b2-top-frequent-words',
+            ],
+        )
         self.assertEqual(result['selected']['track'], 'algorithms')
 
         result = catalogue(track='ai-engineering', topic='rag-retrieval')
@@ -391,7 +432,7 @@ class ArenaPageTests(ArenaTestCase):
         html = response.get_data(as_text=True)
         self.assertEqual(response.status_code, 200)
         self.assertIn('Count word frequency', html)
-        self.assertIn('1 problem found', html)
+        self.assertIn('3 problems found', html)
         self.assertNotIn('Binary search', html)
 
         empty = self.client.get('/arena/problems?q=no-such-problem-xyz')
