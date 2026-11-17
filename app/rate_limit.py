@@ -88,6 +88,18 @@ def _get_config(name, identity=None):
 
 
 def _increment(bucket, window_start):
+    try:
+        from app.ai_cache import _redis_client
+        redis = _redis_client()
+        if redis is not None:
+            key = f'ruach:ratelimit:v1:{bucket}:{int(window_start.timestamp())}'
+            count = redis.incr(key)
+            if count == 1:
+                redis.expire(key, 86400)
+            return count
+    except Exception:
+        pass
+
     from app.models import RateLimitCounter
 
     # Counters commit on their own session: a request that later aborts (or

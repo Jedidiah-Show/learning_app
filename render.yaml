@@ -26,7 +26,7 @@ services:
     autoDeploy: true
     # Keep schema changes in the guarded manual migration workflow/runbook.
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --timeout 60
+    startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --worker-class gthread --timeout 60
     healthCheckPath: /healthz
     envVars:
       - key: PYTHON_VERSION
@@ -47,12 +47,12 @@ services:
       - key: PUBLIC_APP_URL
         sync: false
 
-      # Postgres/Neon tuning. Each worker allows four connections by default,
-      # for up to eight total across the two gunicorn workers.
+      # Postgres/Neon tuning. Each worker allows up to 15 connections total
+      # across the two gunicorn workers.
       - key: DB_POOL_SIZE
-        value: "2"
+        value: "5"
       - key: DB_MAX_OVERFLOW
-        value: "2"
+        value: "10"
       - key: DB_POOL_RECYCLE
         value: "300"
       - key: DB_POOL_TIMEOUT

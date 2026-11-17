@@ -66,13 +66,15 @@ def _skill_domain(skill):
 
 def _skills():
     states = get_user_all_skill_states(current_user.id)
+    user_progresses = {
+        row.skill_id: row
+        for row in UserSkillProgress.query.filter_by(user_id=current_user.id).all()
+    }
     skills = []
     for skill_id, state in sorted(states.items()):
         item = {'id': skill_id, **state}
         item['domain'] = _skill_domain(item)
-        progress = UserSkillProgress.query.filter_by(
-            user_id=current_user.id, skill_id=skill_id,
-        ).first()
+        progress = user_progresses.get(skill_id)
         if progress is not None:
             item['verification_status'] = progress.verification_status
             item['verified_at'] = (
