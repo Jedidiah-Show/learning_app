@@ -16,6 +16,8 @@ import yaml
 import os
 import uuid
 
+from app.version import APP_VERSION
+
 db = SQLAlchemy()
 login_manager = LoginManager()
 migrate = Migrate()
@@ -25,7 +27,7 @@ migrate = Migrate()
 # have finished first-run setup (the two questions plus the pathway fit check).
 # Everything else is gated once.
 _NEVER_GATED_ENDPOINTS = frozenset({
-    'static', 'main.healthz', 'main.readyz',
+    'static', 'main.healthz', 'main.readyz', 'main.version',
     'auth.onboarding', 'auth.onboarding_pathway', 'auth.login', 'auth.logout',
     'auth.register',
     'auth.profile', 'auth.profile_photo', 'auth.update_account',
@@ -873,7 +875,7 @@ def create_app(config_override=None):
                 app.config.get('GOOGLE_CLIENT_ID')
                 and app.config.get('GOOGLE_CLIENT_SECRET')
             ),
-            'app_version': '1.0.0',
+            'app_version': APP_VERSION,
         }
     
     return app

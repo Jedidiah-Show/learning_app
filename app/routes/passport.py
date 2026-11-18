@@ -1,7 +1,7 @@
 import csv
 from io import StringIO
 
-from flask import Blueprint, Response, current_app, jsonify, render_template
+from flask import Blueprint, Response, current_app, jsonify, render_template, request
 from flask_login import current_user, login_required
 
 from app import db
@@ -218,10 +218,24 @@ def submit_verification(skill_id):
     })
 
 
+def _target_learner_id(data):
+    """Extract the target learner id from a reviewer action payload."""
+    value = data.get('user_id')
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return None
+
+
 @passport_bp.route('/api/passport/skills/<skill_id>/assess', methods=['POST'])
 @login_required
 def assess_verification(skill_id):
-    """Assess submitted evidence (SUBMITTED -> VERIFIED / REJECTED / NEEDS_REVISION)."""
+    """Assess submitted evidence (SUBMITTED -> VERIFIED / REJECTED / NEEDS_REVISION).
+
+    Reviewer-only. The evidence owner is supplied as ``user_id`` and must
+    not be the reviewer (learners can never verify their own evidence).
+    """
+    from app.services.authorization import can_assess_competency
     error = _require_verified_schema()
     if error:
         return error
@@ -231,7 +245,12 @@ def assess_verification(skill_id):
     to_status = data.get('verification_status')
     if to_status not in ('VERIFIED', 'REJECTED', 'NEEDS_REVISION'):
         return jsonify({'error': 'verification_status must be VERIFIED, REJECTED, or NEEDS_REVISION'}), 400
-    progress = _progress_or_404(current_user.id, skill_id)
+    target_id = _target_learner_id(data)
+    if target_id is None:
+        return jsonify({'error': 'user_id of the evidence owner is required'}), 400
+    if not can_assess_competency(current_user, target_id):
+        return jsonify({'error': 'You are not authorized to assess this evidence'}), 403
+    progress = _progress_or_404(target_id, skill_id)
     if progress is None:
         return jsonify({'error': 'No progress record for this skill'}), 404
     if progress.verification_status != 'SUBMITTED':
@@ -245,7 +264,7 @@ def assess_verification(skill_id):
     progress.verification_note = data.get('note') or ''
     progress.updated_at = utcnow()
     _record_verification(
-        current_user.id, skill_id, from_status, to_status,
+        target_id, skill_id, from_status, to_status,
         note=progress.verification_note, assessed_by=current_user.id,
     )
     db.session.commit()
@@ -298,7 +317,13 @@ def invalidate_verification(skill_id):
     reason = data.get('reason') or ''
     if not isinstance(reason, str) or not reason.strip():
         return jsonify({'error': 'invalidation reason is required'}), 400
-    progress = _progress_or_404(current_user.id, skill_id)
+    from app.services.authorization import can_invalidate_verification
+    target_id = _target_learner_id(data)
+    if target_id is None:
+        return jsonify({'error': 'user_id of the evidence owner is required'}), 400
+    if not can_invalidate_verification(current_user, target_id):
+        return jsonify({'error': 'You are not authorized to invalidate this evidence'}), 403
+    progress = _progress_or_404(target_id, skill_id)
     if progress is None:
         return jsonify({'error': 'No progress record for this skill'}), 404
     if progress.verification_status != 'VERIFIED':
@@ -312,8 +337,8 @@ def invalidate_verification(skill_id):
     progress.verification_note = f'REVOKED: {reason.strip()}'
     progress.updated_at = utcnow()
     _record_verification(
-        current_user.id, skill_id, from_status, 'REVOKED',
-        note=f'Invalidated: {reason.strip()}',
+        target_id, skill_id, from_status, 'REVOKED',
+        note=f'Invalidated: {reason.strip()}', assessed_by=current_user.id,
     )
     db.session.commit()
     return jsonify({
@@ -325,12 +350,26 @@ def invalidate_verification(skill_id):
 @passport_bp.route('/api/passport/skills/<skill_id>/history', methods=['GET'])
 @login_required
 def verification_history(skill_id):
-    """Return the verification transition history for a skill (traceability)."""
+    """Return the verification transition history for a skill (traceability).
+
+    Learners see their own history; privileged reviewers may pass ?user_id=
+    to inspect another learner's history.
+    """
+    from app.services.authorization import can_view_verification_history
     error = _require_verified_schema()
     if error:
         return error
+    owner_id = current_user.id
+    raw = request.args.get('user_id') if hasattr(request, 'args') else None
+    if raw is not None:
+        try:
+            owner_id = int(raw)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'user_id must be an integer'}), 400
+    if not can_view_verification_history(current_user, owner_id):
+        return jsonify({'error': 'You are not authorized to view this history'}), 403
     rows = SkillVerification.query.filter_by(
-        user_id=current_user.id, skill_id=skill_id,
+        user_id=owner_id, skill_id=skill_id,
     ).order_by(SkillVerification.created_at.asc()).all()
     return jsonify({
         'skill_id': skill_id,

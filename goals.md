@@ -1,212 +1,227 @@
-# RUACH — Parallel Pathways
+# RUACH LMS — Learning Intelligence & Engineering Excellence
 ## Product Goals, Requirements and Acceptance Criteria
 
-**Release:** Parallel Pathways  
-**Release type:** Major architectural and product release  
-**Status:** Released — Parallel Pathways 1.0.0  
-**Primary domains:** Shared Foundations, AI Engineering, Machine Learning  
-**Authoritative status:** `docs/releases/parallel-pathways/release-notes.md` and `STATUS_REPORT_PARALLEL_PATHWAYS.md`  
-**Product direction:** Independent learning pathways on shared platform infrastructure
-
----
-
-# 1. Release Vision
-
-RUACH is evolving from a conventional course-based Learning Management System into an evidence-driven engineering learning platform.
-
-The Parallel Pathways release establishes three clearly defined learning domains:
-
+**Release:** 1.1
+**Release Type:** Major product and engineering consolidation
+**Baseline:** Parallel Pathways 1.0.0 and subsequent development through commit `68b3125`
+**Status:** Proposed
+**Product Domains:**
 1. Shared Foundations
 2. AI Engineering
 3. Machine Learning
 
-Shared Foundations provide common foundational knowledge and competencies. AI Engineering and Machine Learning are independent specialisations built on top of the shared platform.
+---
 
-The two specialisations must have separate curricula, progression, assessments, projects, competency frameworks, learning recommendations and completion criteria.
+# 1. Product Vision
 
-The application must never assume that a learner is pursuing only one specialisation.
+RUACH is evolving from a conventional Learning Management System into an evidence-driven engineering education platform.
 
-A learner may:
+Its purpose is not merely to deliver lessons, track course completion or provide AI-generated explanations.
 
-- Study Shared Foundations.
-- Enrol in AI Engineering.
-- Enrol in Machine Learning.
-- Enrol in both AI Engineering and Machine Learning.
-- Complete one specialisation without completing the other.
-- Pause one specialisation while continuing the other.
-- Resume either specialisation independently.
+RUACH should help learners become competent engineers through structured learning, deliberate practice, real engineering projects, continuous assessment, intelligent guidance and demonstrable technical evidence.
 
-The release must preserve existing learner data and existing learning capabilities while introducing this architecture.
+The next release must consolidate the Parallel Pathways architecture and establish the foundations for an adaptive learning environment.
 
-# 2. Fundamental Architectural Rules
+The platform must support three distinct learning domains:
 
-These rules are mandatory and take precedence over convenience or implementation shortcuts.
+- Shared Foundations
+- AI Engineering
+- Machine Learning
 
-## R1 — Shared Foundations are the only shared curriculum dependency
+Shared Foundations provide common engineering knowledge and competencies.
 
-Shared Foundations may provide prerequisites for either specialisation.
+AI Engineering and Machine Learning remain independent specialisations. They may share infrastructure, foundational competencies and platform services, but they must never become interchangeable learning experiences.
 
-AI Engineering and Machine Learning must not depend on one another.
+A learner may pursue either specialisation or both independently.
 
-Allowed dependency:
+## 1.1 Fundamental Product Principles
 
-    Shared Foundations → AI Engineering
-    Shared Foundations → Machine Learning
+1. Learning outcomes must take precedence over feature quantity.
+2. Curriculum definitions must have one authoritative source.
+3. Every assessment must measure an explicitly defined competency.
+4. Project submissions must produce meaningful engineering evidence.
+5. AI assistance must develop learner understanding rather than replace it.
+6. Progress must reflect demonstrated achievement, not merely activity.
+7. AI Engineering and ML must maintain independent domain identities.
+8. Learner data, credentials and assessment results must be trustworthy.
+9. Every important feature must be testable and observable.
+10. Security, accessibility and reliability are release requirements.
+
+---
+
+# 2. Architectural Invariants
+
+These rules are mandatory.
+
+## R1 — Three-domain architecture
+
+The application must resolve three distinct domains:
+
+- `shared-foundations`
+- `ai-engineering`
+- `machine-learning`
+
+Every curriculum module, lesson, competency, assessment and project must belong to an explicitly identified domain.
+
+## R2 — Shared Foundations are the only common curriculum
+
+Allowed curriculum dependencies:
+
+- Shared Foundations → AI Engineering
+- Shared Foundations → Machine Learning
 
 Forbidden dependencies:
 
-    AI Engineering → Machine Learning
-    Machine Learning → AI Engineering
+- AI Engineering → Machine Learning
+- Machine Learning → AI Engineering
 
-A pathway may define prerequisites within its own curriculum. Those prerequisites must remain inside that pathway.
+Each specialisation may establish additional prerequisites within its own curriculum.
 
-## R2 — Pathway independence
-
-Each pathway must have its own:
-
-- Curriculum.
-- Modules.
-- Lessons.
-- Learning objectives.
-- Progress records.
-- Assessments.
-- Exercises.
-- Projects.
-- Project milestones.
-- Competencies.
-- Skill progression.
-- Completion rules.
-- Learning recommendations.
-- Portfolio evidence.
-
-The underlying platform services may be shared, but the learning domain data must remain correctly scoped.
+Shared infrastructure is permitted. Shared specialisation curricula are not.
 
 ## R3 — Independent enrolment
 
-A learner must be able to enrol in both pathways.
+A learner must be able to:
 
-Enrolment in one pathway must not:
+- Enrol in Shared Foundations.
+- Enrol in AI Engineering.
+- Enrol in Machine Learning.
+- Enrol in both specialisations.
+- Pause either specialisation.
+- Resume either specialisation.
+- Switch active learning focus without losing progress.
 
-- Automatically enrol the learner in the other.
-- Prevent enrolment in the other.
-- Change the other pathway's status.
-- Reset the other pathway's progress.
-- Require administrative approval to access the other pathway.
+Switching active focus must never delete, reset or modify the other pathway's progress.
 
 ## R4 — Independent progression
 
-Progression in one specialisation must not affect progression in the other.
+Each specialisation must maintain its own:
 
-An incomplete AI project must not block ML progression.
+- Lesson completion.
+- Assessments.
+- Projects.
+- Competencies.
+- Milestones.
+- Practice history.
+- Recommendations.
+- Completion criteria.
+- Credential eligibility.
 
-An incomplete ML assessment must not block AI progression.
+Shared foundation evidence may satisfy explicitly mapped foundation requirements in both specialisations.
 
-A learner's pathway preference must never become an access-control rule.
+## R5 — Shared services must be domain-aware
 
-## R5 — Reusable shared foundation evidence
+The following may share technical infrastructure:
 
-A learner should complete a shared foundation competency once.
+- AI Tutor
+- Practice Arena
+- Project Studio
+- Assessment engine
+- Skill Passport
+- Notification system
+- Reporting and analytics
+- Credential services
 
-Verified evidence from Shared Foundations may satisfy the corresponding foundation requirement in both specialisations.
+However, each service must resolve and enforce the correct domain context.
 
-This must not create duplicate foundation lessons, duplicate completion records or artificial pathway-specific foundation progress.
+## R6 — Evidence before mastery
 
-## R6 — Shared infrastructure, separate domain behaviour
+A learner must not receive a verified competency merely because they:
 
-The following platform services may be shared:
+- Opened a lesson.
+- Viewed an explanation.
+- Attempted an exercise.
+- Submitted a project.
+- Interacted with the AI Tutor.
+- Completed an unverified activity.
 
-- Authentication and learner identity.
-- Practice Arena infrastructure.
-- AI Tutor infrastructure.
-- Project Studio infrastructure.
-- Skill Passport infrastructure.
-- Notifications.
-- File storage.
-- Assessment orchestration.
-- Reporting infrastructure.
-- Credentials and portfolio infrastructure.
+Mastery and verification must follow explicit assessment rules.
 
-However, shared services must respect pathway boundaries.
-
-For example, one AI Tutor service may support both pathways, but it must assemble the correct domain context and use the correct tutoring behaviour for each.
+---
 
 # 3. Product Goals
 
-## G0 — Establish a Clear Three-Domain Learning Architecture
+## G0 — Security, Data Protection and Release Integrity
 
-**Objective:** Establish Shared Foundations, AI Engineering and Machine Learning as distinct learning domains.
+**Priority:** Critical
 
-### Requirements
-
-- Create an explicitly identified Shared Foundations curriculum.
-- Maintain an independent AI Engineering curriculum.
-- Maintain an independent Machine Learning curriculum.
-- Give each domain its own curriculum manifest or equivalent source of truth.
-- Assign stable identifiers to pathways, modules, lessons and competencies.
-- Define learning objectives and prerequisites.
-- Validate curriculum dependency relationships.
-- Separate curriculum ownership from presentation and dashboard logic.
-
-### Acceptance criteria
-
-- The application can resolve all three domains independently.
-- Shared Foundations are not represented as AI Engineering modules.
-- AI Engineering does not contain ML lessons merely because both use Python.
-- ML does not inherit AI Engineering modules as prerequisites.
-- Each specialisation has independent learning objectives and completion rules.
-- No circular curriculum dependencies exist.
-- Cross-specialisation prerequisite relationships are rejected.
-
-### Success indicators
-
-- All published curriculum units belong to exactly one learning domain.
-- Every prerequisite can be traced to an allowed domain.
-- Curriculum validation passes in CI.
-- No dashboard or route relies on a hardcoded single-pathway assumption.
-
----
-
-## G1 — Implement Independent Learner Enrolment
-
-**Objective:** Replace the single-destination learning model with independent pathway enrolments.
+**Objective:** Ensure RUACH can be safely developed, distributed, deployed and operated.
 
 ### Requirements
 
-- Introduce learner-to-pathway enrolment records.
-- Support multiple active enrolments for one learner.
-- Support enrolment statuses.
-- Preserve enrolment history.
-- Allow learners to start, pause and resume each pathway independently.
-- Allow learners to enrol in both specialisations.
-- Remove permanent pathway selection restrictions.
-- Remove administrative pathway-switching approval as an access requirement.
+- Remove credentials and private environment files from source archives.
+- Exclude local databases and learner uploads from release packages.
+- Rotate exposed non-placeholder credentials.
+- Establish an approved source-export process.
+- Introduce automated secret and sensitive-file scanning.
+- Review authentication, authorization, CSRF and API access boundaries.
+- Protect learner submissions and assessment evidence.
+- Establish backup and recovery procedures.
+- Introduce release version and commit metadata.
 
 ### Acceptance criteria
 
-- A learner can enrol in AI Engineering without enrolling in ML.
-- A learner can enrol in ML without enrolling in AI Engineering.
-- A learner can enrol in both.
-- Pausing one pathway does not pause the other.
-- Completing one pathway does not automatically complete the other.
-- Changing a dashboard preference does not change enrolment.
-- A learner cannot access another learner's enrolment records.
-- Existing learner records are migrated without loss.
-
-### Success indicators
-
-- All enrolment scenarios pass integration tests.
-- No single-pathway destination field controls access.
-- Multiple pathway enrolments are supported at the database level.
+- No `.env` files or private credential files exist in the distributable source archive.
+- No production database or learner-upload directory is included in source packages.
+- Secret scanning runs in CI.
+- Credential rotation is documented and verified where exposure occurred.
+- Every production release can be associated with a commit SHA and migration revision.
+- Backup and rollback procedures are documented and tested.
+- No learner can modify another learner's private records.
+- Security-sensitive assessment operations enforce role-based authorization.
 
 ---
 
-## G2 — Extract and Formalise Shared Foundations
+## G1 — Canonical Curriculum Architecture
 
-**Objective:** Establish a genuine common foundation curriculum without making either specialisation dependent on the other.
+**Priority:** Critical
 
-### Required foundation domains
+**Objective:** Make the three curriculum manifests authoritative throughout the application.
 
-The exact content must be validated against the existing curriculum, but the proposed structure includes:
+### Requirements
+
+Establish one canonical curriculum registry that resolves:
+
+- Shared Foundations.
+- AI Engineering.
+- Machine Learning.
+
+The registry must be used by:
+
+- Lesson catalogue.
+- Lesson detail.
+- Dashboard.
+- Progress tracking.
+- Practice recommendations.
+- Project Studio.
+- AI Tutor.
+- Skill Passport.
+- Credential eligibility.
+- Curriculum reporting.
+
+### Acceptance criteria
+
+- All three domains resolve independently.
+- No application service silently falls back to a competing legacy curriculum.
+- Stable IDs are maintained.
+- Every published lesson has a valid domain, module and learning objective.
+- Prerequisites resolve correctly.
+- Cross-specialisation dependencies are rejected.
+- Curriculum versions can be identified.
+- Legacy progress remains accessible through an explicit migration mapping.
+- Curriculum validation runs automatically in CI.
+
+---
+
+## G2 — Complete Shared Foundations Experience
+
+**Priority:** Critical
+
+**Objective:** Deliver Shared Foundations as a genuine standalone learning experience.
+
+### Required foundation modules
+
+The existing six-module structure is the baseline:
 
 1. Programming Foundations.
 2. Python Foundations.
@@ -215,574 +230,467 @@ The exact content must be validated against the existing curriculum, but the pro
 5. API and Backend Foundations.
 6. Data and Computational Thinking Foundations.
 
-Not every learner needs every foundation module before beginning either specialisation. Each pathway must declare only the specific foundation competencies it genuinely requires.
-
 ### Requirements
 
-- Extract foundation modules from the existing AI-owned curriculum.
-- Give foundation modules stable shared identifiers.
-- Remove duplicated foundation content from specialisation manifests.
-- Define foundation competencies.
-- Define foundation assessment criteria.
-- Support reusable foundation evidence.
-- Support pathway-specific prerequisite declarations against foundation competencies.
+- Complete lesson content for all published modules.
+- Implement dedicated lesson resolution.
+- Establish foundation assessments.
+- Define competencies and prerequisite relationships.
+- Support foundation evidence reuse.
+- Provide foundation-specific progress.
+- Provide clear transitions into AI Engineering and ML.
+- Prevent unnecessary duplication of foundation lessons.
 
 ### Acceptance criteria
 
-- Shared Foundations exist as a distinct curriculum domain.
-- The same foundation lesson is not duplicated across specialisations.
-- A verified foundation competency can satisfy the corresponding requirement in either specialisation.
-- Completing Shared Foundations does not automatically enrol a learner in either specialisation.
-- Learners can explore specialisation content without being forced through unrelated foundation modules.
-- Foundation requirements are explicit and competency-based.
-
-### Success indicators
-
-- No duplicated foundation completion records.
-- All foundation prerequisites resolve to valid foundation competencies.
-- Learners can see which foundation skills are relevant to each pathway.
+- Every published foundation lesson can be opened through the normal learner interface.
+- Lesson completion persists correctly.
+- Assessments are domain-scoped.
+- Foundation evidence is reusable where mappings explicitly permit it.
+- Shared Foundations does not automatically enrol learners in either specialisation.
+- The standalone foundation experience does not expose legacy AI continuation modules.
 
 ---
 
-## G3 — Create Independent AI Engineering and ML Learning Experiences
+## G3 — Independent AI Engineering and Machine Learning Experiences
 
-**Objective:** Ensure each specialisation feels like a distinct engineering discipline.
+**Priority:** Critical
 
-### AI Engineering requirements
+**Objective:** Ensure both specialisations operate as distinct engineering disciplines.
 
-The AI Engineering workspace should focus on building intelligent applications and systems.
+### AI Engineering
 
-Core domains include:
+AI Engineering focuses on building intelligent applications and systems.
+
+Required domains include:
 
 - LLM fundamentals.
 - Prompt engineering.
-- Model and API integration.
+- Model/API integration.
 - Embeddings.
-- Vector search.
+- Vector databases and search.
 - Retrieval-Augmented Generation.
 - AI application architecture.
-- Agent systems.
-- Tool integration.
+- Agents and tool integration.
 - AI evaluation.
 - AI application security.
 - Deployment and observability.
 
-### ML requirements
+### Machine Learning
 
-The Machine Learning workspace should focus on learning from data and engineering predictive systems.
+ML focuses on learning from data and engineering predictive systems.
 
-Core domains include:
+Required domains include:
 
 - Mathematics and statistics.
 - Data analysis.
 - Data preparation.
 - Feature engineering.
-- Supervised learning.
+- Classical machine learning.
+- Classification and regression.
 - Unsupervised learning.
 - Model evaluation.
-- Optimisation.
 - Deep learning.
-- Model deployment.
-- MLOps.
-- Model monitoring.
-
-### Requirements for both
-
-Each specialisation must have:
-
-- Dedicated dashboard.
-- Dedicated curriculum map.
-- Dedicated learning progress.
-- Dedicated module completion.
-- Dedicated assessments.
-- Dedicated projects.
-- Dedicated recommendations.
-- Dedicated competency views.
-- Dedicated completion requirements.
+- Computer vision.
+- PyTorch.
+- Reproducible training.
+- Production ML and MLOps.
 
 ### Acceptance criteria
 
-- The AI workspace does not display ML curriculum as its own.
-- The ML workspace does not display AI curriculum as its own.
-- Shared Foundations are visibly separate from both.
-- Learners can navigate between workspaces without changing enrolment.
-- A learner can pause either pathway without affecting the other.
-- Each workspace presents its own relevant learning activities.
+- Each pathway has its own curriculum and progression.
+- Each has a dedicated learner workspace.
+- Each has domain-specific assessments and projects.
+- AI progress cannot alter ML progress.
+- ML progress cannot alter AI progress.
+- Both pathways can be active simultaneously.
+- Shared Foundations remain the only shared curriculum.
+- Dashboard and navigation accurately represent enrolment state.
 
 ---
 
-## G4 — Deliver Practice Arena 2.0
+## G4 — Practice Arena 2.1
 
-**Objective:** Turn the Practice Arena into a structured, pathway-aware engineering practice environment.
+**Priority:** High
+
+**Objective:** Transform the Practice Arena from a large challenge catalogue into a structured competency-development environment.
 
 ### Requirements
 
-The Arena must support three learning scopes:
+- Preserve the three independent tracks:
+  - AI Engineering.
+  - Machine Learning.
+  - Algorithms.
+- Maintain stable challenge IDs.
+- Expand ML topic coverage to match the curriculum.
+- Establish prerequisite relationships.
+- Support difficulty-based practice.
+- Improve hidden-test evaluation.
+- Add submission history.
+- Add diagnostic feedback.
+- Add personalized challenge recommendations.
+- Add mastery tracking.
 
-- Shared Foundations.
-- AI Engineering.
-- Machine Learning.
+### Required ML challenge domains
 
-### Shared Foundation challenges
-
-- Python fundamentals.
-- Programming logic.
-- Data structures.
-- Software engineering.
-- Git and development workflow.
-- API fundamentals.
-- General engineering problem-solving.
-
-### AI Engineering challenges
-
-- Prompt engineering.
-- LLM integration.
-- Embeddings.
-- Retrieval.
-- RAG debugging.
-- Agent workflows.
-- Tool calling.
-- AI evaluation.
-- AI application security.
-- Inference and cost optimisation.
-
-### ML challenges
-
-- Mathematical reasoning.
-- Statistics and probability.
-- NumPy and Pandas.
-- Data cleaning.
+- Python for ML.
+- Statistics.
+- Data analysis.
 - Feature engineering.
 - Regression.
 - Classification.
-- Clustering.
-- Model evaluation.
-- Hyperparameter tuning.
-- Neural networks.
-- ML deployment.
-- MLOps.
-
-### Supported exercise types
-
-- Multiple choice.
-- Numerical reasoning.
-- Code completion.
-- Coding challenge.
-- Debugging challenge.
-- Data interpretation.
-- Model interpretation.
-- Architecture reasoning.
-- Scenario-based investigation.
-- Practical laboratory.
-
-### Acceptance criteria
-
-- Exercises have a domain identifier.
-- Exercises have explicit skill mappings.
-- Exercises have difficulty and prerequisite metadata.
-- Learners can filter by domain and competency.
-- Exercise completion is saved against the correct domain.
-- Exercise results do not modify unrelated pathway progress.
-- Existing exercises remain available after migration.
-- Assessment feedback explains errors where possible.
-
-### Evaluation requirements
-
-Use the simplest valid evaluation strategy for each challenge.
-
-- Deterministic answer comparison for objective questions.
-- Tolerance-based comparison for numerical questions.
-- Automated tests for supported coding exercises.
-- Rubric-based assessment for open-ended reasoning.
-- Structured project assessment for larger practical tasks.
-
-Arbitrary learner code must never execute inside the main application process.
-
----
-
-## G5 — Deliver AI Tutor 3.0
-
-**Objective:** Provide domain-aware tutoring through one shared tutoring platform.
-
-### Shared tutor capabilities
-
-- Context-aware explanations.
-- Socratic questioning.
-- Progressive hints.
-- Code debugging.
-- Misconception detection.
-- Learning objective awareness.
-- Project guidance.
-- Assessment feedback.
-- Conversation history.
-
-### AI Engineering tutor behaviour
-
-The AI tutor must understand:
-
-- LLM application development.
-- Prompt design.
-- Embeddings.
-- Retrieval.
-- RAG.
-- Agent systems.
-- Tool integration.
-- AI evaluation.
-- AI security.
-- AI application deployment.
-
-### ML tutor behaviour
-
-The ML tutor must understand:
-
-- Mathematical and statistical reasoning.
-- Data preparation.
-- Feature engineering.
-- Classical ML.
-- Model training.
-- Model evaluation.
-- Optimisation.
-- Deep learning.
-- ML deployment.
-- MLOps.
-
-### Shared foundation tutoring
-
-The tutor must also support foundational programming and engineering concepts independently of either specialisation.
-
-### Acceptance criteria
-
-- Tutor context identifies the active learning domain.
-- Tutor receives only relevant curriculum and learner context.
-- ML tutoring does not accidentally assume AI Engineering completion.
-- AI tutoring does not accidentally assume ML completion.
-- The tutor uses progressive hints.
-- The tutor does not automatically reveal full solutions when a hint is requested.
-- Responses are evaluated for technical correctness and clarity.
-- Tutor quality is measured using real evaluation cases, not only mocked responses.
-
-### Success indicators
-
-- Domain-specific tutor evaluation sets pass defined thresholds.
-- Incorrect pathway context is detected by tests.
-- Tutor latency, failure rate and usage cost are measurable.
-- Learners can report unhelpful or incorrect responses.
-
----
-
-## G6 — Deliver Project Studio 2.0
-
-**Objective:** Transform guided projects into structured engineering workspaces.
-
-### Shared Project Studio capabilities
-
-- Project creation.
-- Project templates.
-- Milestones.
-- Tasks.
-- Acceptance criteria.
-- Project notes.
-- Evidence attachments.
-- Activity history.
-- Submission.
-- Assessment.
-- Project status.
-- Portfolio publication.
-
-### AI Engineering Workbench
-
-Support project artefacts such as:
-
-- Prompt versions.
-- Model configuration.
-- Retrieval configuration.
-- Document ingestion records.
-- Agent workflow definitions.
-- Tool execution traces.
-- Evaluation datasets.
-- Evaluation results.
-- Cost and latency observations.
-- Architecture decisions.
-
-### ML Engineering Workbench
-
-Support:
-
-- Dataset references.
-- Dataset versions and fingerprints.
-- Preprocessing configurations.
-- Feature definitions.
-- Training runs.
-- Model configurations.
-- Hyperparameters.
-- Evaluation metrics.
-- Experiment notes.
-- Model artefact references.
-- Inference tests.
-- Monitoring observations.
-
-### Acceptance criteria
-
-- Both specialisations can use the same Project Studio infrastructure.
-- Project types have domain-specific schemas or validated metadata.
-- AI project evidence is not credited to ML competencies.
-- ML project evidence is not credited to AI competencies.
-- Project progress is independent.
-- Learners can record meaningful engineering decisions.
-- Existing ML experiment history is preserved.
-- Project submissions have clear status and verification records.
-
----
-
-## G7 — Deliver Skill Passport 2.0
-
-**Objective:** Create a trustworthy record of demonstrated engineering competencies.
-
-### Required competency domains
-
-**Shared Foundations**
-- Programming.
-- Python.
-- Software engineering.
-- Git and development workflow.
-- API fundamentals.
-- Engineering problem-solving.
-
-**AI Engineering**
-- LLM application development.
-- Prompt engineering.
-- Embeddings.
-- RAG.
-- Agent systems.
-- Tool integration.
-- AI evaluation.
-- AI deployment and security.
-
-**Machine Learning**
-- Mathematical reasoning.
-- Statistics.
-- Data analysis.
-- Data preparation.
-- Feature engineering.
-- Supervised learning.
 - Unsupervised learning.
 - Model evaluation.
 - Deep learning.
-- ML engineering.
+- PyTorch.
+- Computer vision.
+- Reproducible training.
+- Production ML.
 - MLOps.
 
-### Proficiency levels
+### Acceptance criteria
 
-- Exposure.
-- Practice.
+- Every published challenge has a validated schema.
+- Every challenge has domain and topic metadata.
+- Public and hidden tests are separate.
+- Authoritative submission requires a healthy isolated judge.
+- Judge failures do not falsely mark challenges as passed.
+- Challenge completion follows authoritative assessment rules.
+- Practice history is preserved.
+- Recommendations can be traced to learner competencies or learning objectives.
+
+---
+
+## G5 — Trusted Skill Passport 2.1
+
+**Priority:** Critical
+
+**Objective:** Make the Skill Passport a trustworthy record of demonstrated engineering competencies.
+
+### Requirements
+
+Implement distinct verification permissions.
+
+Learners may:
+
+- Submit evidence.
+- View evidence.
+- Request reassessment.
+- Respond to revision requests.
+
+Authorized reviewers may:
+
+- Assess evidence.
+- Verify competencies.
+- Reject evidence.
+- Request revisions.
+- Revoke or invalidate previous verification with a recorded reason.
+
+Every verification transition must be auditable.
+
+### Acceptance criteria
+
+- Learners cannot verify their own evidence.
+- Learners cannot impersonate reviewers.
+- Every verification action records reviewer identity and timestamp.
+- Verification history is immutable or append-only.
+- The UI displays verification status clearly.
+- Reassessment preserves historical evidence.
+- Competency domains are correctly classified.
+- AI and ML competencies remain separate.
+- Shared competency evidence is reusable only through explicit mappings.
+
+---
+
+## G6 — Project Studio 3.0
+
+**Priority:** High
+
+**Objective:** Make project development a structured engineering lifecycle rather than a submission form.
+
+### Shared project lifecycle
+
+1. Problem definition.
+2. Requirements and acceptance criteria.
+3. Architecture and design.
+4. Implementation.
+5. Testing and validation.
+6. Technical review.
+7. Demonstration.
+8. Documentation and publication.
+
+### AI Engineering project evidence
+
+- Architecture diagrams.
+- Prompt versions.
+- Model configuration.
+- Retrieval configuration.
+- Evaluation datasets.
+- Agent traces.
+- API contracts.
+- Deployment evidence.
+- Observability results.
+
+### ML project evidence
+
+- Dataset provenance.
+- Data preparation decisions.
+- Experiment logs.
+- Model versions.
+- Hyperparameters.
+- Evaluation metrics.
+- Reproducibility evidence.
+- Model cards.
+- Deployment and monitoring evidence.
+
+### Acceptance criteria
+
+- Every project has a domain-specific brief.
+- Every project has explicit deliverables.
+- Report schemas match backend validation.
+- Project milestones persist.
+- Assessment results are auditable.
+- Project evidence can be linked to relevant competencies.
+- Learners can publish approved portfolio evidence.
+- Privacy and visibility controls are enforced.
+
+---
+
+## G7 — AI Tutor 3.0
+
+**Priority:** High
+
+**Objective:** Establish RUACH's AI Tutor as a context-aware engineering mentor.
+
+### Required capabilities
+
+- Concept explanation.
+- Socratic questioning.
+- Progressive hints.
+- Debugging guidance.
+- Code review.
+- Misconception detection.
+- Project guidance.
+- Architecture review.
+- Assessment preparation.
+- Learning recommendations.
+
+### Domain-specific behaviour
+
+Shared Foundations tutor:
+- Programming.
+- Python.
+- Git.
+- Software engineering.
+- APIs.
+- Backend fundamentals.
+
+AI Engineering tutor:
+- LLM applications.
+- Prompt engineering.
+- RAG.
+- Agents.
+- AI architecture.
+- AI evaluation and security.
+
+ML tutor:
+- Mathematics.
+- Statistics.
+- Data preparation.
+- Model selection.
+- Training.
+- Evaluation.
+- Deep learning.
+- MLOps.
+
+### Acceptance criteria
+
+- Lesson context takes precedence over generic pathway preferences.
+- The tutor does not confuse AI Engineering and ML concepts.
+- Hints are progressive.
+- The tutor does not automatically reveal complete solutions during guided practice.
+- Context is grounded in the current curriculum.
+- Model-backed evaluation measures correctness, instructional quality, latency and cost.
+- Learner privacy is preserved.
+
+---
+
+## G8 — Learning Intelligence Engine
+
+**Priority:** Strategic
+
+**Objective:** Enable RUACH to diagnose learning gaps and recommend evidence-based interventions.
+
+### Requirements
+
+Collect relevant learning evidence:
+
+- Assessment responses.
+- Exercise attempts.
+- Challenge outcomes.
+- Code errors.
+- Project results.
+- Lesson interactions.
+- Repeated misconceptions.
+
+Establish concept-level mastery states.
+
+Suggested states:
+
+- Not introduced.
+- Introduced.
+- Practising.
+- Developing.
 - Proficient.
 - Mastered.
+- Needs review.
 
-The exact evidence thresholds must be defined for each competency.
-
-### Evidence sources
-
-- Assessments.
-- Practice Arena challenges.
-- Project submissions.
-- Verified project milestones.
-- Code reviews.
-- Deployment evidence.
-- Experiment reports.
-- Tutor-assisted explanations where independently assessed.
+The system must distinguish an inferred learning state from a formally verified competency.
 
 ### Acceptance criteria
 
-- Lesson completion alone cannot establish mastery.
-- Evidence records identify their source.
-- Evidence belongs to the correct learner and domain.
-- Evidence has a verification status.
-- AI evidence cannot automatically increase ML proficiency.
-- ML evidence cannot automatically increase AI proficiency.
-- Shared foundation evidence may satisfy the corresponding shared foundation requirement in either pathway.
-- Reassessment and evidence invalidation are supported.
-- Historical evidence remains traceable.
+- Learners have concept-level mastery records.
+- Weak concepts can be identified from assessment evidence.
+- Recommendations link to relevant lessons and exercises.
+- Learners can see why a recommendation was made.
+- Reassessment can update mastery.
+- Repeated mistakes can trigger targeted interventions.
+- The system does not infer mastery from lesson completion alone.
 
 ---
 
-## G8 — Deliver Engineering Labs 2.0
+## G9 — Learning Analytics and Engineering Readiness
 
-**Objective:** Develop engineering judgement through realistic, controlled troubleshooting scenarios.
+**Priority:** High
 
-### Shared Foundation labs
-
-- Python environment failure.
-- Git conflict investigation.
-- API request failure.
-- Configuration error.
-- Database connection failure.
-- Docker troubleshooting.
-
-### AI Engineering labs
-
-- Retrieval quality degradation.
-- Prompt injection investigation.
-- Tool-calling failure.
-- Agent loop or runaway execution.
-- Excessive inference cost.
-- LLM API failure.
-- Incorrect evaluation results.
-
-### ML labs
-
-- Data leakage.
-- Overfitting.
-- Model degradation.
-- Data drift.
-- Training/inference inconsistency.
-- Missing data.
-- Pipeline reproducibility failure.
-- Model-serving failure.
-
-### Acceptance criteria
-
-- Labs have deterministic initial states.
-- Learners receive progressive hints.
-- Success criteria are explicit.
-- Lab completion maps to relevant competencies.
-- Lab environments are isolated.
-- Labs do not require unrestricted production cloud infrastructure.
-- Reset and recovery mechanisms work.
-
----
-
-## G9 — Deliver Engineering Showcase
-
-**Objective:** Allow learners to present verified engineering work.
+**Objective:** Provide meaningful learner and instructor insights.
 
 ### Requirements
 
-- Public or private project visibility.
-- Project summaries.
-- Technical descriptions.
-- Architecture decisions.
-- Evidence links.
-- Assessment status.
-- Deployment references.
-- Limitations and reflections.
-- Competency links.
+Learner analytics:
+
+- Pathway progress.
+- Competency mastery.
+- Practice performance.
+- Project completion.
+- Learning consistency.
+- Recommended interventions.
+- Readiness indicators.
+
+Instructor analytics:
+
+- Cohort progress.
+- Common misconceptions.
+- Assessment performance.
+- Project completion.
+- Learners requiring support.
+- Competency gaps.
+
+Engineering readiness:
+
+- Coding.
+- Conceptual understanding.
+- Debugging.
+- Practical engineering.
+- Project defence.
+- Technical communication.
 
 ### Acceptance criteria
 
-- Learners control publication visibility.
-- Private evidence is not exposed publicly.
-- Verification status is clearly represented.
-- Published projects cannot falsely claim deployment or independent verification.
-- Portfolio records survive pathway pauses and enrolment changes.
+- Reports are derived from authoritative learning records.
+- Domain-specific reporting is preserved.
+- Access to individual learner information is permission-controlled.
+- Readiness indicators explain their evidence.
+- Aggregate analytics do not expose unnecessary personal information.
 
 ---
 
-## G10 — Preserve Security, Reliability and Existing Functionality
+## G10 — Reliability, Accessibility and Release Excellence
 
-**Objective:** Ensure the new architecture does not compromise the existing application.
+**Priority:** Critical
+
+**Objective:** Establish measurable operational quality.
 
 ### Requirements
 
-- Preserve learner history.
-- Preserve existing ML projects and experiment records.
-- Preserve existing AI curriculum and progress.
-- Preserve Arena functionality.
-- Preserve authentication and authorisation.
-- Preserve CSRF protections.
-- Maintain migration rollback procedures.
-- Validate uploaded files.
-- Keep untrusted execution outside the main application process.
-- Protect secrets and private data.
-- Maintain observability.
+- Full automated regression suite.
+- Browser end-to-end coverage.
+- Migration portability.
+- Migration rollback evidence.
+- Accessibility checks.
+- Responsive design checks.
+- Database query monitoring.
+- Cache observability.
+- Performance benchmarks.
+- AI usage and cost monitoring.
+- Release metadata.
+- Health and readiness checks.
 
 ### Acceptance criteria
 
-- All existing critical tests pass or are replaced with equivalent tests.
-- No learner progress is lost during migration.
-- No cross-user access is introduced.
-- No cross-pathway evidence leakage occurs.
-- Judge execution remains disabled unless a separately isolated worker is configured and verified.
-- Deployment and rollback are tested.
+- Full tests pass from a clean checkout.
+- Fresh database migration succeeds.
+- Migration downgrade/recovery is documented and tested on disposable databases.
+- Production migrations use approved backups.
+- No critical accessibility issues remain in release-critical journeys.
+- No critical responsive layout defects remain.
+- Performance benchmarks have recorded baselines.
+- Releases identify commit SHA, version and migration revision.
+- Deployment rollback procedures are documented.
 
-# 4. Non-Functional Requirements
+---
 
-## Security
+# 4. Product Success Metrics
 
-- Enforce learner ownership on all private records.
-- Validate request payloads.
-- Protect state-changing requests with CSRF controls where applicable.
-- Validate upload types, sizes and contents.
-- Restrict access to project artefacts.
-- Protect API credentials and model-provider secrets.
-- Isolate untrusted code execution.
-- Avoid unrestricted network access from execution workers.
-- Apply CPU, memory and time limits.
-- Record security-relevant events.
+The following are proposed targets, not existing measured results.
 
-## Reliability
+| Metric | Proposed target |
+|---|---:|
+| Published curriculum validation | 100% |
+| Published lesson route resolution | 100% |
+| Published project contract alignment | 100% |
+| Authoritative judge availability | 99% monthly target after launch |
+| Skill verification authorization | 100% enforced |
+| Critical automated tests | 100% passing |
+| Critical accessibility defects | 0 at release |
+| AI tutor evaluation coverage | 100% of defined evaluation cases |
+| Learner progress integrity | 100% of tested transition scenarios |
+| Release metadata completeness | 100% |
 
-- Progress writes must be transactionally safe.
-- Project evidence must not silently disappear.
-- Failed migrations must not leave the database in a partially upgraded state.
-- Retry behaviour must not create duplicate enrolments or evidence.
-- Background work must have observable status.
+Performance targets must be established using a measured baseline before setting production SLAs.
 
-## Performance
+---
 
-- Curriculum pages should not require loading all pathway content.
-- Dashboards should load domain-specific data efficiently.
-- Large experiment histories should be paginated.
-- Dataset uploads should have explicit size limits.
-- Long-running work should provide visible execution status.
+# 5. Out of Scope
 
-## Accessibility
+Unless separately approved, this release will not prioritize:
 
-- Support keyboard navigation.
-- Provide meaningful labels for charts and controls.
-- Do not rely exclusively on colour.
-- Ensure mathematical content is readable.
-- Provide accessible status and error messages.
+- Social networking expansion.
+- Cryptocurrency or token rewards.
+- Unnecessary badge systems.
+- Additional AI chat interfaces.
+- Unvalidated AI-generated curricula.
+- Arbitrary challenge volume growth.
+- Replacing the existing authentication system.
+- Rebuilding every UI component without evidence of need.
 
-## Maintainability
+The release prioritizes correctness, integration and learning quality.
 
-- Keep curriculum content data-driven.
-- Keep pathway rules centralised.
-- Avoid duplicating shared platform services.
-- Keep AI and ML domain logic separate.
-- Document schema and API contracts.
-- Maintain migration and rollback documentation.
+---
 
-# 5. Explicit Non-Goals
+# 6. Definition of Done
 
-This release is not intended to:
+A goal is complete only when:
 
-- Build a full cloud notebook platform.
-- Replace MLflow or DVC.
-- Build a new LLM provider.
-- Build a new machine learning framework.
-- Provide unrestricted GPU compute.
-- Execute arbitrary code inside the main web application.
-- Guarantee professional competence based solely on course completion.
-- Force every learner to complete every foundation module.
-- Make one specialisation a prerequisite for the other.
-- Replace established developer tools.
+1. Its implementation exists.
+2. Its acceptance criteria are covered by tests.
+3. Its security implications are reviewed.
+4. Its UI is integrated into the normal learner workflow.
+5. Its domain boundaries are enforced.
+6. Its documentation is updated.
+7. Its migration requirements are validated.
+8. Its deployment behaviour is verified where applicable.
 
-# 6. Release-Level Definition of Success
+A feature must not be marked complete merely because its model, route, template or JSON definition exists.
 
-The release is successful when:
-
-1. Shared Foundations exist as a distinct learning domain.
-2. AI Engineering and ML are independently accessible.
-3. Multiple pathway enrolments are supported.
-4. No cross-specialisation progression dependency exists.
-5. Existing learner progress is preserved.
-6. Each specialisation has a distinct workspace.
-7. Practice Arena supports all three domains.
-8. AI Tutor uses the correct domain context.
-9. Project Studio supports domain-specific work.
-10. Skill Passport records evidence correctly.
-11. Engineering Labs provide safe practical experiences.
-12. Security, migration and regression tests pass.
-
-The ultimate product measure is whether learners can independently develop demonstrable engineering capability in either specialisation without being forced through unrelated learning requirements.
-
+**Final product principle: RUACH measures what learners can demonstrate, not merely what they have accessed.**

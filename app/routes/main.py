@@ -93,21 +93,19 @@ def uploaded_file(filename):
 
 
 def _deployment_commit():
-    return (
-        os.environ.get('RENDER_GIT_COMMIT')
-        or os.environ.get('GIT_COMMIT_SHA')
-        or os.environ.get('VERCEL_GIT_COMMIT_SHA')
-        or ''
-    )[:7] or None
+    from app.version import _deployment_commit as commit
+    value = commit()
+    return value[:7] if value else None
 
 
 @main_bp.route('/healthz')
 def healthz():
     """Liveness check: no database or external calls."""
+    from app.version import APP_VERSION
     response = jsonify({
         'status': 'ok',
         'commit': _deployment_commit(),
-        'version': '1.0.0',
+        'version': APP_VERSION,
     })
     response.headers['Cache-Control'] = 'no-store'
     response.headers['X-Health-Status'] = 'ok'
@@ -118,10 +116,11 @@ def healthz():
 def readyz():
     """Readiness check: verifies the database schema is usable."""
     database = database_status()
+    from app.version import APP_VERSION
     response = jsonify({
         'status': 'ok' if database['ok'] else 'degraded',
         'commit': _deployment_commit(),
-        'version': '1.0.0',
+        'version': APP_VERSION,
         'database': {
             'ok': database['ok'],
             'revision': database['current_revision'],
@@ -134,6 +133,18 @@ def readyz():
     response.headers['Cache-Control'] = 'no-store'
     response.headers['X-Health-Status'] = 'ok' if database['ok'] else 'degraded'
     return response, 200 if database['ok'] else 503
+
+
+@main_bp.route('/version')
+def version():
+    """Safe release diagnostics: version and deployment identity only.
+
+    Never exposes secrets, connection strings or internal configuration.
+    """
+    from app.version import release_metadata
+    response = jsonify(release_metadata())
+    response.headers['Cache-Control'] = 'no-store'
+    return response, 200
 
 
 @main_bp.route('/search')

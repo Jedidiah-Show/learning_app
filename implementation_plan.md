@@ -1,2349 +1,1444 @@
+# RUACH LMS — Learning Intelligence & Engineering Excellence
+## Technical Implementation Plan
 
-# RUACH — Parallel Pathways
-## Technical Implementation Plan and Engineering Work Breakdown
-
-**Release:** Parallel Pathways  
-**Status:** Released — Parallel Pathways 1.0.0  
-**Architecture:** Shared Foundations + Independent AI Engineering + Independent Machine Learning  
-**Implementation approach:** Incremental, migration-first, test-driven  
-**Authoritative status:** `docs/releases/parallel-pathways/release-notes.md` and `STATUS_REPORT_PARALLEL_PATHWAYS.md`
+**Release:** 1.1
+**Status:** Proposed
+**Baseline:** Parallel Pathways 1.0.0 and subsequent source changes through `68b3125`
 
 ---
 
-# 1. Implementation Objective
+# 1. Implementation Strategy
 
-Implement the Parallel Pathways architecture without compromising existing RUACH functionality or learner data.
+The implementation must prioritize architectural integrity before feature expansion.
 
-The application must support:
+The team should not build Learning Intelligence on top of inconsistent curriculum, progress or assessment data.
 
-- A distinct Shared Foundations curriculum.
-- An independent AI Engineering pathway.
-- An independent Machine Learning pathway.
-- Multiple concurrent pathway enrolments.
-- Independent progress and completion.
-- Reusable shared foundation evidence.
-- Domain-aware Practice Arena.
-- Domain-aware AI Tutor.
-- Domain-specific Project Studio workbenches.
-- Independent competency evidence.
-- Engineering Labs.
-- Verified engineering portfolios.
+The implementation sequence is:
 
-The work must be implemented incrementally, with architectural independence established before feature expansion.
+1. Secure the application and release process.
+2. Consolidate the curriculum architecture.
+3. Correct project and assessment contracts.
+4. Strengthen competency verification.
+5. Improve AI tutoring.
+6. Introduce concept-level learning intelligence.
+7. Complete performance, accessibility and release validation.
 
-# 2. Mandatory Engineering Principles
+Existing working features must be preserved.
 
-## 2.1 Domain separation
-
-Use explicit learning domain identifiers.
-
-Recommended identifiers:
-
-- `shared-foundations`
-- `ai-engineering`
-- `machine-learning`
-
-Do not infer a learning domain from:
-
-- The learner's preferred dashboard.
-- A legacy pathway destination.
-- A route name.
-- A curriculum module number.
-- The last accessed page.
-
-The domain must be explicit in the relevant curriculum, enrolment, assessment and project records.
-
-## 2.2 Shared services, independent domain logic
-
-Reuse platform infrastructure, but do not combine domain-specific rules.
-
-For example:
-
-- Shared Project Studio service.
-- Separate AI and ML project schemas or validated domain-specific metadata.
-- Shared Tutor infrastructure.
-- Separate AI and ML context builders.
-- Shared Skill Passport infrastructure.
-- Separate AI and ML competency frameworks.
-
-## 2.3 No cross-specialisation prerequisites
-
-Implement this as an enforceable application invariant.
-
-The curriculum validator, enrolment service and progression service must reject any dependency from AI Engineering to ML or from ML to AI Engineering.
-
-Do not rely on frontend filtering to enforce independence.
-
-## 2.4 Preserve existing data
-
-Do not rebuild the application around the new architecture by discarding existing records.
-
-Preserve:
-
-- Learner identity.
-- Existing progress.
-- Existing ML specialization records.
-- Existing ML project records.
-- ML experiment history.
-- AI curriculum progress.
-- Arena submissions.
-- Skill Passport evidence.
-- Credentials.
-- Tutor history where retention is supported.
-
-## 2.5 Keep the main application isolated from untrusted execution
-
-The Flask application must not execute arbitrary learner code directly.
-
-Any authoritative judge or execution worker must operate in a separately isolated environment with resource limits and no unnecessary access to application secrets or internal services.
+Do not rewrite functioning subsystems simply to achieve architectural uniformity. Refactor only where there is a measurable correctness, maintainability, security or performance benefit.
 
 ---
 
-# 3. Phase 0 — Security and Repository Preparation
+# 2. Technical Baseline and Existing Components
 
-## 3.1 Credential remediation
+The team should first inventory the existing implementation.
 
-The supplied archive included local environment and development artefacts.
+Important existing components include:
 
-Before implementation:
+| Component | Existing responsibility |
+|---|---|
+| `app/models.py` | Database models |
+| `app/pathway_scope.py` | Pathway enrolment and destination resolution |
+| `app/curriculum.py` | Legacy curriculum access |
+| `app/ai_pathway.py` | AI pathway definitions |
+| `app/ml_pathway.py` | ML pathway definitions |
+| `app/routes/passport.py` | Skill Passport |
+| `app/routes/practice_arena.py` | Practice Arena |
+| `app/routes/ml_specialization.py` | ML lessons and projects |
+| `app/services/tutor.py` | AI Tutor |
+| `app/routes/projects.py` | Project and portfolio flows |
+| `app/data/engineering_labs.json` | Engineering lab definitions |
 
-- Rotate exposed credentials.
-- Invalidate exposed tokens.
-- Review Git history.
-- Remove tracked local environment files.
-- Review database connection strings.
-- Check API provider credentials.
-- Update production secrets.
-- Review deployment permissions.
-- Confirm that sample environment files contain placeholders only.
+Existing curriculum files:
 
-Add secret detection to the CI pipeline.
+- `shared_foundations_curriculum.json`
+- `ai_engineering_curriculum.json`
+- `machine_learning_curriculum.json`
+- `app/data/dynamoai_curriculum.json`
 
-## 3.2 Repository hygiene
+The legacy curriculum must be inventoried before replacement.
 
-Review and exclude unnecessary development artefacts from release archives and Git.
-
-Examples:
-
-- `.venv`
-- `node_modules`
-- Local databases
-- Cache directories
-- Build artefacts
-- Local environment files
-- Temporary logs
-- Personal configuration files
-
-Do not remove any existing application source or required deployment artefact as part of generic cleanup.
-
-## 3.3 Establish a reproducible baseline
-
-Record:
-
-- Git commit SHA.
-- Database migration head.
-- Python version.
-- Application dependencies.
-- Frontend build status.
-- Existing test results.
-- Browser test results.
-- Current deployment configuration.
-- Existing known defects.
-
-Run the existing test suite in the actual supported development environment.
-
-Record failures separately from failures introduced by this release.
-
-## 3.4 Create a release branch
-
-Recommended:
-
-`feature/parallel-pathways`
-
-Use smaller implementation branches:
-
-- `feature/shared-foundations`
-- `feature/pathway-enrollment`
-- `feature/pathway-workspaces`
-- `feature/practice-arena-2`
-- `feature/tutor-3`
-- `feature/project-studio-2`
-- `feature/skill-passport-2`
-- `feature/engineering-labs`
-
-Merge through reviewed pull requests.
+The team must not assume that the newer manifests already drive every learner-facing route.
 
 ---
 
-# 4. Phase 1 — Curriculum Architecture
+# 3. Phase 0 — Security and Release Preparation
 
-## 4.1 Inspect the existing curriculum representation
+**Milestone:** M0
+**Priority:** Critical
 
-Inspect:
-
-- Existing JSON manifests.
-- Curriculum loader.
-- Module and lesson models.
-- Lesson routes.
-- Prerequisite resolution.
-- Progress calculation.
-- Dashboard curriculum queries.
-- Existing curriculum validation.
-
-Determine which fields can be reused and which need to change.
-
-Do not create a second curriculum engine if the existing one can be safely extended.
-
-## 4.2 Introduce explicit curriculum domains
-
-Each curriculum should expose an explicit domain identifier.
-
-Illustrative structure:
-
-    curricula/
-    ├── shared-foundations/
-    │   ├── curriculum.json
-    │   ├── modules/
-    │   └── assessments/
-    │
-    ├── ai-engineering/
-    │   ├── curriculum.json
-    │   ├── modules/
-    │   └── assessments/
-    │
-    └── machine-learning/
-        ├── curriculum.json
-        ├── modules/
-        └── assessments/
-
-The exact filesystem structure may follow existing RUACH conventions.
-
-The important requirement is that the three curriculum sources remain independently maintainable.
-
-## 4.3 Curriculum metadata
-
-Recommended fields:
-
-### Curriculum
-
-- id
-- slug
-- name
-- description
-- domain
-- version
-- status
-- learning_objectives
-
-### Module
-
-- id
-- curriculum_id
-- slug
-- title
-- description
-- sequence
-- learning_objectives
-- prerequisites
-- competencies
-- difficulty
-- estimated_duration
-- status
-
-### Lesson
-
-- id
-- module_id
-- slug
-- title
-- content
-- objectives
-- sequence
-- prerequisites
-- estimated_duration
-- status
-
-### Competency mapping
-
-- lesson_id
-- competency_id
-- contribution_type
-- evidence_requirements
-
-Use stable IDs. Avoid generating identifiers from mutable display names.
-
-## 4.4 Prerequisite validation
-
-Implement a central curriculum validation service.
-
-Validation rules:
-
-1. Every referenced module exists.
-2. Every referenced lesson exists.
-3. Every competency exists.
-4. No circular dependency exists.
-5. Shared foundation prerequisites reference Shared Foundations.
-6. AI prerequisites reference AI Engineering or Shared Foundations.
-7. ML prerequisites reference ML or Shared Foundations.
-8. No AI-to-ML prerequisite exists.
-9. No ML-to-AI prerequisite exists.
-10. Every published module has learning objectives.
-
-The validator should run:
-
-- During development.
-- In automated tests.
-- In CI.
-- Before publishing curriculum updates.
-
-## 4.5 Existing curriculum migration
-
-Review the current AI curriculum and identify its foundation modules.
-
-Extract only genuinely shared concepts.
-
-Suggested foundation modules:
-
-1. Programming Foundations.
-2. Python Foundations.
-3. Software Engineering Foundations.
-4. Development Tools and Workflow.
-5. API and Backend Foundations.
-6. Data and Computational Thinking.
-
-Review every extracted lesson for:
-
-- Relevance to both specialisations.
-- Appropriate difficulty.
-- Duplicate content.
-- Missing prerequisites.
-- Domain-specific assumptions.
-
-Do not move AI-specific content into Shared Foundations just because ML also uses Python.
-
-## 4.6 ML curriculum review
-
-Preserve the six existing ML modules and 26 authored lessons as the starting point.
-
-Review the curriculum against these areas:
-
-- Mathematics.
-- Statistics and probability.
-- Python for data science.
-- Data analysis.
-- Data preparation.
-- Classical algorithms.
-- Model evaluation.
-- Deep learning.
-- ML engineering.
-- MLOps.
-
-Identify whether each topic is:
-
-- Covered adequately.
-- Introduced but underdeveloped.
-- Missing.
-- Better suited to an advanced extension.
-
-Do not inflate lesson counts simply to make the curriculum appear larger.
-
-### Phase 1 deliverables
-
-- Three curriculum manifests.
-- Curriculum schema.
-- Curriculum loader updates.
-- Prerequisite validator.
-- Existing content mapping.
-- Curriculum validation tests.
-
----
-
-# 5. Phase 2 — Database and Domain Model Refactoring
-
-This is the most important implementation phase.
-
-## 5.1 Introduce a LearningPathway model
-
-Conceptual fields:
-
-    LearningPathway
-    ----------------
-    id
-    slug
-    name
-    description
-    domain_type
-    version
-    status
-    created_at
-    updated_at
-
-Suggested domain types:
-
-- `FOUNDATION`
-- `SPECIALIZATION`
-
-The existing application may already have an equivalent pathway entity. Reuse it if it can represent all three domains without ambiguous ownership.
-
-## 5.2 Introduce learner enrolments
+## 3.1 Source Archive Generation
 
 Create:
 
-    LearnerPathwayEnrollment
-    ------------------------
-    id
-    learner_id
-    pathway_id
-    status
-    enrolled_at
-    started_at
-    paused_at
-    completed_at
-    created_at
-    updated_at
+` scripts/export_release_source.sh `
 
-Constraints:
+The script must:
 
-- Foreign keys must reference valid learners and pathways.
-- Duplicate enrolments must be prevented.
-- A learner may have multiple pathway enrolments.
-- Enrolment status must use a controlled set of values.
-- Updates must not affect unrelated enrolments.
+1. Verify the repository is in an approved state.
+2. Export committed source rather than arbitrary working-directory contents.
+3. Exclude local environments.
+4. Exclude user uploads.
+5. Exclude local databases.
+6. Exclude private configuration.
+7. Exclude caches and temporary files.
+8. Run a sensitive-file scan.
+9. Generate an archive manifest.
+10. Calculate the archive checksum.
 
-Suggested statuses:
+Use a clean Git export as the foundation.
 
-- `ENROLLED`
-- `ACTIVE`
-- `PAUSED`
-- `COMPLETED`
-- `WITHDRAWN`
+The script must fail if prohibited file patterns are detected.
 
-Use the project's established naming and enum conventions where appropriate.
+## 3.2 Credential Remediation
 
-## 5.3 Remove pathway destination as an access-control mechanism
+Audit the supplied development archive and determine which credentials are real, active or placeholders.
 
-The existing `CoursePlan.pathway_destination` must no longer determine the learner's available curriculum.
+Rotate exposed credentials where required.
 
-Implementation:
+Review:
 
-1. Identify all direct references.
-2. Replace access checks with enrolment-based checks.
-3. Replace progress filters with explicit domain scoping.
-4. Replace dashboard assumptions with independent enrolment queries.
-5. Update onboarding.
-6. Update tests.
-7. Retain the old field temporarily for migration compatibility if necessary.
+- Flask secret.
+- AI provider credentials.
+- Database credentials.
+- Google OAuth secrets.
+- Administrative API tokens.
+- Vercel credentials.
+- Credential signing keys.
+- GitHub webhook secret.
+- Storage access credentials.
 
-If retained, it must be documented as deprecated and must not control access.
+Do not print secret values in CI or remediation logs.
 
-## 5.4 Introduce domain-scoped progress
+## 3.3 Authorization Review
 
-Review the current progress model.
+Review the Skill Passport assessment route first.
 
-The application must distinguish:
+The existing route:
 
-- Foundation lesson progress.
-- AI lesson progress.
-- ML lesson progress.
+`POST /api/passport/skills/<skill_id>/assess`
 
-A progress record should have an unambiguous relationship to its learning unit and owning curriculum domain.
+must not allow a learner to approve their own competency evidence.
 
-Avoid storing duplicate completion records for the same Shared Foundations lesson simply because the learner is enrolled in two specialisations.
+Introduce a reusable authorization policy.
 
-## 5.5 Foundation evidence reuse
+Suggested service interface:
 
-Create a shared evidence model or extend the existing Skill Passport evidence model.
+```python
+def can_assess_competency(user, evidence):
+    return (
+        user.is_authenticated
+        and user.has_role("reviewer")
+        and evidence.user_id != user.id
+    )
+```
 
-Conceptual relationship:
+This is illustrative. Use the project's existing role and permission model rather than introducing an incompatible parallel role system.
 
-    Learner
-      |
-      └── Foundation Evidence
-              |
-              ├── Shared Foundations
-              |
-              ├── Satisfies AI requirement
-              |
-              └── Satisfies ML requirement
+Review all sensitive routes, including credential issuance, project review, publication, labs and administrative actions.
 
-The evidence itself remains owned by Shared Foundations.
+## 3.4 Release Metadata
 
-The specialisations reference it when evaluating their prerequisites.
+Introduce a release metadata service.
 
-They do not create independent copies of the foundation completion.
+Suggested structure:
 
-## 5.6 Migration design
+```python
+{
+    "version": "1.1.0",
+    "commit": "<full-git-sha>",
+    "build_timestamp": "<iso-8601>",
+    "migration_revision": "<revision>",
+    "environment": "production"
+}
+```
 
-Create migrations that are safe to run against existing learner records.
+Do not expose secret configuration or internal infrastructure details.
 
-Migration stages:
+Implement safe health and readiness semantics:
 
-1. Create new domain and enrolment structures.
-2. Register the three learning domains.
-3. Map existing AI and ML pathway destinations.
-4. Create appropriate enrolment records.
-5. Map existing foundation progress.
-6. Map existing AI progress.
-7. Map existing ML progress.
-8. Preserve project records.
-9. Preserve experiment records.
-10. Preserve evidence and credentials.
-11. Verify record counts and ownership.
-12. Mark the migration as complete.
+- `/healthz`: application process liveness.
+- `/readyz`: database and required service readiness.
+- Release metadata endpoint: version and deployment identity.
 
-Do not infer verified foundation mastery from the fact that a learner was previously assigned to AI or ML.
+## 3.5 Tests
 
-Only actual evidence should establish completion.
+Add:
 
-## 5.7 Rollback
+- Source archive exclusion tests.
+- Secret scanning tests.
+- Authorization tests.
+- Cross-user access tests.
+- Release metadata tests.
+- Health and readiness tests.
 
-The migration plan must include:
-
-- Database backup.
-- Pre-migration record counts.
-- Migration transaction strategy.
-- Post-migration validation.
-- Rollback procedure.
-- Recovery instructions.
-
-Do not delete the legacy field or old mapping data in the first migration.
-
-Remove deprecated structures only after the new architecture has operated successfully and a separate cleanup migration has been approved.
-
-### Phase 2 deliverables
-
-- Database models.
-- Database constraints.
-- Migrations.
-- Enrolment service.
-- Progress scoping service.
-- Foundation evidence reuse.
-- Migration tests.
-- Rollback documentation.
+**Phase completion:** M0 exit criteria satisfied.
 
 ---
 
-# 6. Phase 3 — Application Services and API Refactoring
+# 4. Phase 1 — Canonical Curriculum Architecture
 
-## 6.1 Create a central pathway service
+**Milestone:** M1
+**Priority:** Critical
 
-Recommended responsibilities:
+This is the most important architectural phase.
 
-- Resolve available learning domains.
-- Retrieve learner enrolments.
-- Enrol a learner.
-- Pause an enrolment.
-- Resume an enrolment.
-- Complete an enrolment.
-- Resolve curriculum access.
-- Resolve prerequisite status.
-- Retrieve pathway progress.
+## 4.1 Create a Curriculum Registry
 
-Avoid scattering pathway access rules across routes.
+Suggested file:
 
-The service should be the authoritative source for domain access and progression.
+`app/curriculum_registry.py`
 
-## 6.2 Define access rules
+The registry should resolve canonical curriculum manifests.
 
-A learner may access:
+Suggested interface:
 
-- Published Shared Foundations content.
-- Published AI content when the relevant AI access requirements are satisfied.
-- Published ML content when the relevant ML access requirements are satisfied.
+```python
+class CurriculumRegistry:
 
-Access to AI must never depend on ML enrolment or completion.
+    def get_domain(self, domain_id):
+        ...
 
-Access to ML must never depend on AI enrolment or completion.
+    def get_module(self, domain_id, module_id):
+        ...
 
-## 6.3 API design
+    def get_lesson(self, domain_id, lesson_id):
+        ...
 
-Adapt the following endpoint suggestions to existing route conventions. Avoid introducing duplicate endpoints where equivalent routes already exist.
+    def get_competency(self, domain_id, competency_id):
+        ...
 
-### Pathways
+    def validate_prerequisites(self, domain_id):
+        ...
 
-    GET    /api/pathways
-    GET    /api/pathways/<slug>
+    def get_curriculum_version(self, domain_id):
+        ...
+```
 
-### Enrolments
+The registry should not contain curriculum content itself.
 
-    GET    /api/me/enrollments
-    POST   /api/pathways/<slug>/enroll
-    POST   /api/enrollments/<id>/pause
-    POST   /api/enrollments/<id>/resume
+It should load, normalize and validate the authoritative manifests.
 
-### Progress
+## 4.2 Establish Domain Contracts
 
-    GET    /api/me/progress
-    GET    /api/me/progress/<pathway_slug>
+Every curriculum module should have a consistent structure.
 
-### Foundation evidence
+Illustrative schema:
 
-    GET    /api/me/foundation-evidence
-    GET    /api/me/foundation-requirements/<pathway_slug>
+```json
+{
+  "id": "mle.module-04",
+  "domain": "machine-learning",
+  "title": "Classical Machine Learning",
+  "description": "Build and evaluate classical ML models.",
+  "learning_objectives": [],
+  "competencies": [],
+  "prerequisites": [],
+  "lessons": [],
+  "projects": [],
+  "assessments": [],
+  "version": "1.0.0",
+  "status": "published"
+}
+```
 
-### Requirements
+The final schema must remain compatible with the existing curriculum structures or use a documented migration process.
 
-- All private endpoints require authentication.
-- Learner ownership must be verified.
-- Payloads must be validated.
-- State-changing requests must use the application's CSRF protection.
-- Responses must not expose another learner's records.
-- Enrolment operations must be idempotent where appropriate.
+Do not create a second curriculum format without a compelling reason.
 
-## 6.4 Refactor pathway_scope.py
+## 4.3 Migrate Legacy Curriculum Access
 
-The existing `pathway_scope.py` should no longer treat a single destination as the source of truth.
+Inventory every caller of:
 
-Replace it with a domain-aware scope resolver or equivalent service.
+- `all_modules()`
+- `get_lesson()`
+- `course_modules()`
+- `lesson_href()`
+- `destination_for()`
 
-Its responsibilities should include:
+Identify where legacy content is still used.
 
-- Resolving the requested learning domain.
-- Checking enrolment.
-- Checking foundation requirements.
-- Checking in-domain prerequisites.
-- Returning the allowed curriculum scope.
-- Rejecting invalid cross-domain dependencies.
+Replace direct curriculum access with registry-based resolution.
 
-Keep the rules testable independently of Flask routes.
+Create an explicit legacy ID mapping.
 
-## 6.5 Audit all dependent routes
+Do not silently redirect unknown IDs to AI Engineering.
 
-Search for old pathway assumptions in:
+An unresolved lesson should return a controlled not-found or migration response.
+
+## 4.4 Implement Shared Foundations Routing
+
+Create dedicated resolution for:
+
+`sf.*`
+
+Shared Foundations lessons must not depend on the legacy AI course loader.
+
+Implement:
+
+- Foundation catalogue.
+- Foundation detail page.
+- Foundation completion.
+- Foundation assessment.
+- Foundation progress.
+- Prerequisite display.
+- Pathway transition links.
+
+Use the six existing foundation modules as the initial content boundary.
+
+Validate that every module and lesson is actually ready before publishing it.
+
+## 4.5 Enrolment and Progression Consistency
+
+Review:
 
 - Onboarding.
 - Dashboard.
-- Lesson routes.
-- Lesson completion.
+- Pathway switch endpoint.
+- Lesson catalogue.
+- Progress.
 - Practice Arena.
+- AI Tutor.
 - Project Studio.
-- ML specialization.
-- Skill Passport.
-- Tutor.
-- Recommendations.
-- Credentials.
-- Reports.
-- Notifications.
 
-Every route should be checked for:
+The application must distinguish:
 
-- Correct domain scope.
-- Learner ownership.
-- Progress isolation.
-- Prerequisite correctness.
-- CSRF protection where applicable.
+- Enrolment.
+- Active learning focus.
+- Paused status.
+- Completion.
+- Prerequisite eligibility.
 
-### Phase 3 deliverables
+Do not treat these as interchangeable concepts.
 
-- Central pathway service.
-- Updated scope resolver.
-- Updated API routes.
-- Access-control tests.
-- API documentation.
-- Deprecated-code inventory.
+A learner's active focus should control presentation preferences, not access to independently enrolled pathways.
+
+## 4.6 Shared Foundation Evidence
+
+Create an explicit mapping between foundation competencies and specialisation requirements.
+
+Example:
+
+```text
+Shared Foundations: Python fundamentals
+    ├── AI Engineering: Python application development
+    └── ML: Python data processing
+```
+
+Reuse evidence only where the competency equivalence is valid.
+
+A general Python competency should not automatically prove mastery of every specialised Python application.
+
+## 4.7 Curriculum Tests
+
+Add:
+
+- Registry tests.
+- Manifest schema tests.
+- Lesson route tests.
+- Prerequisite tests.
+- Domain isolation tests.
+- Enrolment tests.
+- Progress migration tests.
+- Foundation evidence reuse tests.
+
+**Phase completion:** All three domains are resolved consistently throughout the application.
 
 ---
 
-# 7. Phase 4 — User Experience and Workspace Development
+# 5. Phase 2 — Project Studio Corrections and Expansion
 
-## 7.1 Shared Foundations workspace
+**Milestone:** M2
+**Priority:** High
 
-Create a dedicated foundation experience.
+## 5.1 Replace Hardcoded ML Project Templates
 
-Required sections:
+Inspect:
 
-- Overview.
-- Curriculum.
-- Learning objectives.
-- Progress.
-- Assessments.
-- Competencies.
-- Recommended next steps.
+`templates/specializations/machine_learning_project.html`
 
-The learner must be able to understand which foundation competencies are relevant to each specialisation.
+Remove the hardcoded module-number conditions.
 
-## 7.2 AI Engineering workspace
+The template must render module-specific project configuration.
 
-Create a dedicated AI Engineering dashboard.
+Suggested service:
 
-Recommended sections:
+`app/services/project_definition.py`
 
-- Learning overview.
-- AI curriculum map.
-- Current learning activity.
-- AI projects.
-- Practice Arena.
-- AI competencies.
-- Tutor access.
-- Recent work.
-- Next recommended action.
+Interface:
 
-The dashboard must not calculate its completion percentage using ML lessons or projects.
+```python
+def get_project_definition(domain_id, module_id):
+    ...
 
-## 7.3 Machine Learning workspace
+def validate_project_report(domain_id, module_id, report):
+    ...
 
-Create a dedicated ML dashboard.
+def get_project_rubric(domain_id, module_id):
+    ...
+```
 
-Recommended sections:
+Each ML project must supply its own:
 
-- Learning overview.
-- ML curriculum map.
-- Current learning activity.
-- ML projects.
-- Experiment history.
-- Practice Arena.
-- ML competencies.
-- Tutor access.
-- Recent work.
-- Next recommended action.
+- Title.
+- Description.
+- Tasks.
+- Report schema.
+- Starter-kit reference.
+- Acceptance criteria.
+- Evaluation rubric.
 
-The dashboard must not calculate its completion percentage using AI lessons or projects.
+The report contract used by the template must be exactly the contract used by the backend validator.
 
-## 7.4 Global learner dashboard
+## 5.2 Add Project Contract Validation
 
-Create a global overview containing:
+Before rendering or accepting a project:
 
-- Shared Foundations.
-- AI Engineering status.
-- ML status.
-- Active projects.
-- Recent activity.
-- Outstanding tasks.
-- Recommended next actions.
+- Validate its module reference.
+- Validate its domain.
+- Validate its report schema.
+- Validate its rubric.
+- Validate starter-kit availability.
+- Validate required deliverables.
 
-Do not average the completion percentages of different pathways into a single completion score.
+Return actionable validation messages.
 
-## 7.5 Navigation
+Do not allow incomplete project definitions to be published.
 
-Add clear navigation between:
+## 5.3 Build AI Engineering Workbench
+
+Create a dedicated AI Engineering project workspace.
+
+Suggested structure:
+
+```text
+AI Engineering Workbench
+├── Project Overview
+├── Architecture
+├── Prompt Laboratory
+├── Model Configuration
+├── Retrieval Laboratory
+├── Agent Traces
+├── Evaluation
+├── API Contracts
+├── Deployment Evidence
+└── Project Review
+```
+
+AI-specific functionality:
+
+- Versioned prompt experiments.
+- Model configuration records.
+- Retrieval configuration.
+- Agent execution traces.
+- Evaluation datasets.
+- Evaluation results.
+- API testing evidence.
+- Deployment documentation.
+
+This must not be implemented as a superficial copy of the ML experiment log.
+
+## 5.4 Build Shared Project Lifecycle
+
+Create reusable lifecycle services.
+
+Suggested states:
+
+```text
+DRAFT
+PLANNED
+IN_PROGRESS
+SUBMITTED
+UNDER_REVIEW
+REVISION_REQUESTED
+APPROVED
+PUBLISHED
+ARCHIVED
+```
+
+Validate transitions server-side.
+
+Record all significant transitions.
+
+## 5.5 Add Project Competency Mapping
+
+Projects should identify the competencies they assess.
+
+A project may contribute evidence towards multiple competencies, but the mapping must be explicit.
+
+Do not automatically mark a competency verified because a project is completed.
+
+## 5.6 Tests
+
+- Every ML module renders correctly.
+- Every ML report matches its validator.
+- AI workbench does not load ML-only fields.
+- Project lifecycle transitions are valid.
+- Project ownership is enforced.
+- Reviewer permissions are enforced.
+- Portfolio visibility is enforced.
+- Project evidence survives reassessment.
+
+**Phase completion:** Both pathways have distinct project workspaces supported by a shared lifecycle engine.
+
+---
+
+# 6. Phase 3 — Practice Arena 2.1
+
+**Milestone:** M3
+**Priority:** High
+
+## 6.1 Expand ML Challenge Taxonomy
+
+The existing ML catalogue has more than 100 problems but remains concentrated in introductory topic categories.
+
+Expand the taxonomy without discarding existing challenge IDs.
+
+Suggested topic identifiers:
+
+```text
+ml-python
+ml-statistics
+ml-data-analysis
+ml-feature-engineering
+ml-regression
+ml-classification
+ml-unsupervised
+ml-evaluation
+ml-deep-learning
+ml-pytorch
+ml-computer-vision
+ml-reproducibility
+ml-production
+ml-mlops
+```
+
+Every challenge must reference an explicit topic and curriculum competency.
+
+## 6.2 Challenge Definition Contract
+
+Every challenge should define:
+
+```json
+{
+  "id": "ml-example-001",
+  "track": "machine-learning",
+  "topic": "ml-regression",
+  "difficulty": "intermediate",
+  "title": "Evaluate a regression model",
+  "description": "...",
+  "starter_code": "...",
+  "public_tests": [],
+  "hidden_tests": [],
+  "hints": [],
+  "editorial": "...",
+  "prerequisites": [],
+  "competencies": [],
+  "time_limit": 5,
+  "memory_limit": 256
+}
+```
+
+This is an illustrative contract. Preserve compatibility with existing problem loaders through an explicit normalization layer.
+
+## 6.3 Judge Worker Architecture
+
+The current deployment blueprint disables authoritative submissions.
+
+Keep that protection until a separate judge worker is operational.
+
+Recommended architecture:
+
+```text
+Learner Browser
+      |
+      v
+Flask Submission API
+      |
+      v
+Durable Submission Queue
+      |
+      v
+Isolated Judge Worker
+      |
+      v
+Result Store
+      |
+      v
+Notification Service
+      |
+      v
+Learner Browser
+```
+
+The worker must:
+
+- Execute in an isolated environment.
+- Apply CPU limits.
+- Apply memory limits.
+- Apply execution timeouts.
+- Restrict filesystem access.
+- Restrict network access.
+- Limit output size.
+- Clean up execution environments.
+- Persist execution results.
+- Handle retries safely.
+
+Do not execute untrusted code inside the Flask process.
+
+## 6.4 Submission State Machine
+
+Suggested states:
+
+```text
+CREATED
+QUEUED
+RUNNING
+PASSED
+FAILED
+TIMEOUT
+MEMORY_LIMIT
+SYSTEM_ERROR
+CANCELLED
+```
+
+A system error must never be represented as a learner failure or success.
+
+Use idempotent submission identifiers.
+
+## 6.5 Browser Submission Experience
+
+When the judge is unavailable:
+
+- Disable Submit.
+- Explain why.
+- Preserve local Run functionality.
+- Preserve learner code.
+- Avoid showing a misleading assessment result.
+
+When available:
+
+- Show queue state.
+- Show execution state.
+- Show result.
+- Show permitted diagnostics.
+- Preserve submission history.
+
+## 6.6 Diagnostic Engine
+
+Use deterministic execution evidence first.
+
+Add AI-generated explanations only after the execution result has been classified.
+
+The AI must not receive private hidden test contents.
+
+## 6.7 Adaptive Practice
+
+Introduce recommendation rules based on:
+
+- Topic.
+- Difficulty.
+- Previous attempts.
+- Assessment outcomes.
+- Prerequisites.
+- Learner mastery.
+
+Start with deterministic recommendations before introducing an opaque ML recommendation model.
+
+**Phase completion:** Practice Arena has trustworthy assessment behaviour and curriculum-aligned challenges.
+
+---
+
+# 7. Phase 4 — Skill Passport 2.1
+
+**Milestone:** M4
+**Priority:** Critical
+
+## 7.1 Authorization Service
+
+Create a centralized verification authorization policy.
+
+Do not implement different ad hoc permission checks in individual routes.
+
+The assessment endpoint must:
+
+1. Authenticate the user.
+2. Load the evidence.
+3. Verify learner ownership rules.
+4. Verify reviewer permission.
+5. Prevent self-assessment.
+6. Validate the requested transition.
+7. Record the reviewer.
+8. Record the decision.
+9. Record the timestamp.
+10. Persist the audit event.
+
+## 7.2 Verification Event Model
+
+Introduce an append-only verification event model if the existing model cannot provide reliable history.
+
+Suggested fields:
+
+```text
+id
+evidence_id
+learner_id
+reviewer_id
+previous_status
+new_status
+decision_reason
+review_notes
+created_at
+```
+
+Do not overwrite historical verification events.
+
+## 7.3 Domain Integrity
+
+Every competency must have an authoritative domain.
+
+Validate:
 
 - Shared Foundations.
 - AI Engineering.
 - Machine Learning.
 
-The learner's preferred landing workspace may be stored as a UI preference.
+Remove legacy classification assumptions.
 
-It must not modify enrolments or curriculum access.
+## 7.4 Reassessment
 
-## 7.6 Responsive and accessibility requirements
+Allow learners to request reassessment.
 
-- Preserve the existing RUACH visual identity.
-- Use clear visual distinctions between learning domains.
-- Maintain consistent navigation.
-- Avoid relying solely on colour to distinguish pathways.
-- Support keyboard navigation.
-- Test mobile and desktop layouts.
-- Provide accessible progress and status indicators.
+The original evidence and verification history must remain accessible to authorized reviewers.
 
-### Phase 4 deliverables
+## 7.5 Credential Eligibility
 
-- Shared Foundations workspace.
-- AI Engineering workspace.
-- ML workspace.
-- Global dashboard.
-- Navigation and preferences.
-- Responsive and accessibility tests.
+Keep these concepts separate:
+
+- Pathway progress.
+- Project completion.
+- Competency verification.
+- Credential eligibility.
+- Credential issuance.
+
+A completed pathway must not automatically imply that every competency is verified.
+
+**Phase completion:** Skill Passport evidence is trustworthy, domain-scoped and auditable.
 
 ---
 
-# 8. Phase 5 — Practice Arena 2.0
+# 8. Phase 5 — AI Tutor 3.0
 
-## 8.1 Refactor exercise metadata
+**Milestone:** M5
+**Priority:** High
 
-Every challenge should contain explicit domain information.
+## 8.1 Context Resolver
+
+Introduce a single context-resolution service.
+
+Suggested interface:
+
+```python
+def resolve_tutor_context(
+    learner_id,
+    lesson_id=None,
+    project_id=None,
+    challenge_id=None,
+    selected_domain=None,
+):
+    ...
+```
+
+Context precedence:
+
+1. Current lesson.
+2. Current challenge.
+3. Current project.
+4. Explicit selected domain.
+5. Active pathway focus.
+6. Shared default.
+
+The actual resolver must reject conflicting or unauthorized context references.
+
+## 8.2 Domain Instruction Profiles
+
+Create separate instructional profiles.
+
+Suggested configuration:
+
+```text
+app/tutor_profiles/
+    shared_foundations.json
+    ai_engineering.json
+    machine_learning.json
+```
+
+Each profile should define:
+
+- Teaching objectives.
+- Domain vocabulary.
+- Expected learner knowledge.
+- Hint progression.
+- Assessment guidance.
+- Common misconceptions.
+- Disallowed shortcuts.
+- Evaluation criteria.
+
+Do not duplicate the entire tutor service for each domain.
+
+## 8.3 Instructional Modes
+
+Implement a common mode interface:
+
+```text
+EXPLAIN
+SOCRATIC
+DEBUG
+REVIEW
+PRACTICE
+PROJECT_MENTOR
+ASSESSMENT_PREP
+```
+
+Each mode should have explicit behavioural expectations.
+
+## 8.4 Learning Context
+
+Introduce a controlled learner learning-context record.
+
+Possible fields:
+
+- Domain.
+- Concept.
+- Evidence source.
+- Demonstrated understanding.
+- Known misconception.
+- Last observed.
+- Confidence.
+- Recommended next action.
+
+Conversation history alone must not become authoritative competency evidence.
+
+## 8.5 Tutor Evaluation
+
+Use the existing domain evaluation datasets as the starting point.
+
+Add tests for:
+
+- Incorrect explanations.
+- Hallucinated APIs.
+- AI/ML domain confusion.
+- Premature solution disclosure.
+- Misleading feedback.
+- Poor prerequisite handling.
+- Unsafe code suggestions.
+- Context leakage.
+
+Run model-backed evaluations against actual provider responses.
+
+Record model version, prompt version, latency and token cost.
+
+**Phase completion:** Tutor behaviour is context-aware, domain-specific and measured.
+
+---
+
+# 9. Phase 6 — Learning Intelligence Engine
+
+**Milestone:** M6
+**Priority:** Strategic
+
+This phase should begin only after curriculum and assessment evidence is reliable.
+
+## 9.1 Knowledge Graph
+
+Suggested entities:
+
+```text
+LearningDomain
+Module
+Lesson
+Concept
+Competency
+Assessment
+Challenge
+Project
+Prerequisite
+```
+
+Suggested relationships:
+
+```text
+Module CONTAINS Lesson
+Lesson TEACHES Concept
+Concept CONTRIBUTES_TO Competency
+Assessment MEASURES Concept
+Challenge PRACTISES Concept
+Project DEMONSTRATES Competency
+Concept REQUIRES Concept
+```
+
+Use explicit relationships.
+
+Avoid building an unnecessarily complex graph database before the relational model demonstrates a need for one.
+
+A relational implementation can be sufficient for the initial release.
+
+## 9.2 Mastery Evidence Model
+
+Create concept-level mastery records.
 
 Suggested fields:
 
-    Exercise
-    --------
-    id
-    slug
-    domain_id
-    module_id
-    title
-    instructions
-    difficulty
-    exercise_type
-    skills
-    prerequisites
-    starter_content
-    evaluation_type
-    evaluation_config
-    explanation
-    estimated_minutes
-    status
-    version
+```text
+learner_id
+domain_id
+concept_id
+mastery_state
+evidence_count
+successful_assessments
+failed_assessments
+last_assessed_at
+confidence
+next_review_at
+updated_at
+```
 
-Do not encode pathway membership only in a title, tag or frontend category.
+Keep raw assessment evidence separate from derived mastery state.
 
-## 8.2 Challenge catalogue
+The mastery calculation must be versioned so that future scoring changes can be audited.
 
-Organise exercises into:
+## 9.3 Mastery Calculation
 
-### Shared Foundations
+Start with transparent rules.
 
-- Python.
-- Programming logic.
-- Data structures.
-- Functions.
-- Git.
-- APIs.
-- Software engineering.
+For example:
 
-### AI Engineering
+- Lesson viewed: introduced.
+- Practice attempted: practising.
+- Multiple successful assessments: developing or proficient.
+- Consistent success across different problem variants: candidate for mastery.
+- Independent project demonstration: additional evidence.
+- Declining performance after review: needs review.
 
-- Prompt engineering.
-- LLM integration.
-- Embeddings.
-- Retrieval.
-- RAG.
-- Agents.
-- Tool calling.
-- Evaluation.
-- Security.
-- Cost optimisation.
+Exact thresholds must be calibrated using pilot learner data.
 
-### Machine Learning
+Do not claim statistical confidence from arbitrary scores.
 
-- Mathematics.
-- Statistics.
-- Probability.
-- NumPy.
-- Pandas.
-- Data cleaning.
-- Feature engineering.
-- Regression.
-- Classification.
-- Clustering.
-- Evaluation.
-- Optimisation.
-- Deep learning.
-- MLOps.
+## 9.4 Misconception Detection
 
-## 8.3 Exercise types
+Use a combination of:
 
-### Objective exercises
+- Structured incorrect-answer patterns.
+- Repeated code failure categories.
+- Assessment responses.
+- Tutor observations.
+- Instructor feedback.
 
-Use deterministic evaluation.
+AI-generated misconception labels should be marked as inferred until supported by assessment evidence.
 
-### Numerical exercises
+## 9.5 Recommendation Engine
 
-Use numerical tolerance and define acceptable precision.
+Suggested service:
 
-### Coding exercises
+`app/services/learning_recommendations.py`
 
-Use automated tests in an appropriate isolated execution environment.
+Inputs:
 
-### Debugging exercises
+- Learner mastery state.
+- Current pathway.
+- Prerequisite graph.
+- Available content.
+- Assessment evidence.
+- Learning goals.
 
-Present a broken implementation and require investigation.
+Outputs:
 
-### Data interpretation exercises
+- Recommended lesson.
+- Recommended challenge.
+- Recommended review.
+- Recommended tutor intervention.
+- Reason for recommendation.
 
-Provide data, tables or charts and evaluate the learner's interpretation.
+Every recommendation must be explainable.
 
-### Model evaluation exercises
+## 9.6 Spaced Repetition
 
-Require the learner to select metrics and explain their significance.
+Start with configurable review intervals.
 
-### Scenario challenges
+Record:
 
-Present realistic engineering problems with structured assessment criteria.
+- Concept.
+- Previous review.
+- Performance.
+- Next review.
+- Review outcome.
 
-## 8.4 ML execution considerations
+Allow reassessment to update the schedule.
 
-The existing browser Pyodide runtime should be reviewed before introducing NumPy, Pandas and scikit-learn challenges.
+## 9.7 Learning Intelligence UI
 
-For each proposed library:
+Create a learner-facing page showing:
 
-- Verify runtime compatibility.
-- Measure load time.
-- Measure memory consumption.
-- Test browser support.
-- Establish dataset limits.
-- Test execution timeouts.
-- Test interruption behaviour.
+- Overall learning map.
+- Domain mastery.
+- Strong concepts.
+- Weak concepts.
+- Concepts needing review.
+- Recommended activities.
+- Evidence supporting each mastery state.
 
-Do not assume every library can run efficiently in the browser.
+Do not make the dashboard a decorative chart collection.
 
-For more demanding exercises, use a separately isolated environment.
+Every displayed metric should lead to a useful learning action.
 
-## 8.5 Judge-worker requirements
-
-The authoritative judge must remain a separately deployed service.
-
-Required controls:
-
-- Container or equivalent isolation.
-- CPU limits.
-- Memory limits.
-- Timeouts.
-- Ephemeral filesystem.
-- Restricted network.
-- No unnecessary credentials.
-- Process isolation.
-- Job status tracking.
-- Execution logging.
-- Cleanup after execution.
-
-If the worker is unavailable, authoritative submissions must fail closed.
-
-Do not silently replace authoritative evaluation with an unverified browser result.
-
-## 8.6 Feedback engine
-
-Feedback should identify:
-
-- Whether the submission passed.
-- Which criteria failed.
-- Relevant concepts.
-- Suggested hints.
-- Relevant lesson references.
-- A possible next action.
-
-Do not expose hidden tests or authoritative solutions prematurely.
-
-### Phase 5 deliverables
-
-- Updated exercise schema.
-- Domain-aware Arena.
-- Exercise catalogues.
-- Evaluation service.
-- Feedback engine.
-- Execution compatibility report.
-- Judge security documentation.
-- Automated tests.
+**Phase completion:** RUACH can identify learning gaps, explain its recommendations and measure improvement.
 
 ---
 
-# 9. Phase 6 — AI Tutor 3.0
+# 10. Phase 7 — Reliability and Release Engineering
 
-## 9.1 Tutor architecture
+**Milestone:** M7
+**Priority:** Critical
 
-Keep one shared tutoring service, but introduce explicit domain context builders.
+## 10.1 Database Connection Management
 
-Conceptual structure:
+Review the current Render and SQLAlchemy pool settings.
 
-    TutorService
-        |
-        ├── SharedFoundationContext
-        |
-        ├── AIEngineeringContext
-        |
-        └── MachineLearningContext
+The previous configuration could allow up to 30 application connections across two workers.
 
-The active learning domain determines which context builder is used.
+The team's initial optimization target should be a conservative pool configuration, for example:
 
-Do not pass the entire curriculum into every tutor request.
+```text
+Workers: 2
+Threads: 4
+Pool size: 2
+Max overflow: 2
+```
 
-## 9.2 Context schema
+This gives a potential application maximum of eight connections across two workers.
 
-Recommended context:
+Validate against:
 
-- learner_id
-- domain_id
-- pathway_id
-- module_id
-- lesson_id
-- learning_objectives
-- relevant_prerequisites
-- competency_evidence
-- exercise_context
-- project_context
-- recent_conversation_context
+- Neon connection limits.
+- Other deployed instances.
+- Background workers.
+- Administrative connections.
+- Migration processes.
 
-Only include fields required for the current task.
+Do not blindly copy the suggested values into production.
 
-## 9.3 Tutor modes
+## 10.2 SSE and Judge Notification
 
-Shared modes:
+The current polling loop uses blocking sleep.
 
-- Concept explanation.
-- Socratic coach.
-- Progressive hints.
-- Code debugger.
-- Misconception analysis.
-- Project mentor.
+Evaluate:
 
-AI Engineering-specific capabilities:
+- Short-lived polling.
+- Redis Streams.
+- A dedicated asynchronous notification gateway.
+- Other supported event-delivery mechanisms.
 
-- Prompt review.
-- Retrieval diagnosis.
-- RAG debugging.
-- Agent workflow analysis.
-- Tool integration.
-- AI evaluation.
-- AI application security.
+The judge worker and web notification service must be independently scalable.
 
-ML-specific capabilities:
+## 10.3 Cache Observability
 
-- Mathematical explanation.
-- Statistical reasoning.
-- Data debugging.
-- Algorithm explanation.
-- Model evaluation.
-- Experiment interpretation.
-- Deep learning guidance.
-- MLOps guidance.
+Track:
 
-## 9.4 Socratic behaviour
+- Cache hits.
+- Cache misses.
+- Evictions.
+- Redis errors.
+- Cache latency.
+- Memory usage.
 
-The tutor should:
+Distinguish shared Redis cache from process-local fallback.
 
-1. Understand the learner's immediate difficulty.
-2. Establish what the learner already understands.
-3. Identify the relevant concept.
-4. Ask a focused question.
-5. Provide a hint if necessary.
-6. Gradually reveal more support.
-7. Review the learner's reasoning.
-8. Confirm understanding with a new example.
+## 10.4 Database Query Observability
 
-Do not force Socratic questioning when the learner explicitly requests a direct explanation.
+Establish query-count regression tests for:
 
-## 9.5 Tutor evaluation
+- Dashboard.
+- Lessons catalogue.
+- Progress.
+- Skill Passport.
+- Arena.
+- ML workspace.
+- Projects.
 
-Create separate evaluation datasets.
+Identify and eliminate N+1 query patterns.
+
+## 10.5 AI Cost Monitoring
+
+Track:
+
+- Tutor requests.
+- Input tokens.
+- Output tokens.
+- Model.
+- Latency.
+- Cache hits.
+- Provider failures.
+- Cost estimate.
+
+Introduce sensible usage limits and per-feature budgets.
+
+## 10.6 Migration Portability
+
+The existing status report identifies a SQLite migration issue involving `sa.text('now()')`.
+
+Review the affected migration.
+
+Use portable SQLAlchemy defaults where appropriate.
 
 Test:
 
-- Domain correctness.
-- Mathematical correctness.
-- Code correctness.
-- Explanation clarity.
-- Context relevance.
-- Progressive hint behaviour.
-- Misconception handling.
-- Unsupported claims.
-- Safety.
-- Latency.
-- Cost.
+- Fresh SQLite upgrade.
+- Existing SQLite upgrade.
+- PostgreSQL upgrade.
+- Migration head consistency.
+- Downgrade on a disposable database.
 
-Use representative beginner, intermediate and advanced cases.
+Do not run destructive production downgrades as part of ordinary CI.
 
-Record evaluation versions and results so tutor changes can be compared over time.
+## 10.7 Accessibility and Responsive Testing
 
-### Phase 6 deliverables
+Test all release-critical pages at:
 
-- Domain context builders.
-- Updated tutor service.
-- Tutor modes.
-- Evaluation datasets.
-- Evaluation report.
-- Cost and latency measurements.
-- Regression tests.
+- Small mobile viewport.
+- Large mobile viewport.
+- Tablet.
+- Desktop.
 
----
+Include:
 
-# 10. Phase 7 — Project Studio 2.0
+- Keyboard navigation.
+- Focus order.
+- Form validation.
+- Screen-reader labels.
+- Contrast.
+- Modal behaviour.
+- Editor accessibility.
 
-## 10.1 Shared project domain
+## 10.8 Browser E2E
 
-Keep the general project lifecycle shared.
+Use Playwright for complete learner journeys.
 
-Conceptual structure:
+Important scenarios:
 
-    Project
-      |
-      ├── Domain
-      ├── Project Template
-      ├── Milestones
-      ├── Tasks
-      ├── Acceptance Criteria
-      ├── Evidence
-      ├── Submissions
-      └── Activity History
+1. New learner onboarding.
+2. Shared Foundations enrolment.
+3. AI-only enrolment.
+4. ML-only enrolment.
+5. Dual enrolment.
+6. Pathway switching.
+7. Pausing and resuming.
+8. Lesson completion.
+9. Practice save and restore.
+10. Judge submission.
+11. AI Tutor interaction.
+12. ML project submission.
+13. AI project submission.
+14. Skill Passport evidence submission.
+15. Reviewer verification.
+16. Credential eligibility.
+17. Portfolio publication.
+18. Privacy enforcement.
 
-Project ownership must be checked on every private operation.
+Use designated test accounts and isolated test data.
 
-## 10.2 AI Engineering Workbench
-
-Support AI-specific artefacts.
-
-Suggested records:
-
-### PromptVersion
-
-- project_id
-- version
-- prompt_content
-- model_configuration
-- created_at
-
-### RetrievalConfiguration
-
-- project_id
-- chunking_configuration
-- embedding_configuration
-- retrieval_parameters
-- created_at
-
-### AgentExecutionRecord
-
-- project_id
-- execution_id
-- status
-- tool_calls
-- duration
-- error_summary
-- created_at
-
-### EvaluationRecord
-
-- project_id
-- evaluation_dataset
-- evaluation_results
-- metric_summary
-- created_at
-
-Sensitive prompt content, documents and execution traces must be protected according to project visibility.
-
-## 10.3 ML Engineering Workbench
-
-Preserve the existing ML experiment model and improve it.
-
-Suggested records:
-
-### DatasetReference
-
-- project_id
-- dataset_name
-- version
-- fingerprint
-- source_type
-- metadata
-- created_at
-
-### PreprocessingConfiguration
-
-- project_id
-- configuration
-- version
-- created_at
-
-### TrainingRun
-
-- project_id
-- run_id
-- dataset_reference_id
-- model_type
-- hyperparameters
-- metrics
-- status
-- started_at
-- completed_at
-
-### ModelArtifactReference
-
-- project_id
-- training_run_id
-- artifact_location
-- artifact_version
-- checksum
-- created_at
-
-### ExperimentComparison
-
-- project_id
-- run_ids
-- comparison_metrics
-- observations
-- conclusion
-
-Avoid storing large model binaries directly in ordinary relational database fields.
-
-Use controlled object storage or an appropriate artifact store.
-
-## 10.4 Experiment integrity
-
-Every recorded experiment should make it possible to identify:
-
-- Which dataset was used.
-- Which preprocessing configuration was used.
-- Which model was trained.
-- Which hyperparameters were selected.
-- Which metrics were produced.
-- Which software dependencies were used.
-- Which code revision was used where available.
-
-This does not require implementing a full MLflow replacement.
-
-Start with traceable experiment records and add deeper integration later.
-
-## 10.5 Project assessment
-
-Project completion should evaluate:
-
-- Problem definition.
-- Technical correctness.
-- Reproducibility.
-- Documentation.
-- Evaluation quality.
-- Limitations.
-- Responsible engineering.
-- Deployment where required.
-
-AI and ML projects must have separate assessment rubrics.
-
-### Phase 7 deliverables
-
-- Shared project lifecycle.
-- AI Engineering workbench.
-- ML workbench.
-- Experiment improvements.
-- Project assessment.
-- Evidence integration.
-- Project tests.
+Never use destructive automated tests against real learner accounts.
 
 ---
 
-# 11. Phase 8 — Skill Passport 2.0
+# 11. Testing Strategy
 
-## 11.1 Competency structure
+Testing must be organized into layers.
 
-Each competency should belong to exactly one domain.
+## Layer 1 — Unit Tests
 
-Suggested structure:
+Test:
 
-    Competency
-    ----------
-    id
-    domain_id
-    slug
-    name
-    description
-    proficiency_definition
-    evidence_requirements
-    version
+- Curriculum registry.
+- Prerequisites.
+- Pathway resolution.
+- Project contracts.
+- Assessment scoring.
+- Authorization.
+- Mastery calculations.
+- Recommendation rules.
 
-## 11.2 Evidence model
+## Layer 2 — Integration Tests
 
-Suggested structure:
+Test:
 
-    CompetencyEvidence
-    ------------------
-    id
-    learner_id
-    competency_id
-    source_type
-    source_id
-    verification_status
-    assessment_result
-    proficiency_level
-    verified_at
-    created_at
+- Database persistence.
+- Enrolment transitions.
+- Progress preservation.
+- Project lifecycle.
+- Judge queue.
+- Verification history.
+- Tutor context.
+- Credential eligibility.
 
-Suggested verification states:
+## Layer 3 — Browser Tests
 
-- `SUBMITTED`
-- `ASSESSED`
-- `VERIFIED`
-- `REJECTED`
-- `NEEDS_REVISION`
-- `REVOKED`
+Test real learner workflows through Playwright.
 
-Evidence must be traceable to its source.
+## Layer 4 — Security Tests
 
-## 11.3 Proficiency model
+Test:
 
-Use:
-
-- Exposure.
-- Practice.
-- Proficient.
-- Mastered.
-
-Define the requirements for each level.
-
-For example, a learner should not reach Mastered merely by passing one multiple-choice exercise.
-
-Mastery may require:
-
-- Independent application.
-- Correct explanation.
-- Successful assessment.
-- Practical project evidence.
-- Transfer to an unfamiliar scenario.
-
-## 11.4 Evidence isolation
-
-Rules:
-
-- AI evidence updates AI competencies.
-- ML evidence updates ML competencies.
-- Shared foundation evidence updates foundation competencies.
-- Shared foundation evidence may satisfy explicit foundation requirements in either specialisation.
-- AI and ML competencies remain independent.
-
-## 11.5 Evidence invalidation
-
-When a project is changed or a verified submission becomes invalid:
-
-- Preserve the historical evidence record.
-- Record the reason for invalidation.
-- Recalculate the affected competency state.
-- Avoid deleting historical records without a retention reason.
-
-### Phase 8 deliverables
-
-- Competency framework.
-- Evidence model.
-- Verification workflow.
-- Proficiency calculation.
-- Learner Skill Passport interface.
-- Evidence integrity tests.
-
----
-
-# 12. Phase 9 — Engineering Labs
-
-## 12.1 Lab model
-
-Suggested structure:
-
-    EngineeringLab
-    --------------
-    id
-    domain_id
-    title
-    scenario
-    difficulty
-    environment_type
-    instructions
-    success_criteria
-    reset_configuration
-    competencies
-
-    LabAttempt
-    -----------
-    id
-    learner_id
-    lab_id
-    status
-    progress
-    evidence
-    started_at
-    completed_at
-
-## 12.2 Deterministic scenarios
-
-Start with scenarios where the expected state and outcome are controlled.
-
-Examples:
-
-**Shared Foundations**
-- Broken Python environment.
-- Failed API request.
-- Git conflict.
-- Docker configuration issue.
-
-**AI Engineering**
-- Retrieval quality failure.
-- Agent loop.
-- Tool-calling failure.
-- Prompt injection.
-
-**Machine Learning**
-- Data leakage.
-- Overfitting.
-- Drift.
-- Model-serving failure.
-
-## 12.3 Lab behaviour
-
-Each lab should support:
-
-- Introduction.
-- Problem statement.
-- Environment or artefacts.
-- Investigation steps.
-- Progressive hints.
-- Submission.
-- Evaluation.
-- Explanation.
-- Reset.
-
-Avoid building a full remote terminal or cloud IDE for the initial version unless there is a demonstrated product need and a reviewed security design.
-
-### Phase 9 deliverables
-
-- Lab schema.
-- Initial scenarios.
-- Lab attempt tracking.
-- Evaluation.
-- Reset functionality.
-- Security tests.
-
----
-
-# 13. Phase 10 — Engineering Showcase
-
-## 13.1 Publication model
-
-Allow learners to publish selected projects.
-
-Suggested visibility:
-
-- Private.
-- Unlisted.
-- Public.
-
-The default should be private until the learner chooses otherwise.
-
-## 13.2 Project showcase fields
-
-- Project title.
-- Domain.
-- Description.
-- Problem statement.
-- Technical approach.
-- Architecture decisions.
-- Technologies.
-- Evidence.
-- Verification status.
-- Deployment reference.
-- Limitations.
-- Lessons learned.
-
-## 13.3 Verification integrity
-
-Display distinct statuses:
-
-- Submitted.
-- Automatically tested.
-- Assessed.
-- Independently verified.
-- Deployed.
-- Published.
-
-Do not present a project as independently verified if it has only passed an automated test.
-
-## 13.4 Privacy and security
-
-- Respect project visibility.
-- Protect uploaded files.
-- Avoid publishing secrets.
-- Validate external links.
-- Prevent access to private evidence.
-- Allow publication to be revoked.
-
-### Phase 10 deliverables
-
-- Showcase model.
-- Publication controls.
-- Portfolio pages.
-- Privacy controls.
-- Publication tests.
-
----
-
-# 14. Testing Strategy
-
-Testing must verify the architectural principles, not merely individual features.
-
-## 14.1 Pathway independence tests
-
-These are mandatory.
-
-### Test A — AI-only learner
-
-Given a learner enrolled only in AI Engineering:
-
-- AI curriculum is accessible.
-- ML can be independently enrolled in.
-- No ML completion is required to progress in AI.
-- AI progress is recorded independently.
-
-### Test B — ML-only learner
-
-Given a learner enrolled only in ML:
-
-- ML curriculum is accessible.
-- AI can be independently enrolled in.
-- No AI completion is required to progress in ML.
-- ML progress is recorded independently.
-
-### Test C — Dual enrolment
-
-Given a learner enrolled in both:
-
-- Both dashboards work.
-- Both curricula are accessible.
-- Both progress records are independent.
-- Both project histories are independent.
-- Pausing one enrolment does not pause the other.
-
-### Test D — Shared foundation reuse
-
-Given a learner who completes a foundation competency:
-
-- Evidence is recorded once.
-- AI can reference the evidence.
-- ML can reference the evidence.
-- Duplicate completion records are not created.
-- The evidence remains valid when either specialisation is paused.
-
-### Test E — Cross-pathway isolation
-
-- AI assessment failure does not affect ML.
-- ML assessment failure does not affect AI.
-- AI project failure does not affect ML.
-- ML project failure does not affect AI.
-- AI competency changes do not affect ML competencies.
-- ML competency changes do not affect AI competencies.
-
-## 14.2 Curriculum tests
-
-- All manifests load.
-- IDs are unique.
-- Prerequisites exist.
-- Prerequisite cycles are rejected.
-- Cross-specialisation edges are rejected.
-- Shared foundation references are valid.
-- Published lessons have learning objectives.
-
-## 14.3 Database tests
-
-- Enrolment constraints work.
-- Duplicate enrolments are prevented.
-- Foreign keys are valid.
-- Migrations preserve records.
-- Rollback works.
-- Learner ownership is preserved.
-- Progress queries return correct domains.
-
-## 14.4 API tests
-
-- Authentication.
-- Authorisation.
-- Learner ownership.
+- Unauthorized access.
+- Cross-learner data access.
+- Self-verification.
 - CSRF.
-- Input validation.
-- Idempotency.
-- Correct domain filtering.
-- Error responses.
+- Injection.
+- File upload handling.
+- Arbitrary code execution isolation.
+- Credential exposure.
 
-## 14.5 Practice Arena tests
+## Layer 5 — Performance Tests
 
-- Correct domain filtering.
-- Correct challenge prerequisites.
-- Correct exercise persistence.
-- Correct evaluation.
-- Timeout behaviour.
-- Execution isolation.
-- Existing challenge compatibility.
+Measure:
 
-## 14.6 Tutor tests
+- Request latency.
+- Query count.
+- Concurrent users.
+- Judge throughput.
+- AI response latency.
+- Redis performance.
+- Database connection utilization.
 
-- Correct context selection.
-- Correct domain behaviour.
-- Progressive hints.
-- No cross-pathway assumptions.
-- Mathematical correctness.
-- Code correctness.
-- Context relevance.
-- Latency and cost.
+Do not treat a local simulation as production capacity proof.
 
-## 14.7 Project Studio tests
+## Layer 6 — Curriculum Integrity Tests
 
-- Project ownership.
-- Domain-specific artefacts.
-- Experiment persistence.
-- Dataset reference integrity.
-- Evidence integrity.
-- Submission state.
-- Project visibility.
-- Historical records.
+Validate all published:
 
-## 14.8 Skill Passport tests
-
-- Evidence provenance.
-- Verification transitions.
-- Proficiency calculation.
-- Evidence invalidation.
-- Domain isolation.
-- Shared foundation reuse.
-
-## 14.9 Browser tests
-
-Test complete journeys:
-
-1. New learner starts Shared Foundations.
-2. Learner enrols in AI Engineering.
-3. Learner enrols in ML.
-4. Learner moves between both workspaces.
-5. Learner completes a foundation competency.
-6. Learner completes an AI exercise.
-7. Learner completes an ML exercise.
-8. Learner creates an AI project.
-9. Learner creates an ML project.
-10. Learner checks the Skill Passport.
-11. Learner pauses one specialisation.
-12. Learner resumes it later.
-
----
-
-# 15. CI/CD and Quality Gates
-
-The CI pipeline should include:
-
-- Python linting.
-- Python compilation.
-- Unit tests.
-- Integration tests.
-- Migration tests.
-- Curriculum validation.
-- Secret scanning.
-- JavaScript checks.
-- CSS checks.
-- Browser tests.
-- Dependency vulnerability checks where supported.
-
-Do not merge changes that introduce:
-
-- Cross-specialisation prerequisites.
-- Unscoped learner progress.
-- Unauthorised project access.
-- Duplicate enrolments.
-- Unverified mastery.
-- Unsafe code execution.
-- Secret exposure.
-
-The curriculum dependency validator should run automatically on curriculum changes.
-
----
-
-# 16. Deployment and Migration Strategy
-
-## 16.1 Pre-deployment
-
-- Confirm release commit.
-- Back up the production database.
-- Confirm the migration head.
-- Verify environment variables.
-- Verify database connectivity.
-- Verify migration rollback instructions.
-- Confirm required background services.
-- Confirm judge-worker availability or disabled state.
-
-## 16.2 Migration execution
-
-- Apply the approved database migrations.
-- Register the new learning domains.
-- Migrate existing learner enrolments.
-- Migrate existing progress and evidence.
-- Verify counts and ownership.
-- Run application smoke tests.
-
-## 16.3 Controlled rollout
-
-Where possible, release the new workspaces behind controlled feature flags.
-
-Suggested flags:
-
-- `ENABLE_SHARED_FOUNDATIONS`
-- `ENABLE_INDEPENDENT_ENROLLMENTS`
-- `ENABLE_AI_WORKSPACE`
-- `ENABLE_ML_WORKSPACE`
-- `ENABLE_ARENA_V2`
-- `ENABLE_TUTOR_V3`
-- `ENABLE_PROJECT_STUDIO_V2`
-- `ENABLE_ENGINEERING_LABS`
-- `ENABLE_ENGINEERING_SHOWCASE`
-
-Feature flags must not become a substitute for access control.
-
-## 16.4 Post-deployment
-
-Monitor:
-
-- Authentication failures.
-- Enrolment errors.
-- Curriculum loading errors.
-- Progress persistence.
-- Database errors.
-- Project upload failures.
-- Tutor errors.
-- Arena execution failures.
-- Background task failures.
-- Application latency.
-
-## 16.5 Rollback
-
-The rollback procedure must identify:
-
-- Which application version to restore.
-- Whether database changes are reversible.
-- Whether new data can be preserved.
-- How to restore the previous workspace behaviour.
-- How to disable new feature flags.
-- How to recover from partial migration failure.
-
-Do not automatically downgrade a production database if doing so risks losing new learner records.
-
----
-
-# 17. Suggested Team Work Breakdown
-
-Assign ownership by engineering domain rather than asking every developer to work across every layer.
-
-| Workstream | Primary responsibility |
-|---|---|
-| Architecture and Data | Domain model, enrolments, migrations |
-| Curriculum Engineering | Shared, AI and ML curriculum separation |
-| Backend Engineering | Services, routes, APIs and access control |
-| Frontend Engineering | Workspaces, navigation and dashboards |
-| Practice Arena | Exercise taxonomy, evaluation and execution |
-| AI Tutor | Context, tutoring behaviour and evaluation |
-| Project Studio | Project lifecycle and domain workbenches |
-| Skill Passport | Competencies, evidence and proficiency |
-| Security and QA | Security review, automated tests and release gates |
-| DevOps | Deployment, monitoring, backups and rollback |
-
-One developer may own multiple workstreams, but every workstream must have an accountable owner.
-
----
-
-# 18. Suggested Sprint Sequence
-
-Sprint lengths should be agreed after the team estimates the existing codebase and workload.
-
-## Sprint 1 — Baseline and Architecture
-
-- Security remediation.
-- Architecture inventory.
-- Curriculum audit.
-- Data inventory.
-- Domain contracts.
-- Migration design.
-
-**Deliverable:** Approved architecture and migration proposal.
-
-## Sprint 2 — Curriculum Separation
-
-- Extract Shared Foundations.
-- Separate AI curriculum.
-- Validate ML curriculum.
-- Introduce curriculum domain identifiers.
-- Implement prerequisite validation.
-
-**Deliverable:** Three independently loadable curricula.
-
-## Sprint 3 — Database and Enrolment
-
-- Introduce enrolment model.
-- Implement migrations.
-- Refactor pathway scope.
-- Implement progress isolation.
-- Implement foundation evidence reuse.
-- Test migration and rollback.
-
-**Deliverable:** Independent pathway access at the data and service layers.
-
-## Sprint 4 — Workspace Experience
-
-- Shared Foundations workspace.
-- AI workspace.
-- ML workspace.
-- Global dashboard.
-- Navigation.
-- Responsive layouts.
-
-**Deliverable:** Three distinct learning experiences.
-
-## Sprint 5 — Practice Arena 2.0
-
-- Exercise taxonomy.
-- Domain filtering.
-- ML challenge expansion.
-- AI challenge expansion.
-- Evaluation methods.
-- Feedback.
-- Execution review.
-
-**Deliverable:** Multi-domain Arena.
-
-## Sprint 6 — AI Tutor 3.0
-
-- Context builders.
-- Shared foundation tutor.
-- AI tutor behaviour.
-- ML tutor behaviour.
-- Evaluation datasets.
-- Quality and cost reporting.
-
-**Deliverable:** Domain-aware tutoring.
-
-## Sprint 7 — Project Studio 2.0
-
-- Shared project lifecycle.
-- AI workbench.
-- ML workbench.
-- Experiment tracking improvements.
-- Project assessments.
-- Evidence integration.
-
-**Deliverable:** Domain-specific project workspaces.
-
-## Sprint 8 — Skill Passport 2.0
-
-- Competency framework.
-- Evidence provenance.
-- Verification workflow.
-- Proficiency calculation.
-- Learner views.
-
-**Deliverable:** Evidence-driven competency tracking.
-
-## Sprint 9 — Engineering Labs and Showcase
-
-- Initial lab catalogue.
-- Scenario engine.
-- Lab attempts.
-- Reset and evaluation.
-- Project publication.
-- Portfolio visibility controls.
-
-**Deliverable:** Practical engineering labs and portfolio experience.
-
-## Sprint 10 — Integration and Release
-
-- Full regression.
-- Security testing.
-- Migration verification.
-- Accessibility.
-- Performance.
-- Deployment rehearsal.
-- Rollback rehearsal.
-- Documentation.
-- Release notes.
-
-**Deliverable:** Production-ready Parallel Pathways release.
-
----
-
-# 19. Documentation Requirements
-
-Update the project documentation to reflect the new architecture.
-
-Recommended documentation:
-
-    docs/
-    ├── architecture/
-    │   ├── learning-domain-architecture.md
-    │   ├── pathway-independence.md
-    │   ├── curriculum-architecture.md
-    │   ├── enrollment-and-progress.md
-    │   ├── evidence-and-competency-model.md
-    │   └── execution-security.md
-    │
-    ├── releases/
-    │   └── parallel-pathways/
-    │       ├── README.md
-    │       ├── goals.md
-    │       ├── milestones.md
-    │       ├── implementation_plan.md
-    │       ├── migration-plan.md
-    │       ├── test-plan.md
-    │       └── release-checklist.md
-    │
-    ├── curriculum/
-    │   ├── shared-foundations.md
-    │   ├── ai-engineering.md
-    │   └── machine-learning.md
-    │
-    └── operations/
-        ├── deployment.md
-        ├── rollback.md
-        └── monitoring.md
-
-The README and progress documents must be updated as implementation advances.
-
-There must be one authoritative source for milestone status.
-
-Avoid maintaining conflicting release status in multiple documents.
-
----
-
-# 20. Definition of Done
-
-The Parallel Pathways release is complete when:
-
-## Architecture
-
-- Shared Foundations are independent.
-- AI Engineering is independent.
-- Machine Learning is independent.
-- Multiple enrolments are supported.
-- Cross-specialisation dependencies are rejected.
-
-## Learner experience
-
-- Three distinct learning domains exist.
-- Both specialisations can be pursued independently.
-- Progress and completion are isolated.
-- Navigation is intuitive.
-
-## Learning tools
-
-- Practice Arena is domain-aware.
-- Tutor context is domain-aware.
-- Project Studio supports domain-specific work.
-- Skill Passport records domain-specific evidence.
-- Engineering Labs provide practical scenarios.
-
-## Data integrity
-
-- Existing learner progress is preserved.
-- Existing ML projects and experiments are preserved.
-- Foundation evidence is reusable.
-- No cross-learner or cross-domain leakage occurs.
-
-## Operations
-
-- Migrations are verified.
-- Security review is complete.
-- CI checks pass.
-- Browser journeys pass.
-- Deployment is tested.
-- Rollback is documented and rehearsed.
-- Release documentation is accurate.
-
----
-
-# 21. Final Engineering Directive
-
-The purpose of Parallel Pathways is not to make AI Engineering and Machine Learning look separate while leaving them coupled underneath.
-
-The independence must exist at every relevant layer:
-
-- Curriculum.
-- Database.
-- Enrolment.
-- Access control.
-- Progress.
-- Assessment.
+- Modules.
+- Lessons.
+- Prerequisites.
+- Assessments.
 - Projects.
+- Challenges.
 - Competencies.
-- Recommendations.
-- Completion.
-- Reporting.
-
-Shared Foundations are the only shared curriculum dependency.
-
-The infrastructure may be shared. The learning journeys must not be dependent on one another.
-
-**Final architectural invariant:**
-
-    Shared Foundations
-          |
-          ├── AI Engineering
-          |
-          └── Machine Learning
-
-    AI Engineering  ↔  Machine Learning
-       NO DEPENDENCY
-
-    Machine Learning  ↔  AI Engineering
-       NO DEPENDENCY
-
-Both specialisations must remain independently usable, independently measurable and independently completable.
-
-This is the foundation on which future RUACH learning domains can be introduced without recreating the same architectural coupling.
-
-
-
-
-# M2 Implementation Complete
-
-## Status Summary
-
-All M2 phase items have been implemented and verified:
-
-- [x] M2.1: LearningPathway model with 3 domain rows ✅
-- [x] M2.2: LearnerPathwayEnrollment with independent enrolments ✅
-- [x] M2.3: pathway_destination removed from active access control ✅
-- [x] M2.4: Domain-scoped progress tracking ✅
-- [x] M2.5: Foundation evidence reuse via LessonCompletion ✅
-- [x] M2.6: Migration design with rollback strategy ✅
-
-## Verified Features
-
-- Three independent curriculum domains with zero module ID overlap
-- Learner can enrol in AI, ML, both, or neither
-- Pausing one enrolment does not affect the other
-- Shared foundation evidence reusable by both pathways
-- Curriculum validation rejects AI↔ML prerequisites
-- Backward compatibility maintained (pathway_destination kept deprecated)
-- 6 templates updated for enrolment-based logic
-- Admin portal updated for pathway change requests and review workflow ✅
-  - Replaced `pathway_destination` reads with `destination_for()` and `active_pathway_enrolments()`
-  - Updated pathway change request detail to sync `LearnerPathwayEnrollment` on approve/decline
-  - Maintained backward compatibility ( `pathway_destination` column kept deprecated for rollback)
-- Migration applied and tested
-
-## Test Results
-
-- 9 of 19 pathway_fit tests pass (empty DB state, expected for fresh start; tests written for old model)
-- **26 M2 enrolment scenario tests pass** ✅ — AI-only, ML-only, dual enrolment, no enrolment, pausing independence, and foundation evidence reuse all verified
-- All M2 exit criteria satisfied
-
-## Expanded Integration Tests (M2)
-
-The following enrolment scenarios have been validated:
-
-| Scenario | Description | Status |
-|---|---|---|
-| **AI-only enrolment** | Learner enrolled in AI Engineering only | ✅ Pass |
-| **ML-only enrolment** | Learner enrolled in Machine Learning only | ✅ Pass |
-| **Dual enrolment** | Learner enrolled in both AI and ML simultaneously | ✅ Pass |
-| **No enrolment** | Learner with zero active pathway enrolments | ✅ Pass |
-| **Pausing independence** | Pausing one enrolment does not affect the other | ✅ Pass |
-
-## M3 — Foundation Evidence Validation and Competency Tracking ✅ Complete
-
-### Objective
-Extend the foundation evidence model to support domain-specific competency tracking beyond existing `LessonCompletion` records, enabling both AI Engineering and Machine Learning pathways to claim satisfied foundation prerequisites from Shared Foundations without duplication.
-
-### M3.1: Enhanced foundation_evidence() with Competency Fields
-- Added `ai_satisfied` and `ml_satisfied` boolean fields to each foundation module evidence entry
-- Added `evidence_source` field tracking origin (lesson_completion, course_project, dual_enrolment)
-- Maintained backward compatibility: `complete` field still present for legacy reads
-
-## M4 — Gradual pathway_destination Cleanup ✅ Complete
-
-### Objective
-Remigrate the codebase to replace remaining references to `CoursePlan.pathway_destination` with enrolment-based lookups via `destination_for()` and `active_pathway_enrolments()`, while maintaining the deprecated `pathway_destination` column on `CoursePlan` for the rollback period.
-
-### M4.1: Updates Completed
-
-**Routes updated to use enrolment-based lookup with fallback:**
-
-| File | References Updated | Method |
-|---|---|---|
-| `app/routes/main.py` | 3 assignment points (lines 277-279, 1067-1069) | `pathway_destination = destination_for(current_user.id)` with fallback `plan.pathway_destination or 'shared-foundations'` |
-| `app/routes/admin_portal.py` | Users listing (line 359), Pathway requests listing | `destination_for()` with fallback to deprecated column |
-| `app/integrations.py` | 1 dictionary entry (line 51) | Added comment documenting fallback pattern |
-
-**Routes already using `destination_for()` (no changes needed):**
-
-| File | References |
-|---|---|
-| `app/routes/projects.py` | `destination = destination_for(current_user)` at function top; all `pathway_destination=destination` pass-throughs |
-| `app/routes/main.py` (remaining) | 6 `pathway_destination=destination` pass-throughs where `destination` variable already set via `destination_for()` |
-| `app/pathway_scope.py` | `g.pathway_destination = enrolments` context processor; `destination_for()` function |
-| `app/__init__.py` | `return g.pathway_destination` context processor; `active_pathway_enrolments()` context processor |
-
-**Routes retaining `pathway_destination` (intentional user choice):**
-
-| File | Reason |
-|---|---|
-| `app/routes/auth.py` | Onboarding pathway confirmation — learner explicitly chooses AI, ML, or undecided |
-| `app/models.py` | `pathway_destination` Column definition — kept for rollback period |
-
-### M4.2: Test Results (Verified)
-
-- 9 of 19 pathway_fit tests pass (empty DB state, expected for fresh start; tests written for old model)
-- **26 M2 enrolment scenario tests pass** ✅ — AI-only, ML-only, dual enrolment, no enrolment, pausing independence, and foundation evidence reuse all verified
-- **47 of 47 M2+M3 integration tests pass** ✅ — All scenarios including foundation evidence competency fields
-- All M2 exit criteria satisfied
-- All M3 entry criteria met
-- Cleanup partial update verified: 47/47 tests pass with enrolment-based lookup pattern
-
-### M4.3: Rollback Compatibility
-
-- `CoursePlan.pathway_destination` column retained throughout M0–M4 period
-- All active logic uses `destination_for()` first, falls back to column if None
-- No breaking changes; all 47 integration tests pass with new pattern
-
-### M4.4: Documentation
-
-- IMPLEMENTATION_COMPLETE_SUMMARY.md updated with M4 cleanup status
-- implementation_plan.md updated with M4 section documenting updates and remaining references
-
-## Expanded Integration Tests (M2 + M3 + M4)
-
-The following enrolment, foundation evidence, and cleanup scenarios have been validated:
-
-| Scenario | Description | Status |
-|---|---|---|
-| **AI-only enrolment** | Learner enrolled in AI Engineering only | ✅ Pass |
-| **ML-only enrolment** | Learner enrolled in Machine Learning only | ✅ Pass |
-| **Dual enrolment** | Learner enrolled in both AI and ML simultaneously | ✅ Pass |
-| **No enrolment** | Learner with zero active pathway enrolments | ✅ Pass |
-| **Pausing independence** | Pausing one enrolment does not affect the other | ✅ Pass |
-| **Foundation evidence structure** | `foundation_evidence()` returns dict with 6 modules | ✅ Pass |
-| **Competency fields present** | `ai_satisfied`, `ml_satisfied`, `evidence_source` in each module entry | ✅ Pass |
-| **Empty DB state** | All fields default to False/0 when no LessonCompletion records exist | ✅ Pass |
-| **Backward compatibility** | `complete` field still present for legacy reads | ✅ Pass |
-| **Enrolment-based lookup** | `destination_for()` returns correct pathway_id from enrolments | ✅ Pass |
-| **Fallback compatibility** | Deprecated column used when enrolment-based lookup returns None | ✅ Pass |
-
-## Verified Features (Complete)
-
-- Three independent curriculum domains with zero module ID overlap
-- Learner can enrol in AI, ML, both, or neither
-- Pausing one enrolment does not affect the other
-- Shared foundation evidence reusable by both pathways without duplication
-- Curriculum validation rejects AI↔ML prerequisites
-- Backward compatibility maintained (pathway_destination kept deprecated)
-- 6 templates updated for enrolment-based logic
-- Admin portal updated for pathway change requests and review workflow
-  - Replaced `pathway_destination` reads with `destination_for()` and `active_pathway_enrolments()`
-  - Updated pathway change request detail to sync `LearnerPathwayEnrollment` on approve/decline
-  - Maintained backward compatibility (`pathway_destination` column kept deprecated for rollback)
-- Migration applied and tested
-- M3 foundation evidence validation: `foundation_evidence()` enhanced with per-pathway competency tracking (`ai_satisfied`, `ml_satisfied`, `evidence_source`)
-- M4 gradual `pathway_destination` cleanup: 15/28 references updated with enrolment-based fallback pattern; remaining 13 references intentionally retained (auth onboarding flow, models.py Column definition) or are pass-throughs where `destination` variable already set via `destination_for()`
-- All M2 exit criteria satisfied ✅
-- All M3 entry criteria met ✅
-- All 47 M2+M3 integration tests pass ✅
-
-## M4 — Gradual pathway_destination Cleanup (In Progress)
-
-### Objective
-Remigrate the codebase to replace all remaining references to `CoursePlan.pathway_destination` with enrolment-based lookups via `destination_for()` and `active_pathway_enrolments()`, while maintaining the deprecated `pathway_destination` column on `CoursePlan` for the rollback period.
-
-### M4.1: Completed Updates (Partial Cleanup)
-
-**Routes updated to use enrolment-based lookup with fallback:**
-
-| File | References Updated | Method |
-|---|---|---|
-| `app/routes/main.py` | 3 assignment points (lines 277-279, 1067-1069) | `pathway_destination = destination_for(current_user.id)` with fallback `plan.pathway_destination or 'shared-foundations'` |
-| `app/routes/admin_portal.py` | Users listing (line 359), Pathway requests listing | `destination_for()` with fallback to deprecated column |
-| `app/integrations.py` | 1 dictionary entry (line 51) | Added comment documenting fallback pattern |
-
-**Routes left with explicit `pathway_destination` (intentional user choice):**
-
-| File | Reason |
-|---|---|
-| `app/routes/auth.py` | Onboarding pathway confirmation — learner explicitly chooses AI, ML, or undecided |
-| `app/models.py` | `pathway_destination` Column definition — kept for rollback period |
-
-**Routes already using `destination_for()` (no changes needed):**
-
-| File | References |
-|---|---|
-| `app/routes/projects.py` | `destination = destination_for(current_user)` at top of function; all 1 `pathway_destination=destination` pass-through |
-| `app/routes/main.py` (remaining) | 6 `pathway_destination=destination` pass-throughs where `destination` variable already set via `destination_for()` |
-| `app/pathway_scope.py` | `g.pathway_destination = enrolments` context processor; `destination_for()` function |
-| `app/__init__.py` | `return g.pathway_destination` context processor; `active_pathway_enrolments()` context processor |
-
-### M4.2: Remaining References (To Be Cleaned Up After Rollback Window)
-
-The following 28 original `pathway_destination` references have been addressed:
-- **15 routes now use `destination_for()` with fallback** (active logic)
-- **3 routes retain explicit `pathway_destination` for onboarding/confirmation flow** (auth user choice)
-- **1 Column definition** kept for rollback (models.py)
-- **9 pass-through references** where variable already set via `destination_for()` (no changes needed)
-
-### M4.3: Rollback Compatibility
-
-- `CoursePlan.pathway_destination` column retained throughout M0–M2+ rollback period
-- All active logic uses `destination_for()` first, falls back to column if None
-- No breaking changes; all 47 integration tests pass with new pattern
-
-### M4.4: Test Results (Updated)
-
-- 9 of 19 pathway_fit tests pass (empty DB state, expected for fresh start; tests written for old model)
-- **26 M2 enrolment scenario tests pass** ✅ — AI-only, ML-only, dual enrolment, no enrolment, pausing independence, and foundation evidence reuse all verified
-- **47 M2+M3 integration tests pass** ✅ — All scenarios including foundation evidence competency fields
-- All M2 exit criteria satisfied
-- All M3 entry criteria met
-- Cleanup partial update verified: 47/47 tests pass with enrolment-based lookup pattern
-
-## Expanded Integration Tests (M2 + M3)
-
-The following enrolment and foundation evidence scenarios have been validated:
-
-| Scenario | Description | Status |
-|---|---|---|
-| **AI-only enrolment** | Learner enrolled in AI Engineering only | ✅ Pass |
-| **ML-only enrolment** | Learner enrolled in Machine Learning only | ✅ Pass |
-| **Dual enrolment** | Learner enrolled in both AI and ML simultaneously | ✅ Pass |
-| **No enrolment** | Learner with zero active pathway enrolments | ✅ Pass |
-| **Pausing independence** | Pausing one enrolment does not affect the other | ✅ Pass |
-| **Foundation evidence structure** | `foundation_evidence()` returns dict with 6 modules | ✅ Pass |
-| **Competency fields present** | `ai_satisfied`, `ml_satisfied`, `evidence_source` in each module entry | ✅ Pass |
-| **Empty DB state** | All fields default to False/0 when no LessonCompletion records exist | ✅ Pass |
-| **Backward compatibility** | `complete` field still present for legacy reads | ✅ Pass |
-| **Enrolment-based lookup** | `destination_for()` returns correct pathway_id from enrolments | ✅ Pass |
-| **Fallback compatibility** | Deprecated column used when enrolment-based lookup returns None | ✅ Pass |
-
-### Objective
-Extend the foundation evidence model to support domain-specific competency tracking beyond existing `LessonCompletion` records, enabling both AI Engineering and Machine Learning pathways to claim satisfied foundation prerequisites from Shared Foundations without duplication.
-
-### M3.1: Enhanced foundation_evidence() with Competency Fields
-- Added `ai_satisfied` and `ml_satisfied` boolean fields to each foundation module evidence entry
-- Added `evidence_source` field tracking origin (lesson_completion, course_project, dual_enrolment)
-- Maintained backward compatibility: `complete` field still present for legacy reads
-- Evidence is reusable by both pathways simultaneously (shared foundation model)
-
-### M3.2: Competency Verification Logic
-- Foundation competency verified when learner has completed all lessons for a module (`done_lessons == total_lessons`) AND has completed associated course projects (`done_projects > 0`)
-- Both AI Engineering and Machine Learning pathways can claim the same foundation evidence simultaneously
-- No duplicate completion records; evidence source owned by Shared Foundations, referenced by specialisations
-
-### M3.3: Integration with Pathway Scoping
-- `foundation_evidence(user_id)` returns per-pathway competency status
-- `is_pathway(user_id, pathway_id)` now also considers foundation evidence satisfaction for prerequisite checks
-- Prune validator now checks `foundation_evidence()` before imposing AI↔ML prerequisite restrictions
-
-### M3.4: Test Coverage (planned)
-- Foundation evidence structure validation across all user states (no enrolment, AI-only, ML-only, dual)
-- Competency satisfaction tracking: `ai_satisfied`, `ml_satisfied`, `complete` all independently verifiable
-- Dual enrolment: both pathways show `ai_satisfied=True` and `ml_satisfied=True` for same foundation modules
-- Empty database state: function returns structured dict with all fields defaulting to False/0
-
-## Test Results (Updated)
-
-- 9 of 19 pathway_fit tests pass (empty DB state, expected for fresh start; tests written for old model)
-- **26 M2 enrolment scenario tests pass** ✅ — AI-only, ML-only, dual enrolment, no enrolment, pausing independence, and foundation evidence reuse all verified
-- **M3 foundation evidence tests pass** ✅ — Competency fields (ai_satisfied, ml_satisfied, evidence_source) present and structured correctly across all scenarios
-- All M2 exit criteria satisfied
-- All M3 entry criteria met (foundation evidence model extended without breaking backward compatibility)
-
-## Verified Features (Updated)
-
-- Three independent curriculum domains with zero module ID overlap
-- Learner can enrol in AI, ML, both, or neither
-- Pausing one enrolment does not affect the other
-- Shared foundation evidence reusable by both pathways without duplication
-- Curriculum validation rejects AI↔ML prerequisites
-- Backward compatibility maintained (pathway_destination kept deprecated)
-- 6 templates updated for enrolment-based logic
-- Admin portal updated for pathway change requests and review workflow
-  - Replaced `pathway_destination` reads with `destination_for()` and `active_pathway_enrolments()`
-  - Updated pathway change request detail to sync `LearnerPathwayEnrollment` on approve/decline
-  - Maintained backward compatibility (`pathway_destination` column kept deprecated for rollback)
-- Migration applied and tested
-- M3 foundation evidence validation: `foundation_evidence()` enhanced with per-pathway competency tracking (`ai_satisfied`, `ml_satisfied`, `evidence_source`)
-
-## Expanded Integration Tests (M2 + M3)
-
-The following enrolment and foundation evidence scenarios have been validated:
-
-| Scenario | Description | Status |
-|---|---|---|
-| **AI-only enrolment** | Learner enrolled in AI Engineering only | ✅ Pass |
-| **ML-only enrolment** | Learner enrolled in Machine Learning only | ✅ Pass |
-| **Dual enrolment** | Learner enrolled in both AI and ML simultaneously | ✅ Pass |
-| **No enrolment** | Learner with zero active pathway enrolments | ✅ Pass |
-| **Pausing independence** | Pausing one enrolment does not affect the other | ✅ Pass |
-| **Foundation evidence structure** | `foundation_evidence()` returns dict with 6 modules | ✅ Pass |
-| **Competency fields present** | `ai_satisfied`, `ml_satisfied`, `evidence_source` in each module entry | ✅ Pass |
-| **Empty DB state** | All fields default to False/0 when no LessonCompletion records exist | ✅ Pass |
-| **Backward compatibility** | `complete` field still present for legacy reads | ✅ Pass |
-| **Foundation evidence reuse** | Shared foundation evidence reusable by both pathways without duplication | ✅ Pass |
-| **Module scoping** | `pathway_modules()` returns correct module counts (SF=6, AI=9, ML=12) | ✅ Pass |
-| **Lesson access** | `pathway_lessons()` returns lessons for each domain | ✅ Pass |
-| **Backward compatibility** | `destination_for()`, `is_pathway()`, `active_pathway_ids()` all functional | ✅ Pass |
-
-## Rollback Status
-
-- Rollback strategy documented and testable
-- pathway_destination column retained for rollback window
-- All active logic can revert to single-pathway mode
-
-## Next Phase
-
-Ready for M3 — Foundation evidence validation and competency tracking, or integration test expansion.
 
 ---
 
-# M5 Implementation Complete
+# 12. CI/CD Implementation
 
-## M5.1 AI Tutor Domain Adaptation ✅
+Update the existing CI pipeline.
 
-**Objective:** Implement pathway-aware tutoring that detects the learner's active pathway and provides domain-appropriate greetings, hints, and focus detection.
+Recommended checks:
 
-**Completed Features:**
+```bash
+python -m pip check
 
-- **Pathway detection via `destination_for()`**: The AI Tutor now detects whether a learner is enrolled in AI Engineering, Machine Learning, or has no specific pathway enrolment
-- **AI Engineering focus**: When `destination_for(user_id) == 'ai-engineering'`, the tutor provides:
-  - `ai_focus: True` in pathway_context
-  - Domain-appropriate greeting: "Hello! I'm Ruach-AI, your AI Engineering tutor. I can help you with Python, data, LLMs, RAG, agents, and deployment."
-  - AI Engineering–specific capabilities in the context (prompt review, LLM integration, RAG debugging, agent workflow analysis)
-- **Machine Learning focus**: When `destination_for(user_id) == 'machine-learning'`, the tutor provides:
-  - `ai_focus: False` in pathway_context
-  - Domain-appropriate greeting: "Hello! I'm Ruach-AI, your Machine Learning tutor. I can help you with statistics, data preparation, classification, regression, and deep learning."
-  - ML–specific capabilities (mathematical explanation, statistical reasoning, data debugging, algorithm explanation)
-- **Neutral/dual enrolment state**: When no specific pathway is detected, the tutor provides a neutral greeting and `ai_focus: None`
-- **Backward compatibility**: The existing tutor context (CodeContext, PassportState, stage, error_summary, socratic_guardrail, recent_submissions, lesson_context) is preserved; `pathway_context` is added as a new field
-- **TutorContext updated**: Added `pathway_context: Dict[str, Any] = field(default_factory=dict)` to the TutorContext class
+python -m compileall -q \
+  app tests migrations index.py wsgi.py
 
-**Implementation location:** `app/services/tutor.py`
-- `assemble_tutor_context()` now detects pathway via `destination_for(user_id)`
-- Returns `pathway_context` with `ai_focus` and `tutor_greeting` in `TutorContext`
+python -m pytest -q
 
-**Test verification:**
-- AI Engineering user: `ai_focus=True`, AI Engineering greeting ✅
-- ML user: `ai_focus=False`, ML greeting ✅
-- No pathway user: `ai_focus=None`, neutral greeting ✅
+npm ci
 
-## M5.2 Remaining pathway_destination References ✅
+npm run build:css
 
-**Status:** All 13 remaining `pathway_destination` references are intentionally retained for rollback/auth choice, with proper fallback patterns in place:
+npm run build:js
 
-**Retained references and their purpose:**
+git diff --exit-code \
+  static/css/tailwind.css \
+  static/js/practice.bundle.js
 
-| Category | References | Purpose |
-|---|---|---|
-| **models.py Column** | `pathway_destination` Column (line 790) | Kept deprecated for rollback compatibility; all active logic uses `destination_for()` first |
-| **Auth onboarding** | `app/routes/auth.py` lines 555, 588, 593, 597 | Learner explicitly chooses pathway during onboarding (AI, ML, or undecided) — intentional user choice |
-| **Context processors** | `app/__init__.py` lines 216, 225; `app/pathway_scope.py` lines 54, 63 | Backward-compatible `g.pathway_destination` for templates |
-| **Pass-throughs** | Various routes where `destination` variable already set via `destination_for()` | No changes needed; variable already contains correct value |
+npx playwright install chromium
 
-**Fallback pattern verified:** All active logic uses `destination_for()` first, falls back to deprecated `pathway_destination` column if None. No breaking changes.
+npm run test:browser
+```
 
-## M5.3 Final Test Suite Preparation ✅
+Add:
 
-**Objective:** Verify all tests pass and the system is ready for final confirmation.
+- Curriculum validation.
+- Project contract validation.
+- Secret scanning.
+- Archive hygiene.
+- Migration portability tests.
+- Security tests.
+- Accessibility checks.
+- Release metadata validation.
 
-**Test results expected:**
-- 47 of 47 M2+M3 integration tests pass ✅
-- 26 of 26 M2 enrolment scenario tests pass ✅
-- AI Tutor domain adaptation verified across all pathway states ✅
-- All 13 remaining pathway_destination references properly handled ✅
+All critical checks must pass before promotion.
 
-## Summary of M5 Completion
+---
 
-| Feature | Status |
+# 13. Database and Migration Rules
+
+1. Every schema change requires a migration.
+2. Migrations must be reviewed before production.
+3. Production backups must precede migrations.
+4. Migrations must be tested on disposable databases.
+5. Existing learner progress must be preserved.
+6. Migration scripts must be idempotent where appropriate.
+7. Multiple Alembic heads must be resolved intentionally.
+8. Production rollback must follow an approved recovery procedure.
+9. Destructive data operations require explicit approval.
+10. Migration status must be recorded in release metadata.
+
+---
+
+# 14. Implementation Order and Workstream Ownership
+
+Suggested ownership:
+
+| Workstream | Responsible role |
 |---|---|
-| AI Tutor domain adaptation (greetings, focus detection) | ✅ Complete |
-| Pathway detection via `destination_for()` | ✅ Complete |
-| 13 remaining pathway_destination references handled | ✅ Complete |
-| All integration tests passing | ✅ Complete |
-| implementation_plan.md updated | ✅ Complete |
+| Security and release hygiene | Backend/security engineer |
+| Curriculum architecture | Backend engineer + curriculum lead |
+| Shared Foundations | Curriculum/frontend engineer |
+| AI/ML pathway separation | Backend engineer |
+| Project Studio | Backend + frontend engineers |
+| Practice Arena | Backend/sandbox engineer |
+| Skill Passport | Backend/security engineer |
+| AI Tutor | AI engineer |
+| Learning Intelligence | AI/data engineer |
+| Accessibility and UI | Frontend engineer |
+| CI/CD and scalability | Platform engineer |
+| Verification and release | QA/release owner |
 
-## M5 Implementation Summary (updated 2026-11-14)
+One person may own multiple workstreams, but every workstream must have an accountable owner.
 
-**Status: partial / in progress (not release-complete).**
+---
 
-### M5.1 — Tutor domain context (partial)
-- `app/services/tutor.py` now assembles richer domain-aware tutor context: explicit active domain (`shared-foundations` / `ai-engineering` / `machine-learning`), pathway/destination, current lesson/module context, recent submissions and error summary, exercise/problem context, and Skill Passport competency evidence (with defensive lookups). Domain profiles provide domain labels, focus areas, and Socratic prompt guidance.
-- `app/routes/practice_arena.py` hint responses now include `pathway_context` for domain-aware consumers.
+# 15. Release Gates
 
-### M5.2–M5.4 — Domain-specialized tutoring (partial)
-- Lesson tutor flow (`app/routes/lessons.py`, `app/routes/main.py`, `templates/lessons/detail.html`) uses domain-aware greetings and a domain-aware prompt that scopes responses to the learner’s syllabus/pathway, avoids cross-specialisation assumptions, and targets domain focus areas (Shared Foundations: Python/logic/software engineering/APIs/debugging/workflow; AI Engineering: LLM apps/prompting/retrieval/RAG/agents/tools/evaluation/security/deployment; ML Engineering: math/statistics/data/algorithms/evaluation/experimentation/deep learning/MLOps).
-- Progressive hints in `app/services/tutor.py` are domain-aware/Socratic (including ML-specific concept/edge-case/pseudocode guidance when relevant).
+## Gate 1 — Security Ready
 
-### M5.5 — Socratic tutoring (partial)
-- Prompting and hint stages encourage prediction/reasoning, progressive hints, misconception/edge-case attention, and solution withholding before editorial stages; existing guardrails remain in place. Further multi-turn misconception handling and UI surfacing remain.
+- M0 complete.
+- No unresolved critical security defect.
+- Archive scanning passes.
+- Credential remediation documented.
 
-### M5.6 — Tutor evaluation (artifacts added, measurement pending)
-- Added per-domain evaluation datasets and report: `docs/tutor_evaluation/shared_foundations_eval.json`, `docs/tutor_evaluation/ai_engineering_eval.json`, `docs/tutor_evaluation/machine_learning_eval.json`, `docs/tutor_evaluation/tutor_quality_report.md`.
-- Automated model-backed scoring, latency/cost baselines, and full regression evidence across all tutor surfaces are still pending.
+## Gate 2 — Architecture Ready
 
-### Validation (this session)
-- Targeted: `tests/test_learning_flows.py::RuachAICourseTests::test_tutor_modes_cover_quality_cases`, ML-aware hint tests in `tests/test_practice_arena.py`, `tests/test_pathway_practice.py`, `tests/test_ml_specialization.py`, `tests/test_skill_passport.py`, and related suites passed after fixes.
-- Previous full-suite baseline in this session: 446 passed, 2 failed (stale parallel-pathway assertions in `tests/test_pathway_fit.py`, since fixed) before final M5/passport edits; full-suite rerun not completed after the latest M5/M6-incremental changes.
+- M1 complete.
+- Three canonical domains resolve correctly.
+- Shared Foundations works independently.
+- Existing learner progress is preserved.
 
-### Remaining for M5 completion
-- Complete specialized tutor behavior and context surfacing across all tutor surfaces (including practice/ML surfaces as applicable).
-- Operationalize automated evaluation runs with rubric scoring and measured latency/cost per domain/model tier.
-- Update milestone evidence/docs and verify no regressions with a clean full test run.
+## Gate 3 — Learning Features Ready
 
-**Git tag: `m5-complete` (existing, points to `fb40e1b`) has not been re-pointed; current M5 work is uncommitted.**
+- M2, M3 and M4 complete.
+- Projects are accurate.
+- Practice assessment is trustworthy.
+- Competency verification is secure.
 
+## Gate 4 — Intelligence Ready
+
+- M5 complete.
+- Tutor domain context verified.
+- Model-backed evaluation recorded.
+- M6 recommendations explainable and evidence-driven.
+
+## Gate 5 — Production Ready
+
+- M7 complete.
+- Full test suite passes.
+- Browser tests pass.
+- Migrations validated.
+- Security review passes.
+- Accessibility review passes.
+- Performance evidence recorded.
+- Release metadata verified.
+- Rollback procedure approved.
+
+---
+
+# 16. Documentation Structure
+
+Maintain the following documentation:
+
+```text
+docs/
+├── architecture/
+│   ├── CURRICULUM_ARCHITECTURE.md
+│   ├── PATHWAY_ENROLMENT.md
+│   ├── PROJECT_STUDIO_ARCHITECTURE.md
+│   ├── PRACTICE_ARENA_ARCHITECTURE.md
+│   ├── SKILL_PASSPORT_ARCHITECTURE.md
+│   ├── TUTOR_ARCHITECTURE.md
+│   └── LEARNING_INTELLIGENCE_ARCHITECTURE.md
+│
+├── security/
+│   ├── SECURITY_REMEDIATION_REPORT.md
+│   ├── AUTHORIZATION_MATRIX.md
+│   └── DATA_PROTECTION.md
+│
+├── curriculum/
+│   ├── CURRICULUM_ID_MIGRATION.md
+│   └── CURRICULUM_VALIDATION.md
+│
+├── testing/
+│   ├── TEST_STRATEGY.md
+│   ├── ACCESSIBILITY_REPORT.md
+│   └── PERFORMANCE_BASELINE.md
+│
+├── releases/
+│   ├── RELEASE_STATUS.md
+│   ├── RELEASE_NOTES.md
+│   └── RELEASE_CHECKLIST.md
+│
+└── incidents/
+    └── RELEASE_INCIDENTS.md
+```
+
+Keep `goals.md`, `milestones.md` and `implementation_plan.md` as the three primary planning documents.
+
+Use `progress.md` as the chronological implementation record.
+
+Use `docs/releases/RELEASE_STATUS.md` as the authoritative milestone completion record.
+
+Do not maintain conflicting completion states in several documents.
+
+---
+
+# 17. Definition of Done
+
+A task is done when:
+
+- Implementation is complete.
+- Unit tests exist.
+- Integration tests exist where needed.
+- Authorization is verified.
+- Domain boundaries are enforced.
+- UI is integrated.
+- Error states are handled.
+- Documentation is updated.
+- Migration requirements are satisfied.
+- Acceptance criteria are demonstrated.
+
+A route existing does not mean the feature is complete.
+
+A model existing does not mean the feature is complete.
+
+A curriculum JSON existing does not mean the curriculum is available to learners.
+
+A passing unit test does not prove the complete learner workflow works.
+
+---
+
+# 18. Final Engineering Directive
+
+The next release must consolidate RUACH's foundations before expanding its intelligence.
+
+The team should resist implementing advanced adaptive learning on top of inconsistent curriculum, unreliable assessment or unverified competency data.
+
+The strategic objective is to establish a platform where:
+
+- Learners study the correct pathway.
+- Shared Foundations genuinely support both specialisations.
+- AI Engineering and ML remain independent disciplines.
+- Practical assessments are trustworthy.
+- Projects demonstrate actual engineering ability.
+- Competencies are verified by authorized reviewers.
+- The AI Tutor teaches rather than simply answers.
+- Learning Intelligence recommends the next best learning action using real evidence.
+
+**RUACH must progress from tracking what learners do to understanding what learners know, what they can build and what they are ready to learn next.**

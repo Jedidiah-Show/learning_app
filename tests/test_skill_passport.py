@@ -111,6 +111,30 @@ class SkillPassportVerificationTests(unittest.TestCase):
             self._seed_skill('ml-mathematics-statistics', 'Mathematics and statistics', 'Machine Learning')
         self.client = self.app.test_client()
         self.register('passportuser')
+        self.learner_id = self.user_id
+
+    def _make_admin(self, username='revieweradmin'):
+        """Register a second account and grant it the privileged reviewer role."""
+        self.client.post('/logout', follow_redirects=True)
+        self.register(username)
+        with self.app.app_context():
+            admin = User.query.filter_by(username=username).one()
+            admin.is_admin = True
+            db.session.commit()
+            self.admin_id = admin.id
+        # Registering logs the new account in; keep that session.
+        return self.admin_id
+
+    def _login(self, username):
+        # /login redirects already-authenticated users, so drop any existing session first.
+        self.client.post('/logout', follow_redirects=True)
+        response = self.client.post('/login', data={
+            'username': username, 'password': 'secure-pass-123',
+        }, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+
+    def _logout(self):
+        self.client.post('/logout', follow_redirects=True)
 
     def tearDown(self):
         with self.app.app_context():
@@ -149,7 +173,7 @@ class SkillPassportVerificationTests(unittest.TestCase):
                        evidence_id='proj-1', verification_status='UNVERIFIED'):
         with self.app.app_context():
             progress = UserSkillProgress(
-                user_id=self.user_id, skill_id=skill_id, status=status,
+                user_id=self.learner_id, skill_id=skill_id, status=status,
                 evidence_type=evidence_type, evidence_id=evidence_id,
                 verification_status=verification_status,
             )
@@ -157,10 +181,11 @@ class SkillPassportVerificationTests(unittest.TestCase):
             db.session.commit()
             return progress.id
 
-    def _progress(self, skill_id):
+    def _progress(self, skill_id, user_id=None):
         with self.app.app_context():
             return UserSkillProgress.query.filter_by(
-                user_id=self.user_id, skill_id=skill_id,
+                user_id=user_id if user_id is not None else self.learner_id,
+                skill_id=skill_id,
             ).first()
 
     def test_verify_flow_submit_then_assess(self):
@@ -174,37 +199,43 @@ class SkillPassportVerificationTests(unittest.TestCase):
         progress = self._progress('ml-mathematics-statistics')
         self.assertEqual(progress.verification_status, 'SUBMITTED')
 
-        # Assess: SUBMITTED -> VERIFIED
+        # Assess as a privileged reviewer: SUBMITTED -> VERIFIED
+        self._make_admin()
         response = self.client.post(
             '/api/passport/skills/ml-mathematics-statistics/assess',
-            json={'verification_status': 'VERIFIED', 'note': 'Evidence reviewed'},
+            json={'verification_status': 'VERIFIED', 'note': 'Evidence reviewed',
+                  'user_id': self.learner_id},
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()['verification_status'], 'VERIFIED')
         progress = self._progress('ml-mathematics-statistics')
         self.assertEqual(progress.verification_status, 'VERIFIED')
         self.assertIsNotNone(progress.verified_at)
-        self.assertEqual(progress.verified_by_user_id, 1)
+        self.assertEqual(progress.verified_by_user_id, self.admin_id)
 
     def test_assess_requires_submitted(self):
         self._seed_progress('ml-mathematics-statistics', verification_status='UNVERIFIED')
+        self._make_admin()
         response = self.client.post(
             '/api/passport/skills/ml-mathematics-statistics/assess',
-            json={'verification_status': 'VERIFIED'},
+            json={'verification_status': 'VERIFIED', 'user_id': self.learner_id},
         )
         self.assertEqual(response.status_code, 409)
 
     def test_reject_and_reassess(self):
         self._seed_progress('ml-mathematics-statistics')
         self.client.post('/api/passport/skills/ml-mathematics-statistics/verify')
-        # Assess as rejected
+        # Assess as rejected (reviewer session)
+        self._make_admin()
         response = self.client.post(
             '/api/passport/skills/ml-mathematics-statistics/assess',
-            json={'verification_status': 'REJECTED', 'note': 'Insufficient evidence'},
+            json={'verification_status': 'REJECTED', 'note': 'Insufficient evidence',
+                  'user_id': self.learner_id},
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()['verification_status'], 'REJECTED')
-        # Reassess: REJECTED -> SUBMITTED
+        # Reassess is a learner action on their own record: log back in as learner
+        self._login('passportuser')
         response = self.client.post(
             '/api/passport/skills/ml-mathematics-statistics/reassess',
         )
@@ -213,9 +244,10 @@ class SkillPassportVerificationTests(unittest.TestCase):
 
     def test_invalidate_verified_evidence(self):
         self._seed_progress('ml-mathematics-statistics', verification_status='VERIFIED')
+        self._make_admin()
         response = self.client.post(
             '/api/passport/skills/ml-mathematics-statistics/invalidate',
-            json={'reason': 'Evidence found to be fabricated'},
+            json={'reason': 'Evidence found to be fabricated', 'user_id': self.learner_id},
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.get_json()['verification_status'], 'REVOKED')
@@ -225,20 +257,24 @@ class SkillPassportVerificationTests(unittest.TestCase):
 
     def test_invalidate_requires_reason(self):
         self._seed_progress('ml-mathematics-statistics', verification_status='VERIFIED')
+        self._make_admin()
         response = self.client.post(
             '/api/passport/skills/ml-mathematics-statistics/invalidate',
-            json={'reason': ''},
+            json={'reason': '', 'user_id': self.learner_id},
         )
         self.assertEqual(response.status_code, 400)
 
     def test_verification_history_is_recorded(self):
         self._seed_progress('ml-mathematics-statistics')
         self.client.post('/api/passport/skills/ml-mathematics-statistics/verify')
+        self._make_admin()
         self.client.post(
             '/api/passport/skills/ml-mathematics-statistics/assess',
-            json={'verification_status': 'VERIFIED', 'note': 'ok'},
+            json={'verification_status': 'VERIFIED', 'note': 'ok',
+                  'user_id': self.learner_id},
         )
-        response = self.client.get('/api/passport/skills/ml-mathematics-statistics/history')
+        response = self.client.get(
+            f'/api/passport/skills/ml-mathematics-statistics/history?user_id={self.learner_id}')
         self.assertEqual(response.status_code, 200)
         history = response.get_json()['history']
         statuses = [h['to_status'] for h in history]
