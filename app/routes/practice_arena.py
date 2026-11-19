@@ -615,6 +615,9 @@ def submission_status(submission_id):
     if submission.user_id != current_user.id:
         return jsonify({'error': 'Access denied'}), 403
 
+    from app.services.arena_feedback import diagnostic_for
+    verdict = submission.verdict
+    terminal = verdict not in {'PENDING', 'RUNNING'}
     return jsonify({
         'submission_id': submission.id,
         'code': submission.code_snapshot,
@@ -626,7 +629,31 @@ def submission_status(submission_id):
         'total_tests': submission.total_tests,
         'error_details': submission.error_details,
         'submitted_at': submission.submitted_at.isoformat() if submission.submitted_at else None,
+        'diagnostic': diagnostic_for(submission) if terminal else None,
     })
+
+
+@practice_arena_bp.route('/api/recommendations', methods=['GET'])
+@login_required
+def arena_recommendations():
+    from app.services.arena_recommendations import recommendations_for
+    return jsonify({
+        'recommendations': recommendations_for(current_user.id, limit=6),
+    }), 200
+
+
+@practice_arena_bp.route('/api/recommendations/dismiss', methods=['POST'])
+@login_required
+def arena_recommendations_dismiss():
+    from app.services.arena_recommendations import dismiss
+    data = get_json_object()
+    if not isinstance(data, dict) or not isinstance(data.get('problem_id'), str):
+        return jsonify({'error': 'problem_id is required'}), 400
+    try:
+        dismiss(current_user.id, data['problem_id'])
+    except ValueError as error:
+        return jsonify({'error': str(error)}), 400
+    return jsonify({'ok': True}), 200
 
 
 @practice_arena_bp.route('/api/submissions')
@@ -646,6 +673,7 @@ def submission_history():
         limit = min(max(int(request.args.get('limit', 50)), 1), 200)
     except (TypeError, ValueError):
         limit = 50
+    from app.services.arena_feedback import diagnostic_for
     rows = query.order_by(Submission.submitted_at.desc()).limit(limit).all()
     return jsonify({
         'submissions': [{
@@ -659,6 +687,7 @@ def submission_history():
             'execution_time_ms': row.execution_time_ms,
             'memory_kb': row.memory_kb,
             'submitted_at': row.submitted_at.isoformat() if row.submitted_at else None,
+            'diagnostic': diagnostic_for(row),
         } for row in rows],
     }), 200
 

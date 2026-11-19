@@ -1482,3 +1482,26 @@ class ProjectMilestone(db.Model):
         ),
         db.Index('idx_project_milestone_user_project', 'user_id', 'domain', 'project_key'),
     )
+
+
+class ArenaRecommendationDismissal(db.Model):
+    """A learner's dismissal of an Arena recommendation (M3.5).
+
+    Dismissal is an explicit learner choice; it never removes content or
+    blocks prerequisite rules — it only hides a recommendation until the
+    underlying competency state changes.
+    """
+    __tablename__ = 'arena_recommendation_dismissal'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    problem_id = db.Column(db.String(120), nullable=False)
+    dismissed_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'problem_id', name='uq_arena_rec_dismissal_user_problem'),
+        db.Index('idx_arena_rec_dismissal_user', 'user_id'),
+    )

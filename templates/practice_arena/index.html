@@ -14,6 +14,14 @@
     </div>
   </header>
 
+  <section id="arena-recommendations" class="mb-8 hidden" aria-labelledby="recs-heading">
+    <div class="flex items-center justify-between">
+      <h2 id="recs-heading" class="text-lg font-bold text-slate-900 dark:text-white">Recommended for you</h2>
+      <span class="text-xs text-slate-500 dark:text-slate-400">Based on your weak concepts — dismiss any you don't want to see</span>
+    </div>
+    <div id="recs-list" class="mt-3 grid gap-3 sm:grid-cols-2"></div>
+  </section>
+
   {% if continue_problem %}
   <a href="{{ url_for('practice_arena.problem_detail', problem_id=continue_problem.id) }}" class="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-indigo-200 bg-indigo-50 p-5 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-950 dark:hover:bg-indigo-900">
     <div>
@@ -65,4 +73,47 @@
     <p class="mt-1">Browser checks are immediate formative feedback. A problem you have attempted is marked <strong>Practised</strong>. Nothing is marked <strong>Solved</strong> until an authoritative, server-side judge receives an accepted submission. Secure Submit is gated behind the security and hosting review described in the specification.</p>
   </aside>
 </section>
+<script>
+(function () {
+  var section = document.getElementById('arena-recommendations');
+  var list = document.getElementById('recs-list');
+  if (!section || !list) return;
+  var csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+  var escapeHtml = function (value) {
+    return String(value || '').replace(/[&<>"]/g, function (c) {
+      return {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c];
+    });
+  };
+  function render(items) {
+    if (!items.length) { section.classList.add('hidden'); return; }
+    section.classList.remove('hidden');
+    list.innerHTML = items.map(function (item) {
+      return '<div class="rounded-xl border border-slate-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">'
+        + '<a class="font-semibold text-indigo-800 hover:underline dark:text-indigo-300" href="' + item.url + '">' + escapeHtml(item.title) + '</a>'
+        + '<p class="mt-1 text-xs text-slate-600 dark:text-slate-300">' + escapeHtml(item.reason) + '</p>'
+        + '<div class="mt-2 flex items-center justify-between">'
+        + '<span class="text-[10px] font-semibold uppercase text-slate-400">' + escapeHtml(item.difficulty) + ' · ' + escapeHtml(item.estimated_minutes) + ' min</span>'
+        + '<button type="button" class="rec-dismiss text-xs font-semibold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200" data-problem-id="' + escapeHtml(item.problem_id) + '">Dismiss</button>'
+        + '</div></div>';
+    }).join('');
+  }
+  list.addEventListener('click', function (event) {
+    var button = event.target.closest('.rec-dismiss');
+    if (!button) return;
+    var card = button.closest('div.rounded-xl');
+    fetch('/arena/api/recommendations/dismiss', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+      body: JSON.stringify({problem_id: button.dataset.problemId}),
+    }).then(function (response) {
+      if (response.ok && card) card.remove();
+      if (!list.querySelector('button.rec-dismiss')) section.classList.add('hidden');
+    }).catch(function () {});
+  });
+  fetch('/arena/api/recommendations')
+    .then(function (response) { return response.ok ? response.json() : {recommendations: []}; })
+    .then(function (data) { render((data && data.recommendations) || []); })
+    .catch(function () { section.classList.add('hidden'); });
+})();
+</script>
 {% endblock %}
