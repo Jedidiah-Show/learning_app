@@ -453,7 +453,15 @@
         ],
         "reference": "tests/ml_reference/automation.py",
         "root": "ruach-ml-ai-tools"
-      }
+      },
+      "project_title": "Hello, AI World: automating support decisions",
+      "objectives": [
+        "Read a bundled dataset at call time and never hard-code results",
+        "Encode a visible, reviewable decision table as RULES",
+        "Produce an auditable decisions.jsonl artifact",
+        "Prove correctness with the supplied CI checks"
+      ],
+      "instructions": "Implement the decision rules, keep the supplied dataset and expected checks intact, and make the CI run pass. Paste the report produced by your code and explain the decisions your rules make, the channel-specific thresholds, and what could go wrong with a mis-routed request."
     },
     {
       "id": "mle.math-foundations",
@@ -1301,7 +1309,15 @@
         ],
         "reference": "tests/ml_reference/profile.py",
         "root": "ruach-ml-math-foundations"
-      }
+      },
+      "project_title": "Profiling a dataset with descriptive statistics",
+      "objectives": [
+        "Compute centre and spread over the stated population of values",
+        "Flag missing and non-positive values instead of hiding them",
+        "State the number of observations each figure is based on",
+        "Produce the report from the raw file, not from typed values"
+      ],
+      "instructions": "Build the profile over the orders dataset, keep the supplied definitions and method intact (population standard deviation), and make the metric checks pass in CI. Paste the report produced by your code and explain the centre, spread, and the missing and negative values you flagged."
     },
     {
       "id": "mle.data-problem-formulation",
@@ -2103,7 +2119,15 @@
         "reference": "tests/ml_reference/audit.py",
         "moved_from": "starter_kits/machine_learning/module_1",
         "root": "ruach-ml-data-audit"
-      }
+      },
+      "project_title": "Auditing a prediction dataset",
+      "objectives": [
+        "Audit the bundled orders dataset end to end",
+        "Produce a time-ordered development/evaluation split",
+        "Identify leakage features and justify excluding them",
+        "Make the CI audit checks pass unchanged"
+      ],
+      "instructions": "Implement the audit, keep the supplied dataset and expected checks intact, and make the CI run pass. Paste the report produced by your code and explain the data quality findings, the time split, and why refund reason is unavailable at prediction time."
     },
     {
       "id": "mle.classical-ml",
@@ -2871,7 +2895,15 @@
         "reference": "tests/ml_reference/model.py",
         "moved_from": "starter_kits/machine_learning/module_2",
         "root": "ruach-ml-classical-baseline"
-      }
+      },
+      "project_title": "Baseline models: regression and classification",
+      "objectives": [
+        "Establish a regression baseline on the houses data",
+        "Establish a leakage-safe classifier pipeline on the orders data",
+        "Compute metrics from predictions, never by hand",
+        "Explain baseline vs final model trade-offs"
+      ],
+      "instructions": "Build the baseline and a leakage-safe scikit-learn pipeline, keep the supplied train and fixed evaluation files unchanged, and make the metric checks pass in CI. Paste the report produced by your code and explain why the selected metrics support the intended review decision."
     },
     {
       "id": "mle.classification-models",
@@ -3414,7 +3446,15 @@
         ],
         "reference": "tests/ml_reference/spam_model.py",
         "root": "ruach-ml-classification"
-      }
+      },
+      "project_title": "Spam classifier with two compared models",
+      "objectives": [
+        "Train at least two classifiers on the emails dataset",
+        "Compare models with precision/recall/F1 and a confusion matrix",
+        "Recompute metrics from the predictions artifact",
+        "Justify the operating point for a spam filter"
+      ],
+      "instructions": "Train and compare the two classifiers on the bundled emails dataset, keep the evaluation rows untouched, and make the CI checks pass. Paste the report produced by your code and explain which model you would ship and why the confusion matrix supports that choice."
     },
     {
       "id": "mle.unsupervised-learning",
@@ -3455,7 +3495,7 @@
             {
               "heading": "No labels, just rows",
               "body": [
-                "A dataset is a table of rows and columns. In a supervised problem, each row already carries a label — such as 'spam' or 'not spam' — so the model learns to predict that label from the other columns. An unsupervised problem has no such label column. The rows are present, and the feature values are present, but nobody has marked which group each row belongs to. A cluster is a group of rows that are similar to one another across their feature columns. The learner discovers the clusters; the meaning of the clusters comes later.",
+                "A dataset is a table of rows and columns. In a supervised problem, each row already carries a label \u2014 such as 'spam' or 'not spam' \u2014 so the model learns to predict that label from the other columns. An unsupervised problem has no such label column. The rows are present, and the feature values are present, but nobody has marked which group each row belongs to. A cluster is a group of rows that are similar to one another across their feature columns. The learner discovers the clusters; the meaning of the clusters comes later.",
                 "This is the core idea of unsupervised learning: find structure in data that has no pre-assigned answers. The bundled pixels.csv data has 144 rows, each with red, green and blue values plus x and y position. If you ask Python to group the rows without telling it that the image has a blue top, a red middle and a green bottom, the algorithm will find some grouping. The question is whether those groups make sense to a human."
               ]
             },
@@ -3470,7 +3510,7 @@
               "heading": "The catch: you decide what a group means",
               "body": [
                 "Without labels, the meaning of a cluster comes from your interpretation, and a cluster is not automatically a useful segment. The algorithm only knows distance; it does not know that one group represents 'customers who buy expensive items' and another represents 'customers who rarely purchase'. That interpretation is up to you, and different people may assign different meanings to the same groups.",
-                "A cluster that is mixed — containing pixels from blue, red and green regions all in one group — is less useful than a cluster that contains pixels from only one true region. The algorithm minimizes distance within groups, but it does not maximize separation between groups unless you guide it. Always check what each group contains before you claim it has a meaningful interpretation."
+                "A cluster that is mixed \u2014 containing pixels from blue, red and green regions all in one group \u2014 is less useful than a cluster that contains pixels from only one true region. The algorithm minimizes distance within groups, but it does not maximize separation between groups unless you guide it. Always check what each group contains before you claim it has a meaningful interpretation."
               ]
             },
             {
@@ -3550,7 +3590,7 @@
               "heading": "Assign each point to its nearest centre",
               "body": [
                 "Once the k centroids are placed, each row in the dataset is assigned to the centroid that is closest in distance. The most common distance measure in k-means is Euclidean distance: the square root of the summed squared differences across all feature columns. For the pixels data, the features are r, g and b, so the distance between one pixel and a centroid is the square root of the squared differences of those three colour values.",
-                "If a pixel has r = 30, g = 82, b = 195 and a centroid has r = 28, g = 85, b = 192, the squared differences are (30-28)² = 4, (82-85)² = 9 and (195-192)² = 9, which adds to 22, and the square root of 22 is about 4.7. The pixel is assigned to the centroid with the smallest such distance. This assignment step is repeated for all 144 rows."
+                "If a pixel has r = 30, g = 82, b = 195 and a centroid has r = 28, g = 85, b = 192, the squared differences are (30-28)\u00b2 = 4, (82-85)\u00b2 = 9 and (195-192)\u00b2 = 9, which adds to 22, and the square root of 22 is about 4.7. The pixel is assigned to the centroid with the smallest such distance. This assignment step is repeated for all 144 rows."
               ]
             },
             {
@@ -3564,7 +3604,7 @@
               "heading": "Repeat until nothing moves",
               "body": [
                 "The algorithm repeats the assignment and update steps until the centroids stop moving, or until the change is smaller than a very small threshold. When the centroids no longer move, the algorithm has converged. The risk is converging to a poor arrangement, especially if the starting points were not well chosen. Running the algorithm multiple times with different random starts and comparing the results is a common practice.",
-                "In the pixels data with k = 3 and three true regions (blue top, red middle, green bottom), the algorithm will typically find centroids that are near the average r g b values of each region. If the blue region has average r about 28, g about 82, b about 193, the centroid for that cluster will have those average values — assuming the algorithm converges to a good arrangement."
+                "In the pixels data with k = 3 and three true regions (blue top, red middle, green bottom), the algorithm will typically find centroids that are near the average r g b values of each region. If the blue region has average r about 28, g about 82, b about 193, the centroid for that cluster will have those average values \u2014 assuming the algorithm converges to a good arrangement."
               ]
             }
           ],
@@ -3630,13 +3670,13 @@
               "heading": "More groups always fits better",
               "body": [
                 "If you increase k, the within-group spread can only decrease or stay the same, because each point has more centres to choose from when finding its nearest centroid. With k = 144 (one cluster per row), the algorithm could assign each row to its own centroid and the within-group spread would be zero. A perfect fit with enough groups means nothing; it is simply overfitting to the quirks of the individual rows rather than finding meaningful structure.",
-                "The pixels data has 144 rows. If you run k-means with k = 3, each cluster contains about 48 pixels and the within-group spread is some positive number. If you run with k = 144, every pixel is its own cluster and the spread is zero, but you have not found three colour regions — you have simply labelled each pixel uniquely."
+                "The pixels data has 144 rows. If you run k-means with k = 3, each cluster contains about 48 pixels and the within-group spread is some positive number. If you run with k = 144, every pixel is its own cluster and the spread is zero, but you have not found three colour regions \u2014 you have simply labelled each pixel uniquely."
               ]
             },
             {
               "heading": "The elbow",
               "body": [
-                "The elbow method plots the within-group spread (also called inertia or total within-cluster sum of squared distance) against the number of clusters k. As k grows, the spread drops. The elbow is the point where the rate of decrease slows down markedly — the plot bends like an elbow. Choosing k at the elbow gives a good trade-off: adding more groups reduces the spread only a little, so the extra complexity is not justified by the gain.",
+                "The elbow method plots the within-group spread (also called inertia or total within-cluster sum of squared distance) against the number of clusters k. As k grows, the spread drops. The elbow is the point where the rate of decrease slows down markedly \u2014 the plot bends like an elbow. Choosing k at the elbow gives a good trade-off: adding more groups reduces the spread only a little, so the extra complexity is not justified by the gain.",
                 "In the pixels data, running k-means for k = 1, 2, 3, 4, 5 and recording the within-group spread would show a sharp drop from k = 1 to k = 3, because three groups capture the blue top, red middle and green bottom. Going from k = 3 to k = 4 gives a much smaller reduction in spread, so the elbow is often at k = 3 for this dataset."
               ]
             },
@@ -3690,7 +3730,7 @@
                 "The k value where the clusters become perfectly separated."
               ],
               "answer": 2,
-              "explanation": "The elbow method plots within-group spread against k and looks for the point where the plot bends — where adding another group reduces the spread only a little. That bend is the elbow, and it represents the trade-off between fit and complexity."
+              "explanation": "The elbow method plots within-group spread against k and looks for the point where the plot bends \u2014 where adding another group reduces the spread only a little. That bend is the elbow, and it represents the trade-off between fit and complexity."
             },
             {
               "id": "q3",
@@ -3723,15 +3763,15 @@
             {
               "heading": "Describe each group",
               "body": [
-                "After plotting, describe each group in words. Give the average r, g and b values for the group, and name how many pixels it contains. For example, a group might have average r = 28, g = 82, b = 193 and contain 48 pixels — that colour profile matches the blue band at the top of the image. Another group might have average r = 201, g = 45, b = 42 and contain 48 pixels — that matches the red middle block. Always ground your description in concrete numbers from the data.",
+                "After plotting, describe each group in words. Give the average r, g and b values for the group, and name how many pixels it contains. For example, a group might have average r = 28, g = 82, b = 193 and contain 48 pixels \u2014 that colour profile matches the blue band at the top of the image. Another group might have average r = 201, g = 45, b = 42 and contain 48 pixels \u2014 that matches the red middle block. Always ground your description in concrete numbers from the data.",
                 "Describing groups with average colour values is especially intuitive for the pixels data, because the three regions have very different colour profiles. The blue band has relatively low red values and relatively high green and blue values. The red middle has high red values and low green and blue values. The green bottom has moderate red values, high green values and moderate blue values."
               ]
             },
             {
               "heading": "The label problem",
               "body": [
-                "Cluster numbers are arbitrary: if you ran k-means twice with different random starts, the cluster labelled 0 in the first run might be labelled 1 or 2 in the second run. The algorithm does not guarantee that cluster 0 means the same thing across runs. This is why you should name groups by their characteristics — such as 'the blue group' or 'the red group' — rather than by their assigned number.",
-                "If you say 'cluster 0 is blue', a reader might think that cluster 0 is always blue, but another run could label the blue group as cluster 1. Naming groups by what they contain — 'the group with average r = 28, g = 82, b = 193' — survives a rerun of the algorithm."
+                "Cluster numbers are arbitrary: if you ran k-means twice with different random starts, the cluster labelled 0 in the first run might be labelled 1 or 2 in the second run. The algorithm does not guarantee that cluster 0 means the same thing across runs. This is why you should name groups by their characteristics \u2014 such as 'the blue group' or 'the red group' \u2014 rather than by their assigned number.",
+                "If you say 'cluster 0 is blue', a reader might think that cluster 0 is always blue, but another run could label the blue group as cluster 1. Naming groups by what they contain \u2014 'the group with average r = 28, g = 82, b = 193' \u2014 survives a rerun of the algorithm."
               ]
             },
             {
@@ -3804,7 +3844,7 @@
               "heading": "Why squeeze the columns",
               "body": [
                 "Having many features slows down computation and makes plots harder to draw. If you have 50 features, plotting all pairs is impossible. Reducing the number of features speeds up the code, makes visualisations possible, and can remove noisy columns that do not carry signal. In practice, you often reduce a dataset to two or three principal components so you can draw a 2D or 3D plot.",
-                "The pixels data has three feature columns: r, g and b. That is already a small number, but even here PCA can show how two components capture the variation across the 144 pixels. With more features — such as texture measurements or colour histograms — PCA becomes increasingly useful."
+                "The pixels data has three feature columns: r, g and b. That is already a small number, but even here PCA can show how two components capture the variation across the 144 pixels. With more features \u2014 such as texture measurements or colour histograms \u2014 PCA becomes increasingly useful."
               ]
             },
             {
@@ -3824,7 +3864,7 @@
             {
               "heading": "When not to use it",
               "body": [
-                "PCA assumes that the relationship between features is linear, so it will not capture curved or nonlinear structure in the data. If the clusters in your data follow a circular pattern, PCA's linear combinations may spread them out rather than pulling them together. PCA also requires that features be on comparable scales; if one feature is measured in thousands of dollars and another in cents, the feature with the larger numerical range will dominate the principal components unless the features are scaled first — typically by subtracting the mean and dividing by the standard deviation.",
+                "PCA assumes that the relationship between features is linear, so it will not capture curved or nonlinear structure in the data. If the clusters in your data follow a circular pattern, PCA's linear combinations may spread them out rather than pulling them together. PCA also requires that features be on comparable scales; if one feature is measured in thousands of dollars and another in cents, the feature with the larger numerical range will dominate the principal components unless the features are scaled first \u2014 typically by subtracting the mean and dividing by the standard deviation.",
                 "The new columns from PCA cannot be read directly as 'red value' or 'green value'. They are abstract combinations, and the loadings that produce them depend on the dataset you applied PCA to. If you apply PCA to one dataset and then try to use the same components on new data, you must apply the same scaling and the same weighting, or the numbers will not mean the same thing."
               ]
             }
@@ -3949,7 +3989,15 @@
         ],
         "reference": "tests/ml_reference/segmentation.py",
         "root": "ruach-ml-unsupervised"
-      }
+      },
+      "project_title": "Segmenting an image with k-means",
+      "objectives": [
+        "Implement k-means from scratch on the pixel data",
+        "Choose k from the three known colour regions and justify it",
+        "Validate against the region labels and the PPM artifact",
+        "Keep the evaluation reproducible"
+      ],
+      "instructions": "Cluster the pixels with your own k-means, write the clusters artifact and PPM image, and make the CI checks pass. Paste the report produced by your code and explain how you chose k and what the agreement with the true regions shows."
     },
     {
       "id": "mle.deep-learning",
@@ -3998,8 +4046,8 @@
             {
               "heading": "Layers pass numbers to layers",
               "body": [
-                "A layer is a group of neurons that work in parallel. Each neuron in the layer takes the same input numbers, produces its own output number, and the layer passes all those output numbers upward to the next layer. The width of a layer — how many neurons it contains — is a design choice you make. More neurons let the model represent more complex patterns, but each one adds weights that must be trained.",
-                "If a layer has N neurons, its output is a row of N numbers, one per neuron. The next layer takes that row as its input and applies its own set of weights and biases. Stacking layers this way builds a network, and the depth — how many layers you have — is another design choice. Each additional layer increases the functions the model can compute, but also increases the number of weights that the training loop must find."
+                "A layer is a group of neurons that work in parallel. Each neuron in the layer takes the same input numbers, produces its own output number, and the layer passes all those output numbers upward to the next layer. The width of a layer \u2014 how many neurons it contains \u2014 is a design choice you make. More neurons let the model represent more complex patterns, but each one adds weights that must be trained.",
+                "If a layer has N neurons, its output is a row of N numbers, one per neuron. The next layer takes that row as its input and applies its own set of weights and biases. Stacking layers this way builds a network, and the depth \u2014 how many layers you have \u2014 is another design choice. Each additional layer increases the functions the model can compute, but also increases the number of weights that the training loop must find."
               ]
             },
             {
@@ -4099,7 +4147,7 @@
             {
               "heading": "Choosing the output activation",
               "body": [
-                "The output activation depends on the task type. A binary classification problem — deciding between two classes — typically uses a single output with sigmoid, which produces a number between 0 and 1 that can be interpreted as the probability of the positive class.",
+                "The output activation depends on the task type. A binary classification problem \u2014 deciding between two classes \u2014 typically uses a single output with sigmoid, which produces a number between 0 and 1 that can be interpreted as the probability of the positive class.",
                 "A multi-class classification problem with ten or more classes, such as classifying handwritten digits, uses one output unit per class with softmax, which spreads the outputs so they sum to 1 across all classes. A regression problem, where the target is a continuous number, typically uses no activation at the output layer at all, so the model can produce any real-valued prediction."
               ]
             }
@@ -4180,7 +4228,7 @@
               "heading": "Step two: nudge the weights",
               "body": [
                 "Gradient descent takes the blame scores (the gradient) and subtracts a small fraction of each one from the current weight. The learning rate controls how large that fraction is: a larger learning rate moves the weights farther each step, a smaller one moves them less. After the nudge, the forward pass recomputes the output and the loss, and the loop starts over.",
-                "The update rule for one weight is: weight_new = weight_old - learning_rate × gradient. If the gradient is positive, the weight decreases; if the gradient is negative, the weight increases. The learning rate is the knob you turn to control step size, and choosing it well is one of the most important practical decisions in training."
+                "The update rule for one weight is: weight_new = weight_old - learning_rate \u00d7 gradient. If the gradient is positive, the weight decreases; if the gradient is negative, the weight increases. The learning rate is the knob you turn to control step size, and choosing it well is one of the most important practical decisions in training."
               ]
             },
             {
@@ -4253,7 +4301,7 @@
               "heading": "Three sets of data, three jobs",
               "body": [
                 "Every neural network training uses three separate sets of data: training, validation, and test. The training set is used in every training iteration, the model's weights are updated after each batch, and this is the only set that drives the learning process. The validation set is not used for weight updates; instead, after each epoch the model's performance on the validation set is checked to decide when to stop training or which model checkpoint to keep.",
-                "The test set is held out until the very end, and its result is reported once as the final evaluation — it must never influence training decisions, or the reported accuracy will be artificially inflated. Using the test set during training would give an optimistically biased result that does not generalise to completely new data. The three sets together form the complete data pipeline."
+                "The test set is held out until the very end, and its result is reported once as the final evaluation \u2014 it must never influence training decisions, or the reported accuracy will be artificially inflated. Using the test set during training would give an optimistically biased result that does not generalise to completely new data. The three sets together form the complete data pipeline."
               ]
             },
             {
@@ -4347,7 +4395,7 @@
               "heading": "The compile step is where you choose the loss",
               "body": [
                 "Compiling a Keras model is where you specify the three core ingredients: the loss, the optimizer, and the metrics. The loss is the function the model minimises during training; for integer labels across ten classes, sparse categorical crossentropy is the standard choice. The optimizer, such as Adam, determines how the weights are updated each step based on the gradients.",
-                "The metric, usually accuracy, is the proportion of predictions that match the true label and is reported at the end of every epoch and at evaluation time. These three choices — loss, optimizer, metrics — define how the model learns and what is reported, and they are set once before training begins."
+                "The metric, usually accuracy, is the proportion of predictions that match the true label and is reported at the end of every epoch and at evaluation time. These three choices \u2014 loss, optimizer, metrics \u2014 define how the model learns and what is reported, and they are set once before training begins."
               ]
             },
             {
@@ -4497,7 +4545,15 @@
         ],
         "reference": "tests/ml_reference/digit_model.py",
         "root": "ruach-ml-deep-learning"
-      }
+      },
+      "project_title": "Digit classifier with a neural network",
+      "objectives": [
+        "Train a neural network on the digits dataset",
+        "Use the fixed training/evaluation split",
+        "Diagnose overfitting with a validation split",
+        "Report accuracy and a confusion matrix from artifacts"
+      ],
+      "instructions": "Build the network on the bundled digits dataset with the fixed split, train with a validation view, and make the CI checks pass. Paste the report produced by your code and explain the training configuration, the validation curve behaviour, and where the model fails."
     },
     {
       "id": "mle.computer-vision",
@@ -4539,29 +4595,29 @@
             {
               "heading": "Pixels are numbers",
               "body": [
-                "Each image in the bundled data is 8 pixels by 8 pixels, giving 64 pixel values per image. The image I001 has p0=15 as its top-left pixel, p1=20 as the next pixel to the right, and so on across each row. A pixel value represents brightness, with larger numbers meaning brighter pixels. In this synthetic dataset the smallest value is 12 and the largest is 214, so the images use the full available range. When you look at the grid, you can see patterns — a row of high numbers might look like a bright stripe, and a row of low numbers like a dark stripe. The computer stores these numbers but discards the visual shape unless you keep the 8-by-8 layout in mind.",
-                "A brightness value of 12 is very dark, near black, while 214 is very light, near white. The 64 values for I001 average about 118, which is close to mid‑grey. If you see a pixel with value 200 you know it is brighter than average, and a pixel with value 30 is noticeably darker. These numbers let you compare brightness across images, but only if you remember which position each number came from. Without the position information you cannot tell whether a bright pixel is in the top-left corner or the bottom-right, and that position matters for recognising shapes."
+                "Each image in the bundled data is 8 pixels by 8 pixels, giving 64 pixel values per image. The image I001 has p0=15 as its top-left pixel, p1=20 as the next pixel to the right, and so on across each row. A pixel value represents brightness, with larger numbers meaning brighter pixels. In this synthetic dataset the smallest value is 12 and the largest is 214, so the images use the full available range. When you look at the grid, you can see patterns \u2014 a row of high numbers might look like a bright stripe, and a row of low numbers like a dark stripe. The computer stores these numbers but discards the visual shape unless you keep the 8-by-8 layout in mind.",
+                "A brightness value of 12 is very dark, near black, while 214 is very light, near white. The 64 values for I001 average about 118, which is close to mid\u2011grey. If you see a pixel with value 200 you know it is brighter than average, and a pixel with value 30 is noticeably darker. These numbers let you compare brightness across images, but only if you remember which position each number came from. Without the position information you cannot tell whether a bright pixel is in the top-left corner or the bottom-right, and that position matters for recognising shapes."
               ]
             },
             {
               "heading": "Greyscale has one channel",
               "body": [
-                "Most colour images have three channels — red, green and blue — so every pixel needs three numbers, one for each colour. The bundled images are greyscale, which means each pixel is stored as a single brightness value. That single number is the perceived lightness, and it combines the three colour channels into one shade of grey. A pixel with value 150 in a greyscale image might correspond to red 150, green 150, blue 150 in a colour image, producing a neutral middle‑grey. Having just one number per pixel makes the data smaller and easier to work with, especially when you have many images to process.",
-                "A greyscale image discards colour information, so you cannot tell a red shirt from a blue shirt — both become just a brightness number. That loss matters if colour is the feature you need, but for many tasks such as detecting whether a digit is written clearly or judging the lightness of a surface, colour is irrelevant and the single channel is sufficient. The trade-off is that you give up the ability to distinguish objects that differ only in colour, but you gain speed and simplicity in every step that follows."
+                "Most colour images have three channels \u2014 red, green and blue \u2014 so every pixel needs three numbers, one for each colour. The bundled images are greyscale, which means each pixel is stored as a single brightness value. That single number is the perceived lightness, and it combines the three colour channels into one shade of grey. A pixel with value 150 in a greyscale image might correspond to red 150, green 150, blue 150 in a colour image, producing a neutral middle\u2011grey. Having just one number per pixel makes the data smaller and easier to work with, especially when you have many images to process.",
+                "A greyscale image discards colour information, so you cannot tell a red shirt from a blue shirt \u2014 both become just a brightness number. That loss matters if colour is the feature you need, but for many tasks such as detecting whether a digit is written clearly or judging the lightness of a surface, colour is irrelevant and the single channel is sufficient. The trade-off is that you give up the ability to distinguish objects that differ only in colour, but you gain speed and simplicity in every step that follows."
               ]
             },
             {
               "heading": "Flattening loses the picture",
               "body": [
-                "Flattening an image means putting the 64 pixel values into one long list of 64 numbers, going from a two‑dimensional grid to a one‑dimensional line. The image I001 has its top‑left pixel first, then the next pixel to the right, and so on until the 64th pixel at the bottom‑right. When you flatten you keep the numbers but you lose the knowledge that position seven is next to position eight and far from position fifty-seven. A flat list tells you how bright each spot is, but not where that spot lives in the picture.",
-                "Because human vision relies on neighbouring pixels to recognise edges and shapes, a model that receives a flat list must re‑learn the spatial structure from scratch. Keeping the 8-by-8 layout lets the model use neighbouring pixels the way our visual system does: a bright pixel next to a dark pixel signals an edge, and a small cluster of bright pixels suggests a feature. When the grid shape is preserved, a convolution or simple rule can detect patterns such as a bright corner or a dark line without extra processing."
+                "Flattening an image means putting the 64 pixel values into one long list of 64 numbers, going from a two\u2011dimensional grid to a one\u2011dimensional line. The image I001 has its top\u2011left pixel first, then the next pixel to the right, and so on until the 64th pixel at the bottom\u2011right. When you flatten you keep the numbers but you lose the knowledge that position seven is next to position eight and far from position fifty-seven. A flat list tells you how bright each spot is, but not where that spot lives in the picture.",
+                "Because human vision relies on neighbouring pixels to recognise edges and shapes, a model that receives a flat list must re\u2011learn the spatial structure from scratch. Keeping the 8-by-8 layout lets the model use neighbouring pixels the way our visual system does: a bright pixel next to a dark pixel signals an edge, and a small cluster of bright pixels suggests a feature. When the grid shape is preserved, a convolution or simple rule can detect patterns such as a bright corner or a dark line without extra processing."
               ]
             },
             {
               "heading": "Brightness values across the dataset",
               "body": [
                 "Across the 30 images in the dataset the individual pixel values range from 12 to 214, a span of 202 units. Image I001 has its 64 pixels clustered between 15 and 20, giving a uniformly dark appearance, while image I011 has pixels spread from 180 to 214, producing a very bright image. Some images, such as I005, have a mix of very dark pixels (around 15) and very bright pixels (around 200), creating high contrast. Knowing the overall range helps you normalise the data later, but each image has its own brightness character that a single number cannot capture.",
-                "If you compute the mean pixel value for each image you get a single number summarising its overall brightness: I001 averages about 118, I011 averages about 197, and I005 averages about 108. These means tell you which images are generally brighter or darker, but two images can have the same mean and look very different — one might have a bright spot on a dark background, the other a medium‑grey scene. The mean is a useful summary, yet it hides the detail that a histogram of pixel values would reveal."
+                "If you compute the mean pixel value for each image you get a single number summarising its overall brightness: I001 averages about 118, I011 averages about 197, and I005 averages about 108. These means tell you which images are generally brighter or darker, but two images can have the same mean and look very different \u2014 one might have a bright spot on a dark background, the other a medium\u2011grey scene. The mean is a useful summary, yet it hides the detail that a histogram of pixel values would reveal."
               ]
             }
           ],
@@ -4600,7 +4656,7 @@
                 "The computer can no longer see the total number of pixels"
               ],
               "answer": 1,
-              "explanation": "Flattening turns the 8-by-8 grid into a list of 64 numbers in a fixed order. The computer remembers the order but not the two‑dimensional structure, so it cannot tell that position seven is next to position eight. Without the grid layout the model loses the spatial relationships that signal edges and shapes."
+              "explanation": "Flattening turns the 8-by-8 grid into a list of 64 numbers in a fixed order. The computer remembers the order but not the two\u2011dimensional structure, so it cannot tell that position seven is next to position eight. Without the grid layout the model loses the spatial relationships that signal edges and shapes."
             },
             {
               "id": "q3",
@@ -4612,7 +4668,7 @@
                 "The grid shape ensures every image has exactly 64 pixels"
               ],
               "answer": 1,
-              "explanation": "When the 8-by-8 shape is preserved, a model can check whether a pixel's neighbour is brighter or darker, which signals an edge. A flat list forces the model to re‑learn this neighbourhood relationship from scratch, which wastes computation and can miss simple patterns that are obvious in the grid."
+              "explanation": "When the 8-by-8 shape is preserved, a model can check whether a pixel's neighbour is brighter or darker, which signals an edge. A flat list forces the model to re\u2011learn this neighbourhood relationship from scratch, which wastes computation and can miss simple patterns that are obvious in the grid."
             }
           ]
         },
@@ -4626,29 +4682,29 @@
             {
               "heading": "Every image the same size",
               "body": [
-                "Neural networks require every input image to have the same width and height, because the layers expect a fixed number of pixels. The bundled images are already 8-by-8, but real photographs come in many sizes — a portrait might be 1200-by-1600 and a snapshot might be 800-by-600. Resizing every image to 8-by-8 before training is not optional; it is the first step that makes every image compatible with the model's fixed‑size input layer. Without resizing the model would crash or produce unpredictable results when shown images of different dimensions.",
-                "When you resize an image you change its pixel count but keep the meaning of each position — the top‑left corner stays the top‑left corner after resizing. A common beginner mistake is to stretch the image non‑uniformly, making objects look wider than they are tall. Always resize both dimensions by the same scaling factor, or use a library function that maintains the aspect ratio and then crops the excess. This ensures that a square object in the original photo remains approximately square in the resized version."
+                "Neural networks require every input image to have the same width and height, because the layers expect a fixed number of pixels. The bundled images are already 8-by-8, but real photographs come in many sizes \u2014 a portrait might be 1200-by-1600 and a snapshot might be 800-by-600. Resizing every image to 8-by-8 before training is not optional; it is the first step that makes every image compatible with the model's fixed\u2011size input layer. Without resizing the model would crash or produce unpredictable results when shown images of different dimensions.",
+                "When you resize an image you change its pixel count but keep the meaning of each position \u2014 the top\u2011left corner stays the top\u2011left corner after resizing. A common beginner mistake is to stretch the image non\u2011uniformly, making objects look wider than they are tall. Always resize both dimensions by the same scaling factor, or use a library function that maintains the aspect ratio and then crops the excess. This ensures that a square object in the original photo remains approximately square in the resized version."
               ]
             },
             {
               "heading": "Scaling the numbers",
               "body": [
-                "Pixel values in the bundled data run from 12 to 214, but most machine learning models work best when input numbers are centred around zero and lie in a narrow range such as 0 to 1. Dividing every pixel value by 255 — the maximum possible value in an 8‑bit greyscale image — scales the bundled data so that the smallest becomes about 0.05 and the largest becomes about 0.84. This process, called normalisation, makes the initial training steps more stable because the model does not start with one feature that is orders of magnitude larger than the others.",
+                "Pixel values in the bundled data run from 12 to 214, but most machine learning models work best when input numbers are centred around zero and lie in a narrow range such as 0 to 1. Dividing every pixel value by 255 \u2014 the maximum possible value in an 8\u2011bit greyscale image \u2014 scales the bundled data so that the smallest becomes about 0.05 and the largest becomes about 0.84. This process, called normalisation, makes the initial training steps more stable because the model does not start with one feature that is orders of magnitude larger than the others.",
                 "After normalisation a pixel that was 12 becomes 0.047 and a pixel that was 214 becomes 0.839. The difference between neighbouring pixels is now much smaller in absolute terms, which helps the gradient descent steps stay modest at the start of training. If you skip this scaling and feed raw values into the model the first updates can be huge because a single large pixel value dominates the weighted sum. That is why normalisation is standard practice before the first training epoch."
               ]
             },
             {
               "heading": "Labels and folders",
               "body": [
-                "Each image in the dataset carries a label — a single number that tells the model what that image depicts. In the bundled data the label is 0 or 1, where 0 means one kind of pattern and 1 means another. Most tools expect a folder-per-class layout: all images with label 0 go in one folder, all images with label 1 go in another. When the folder name itself carries the class name the model can read the label directly from the file path, which is convenient for the training loop. If you put all images in one folder and write a separate CSV file with image IDs and labels you must ensure the CSV is error‑free, because the model will not guess the label from the filename.",
+                "Each image in the dataset carries a label \u2014 a single number that tells the model what that image depicts. In the bundled data the label is 0 or 1, where 0 means one kind of pattern and 1 means another. Most tools expect a folder-per-class layout: all images with label 0 go in one folder, all images with label 1 go in another. When the folder name itself carries the class name the model can read the label directly from the file path, which is convenient for the training loop. If you put all images in one folder and write a separate CSV file with image IDs and labels you must ensure the CSV is error\u2011free, because the model will not guess the label from the filename.",
                 "If you store all images in one folder and keep a separate CSV file that maps each image ID to its class, the model must read that CSV instead of inferring the label from the directory. A common mistake is to mismatch the image ID in the CSV with the actual filename, causing the model to learn the wrong class for each image. Always verify that the number of rows in the CSV equals the number of image files, and that every label is either 0 or 1, with no missing or extra entries."
               ]
             },
             {
               "heading": "Augmentation: making new images on purpose",
               "body": [
-                "Data augmentation creates additional training examples by applying small changes to each image, such as flipping it left‑right, rotating it by a few degrees, or cropping a random section. These techniques teach the model to ignore minor variations so it still recognises the same pattern when the image is slightly turned or mirrored. In this synthetic dataset the pixels are fixed, so augmentation would be applied in software before the model sees the image, not by changing the CSV file itself.",
-                "A warning specific to this domain: a flipped digit is not always valid, because the written form of a digit matters — a reversed 6 looks like a 9, and a reversed 3 can be confusing. Unlike natural images where left‑right symmetry is common, structured patterns such as digits or letters have a canonical orientation. If you augment by rotating, be sure the rotation angle stays within a range that does not destroy the recognisable shape. Always check a few augmented examples visually before starting training, to be sure the changes are helpful rather than noise."
+                "Data augmentation creates additional training examples by applying small changes to each image, such as flipping it left\u2011right, rotating it by a few degrees, or cropping a random section. These techniques teach the model to ignore minor variations so it still recognises the same pattern when the image is slightly turned or mirrored. In this synthetic dataset the pixels are fixed, so augmentation would be applied in software before the model sees the image, not by changing the CSV file itself.",
+                "A warning specific to this domain: a flipped digit is not always valid, because the written form of a digit matters \u2014 a reversed 6 looks like a 9, and a reversed 3 can be confusing. Unlike natural images where left\u2011right symmetry is common, structured patterns such as digits or letters have a canonical orientation. If you augment by rotating, be sure the rotation angle stays within a range that does not destroy the recognisable shape. Always check a few augmented examples visually before starting training, to be sure the changes are helpful rather than noise."
               ]
             }
           ],
@@ -4663,7 +4719,7 @@
             "answer": 1,
             "explanation": "Neural network layers are built with a fixed number of input units, so every image must have the same width and height. If images vary in size the model cannot process them in a single batch without resizing first."
           },
-          "task": "Take the bundled image data, divide every pixel value by 255 to scale them into the range 0–1, and write the steps you would use to organise a folder of real photographs into class‑named subfolders for training.",
+          "task": "Take the bundled image data, divide every pixel value by 255 to scale them into the range 0\u20131, and write the steps you would use to organise a folder of real photographs into class\u2011named subfolders for training.",
           "quiz_bank": [
             {
               "id": "q1",
@@ -4687,19 +4743,19 @@
                 "It doubles the pixel values"
               ],
               "answer": 2,
-              "explanation": "Dividing by 255 maps the original 0‑255 range into 0‑1, which centres the data and makes the model's early training steps more stable, as described in the lesson."
+              "explanation": "Dividing by 255 maps the original 0\u2011255 range into 0\u20111, which centres the data and makes the model's early training steps more stable, as described in the lesson."
             },
             {
               "id": "q3",
               "question": "Which of the following is a valid data augmentation technique for natural images?",
               "choices": [
                 "Changing the pixel values to exceed 255",
-                "Flipping the image left‑right and rotating by a small angle",
+                "Flipping the image left\u2011right and rotating by a small angle",
                 "Removing the folder structure",
                 "Deleting the label from the CSV"
               ],
               "answer": 1,
-              "explanation": "Flipping left‑right and rotating by a small angle create new training examples that teach the model to recognise patterns regardless of orientation, which is the purpose of augmentation."
+              "explanation": "Flipping left\u2011right and rotating by a small angle create new training examples that teach the model to recognise patterns regardless of orientation, which is the purpose of augmentation."
             }
           ]
         },
@@ -4720,8 +4776,8 @@
             {
               "heading": "Early filters find edges",
               "body": [
-                "In a convolutional network the first few layers have filters that respond to very simple patterns such as a dark pixel next to a bright pixel, which is an edge, or a slight change in colour texture. These early filters are useful because almost every image feature — corners, lines, curves — is built from edges at some scale. As you go deeper into the network the filters respond to more complex patterns such as curves, then shapes like eyes or wheels, because each layer combines the responses from the layer below.",
-                "Imagine a filter that detects a horizontal line and another that detects a vertical line; when both are active in the same region the next layer can combine them to recognise a corner. With each successive layer the model builds up from parts to wholes: edges → parts of objects → whole objects. This hierarchy is why convolutional networks are so much better at image tasks than a fully connected network, which would have to learn edge detection from scratch for every new image and would not scale to the richness of natural pictures that humans recognise instantly."
+                "In a convolutional network the first few layers have filters that respond to very simple patterns such as a dark pixel next to a bright pixel, which is an edge, or a slight change in colour texture. These early filters are useful because almost every image feature \u2014 corners, lines, curves \u2014 is built from edges at some scale. As you go deeper into the network the filters respond to more complex patterns such as curves, then shapes like eyes or wheels, because each layer combines the responses from the layer below.",
+                "Imagine a filter that detects a horizontal line and another that detects a vertical line; when both are active in the same region the next layer can combine them to recognise a corner. With each successive layer the model builds up from parts to wholes: edges \u2192 parts of objects \u2192 whole objects. This hierarchy is why convolutional networks are so much better at image tasks than a fully connected network, which would have to learn edge detection from scratch for every new image and would not scale to the richness of natural pictures that humans recognise instantly."
               ]
             },
             {
@@ -4734,8 +4790,8 @@
             {
               "heading": "From feature maps to a label",
               "body": [
-                "After several convolutional layers and pooling steps the feature maps have been reduced to a compact set of numbers that describe the most important patterns found in the image. These numbers are then flattened into a one‑dimensional list and fed into one or more dense layers, where each neuron connects to every number from the previous layer. The dense layers compute weighted sums and apply a non‑linear activation, finally producing a small vector of scores — one score per class.",
-                "The last step is usually a softmax function that turns those raw scores into probabilities that add up to one. A score of 3.2 might become a probability of 0.78, a score of 1.1 becomes 0.15, and a score of -0.5 becomes 0.07, leaving the remaining probability for other classes. The class with the highest probability is the model's prediction, and during training the model adjusts its filters and dense‑layer weights so that the correct class receives the highest probability for each image."
+                "After several convolutional layers and pooling steps the feature maps have been reduced to a compact set of numbers that describe the most important patterns found in the image. These numbers are then flattened into a one\u2011dimensional list and fed into one or more dense layers, where each neuron connects to every number from the previous layer. The dense layers compute weighted sums and apply a non\u2011linear activation, finally producing a small vector of scores \u2014 one score per class.",
+                "The last step is usually a softmax function that turns those raw scores into probabilities that add up to one. A score of 3.2 might become a probability of 0.78, a score of 1.1 becomes 0.15, and a score of -0.5 becomes 0.07, leaving the remaining probability for other classes. The class with the highest probability is the model's prediction, and during training the model adjusts its filters and dense\u2011layer weights so that the correct class receives the highest probability for each image."
               ]
             }
           ],
@@ -4800,29 +4856,29 @@
             {
               "heading": "Why training from scratch is expensive",
               "body": [
-                "Training a convolutional neural network from scratch means randomly initializing all weights and then adjusting them using your own dataset. This process can require millions of labelled images and many hours of computing time, because the model must discover edge detectors, color patterns and object parts entirely on its own. Models that have already been trained on large datasets such as ImageNet have learned these basic patterns already, so starting from those learned weights saves vast amounts of data and compute time. In practice, fine‑tuning a pre‑trained model on a new task can take minutes or hours instead of days or weeks.",
-                "Because the early layers of a pre‑trained model already detect edges and textures, only the later layers need to change when you fine‑tune on your own data. This means your own labelled dataset can be small — often just a few hundred images — and still produce a working model. If you tried to learn everything from scratch you would need thousands of examples for each class just to discover the same edge detectors that the pre‑trained model already knows."
+                "Training a convolutional neural network from scratch means randomly initializing all weights and then adjusting them using your own dataset. This process can require millions of labelled images and many hours of computing time, because the model must discover edge detectors, color patterns and object parts entirely on its own. Models that have already been trained on large datasets such as ImageNet have learned these basic patterns already, so starting from those learned weights saves vast amounts of data and compute time. In practice, fine\u2011tuning a pre\u2011trained model on a new task can take minutes or hours instead of days or weeks.",
+                "Because the early layers of a pre\u2011trained model already detect edges and textures, only the later layers need to change when you fine\u2011tune on your own data. This means your own labelled dataset can be small \u2014 often just a few hundred images \u2014 and still produce a working model. If you tried to learn everything from scratch you would need thousands of examples for each class just to discover the same edge detectors that the pre\u2011trained model already knows."
               ]
             },
             {
               "heading": "Feature extraction",
               "body": [
-                "Feature extraction means keeping all the layers of a pre‑trained model fixed (frozen) and training only a new, small classifier on top of them. The pre‑trained layers have already learned to produce useful feature representations from the raw pixel values — they map each image patch to a vector of numbers that capture edges, shapes and textures. You add one or more dense layers on top, with the number of output units equal to the number of classes you want to distinguish, and train those new layers using your own data. The heavy lifting of pattern detection is already done; you only teach the model how to map those patterns to your specific labels.",
-                "Think of it like reusing a trained chef's prep work: the chef has already chopped onions, measured spices and heated pans so that the final dish comes together quickly. You do not need to teach the chef from scratch; you just add your own seasoning and cooking steps to finish the recipe. In the same way, the pre‑trained model provides ready‑made pattern detectors, and you add a new classifier that learns which patterns matter for your own classes."
+                "Feature extraction means keeping all the layers of a pre\u2011trained model fixed (frozen) and training only a new, small classifier on top of them. The pre\u2011trained layers have already learned to produce useful feature representations from the raw pixel values \u2014 they map each image patch to a vector of numbers that capture edges, shapes and textures. You add one or more dense layers on top, with the number of output units equal to the number of classes you want to distinguish, and train those new layers using your own data. The heavy lifting of pattern detection is already done; you only teach the model how to map those patterns to your specific labels.",
+                "Think of it like reusing a trained chef's prep work: the chef has already chopped onions, measured spices and heated pans so that the final dish comes together quickly. You do not need to teach the chef from scratch; you just add your own seasoning and cooking steps to finish the recipe. In the same way, the pre\u2011trained model provides ready\u2011made pattern detectors, and you add a new classifier that learns which patterns matter for your own classes."
               ]
             },
             {
               "heading": "Fine-tuning",
               "body": [
-                "Fine‑tuning means unfreezing some of the pre‑trained layers so that their weights can change during training on your own data. The early layers, which detect generic edges and textures, often stay frozen because those features are useful across many tasks. The later layers, which are closer to the final classification decision, are unfrozen so they can adapt to your specific classes. A small learning rate is used because the pre‑trained weights are already in a good region; large steps would move them too far and hurt performance rather than help.",
+                "Fine\u2011tuning means unfreezing some of the pre\u2011trained layers so that their weights can change during training on your own data. The early layers, which detect generic edges and textures, often stay frozen because those features are useful across many tasks. The later layers, which are closer to the final classification decision, are unfrozen so they can adapt to your specific classes. A small learning rate is used because the pre\u2011trained weights are already in a good region; large steps would move them too far and hurt performance rather than help.",
                 "A common practice is to freeze the first two of five convolutional layers and unfreeze the last two, then train for a few epochs with a learning rate around 0.001. You monitor the validation loss and if it stops improving you reduce the learning rate further or freeze the layers again. This careful adjustment lets the model specialize without losing the general knowledge it already carries."
               ]
             },
             {
               "heading": "Checking the result",
               "body": [
-                "After fine‑tuning you evaluate the model on the held‑out evaluation set and compute a confusion matrix that counts true positives, false positives, true negatives and false negatives for each class. Comparing the accuracy and precision of your fine‑tuned model against a simple baseline — such as a model that always predicts the most common class — tells you whether the pre‑trained weights actually helped. If the confusion matrix shows many false positives you may need to adjust the decision threshold or collect more labelled examples.",
-                "A useful visual aid is to misclassify some images and look at what the model was actually responding to — sometimes a model predicts 'class 1' because it detected a bright patch that happens to correlate with that class in the training data but is not the true feature. The lesson here is that transfer learning speeds up development but you still need to check the results honestly, because a model can be confident and wrong if the data does not fully support the task."
+                "After fine\u2011tuning you evaluate the model on the held\u2011out evaluation set and compute a confusion matrix that counts true positives, false positives, true negatives and false negatives for each class. Comparing the accuracy and precision of your fine\u2011tuned model against a simple baseline \u2014 such as a model that always predicts the most common class \u2014 tells you whether the pre\u2011trained weights actually helped. If the confusion matrix shows many false positives you may need to adjust the decision threshold or collect more labelled examples.",
+                "A useful visual aid is to misclassify some images and look at what the model was actually responding to \u2014 sometimes a model predicts 'class 1' because it detected a bright patch that happens to correlate with that class in the training data but is not the true feature. The lesson here is that transfer learning speeds up development but you still need to check the results honestly, because a model can be confident and wrong if the data does not fully support the task."
               ]
             }
           ],
@@ -4853,27 +4909,27 @@
             },
             {
               "id": "q2",
-              "question": "What is the difference between feature extraction and fine‑tuning?",
+              "question": "What is the difference between feature extraction and fine\u2011tuning?",
               "choices": [
-                "Feature extraction trains all layers, while fine‑tuning freezes the early layers",
-                "Feature extraction freezes all pre‑trained layers and trains only a new classifier on top, while fine‑tuning unfreezes some layers so their weights can change",
-                "Feature extraction uses no convolutional layers, while fine‑tuning uses only convolutional layers",
-                "Feature extraction requires more data than fine‑tuning"
+                "Feature extraction trains all layers, while fine\u2011tuning freezes the early layers",
+                "Feature extraction freezes all pre\u2011trained layers and trains only a new classifier on top, while fine\u2011tuning unfreezes some layers so their weights can change",
+                "Feature extraction uses no convolutional layers, while fine\u2011tuning uses only convolutional layers",
+                "Feature extraction requires more data than fine\u2011tuning"
               ],
               "answer": 1,
-              "explanation": "In feature extraction the pre‑trained layers are kept fixed and only a new top classifier is trained, whereas fine‑tuning unfreezes some layers so their weights can adapt to the new data."
+              "explanation": "In feature extraction the pre\u2011trained layers are kept fixed and only a new top classifier is trained, whereas fine\u2011tuning unfreezes some layers so their weights can adapt to the new data."
             },
             {
               "id": "q3",
-              "question": "Why is a small learning rate used during fine‑tuning?",
+              "question": "Why is a small learning rate used during fine\u2011tuning?",
               "choices": [
-                "Because the pre‑trained weights are already in a good region and large steps would move them too far",
+                "Because the pre\u2011trained weights are already in a good region and large steps would move them too far",
                 "Because the new classifier has very few parameters",
                 "Because the evaluation set is small",
                 "Because the training data is already normalised"
               ],
               "answer": 0,
-              "explanation": "The pre‑trained weights are already well‑suited to extracting meaningful features; a large learning rate would overwrite that useful knowledge, so a small rate such as 0.001 makes only gentle adjustments."
+              "explanation": "The pre\u2011trained weights are already well\u2011suited to extracting meaningful features; a large learning rate would overwrite that useful knowledge, so a small rate such as 0.001 makes only gentle adjustments."
             }
           ]
         },
@@ -4888,27 +4944,27 @@
               "heading": "One label for the whole image",
               "body": [
                 "Image classification gives the model one label for the entire image, such as 'this picture shows a cat'. The model looks at all the pixels and outputs a single class name, which is useful when you only need to know whether the desired object is present. But classification cannot answer where the cat is located inside the image, nor can it tell if there are multiple cats or other objects sharing the frame. For tasks that require spatial information the single-label approach is too coarse.",
-                "Suppose you have a dataset of 1,000 photos of rooms and you want to know whether each room has a window. A classification model can give you 1,000 yes/no answers, but it won't tell you which of the 1,000 rooms have windows and which do not, because the 'window' or 'no window' decision is the only output the model produces. To find the location you need a different kind of model that produces spatial output such as boxes or a pixel‑wise mask."
+                "Suppose you have a dataset of 1,000 photos of rooms and you want to know whether each room has a window. A classification model can give you 1,000 yes/no answers, but it won't tell you which of the 1,000 rooms have windows and which do not, because the 'window' or 'no window' decision is the only output the model produces. To find the location you need a different kind of model that produces spatial output such as boxes or a pixel\u2011wise mask."
               ]
             },
             {
               "heading": "Boxes around objects",
               "body": [
-                "Object detection produces a set of boxes around the objects it finds in the image, together with a label for each box and a confidence score that says how sure the model is about that prediction. For example, a detector might output 'cat at position (120, 45) with size 80-by-60 and confidence 0.92'. The confidence score is the model's estimated probability that the box actually contains the stated object. Well‑known families of detectors such as YOLO (You Only Look Once) and Faster R‑CNN scan the image once or multiple times and output all detected objects in a single pass.",
-                "A confidence score above a chosen threshold — commonly 0.5 or 0.7 — is taken as a detection; scores below the threshold are discarded. If the same object is detected with two overlapping boxes the model usually keeps the one with the higher score and discards the other, a procedure called non-maximum suppression. YOLO's architecture makes it particularly fast, which is why it is used in real‑time applications such as counting cars in traffic video feeds."
+                "Object detection produces a set of boxes around the objects it finds in the image, together with a label for each box and a confidence score that says how sure the model is about that prediction. For example, a detector might output 'cat at position (120, 45) with size 80-by-60 and confidence 0.92'. The confidence score is the model's estimated probability that the box actually contains the stated object. Well\u2011known families of detectors such as YOLO (You Only Look Once) and Faster R\u2011CNN scan the image once or multiple times and output all detected objects in a single pass.",
+                "A confidence score above a chosen threshold \u2014 commonly 0.5 or 0.7 \u2014 is taken as a detection; scores below the threshold are discarded. If the same object is detected with two overlapping boxes the model usually keeps the one with the higher score and discards the other, a procedure called non-maximum suppression. YOLO's architecture makes it particularly fast, which is why it is used in real\u2011time applications such as counting cars in traffic video feeds."
               ]
             },
             {
               "heading": "A label for every pixel",
               "body": [
-                "Semantic segmentation gives every pixel in the image a label, so the output is a full‑resolution mask that shows which pixels belong to which class. All pixels that are part of the same class receive the same label — for instance, every pixel that is sky gets label 'sky' and every pixel that is grass gets label 'grass'. This lets you measure exactly how much of the image is covered by each class, which is useful for tasks such as medical image analysis or mapping land cover.",
-                "Instance segmentation goes a step further by giving each separate object its own mask, even when all objects belong to the same class. If there are three cars in the image, instance segmentation produces three distinct masks — car‑1, car‑2, car‑3 — so you can count the cars and tell them apart. This is essential for applications that need to track individual objects over time, such as counting floating particles in a fluid or tracking pedestrians in a crowd."
+                "Semantic segmentation gives every pixel in the image a label, so the output is a full\u2011resolution mask that shows which pixels belong to which class. All pixels that are part of the same class receive the same label \u2014 for instance, every pixel that is sky gets label 'sky' and every pixel that is grass gets label 'grass'. This lets you measure exactly how much of the image is covered by each class, which is useful for tasks such as medical image analysis or mapping land cover.",
+                "Instance segmentation goes a step further by giving each separate object its own mask, even when all objects belong to the same class. If there are three cars in the image, instance segmentation produces three distinct masks \u2014 car\u20111, car\u20112, car\u20113 \u2014 so you can count the cars and tell them apart. This is essential for applications that need to track individual objects over time, such as counting floating particles in a fluid or tracking pedestrians in a crowd."
               ]
             },
             {
               "heading": "Choosing the right task",
               "body": [
-                "The choice of task depends on what question you want to answer. If you need a yes/no answer — does this image contain a cat? — use classification. If you need to know where objects are and how many there are, use object detection, which gives you boxes and labels with confidence scores. If you need to measure how much of the image is occupied by a certain class, use semantic segmentation to get a pixel‑wise mask. The decision summary is: classification for yes/no, detection for boxes and counts, segmentation for per‑pixel area measures.",
+                "The choice of task depends on what question you want to answer. If you need a yes/no answer \u2014 does this image contain a cat? \u2014 use classification. If you need to know where objects are and how many there are, use object detection, which gives you boxes and labels with confidence scores. If you need to measure how much of the image is occupied by a certain class, use semantic segmentation to get a pixel\u2011wise mask. The decision summary is: classification for yes/no, detection for boxes and counts, segmentation for per\u2011pixel area measures.",
                 "Counting the cars in a photo needs detection, measuring how much of the photo is road needs segmentation, and a yes or no answer about whether the photo contains a cat needs classification. Each task produces a different kind of output and requires different evaluation metrics, so choosing the right one before you start training saves time and leads to more meaningful results."
               ]
             }
@@ -4918,7 +4974,7 @@
             "choices": [
               "A single label for the whole image",
               "Boxes around objects with labels and confidence scores",
-              "A pixel‑wise mask for every class",
+              "A pixel\u2011wise mask for every class",
               "The total number of pixels in the image"
             ],
             "answer": 1,
@@ -4932,7 +4988,7 @@
               "choices": [
                 "A single label for the whole image",
                 "Boxes around objects with labels and confidence scores",
-                "A pixel‑wise mask for every class",
+                "A pixel\u2011wise mask for every class",
                 "The total number of pixels in the image"
               ],
               "answer": 1,
@@ -4944,11 +5000,11 @@
               "choices": [
                 "A single label for the whole image",
                 "Boxes around the largest object",
-                "A pixel‑wise mask labelling every pixel with a class name",
+                "A pixel\u2011wise mask labelling every pixel with a class name",
                 "The average pixel value per class"
               ],
               "answer": 2,
-              "explanation": "Semantic segmentation produces a full‑resolution mask where every pixel is labelled with its class name, so you can see exactly which pixels belong to each category."
+              "explanation": "Semantic segmentation produces a full\u2011resolution mask where every pixel is labelled with its class name, so you can see exactly which pixels belong to each category."
             },
             {
               "id": "q3",
@@ -4960,7 +5016,7 @@
                 "Feature extraction"
               ],
               "answer": 2,
-              "explanation": "Semantic segmentation gives a pixel‑wise mask, so you can count exactly how many pixels belong to the road class and compute its area proportion clearly."
+              "explanation": "Semantic segmentation gives a pixel\u2011wise mask, so you can count exactly how many pixels belong to the road class and compute its area proportion clearly."
             }
           ]
         },
@@ -4974,8 +5030,8 @@
             {
               "heading": "Scope the project in one sentence",
               "body": [
-                "A good project sentence follows a simple four‑part structure: data, task, model, and the decision it supports. You state which data you are using, what prediction or classification task the model will perform, which type of model you have chosen, and what decision the result will inform. For example: 'Using the 30 bundled 8‑by‑8 greyscale images, I will train a convolutional network to classify each image as class 0 or class 1, so that a new image can be quickly categorised without human inspection.' This one sentence tells anyone reading exactly what you built and why it matters.",
-                "Writing the sentence first forces you to think about what data you have, what you want to predict, and what you will do with the answer before you start spending hours on training. If you cannot write a clear four‑part sentence, it is a sign that the project scope is not well defined and you should clarify your data, your goal, or your model choice before you begin."
+                "A good project sentence follows a simple four\u2011part structure: data, task, model, and the decision it supports. You state which data you are using, what prediction or classification task the model will perform, which type of model you have chosen, and what decision the result will inform. For example: 'Using the 30 bundled 8\u2011by\u20118 greyscale images, I will train a convolutional network to classify each image as class 0 or class 1, so that a new image can be quickly categorised without human inspection.' This one sentence tells anyone reading exactly what you built and why it matters.",
+                "Writing the sentence first forces you to think about what data you have, what you want to predict, and what you will do with the answer before you start spending hours on training. If you cannot write a clear four\u2011part sentence, it is a sign that the project scope is not well defined and you should clarify your data, your goal, or your model choice before you begin."
               ]
             },
             {
@@ -4988,15 +5044,15 @@
             {
               "heading": "Tell the story with evidence",
               "body": [
-                "A good project presentation follows a clear shape that reviewers can follow quickly. Start with the problem the project addresses, then describe the data you used, then the method (model type and key steps), then the numbers (accuracy, confusion matrix, anything else), then the limits of what the model can do, and finally the next step you would take. This six‑part structure ensures that no important aspect is omitted and that the reviewer can judge the work on its own terms.",
-                "In the bundled computer vision project the problem is to classify new 8‑by‑8 greyscale images, the data are the 30 images with their labels, the method is a convolutional network with transfer learning, the numbers include the accuracy and confusion matrix on the 10 evaluation images, the limits are that the model cannot localisation objects, and the next step is to collect more varied images and try object detection. Writing these six sentences in your README lets a reviewer quickly check that you have addressed every component."
+                "A good project presentation follows a clear shape that reviewers can follow quickly. Start with the problem the project addresses, then describe the data you used, then the method (model type and key steps), then the numbers (accuracy, confusion matrix, anything else), then the limits of what the model can do, and finally the next step you would take. This six\u2011part structure ensures that no important aspect is omitted and that the reviewer can judge the work on its own terms.",
+                "In the bundled computer vision project the problem is to classify new 8\u2011by\u20118 greyscale images, the data are the 30 images with their labels, the method is a convolutional network with transfer learning, the numbers include the accuracy and confusion matrix on the 10 evaluation images, the limits are that the model cannot localisation objects, and the next step is to collect more varied images and try object detection. Writing these six sentences in your README lets a reviewer quickly check that you have addressed every component."
               ]
             },
             {
               "heading": "Peer review that helps",
               "body": [
                 "When you review a classmate's project, give specific feedback that mentions what they did well and exactly what could be improved, such as 'your project sentence clearly states the data and task, but the confusion matrix section is missing so I cannot tell if the model performed well.' Receiving feedback is easier when you remember that the reviewer is trying to help you make your project stronger, not criticise you personally. Always ask for at least two pieces of feedback so you see the same issue mentioned by more than one person, which signals that the improvement is real.",
-                "Give the story and the six‑part presentation to your classmate and ask for two pieces of feedback: one about the clarity of the project description and one about whether the numbers reported match what the confusion matrix shows. When you receive feedback, read it once without defending your work, then go back and address the points that were mentioned by both you and your reviewer. This loop of draft‑feedback‑revise is what makes peer review valuable practice for employer evaluations later."
+                "Give the story and the six\u2011part presentation to your classmate and ask for two pieces of feedback: one about the clarity of the project description and one about whether the numbers reported match what the confusion matrix shows. When you receive feedback, read it once without defending your work, then go back and address the points that were mentioned by both you and your reviewer. This loop of draft\u2011feedback\u2011revise is what makes peer review valuable practice for employer evaluations later."
               ]
             }
           ],
@@ -5130,7 +5186,15 @@
         ],
         "reference": "tests/ml_reference/vision_model.py",
         "root": "ruach-ml-computer-vision"
-      }
+      },
+      "project_title": "Image classifier with extracted features",
+      "objectives": [
+        "Extract features that separate the two classes",
+        "Train on I001\u2013I020 and evaluate only on T001\u2013T010",
+        "Validate features and predictions via artifacts",
+        "Make the CI checks pass unchanged"
+      ],
+      "instructions": "Extract the features, train the classifier on the training images, and keep the evaluation images untouched. Make the CI checks pass. Paste the report produced by your code and explain the features you chose and the errors the confusion matrix shows."
     },
     {
       "id": "mle.reproducible-training",
@@ -5487,7 +5551,15 @@
         "reference": "tests/ml_reference/run.py",
         "moved_from": "starter_kits/machine_learning/module_3",
         "root": "ruach-ml-reproducible-training"
-      }
+      },
+      "project_title": "A repeatable training command",
+      "objectives": [
+        "Record dataset digest, seed, parameters, versions and source revision",
+        "Cross-validate and report fixed-set metrics",
+        "Demonstrate bit-identical repeated runs",
+        "Produce the run manifest from the run, not by typing"
+      ],
+      "instructions": "Record the dataset digest, seed, parameters, package versions, source revision, cross-validation result and fixed-set metrics. Run the same command twice and explain what the comparison demonstrates."
     },
     {
       "id": "mle.pytorch-advanced",
@@ -5778,7 +5850,15 @@
         "moved_from": "starter_kits/machine_learning/module_5",
         "note": "This kit has no reference solution today. One must be written so the reference check can prove the kit is satisfiable. Because PyTorch is not available in the reference environment, the reference uses scikit-learn's MLPClassifier for the candidate network and the README says so plainly, while the lessons teach PyTorch.",
         "root": "ruach-ml-pytorch-advanced"
-      }
+      },
+      "project_title": "A neural network that beats the baseline",
+      "objectives": [
+        "Train a PyTorch network on the churn data",
+        "Beat the classical baseline metrics",
+        "Record the experiment log and configuration",
+        "Stay honest about the evaluation boundary"
+      ],
+      "instructions": "Train the PyTorch network on the bundled churn data, beat the classical baseline on the fixed evaluation set, and make the CI checks pass. Paste the report produced by your code and explain the experiment history and what the model does better or worse than the baseline."
     },
     {
       "id": "mle.production-ml",
@@ -6121,7 +6201,15 @@
         "moved_from": "starter_kits/machine_learning/module_4",
         "note": "The existing kit already has reference solutions for train_model, service, monitoring and project_report. Keep them working after the directory is renamed.",
         "root": "ruach-ml-production-service"
-      }
+      },
+      "project_title": "Serve and operate a tabular model",
+      "objectives": [
+        "Package the churn model behind a validated prediction service",
+        "Run batch prediction and drift monitoring",
+        "Decide canary promote/rollback from the fixed shift fixture",
+        "Document the runbook an on-call engineer would use"
+      ],
+      "instructions": "Implement strict single and batch prediction contracts, monitoring for the fixed shift fixture, and a canary stop/rollback decision. Include your runbook and make every CI check pass."
     },
     {
       "id": "mle.capstone-integration",
@@ -6180,7 +6268,7 @@
             {
               "heading": "End-to-end test",
               "body": [
-                "An end-to-end test runs the pipeline from the very first step—raw data loading—to the very last step, such as generating a model performance report. The test verifies that every stage succeeds and that the final report contains the expected numbers, such as the baseline accuracy and the count of evaluation rows. If any stage fails or produces unexpected output, the test fails immediately, catching problems such as a broken import statement or a mismatch in column names before the report is published.",
+                "An end-to-end test runs the pipeline from the very first step\u2014raw data loading\u2014to the very last step, such as generating a model performance report. The test verifies that every stage succeeds and that the final report contains the expected numbers, such as the baseline accuracy and the count of evaluation rows. If any stage fails or produces unexpected output, the test fails immediately, catching problems such as a broken import statement or a mismatch in column names before the report is published.",
                 "A typical beginner mistake is to test only the training step in isolation and assume the other steps work because they ran successfully last week. Data files change, library versions update, and a script that worked on a laptop may fail in continuous integration. The end-to-end test catches these regressions by confirming that the full chain, from raw data to report, produces consistent results every time it runs."
               ]
             }
@@ -6253,7 +6341,7 @@
             {
               "heading": "Canary deployment strategy",
               "body": [
-                "A canary deployment releases a new model version to a small fraction of traffic, typically 5 percent, while the majority continues on the current version. The canary runs alongside the production version, and its predictions are collected but not used to serve customers. After a watch window—such as 30 minutes or 100 requests—the team compares the canary's error rate, latency, and drift signals against predefined stop conditions. If any signal exceeds its threshold, the canary is considered unsuccessful and traffic remains on the old version.",
+                "A canary deployment releases a new model version to a small fraction of traffic, typically 5 percent, while the majority continues on the current version. The canary runs alongside the production version, and its predictions are collected but not used to serve customers. After a watch window\u2014such as 30 minutes or 100 requests\u2014the team compares the canary's error rate, latency, and drift signals against predefined stop conditions. If any signal exceeds its threshold, the canary is considered unsuccessful and traffic remains on the old version.",
                 "The stop conditions must be written before the deployment: for example, error rate must not increase by more than 2 percentage points, latency must not grow by more than 200 milliseconds, and prediction drift must stay below a Kolmogorov-Smirnov statistic of 0.2. If all conditions stay within bounds for the entire watch window, the team gradually increases the canary's traffic share until it serves 100 percent of requests."
               ]
             },
@@ -6417,7 +6505,15 @@
         "moved_from": "starter_kits/machine_learning/module_6",
         "note": "This kit has no reference solution today. One must be written so the reference check can prove the kit is satisfiable, and it must produce the twelve stage names above.",
         "root": "ruach-ml-capstone-integration"
-      }
+      },
+      "project_title": "Capstone: an end-to-end ML pipeline",
+      "objectives": [
+        "Execute the twelve-stage pipeline from question to deployment",
+        "Keep every stage wired to the next",
+        "Produce deployment and monitoring evidence",
+        "Defend the system in a written reflection"
+      ],
+      "instructions": "Build the twelve-stage pipeline end to end and make the CI checks pass. Paste the report produced by your code and explain the stage hand-offs, the evidence each stage produced, and what you would change before operating this for real."
     }
   ]
 }

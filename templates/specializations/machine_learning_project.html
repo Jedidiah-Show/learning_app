@@ -5,9 +5,32 @@
   <a class="text-sm font-semibold text-indigo-700 hover:underline" href="{{ url_for('main.machine_learning_specialization') }}">← Machine Learning Engineering</a>
   <header class="mt-4 rounded-2xl bg-brand-950 p-6 text-white sm:p-8">
     <p class="text-sm font-semibold uppercase tracking-wide text-emerald-200">Module {{ module.number }} project</p>
-    <h2 class="mt-2 text-3xl font-bold">{% if module.number == 1 %}Audit a prediction dataset{% elif module.number == 2 %}Train and evaluate a classifier{% elif module.number == 3 %}Make a training run reproducible{% else %}Serve and operate a tabular model{% endif %}</h2>
+    <h2 class="mt-2 text-3xl font-bold">{{ module.project_title }}</h2>
     <p class="mt-3 text-emerald-50">{{ module.project }}</p>
   </header>
+
+  <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-6">
+    <h3 class="text-lg font-bold">Project objectives</h3>
+    <ul class="mt-2 list-disc space-y-1 pl-6 text-sm leading-6 text-slate-700">{% for objective in module.objectives %}<li>{{ objective }}</li>{% endfor %}</ul>
+  </section>
+
+  <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-6">
+    <h3 class="text-lg font-bold">The dataset</h3>
+    <p class="mt-2 text-sm leading-6 text-slate-700">{{ module.kit.dataset }}</p>
+    {% if module.kit.definitions %}<p class="mt-2 text-sm leading-6 text-slate-700">{{ module.kit.definitions }}</p>{% endif %}
+    <h4 class="mt-4 text-sm font-bold uppercase tracking-wide text-slate-500">Starter kit artifacts</h4>
+    <ul class="mt-2 list-disc space-y-1 pl-6 text-sm leading-6 text-slate-700">{% for artifact in module.kit.artifacts %}<li>{{ artifact }}</li>{% endfor %}</ul>
+  </section>
+
+  <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-6">
+    <h3 class="text-lg font-bold">Required deliverables</h3>
+    <ol class="mt-2 list-decimal space-y-1 pl-6 text-sm leading-6 text-slate-700">{% for item in module.project_deliverables %}<li>{{ item }}</li>{% endfor %}</ol>
+  </section>
+
+  <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-6">
+    <h3 class="text-lg font-bold">Evaluation criteria</h3>
+    <ul class="mt-2 space-y-2 text-sm text-slate-700">{% for item in module.project_rubric %}<li class="flex items-start justify-between gap-4 rounded-lg bg-slate-50 px-4 py-2"><span>{{ item.criterion }}</span><span class="font-semibold tabular-nums">{{ item.weight }}%</span></li>{% endfor %}</ul>
+  </section>
 
   <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-6">
     <h3 class="text-lg font-bold">Download the CPU-only starter kit</h3>
@@ -18,10 +41,7 @@
 
   <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-6">
     <h3 class="text-lg font-bold">Submit your evidence</h3>
-    {% if module.number == 1 %}<p class="mt-2 text-sm leading-6 text-slate-600">Implement the audit, keep the supplied dataset and expected checks intact, and make the CI run pass. Paste the report produced by your code and explain the data quality findings, the time split, and why refund reason is unavailable at prediction time.</p>
-    {% elif module.number == 2 %}<p class="mt-2 text-sm leading-6 text-slate-600">Build a baseline and a leakage-safe scikit-learn pipeline, keep the supplied train and fixed evaluation files unchanged, and make the metric checks pass in CI. Paste the report produced by your code and explain why the selected metrics support the intended review decision.</p>
-    {% elif module.number == 3 %}<p class="mt-2 text-sm leading-6 text-slate-600">Record the dataset digest, seed, parameters, package versions, source revision, cross-validation result, and fixed-set metrics. Run the same command twice and explain what the comparison demonstrates.</p>
-    {% else %}<p class="mt-2 text-sm leading-6 text-slate-600">Implement strict single and batch prediction contracts, monitoring for the fixed shift fixture, and a canary stop/rollback decision. Include your runbook and make every CI check pass.</p>{% endif %}
+    <p class="mt-2 text-sm leading-6 text-slate-600">{{ module.instructions }}</p>
     <form id="ml-project-form" class="mt-5 space-y-4">
       <label class="block text-sm font-semibold">Public repository URL<input required type="url" name="repository_url" maxlength="500" value="{{ submission.get('repository_url', '') }}" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal"></label>
       <label class="block text-sm font-semibold">Successful GitHub Actions run URL<input required type="url" name="checks_url" maxlength="500" value="{{ submission.get('checks_url', '') }}" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal"></label>
@@ -29,11 +49,8 @@
       <label class="block text-sm font-semibold">Branch tested by CI (optional)<input maxlength="255" name="branch" value="{{ submission.get('branch', '') }}" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal"></label>
       <label class="block text-sm font-semibold">Project report JSON<textarea required name="report" rows="12" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-mono text-xs font-normal">{{ submission.get('report', {})|tojson(indent=2) }}</textarea></label>
       <details class="rounded-lg bg-slate-50 p-3 text-sm">
-        <summary class="cursor-pointer font-semibold">Required report fields</summary>
-        {% if module.number == 1 %}<pre class="mt-3 overflow-x-auto text-xs">{"row_count": 0, "required_columns_present": true, "unique_order_ids": 0, "missing_order_total_count": 0, "nonpositive_order_total_count": 0, "returned_count": 0, "development_rows": 0, "evaluation_rows": 0, "split_strategy": "time_ordered", "leakage_features": []}</pre>
-        {% elif module.number == 2 %}<pre class="mt-3 overflow-x-auto text-xs">{"train_rows": 0, "evaluation_rows": 0, "baseline_accuracy": 0.0, "accuracy": 0.0, "precision": 0.0, "recall": 0.0, "f1": 0.0, "cross_validation_f1_mean": 0.0, "feature_columns": [], "leakage_features": [], "cross_validation_folds": 5, "preprocessing_in_pipeline": true, "evaluation_set_used_for_fitting": false, "data_split": "fixed_holdout"}</pre>
-        {% elif module.number == 3 %}<pre class="mt-3 overflow-x-auto text-xs">{"train_rows": 0, "evaluation_rows": 0, "seed": 7, "dataset_sha256": "", "feature_columns": [], "artifact_version": "1.0.0", "run_manifest_fields": [], "repeated_run_predictions_match": false, "evaluation_set_used_for_fitting": true, "accuracy": 0.0, "f1": 0.0, "validation_f1_mean": 0.0}</pre>
-        {% else %}<pre class="mt-3 overflow-x-auto text-xs">{"health_status": 0, "model_version": "", "batch_prediction_count": 0, "invalid_feature_rejected": false, "extra_feature_rejected": false, "input_drift_detected": false, "drift_proves_quality_failure": true, "canary_promoted": true, "rollback_active_version": "", "rollback_triggered": false}</pre>{% endif %}
+        <summary class="cursor-pointer font-semibold">Required report fields (types only — expected values stay hidden)</summary>
+        <pre class="mt-3 overflow-x-auto text-xs">{{ example_report|tojson(indent=2) }}</pre>
       </details>
       <label class="block text-sm font-semibold">Project reflection<textarea required name="reflection" minlength="80" maxlength="12000" rows="7" class="mt-1 w-full rounded-lg border border-slate-300 p-3 font-normal">{{ submission.get('reflection', '') }}</textarea></label>
       <button class="rounded-lg bg-indigo-700 px-4 py-2 font-semibold text-white" type="submit">Save and evaluate project</button>

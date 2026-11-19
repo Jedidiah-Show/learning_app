@@ -37,6 +37,47 @@ def machine_learning_pathway():
             raise ValueError('Machine learning modules must have unique integer numbers')
         module_ids.add(module_id)
         module_numbers.add(number)
+        # Every published ML module carries its own project brief, kit and
+        # review contract — no generic fallbacks (M2.1).
+        for field in ('project_title', 'project', 'instructions'):
+            value = module.get(field)
+            if not isinstance(value, str) or not value.strip():
+                raise ValueError(f'{module_id} must declare a non-empty {field}')
+        objectives = module.get('objectives')
+        if (
+            not isinstance(objectives, list)
+            or not objectives
+            or not all(isinstance(item, str) and item.strip() for item in objectives)
+        ):
+            raise ValueError(f'{module_id} must declare at least one objective')
+        deliverables = module.get('project_deliverables')
+        if not isinstance(deliverables, list) or not deliverables:
+            raise ValueError(f'{module_id} must declare project deliverables')
+        rubric = module.get('project_rubric')
+        if (
+            not isinstance(rubric, list)
+            or not rubric
+            or any(
+                not isinstance(item, dict)
+                or not isinstance(item.get('criterion'), str)
+                or not item['criterion'].strip()
+                or not isinstance(item.get('weight'), (int, float))
+                or isinstance(item.get('weight'), bool)
+                for item in rubric
+            )
+        ):
+            raise ValueError(f'{module_id} must declare a valid project rubric')
+        rubric_weight = sum(item['weight'] for item in rubric)
+        if rubric_weight != 100:
+            raise ValueError(f'{module_id} rubric weights must sum to 100, got {rubric_weight}')
+        contract = module.get('report_contract')
+        if not isinstance(contract, list) or not contract:
+            raise ValueError(f'{module_id} must declare a report contract')
+        contract_keys = [entry.get('key') for entry in contract]
+        if any(not isinstance(key, str) or not key.strip() for key in contract_keys):
+            raise ValueError(f'{module_id} report contract entries need keys')
+        if len(set(contract_keys)) != len(contract_keys):
+            raise ValueError(f'{module_id} report contract keys must be unique')
         estimated_hours = module.get('estimated_hours')
         if (
             not isinstance(estimated_hours, (int, float))

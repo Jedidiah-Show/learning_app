@@ -318,10 +318,12 @@ def project(module_id):
         evaluation = json.loads(record.evaluation) if record.evaluation else None
     except (TypeError, ValueError):
         evaluation = None
+    from app.services.ml_project import example_report_skeleton
     return render_template(
         'specializations/machine_learning_project.html',
         module=module, record=record, submission=submission,
         evaluation=evaluation,
+        example_report=example_report_skeleton(module.get('report_contract')),
     )
 
 

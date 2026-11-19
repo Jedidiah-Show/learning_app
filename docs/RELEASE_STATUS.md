@@ -22,9 +22,9 @@
 
 | Milestone | Name | Priority | Status | Owner | Started | Completed |
 |---|---|---|---|---|---|---|
-| M0 | Security, Data Integrity and Release Baseline | Critical | IN PROGRESS | Engineering | 2026-11-18 | — |
-| M1 | Canonical Curriculum and Pathway Integrity | Critical | IN PROGRESS | Engineering | 2026-11-18 | — |
-| M2 | Project Studio and ML Project Corrections | High | NOT STARTED | — | — | — |
+| M0 | Security, Data Integrity and Release Baseline | Critical | IN PROGRESS (external: credential rotation) | Engineering | 2026-11-18 | — |
+| M1 | Canonical Curriculum and Pathway Integrity | Critical | IN PROGRESS (foundations content + M1.4 re-verify open) | Engineering | 2026-11-18 | — |
+| M2 | Project Studio and ML Project Corrections | High | IN PROGRESS (M2.1 done, uncommitted→see commits) | Engineering | 2026-11-19 | — |
 | M3 | Practice Arena 2.1 and Assessment Integrity | High | NOT STARTED | — | — | — |
 | M4 | Skill Passport and Competency Verification | Critical | NOT STARTED | — | — | — |
 | M5 | AI Tutor 3.0 | High | NOT STARTED | — | — | — |
@@ -86,3 +86,15 @@ recorded decision here._
 - No reviewer role exists yet; the codebase has only `User.is_admin`. M0
   authorization fixes therefore gate sensitive assessment operations on
   `is_admin` until M4 introduces the full role model.
+
+## M2 — Project Studio and ML Project Corrections
+
+**Status:** IN PROGRESS
+**Dependencies:** M0, M1
+
+| Task | Deliverable | Status | Evidence |
+|---|---|---|---|
+| M2.1 Manifest-driven ML project templates | per-module project_title/objectives/instructions + template rewrite + skeleton report | DONE (verified) | All 12 modules publish `project_title`, `objectives`, `instructions`, dataset, deliverables, rubric, contract; template renders them (no module-number branches); example report is types-only (no expected-value leakage); `ml_pathway.py` validates every module at load; `tests/test_ml_project_templates.py` (6 tests) + `test_ml_specialization.py` pass |
+| M2.2 AI Engineering project workspace | AI-specific workspace | NOT STARTED | — |
+| M2.3 Shared project lifecycle | lifecycle engine with audit | NOT STARTED | — |
+| M2.4 Project milestones and evidence | milestones/evidence/competency mapping | NOT STARTED | — |
