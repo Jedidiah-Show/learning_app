@@ -140,10 +140,28 @@ def infer_learning_domain(
     lesson_id: Optional[str] = None,
     problem_id: Optional[str] = None,
     destination: Optional[str] = None,
+    project_domain: Optional[str] = None,
+    explicit_domain: Optional[str] = None,
 ) -> str:
-    """Return the explicit tutoring domain for the current context."""
-    if lesson_id and str(lesson_id).startswith('mle.'):
-        return DOMAIN_MACHINE_LEARNING
+    """Return the tutoring domain for the current context.
+
+    Precedence (M5.1):
+      1. Explicit user-selected context (``explicit_domain``)
+      2. Explicit lesson domain (registry-resolved)
+      3. Explicit problem/challenge domain (arena track)
+      4. Explicit project domain
+      5. Active pathway enrolment
+      6. Shared Foundations fallback
+    """
+    explicit = _normalise_domain(explicit_domain)
+    if explicit:
+        return explicit
+
+    if lesson_id:
+        lesson_domain = _domain_for_lesson(lesson_id)
+        if lesson_domain:
+            return lesson_domain
+
     if problem_id:
         try:
             from app.practice_arena import get_arena_problem
@@ -155,20 +173,53 @@ def infer_learning_domain(
             return DOMAIN_MACHINE_LEARNING
         if track == 'ai-engineering':
             return DOMAIN_AI_ENGINEERING
+        if track:
+            return DOMAIN_SHARED_FOUNDATIONS
+
+    project = _normalise_domain(project_domain)
+    if project:
+        return project
+
     if destination == 'machine-learning':
         return DOMAIN_MACHINE_LEARNING
     if destination == 'ai-engineering':
         return DOMAIN_AI_ENGINEERING
-    # AI course modules 00-02 are the shared foundation in current course shape.
-    if lesson_id:
-        prefix = str(lesson_id).split('.', 1)[0]
-        if prefix in {'00', '01', '02', 'sf'}:
-            return DOMAIN_SHARED_FOUNDATIONS
-        if prefix.isdigit():
-            return DOMAIN_AI_ENGINEERING
-    if destination in (None, 'shared-foundations', 'undecided'):
-        return DOMAIN_SHARED_FOUNDATIONS
     return DOMAIN_SHARED_FOUNDATIONS
+
+
+def _normalise_domain(value: Optional[str]) -> Optional[str]:
+    if not isinstance(value, str):
+        return None
+    key = value.strip().lower()
+    aliases = {
+        'ml': DOMAIN_MACHINE_LEARNING,
+        'machine_learning': DOMAIN_MACHINE_LEARNING,
+        'machine-learning-engineering': DOMAIN_MACHINE_LEARNING,
+        'ai': DOMAIN_AI_ENGINEERING,
+        'ai_engineering': DOMAIN_AI_ENGINEERING,
+        'ai-engineering': DOMAIN_AI_ENGINEERING,
+        'foundations': DOMAIN_SHARED_FOUNDATIONS,
+        'shared': DOMAIN_SHARED_FOUNDATIONS,
+        'shared-foundations': DOMAIN_SHARED_FOUNDATIONS,
+    }
+    key = aliases.get(key, key)
+    return key if key in (DOMAIN_SHARED_FOUNDATIONS, DOMAIN_AI_ENGINEERING, DOMAIN_MACHINE_LEARNING) else None
+
+
+def _domain_for_lesson(lesson_id: str) -> Optional[str]:
+    """Resolve a lesson id to its domain via the canonical registry."""
+    try:
+        from app.curriculum_registry import registry
+        domain, _lesson = registry.find_lesson(str(lesson_id))
+        if domain:
+            return domain
+    except Exception:
+        pass
+    # Legacy bundled-course ids ("0.01" .. "12.99").
+    prefix = str(lesson_id).split('.', 1)[0]
+    if prefix.isdigit():
+        return DOMAIN_SHARED_FOUNDATIONS if int(prefix) <= 2 else DOMAIN_AI_ENGINEERING
+    return None
 
 
 def _domain_profile(domain: str) -> Dict[str, Any]:
@@ -180,10 +231,15 @@ def pathway_context_for_user(
     *,
     lesson_id: Optional[str] = None,
     problem_id: Optional[str] = None,
+    project_domain: Optional[str] = None,
+    explicit_domain: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Build a domain-aware pathway/tutor context object (M5.1-M5.4)."""
+    """Build a domain-aware pathway/tutor context object (M5.1)."""
     destination = destination_for(user_id) if user_id else None
-    domain = infer_learning_domain(lesson_id, problem_id, destination)
+    domain = infer_learning_domain(
+        lesson_id, problem_id, destination,
+        project_domain=project_domain, explicit_domain=explicit_domain,
+    )
     profile = _domain_profile(domain)
     context = {
         'active_domain': domain,
@@ -427,6 +483,8 @@ def assemble_tutor_context(
     error_log: Optional[str] = None,
     recent_submissions: Optional[List[Dict]] = None,
     passport: Optional[Dict] = None,
+    explicit_domain: Optional[str] = None,
+    project_domain: Optional[str] = None,
 ) -> TutorContext:
     """Assemble complete tutor context from all available sources (M5.1).
 
@@ -459,7 +517,8 @@ def assemble_tutor_context(
 
     destination = destination_for(user_id) if user_id else None
     pathway_context = pathway_context_for_user(
-        user_id, lesson_id=lesson_id, problem_id=problem_id
+        user_id, lesson_id=lesson_id, problem_id=problem_id,
+        project_domain=project_domain, explicit_domain=explicit_domain,
     )
     if destination is not None:
         pathway_context['active_pathway'] = destination

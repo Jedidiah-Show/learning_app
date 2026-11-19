@@ -1,30 +1,84 @@
 [
-  {
-    "name": "grounded explanation",
-    "mode": "explain",
-    "depth": "standard",
-    "question": "Explain the core idea in this lesson.",
-    "prompt_requirements": ["Tutor style: explain", "concrete example or analogy"]
-  },
-  {
-    "name": "productive hint",
-    "mode": "hint",
-    "depth": "brief",
-    "question": "Give me a hint for the exercise without solving it.",
-    "prompt_requirements": ["Tutor style: hint", "progressive hints", "Response depth: brief"]
-  },
-  {
-    "name": "reasoning quiz",
-    "mode": "quiz",
-    "depth": "standard",
-    "question": "Quiz me on why this design works.",
-    "prompt_requirements": ["Tutor style: quiz", "test understanding"]
-  },
-  {
-    "name": "actionable code review",
-    "mode": "code_review",
-    "depth": "detailed",
-    "question": "Review this code and explain the trade-offs.",
-    "prompt_requirements": ["Tutor style: code_review", "defects, risks, trade-offs", "Response depth: detailed"]
-  }
+    {
+        "name": "grounded explanation",
+        "mode": "explain",
+        "depth": "standard",
+        "question": "Explain the core idea in this lesson.",
+        "prompt_requirements": [
+            "Tutor style: explain",
+            "concrete example or analogy"
+        ]
+    },
+    {
+        "name": "productive hint",
+        "mode": "socratic",
+        "depth": "brief",
+        "question": "Give me a hint for the exercise without solving it.",
+        "prompt_requirements": [
+            "Tutor style: socratic",
+            "progressive questions",
+            "Response depth: brief"
+        ]
+    },
+    {
+        "name": "legacy alias hint maps to socratic",
+        "mode": "hint",
+        "depth": "brief",
+        "question": "Give me a hint for the exercise without solving it.",
+        "prompt_requirements": [
+            "Tutor style: socratic",
+            "Response depth: brief"
+        ]
+    },
+    {
+        "name": "reasoning practice",
+        "mode": "practice",
+        "depth": "standard",
+        "question": "Quiz me on why this design works.",
+        "prompt_requirements": [
+            "Tutor style: practice",
+            "short progressive exercise"
+        ]
+    },
+    {
+        "name": "actionable code review",
+        "mode": "review",
+        "depth": "detailed",
+        "question": "Review this code and explain the trade-offs.",
+        "prompt_requirements": [
+            "Tutor style: review",
+            "defects, risks, trade-offs",
+            "Response depth: detailed"
+        ]
+    },
+    {
+        "name": "debug mode",
+        "mode": "debug",
+        "depth": "standard",
+        "question": "This traceback keeps appearing; what should I check first?",
+        "prompt_requirements": [
+            "Tutor style: debug",
+            "hypotheses"
+        ]
+    },
+    {
+        "name": "project mentor",
+        "mode": "project_mentor",
+        "depth": "standard",
+        "question": "How should I structure this project before writing code?",
+        "prompt_requirements": [
+            "Tutor style: project_mentor",
+            "architecture decisions"
+        ]
+    },
+    {
+        "name": "assessment preparation",
+        "mode": "assessment_prep",
+        "depth": "standard",
+        "question": "Prepare me for the module assessment.",
+        "prompt_requirements": [
+            "Tutor style: assessment_prep",
+            "exam-style"
+        ]
+    }
 ]

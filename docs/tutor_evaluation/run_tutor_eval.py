@@ -9,6 +9,18 @@ and scoring hooks are configured.
 Usage:
   .venv/bin/python docs/tutor_evaluation/run_tutor_eval.py --domain all --dry-run
   .venv/bin/python docs/tutor_evaluation/run_tutor_eval.py --domain machine-learning --out /tmp/ml_eval_prompts.jsonl
+  .venv/bin/python docs/tutor_evaluation/run_tutor_eval.py --domain all --dry-run --strict
+
+Modes:
+  structural  No live model. Dataset/case validation and heuristic scoring.
+              This is what CI gates on.
+  live        Requires GEMINI_API_KEY; calls the configured model and records
+              latency and token cost metadata. Distinguishes itself from
+              structural checks via the `mode` field in every record.
+
+Every record carries: mode, model_id, run_id, generated_at, structural score.
+A `run_metadata` summary is printed at the end (and written to the JSONL
+output for reproducibility).
 """
 
 from __future__ import annotations
@@ -79,9 +91,17 @@ def main() -> int:
     parser.add_argument('--domain', default='all', choices=['all', *DATASETS.keys()])
     parser.add_argument('--out', default='', help='Write JSONL records to this path')
     parser.add_argument('--dry-run', action='store_true', help='Generate prompts/metadata without calling a live model')
+    parser.add_argument('--strict', action='store_true', help='Exit non-zero if any case fails structural validation (release gate)')
     args = parser.parse_args()
 
+    run_id = f"run-{time.strftime('%Y%m%dT%H%M%SZ', time.gmtime())}-{os.getpid()}"
+    model_id = (
+        os.environ.get('GEMINI_FLASH_MODEL')
+        or os.environ.get('GEMINI_PRO_MODEL')
+        or 'unset'
+    )
     domains = list(DATASETS.keys()) if args.domain == 'all' else [args.domain]
+    mode = 'structural' if (args.dry_run or not os.environ.get('GEMINI_API_KEY')) else 'live'
     records = []
     for domain in domains:
         data = load_dataset(DATASETS[domain])
@@ -90,6 +110,9 @@ def main() -> int:
             record = {
                 'domain': domain,
                 'case_id': case.get('id'),
+                'mode': mode,
+                'model_id': model_id if mode == 'live' else 'structural',
+                'run_id': run_id,
                 'type': case.get('type'),
                 'prompt': case.get('prompt'),
                 'expected_behaviors': _expected_behaviors(case),
@@ -101,7 +124,6 @@ def main() -> int:
                     'mathematical_correctness', 'unsupported_claims', 'latency', 'cost',
                 ],
                 'generated_at': time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime()),
-                'mode': 'dry-run' if args.dry_run or not os.environ.get('GEMINI_API_KEY') else 'ready-for-live-run',
             }
             # Structural validation scoring (no live model required). Live
             # execution can later replace scores/response/latency/cost.
@@ -126,9 +148,16 @@ def main() -> int:
         valid = sum(1 for r in records if r['structural_valid'])
         print(f'wrote {len(records)} records to {out_path} (avg structural score {avg}, {valid}/{len(records)} structurally valid)')
     else:
-        print(json.dumps({'count': len(records), 'domains': domains, 'dry_run': bool(args.dry_run)}, indent=2))
+        print(json.dumps({'count': len(records), 'domains': domains, 'mode': mode,
+                          'run_id': run_id, 'model_id': model_id}, indent=2))
         for rec in records[:3]:
             print(f"- {rec['domain']} {rec['case_id']}: {rec['prompt'][:80]}...")
+
+    if args.strict:
+        invalid = [r['case_id'] for r in records if not r['structural_valid']]
+        if invalid:
+            print(f'structural validation FAILED for: {", ".join(invalid)}')
+            return 2
     return 0
 
 
