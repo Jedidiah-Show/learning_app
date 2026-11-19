@@ -608,3 +608,17 @@ Only after you confirm Render is working and the rollback window has passed:
 
 Until then, leave `vercel.json`, the Vercel deployment, and the Vercel DNS
 records untouched.
+
+## Appendix (M7.1, 2026-11-19): downgrade evidence for 1.1.0
+
+- Single intended migration head: `f0a1b2c3d4e5` (`flask db heads`).
+- Fresh disposable SQLite: full `upgrade` → `downgrade base` → `re-upgrade`
+  all exit 0 after two portability fixes (`c231009e995c` FK-cascade downgrade
+  rewritten to existence-checked drops/recreations; `b5855622047f` initial
+  schema downgrade no longer drops indexes owned by `da8c62b109a4`).
+- Downgrade recreates plain (non-cascading) FKs named
+  `fk_<table>_user_id_user_plain`.
+- The `uq_user_google_id` unique constraint is intentionally preserved by
+  downgrade (cannot distinguish pre-existing from introduced uniqueness).
+- `.dockerignore`/export path: release archive built from `git archive HEAD`
+  via `scripts/export_release_source.sh` (never a dirty tree).

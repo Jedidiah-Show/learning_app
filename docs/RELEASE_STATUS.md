@@ -158,3 +158,18 @@ recorded decision here._
 | M6.6 Mastery dashboard | learner-facing mastery view | DONE (verified) | `/mastery` (login-gated): domain summaries, strengths/weak areas with evidence labels, recommended next steps with reasons, recent verification changes; nav shell intact (13 dynamic-shell tests pass); 3 dashboard tests |
 
 **Notes:** Mastery states are computed on read (no new tables) and are fully derived from authoritative records — no lesson-completion-only inflation. Recommendation URLs resolve only to routes that exist today.
+
+## M7 — Reliability, Accessibility and Release Verification
+
+**Status:** EXIT REVIEW (gate) — two verifications pending external inputs
+**Dependencies:** M0–M6
+
+| Task | Status | Evidence |
+|---|---|---|
+| M7.1 Database and migration reliability | DONE (verified) | Single head `f0a1b2c3d4e5`; fresh SQLite upgrade → downgrade base → re-upgrade all exit 0 (required fixing `c231009e995c` and `b5855622047f` downgrades for portability); recovery procedures in `MIGRATION.md`/`docs/RELEASE_PROCESS.md`; production migrations remain guarded by the manual `db-migrate.yml` workflow (BACKUP_TAKEN) |
+| M7.2 Performance | PARTIAL — baselines recorded (indicative, SQLite, local) | `scripts/benchmark_release.py`: dashboard 5, catalogue 5, arena 1, passport 14, mastery 13 queries; judge runs off request threads (durable queue + separate worker); pools pinned at 2+2/Neon 20 (pre-existing change); Redis cache + pre-existing Gunicorn tuning |
+| M7.3 Accessibility | PARTIAL — spot checks only | All `<img>` carry `alt`; inputs wrapped in implicit labels; landmarks/aria present (40+ aria-labels on base shell); passport/mastery pages use semantic sections, labelledby/labels, role=status regions |
+| M7.4 Browser E2E | NOT RUNNABLE HERE — delegated to CI | Environment ships Node 18 (Playwright needs ≥20); CI `browser-ide` job runs Node 20 + Chromium (`ide_runtime.spec.js`, `learner_continuity.spec.js`). Full-journey E2E (registration→credential→portfolio privacy) is not covered by automated browser tests today |
+| M7.5 Release operations | PARTIAL | Release notes `docs/releases/1.1.0.md`; release archive verified (test_release_export); security scans clean; **full suite re-run pending** (see below); tag v1.1.0 NOT created (owner action) |
+
+**Gate blockers:** (1) full clean-checkout `pytest -q` result; (2) CI run green incl. browser-ide job; (3) owner executes credential rotations and confirms deployment; (4) foundations content continues module-by-module post-tag.
