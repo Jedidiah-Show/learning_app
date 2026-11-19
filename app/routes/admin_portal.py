@@ -120,10 +120,16 @@ def _record_admin_action(action, target_user_id=None, detail=None):
 
 
 def _last_active_admin_remaining(exclude_user_id):
+    """At least one other active administrator must remain.
+
+    Counts both the compatibility flag and the canonical role so a mixed
+    dataset still protects the last administrator.
+    """
+    from sqlalchemy import or_
     return User.query.filter(
         User.id != exclude_user_id,
-        User.is_admin.is_(True),
         User.is_active.is_(True),
+        or_(User.is_admin.is_(True), User.role == 'administrator'),
     ).count() > 0
 
 
@@ -423,16 +429,20 @@ def _parse_phone(raw_phone, errors):
 def create_user():
     values = {
         'username': '', 'email': '', 'full_name': '', 'phone': '',
-        'is_admin': False,
+        'role': 'learner', 'is_admin': False,
     }
     errors = {}
     if request.method == 'POST':
+        requested_role = (request.form.get('role') or '').strip().lower()
+        if requested_role not in {'learner', 'reviewer', 'instructor', 'administrator'}:
+            requested_role = 'administrator' if request.form.get('is_admin') in {'1', 'true', 'on'} else 'learner'
         values = {
             'username': (request.form.get('username') or '').strip(),
             'email': (request.form.get('email') or '').strip().lower(),
             'full_name': (request.form.get('full_name') or '').strip(),
             'phone': (request.form.get('phone') or '').strip(),
-            'is_admin': request.form.get('is_admin') in {'1', 'true', 'on'},
+            'role': requested_role,
+            'is_admin': requested_role == 'administrator',
         }
         password = request.form.get('password')
         confirmation = request.form.get('confirm_password')
@@ -453,6 +463,7 @@ def create_user():
                 phone=phone,
                 password_hash=generate_password_hash(password),
                 is_admin=values['is_admin'],
+                role=values['role'],
                 is_active=True,
                 created_at=datetime.now(timezone.utc),
                 last_active=None,
@@ -648,8 +659,21 @@ def set_role(user_id):
     account = db.session.get(User, user_id)
     if account is None:
         abort(404)
-    desired = _requested_boolean('is_admin', account.is_admin)
-    if account.id == current_user.id and not desired:
+    requested_role = (request.form.get('role') or '').strip().lower()
+    if requested_role:
+        if requested_role not in {'learner', 'reviewer', 'instructor', 'administrator'}:
+            message = 'Role must be learner, reviewer, instructor, or administrator.'
+            if _wants_json():
+                return jsonify({'error': message}), 400
+            flash(message, 'error')
+            return redirect(url_for('admin_portal.user_detail', user_id=account.id))
+        desired_role = requested_role
+    else:
+        # Legacy toggle: is_admin true/false maps onto administrator/learner.
+        desired_role = 'administrator' if _requested_boolean('is_admin', account.is_admin) else 'learner'
+    currently_admin = bool(account.is_admin) or account.role == 'administrator'
+    will_be_admin = desired_role == 'administrator'
+    if account.id == current_user.id and not will_be_admin:
         message = 'You cannot remove your own admin access.'
         if _wants_json():
             return jsonify({'error': message}), 400
@@ -657,7 +681,7 @@ def set_role(user_id):
         return redirect(url_for(
             'admin_portal.user_detail', user_id=account.id
         ))
-    if account.is_admin and not desired and not _last_active_admin_remaining(
+    if currently_admin and not will_be_admin and not _last_active_admin_remaining(
         account.id
     ):
         message = 'At least one active administrator must remain.'
@@ -667,23 +691,20 @@ def set_role(user_id):
         return redirect(url_for(
             'admin_portal.user_detail', user_id=account.id
         ))
-    if account.is_admin != desired:
-        account.is_admin = desired
+    if account.role != desired_role or bool(account.is_admin) != will_be_admin:
+        account.role = desired_role
+        account.is_admin = will_be_admin
         _record_admin_action(
             'user.role_change', target_user_id=account.id,
-            detail=(
-                'Granted administrator access.'
-                if desired else 'Removed administrator access.'
-            ),
+            detail=f'Role set to {desired_role}.',
         )
         db.session.commit()
         flash(
-            f'“{_account_label(account)}” is now '
-            f'{"an administrator" if desired else "a learner"}.',
+            f'“{_account_label(account)}” is now a {desired_role}.',
             'success',
         )
     if _wants_json():
-        return jsonify({'status': 'success', 'is_admin': account.is_admin})
+        return jsonify({'status': 'success', 'is_admin': account.is_admin, 'role': account.role})
     return redirect(url_for('admin_portal.user_detail', user_id=account.id))
 
 

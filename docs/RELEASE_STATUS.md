@@ -26,6 +26,7 @@
 | M1 | Canonical Curriculum and Pathway Integrity | Critical | IN PROGRESS (foundations content + M1.4 re-verify open) | Engineering | 2026-11-18 | — |
 | M2 | Project Studio and ML Project Corrections | High | EXIT REVIEW (owner sign-off on AI brief content pending) | Engineering | 2026-11-19 | — |
 | M3 | Practice Arena 2.1 and Assessment Integrity | High | IN PROGRESS (M3.3 done; M3.1 taxonomy DONE-but-coverage-thin) | Engineering | 2026-11-19 | — |
+| M4 | Skill Passport and Competency Verification | Critical | IN PROGRESS → EXIT REVIEW (see notes) | Engineering | 2026-11-19 | — |
 | M3 | Practice Arena 2.1 and Assessment Integrity | High | NOT STARTED | — | — | — |
 | M4 | Skill Passport and Competency Verification | Critical | NOT STARTED | — | — | — |
 | M5 | AI Tutor 3.0 | High | NOT STARTED | — | — | — |
@@ -114,3 +115,18 @@ recorded decision here._
 | M3.5 Adaptive recommendations | competency-traced recommendations | NOT STARTED | — |
 
 **Notes:** Arena submit path records skill competency on ACCEPTED verdicts (pre-existing behaviour preserved). Prerequisite validation now enforced at load time.
+
+## M4 — Skill Passport and Competency Verification
+
+**Status:** EXIT REVIEW (security tests green; owner review of role-management UI recommended)
+**Dependencies:** M0, M1
+
+| Task | Deliverable | Status | Evidence |
+|---|---|---|---|
+| M4.1 Role-based verification | `learner`/`reviewer`/`instructor`/`administrator` | DONE (verified) | `User.role` (migration `f0a1b2c3d4e5`, backfilled from `is_admin`); `app/services/authorization.py` rewritten around effective roles; separation of duties enforced (nobody assesses own evidence); admin portal role select (manage reviewer access); self-demotion and last-admin protections |
+| M4.2 Verification history | append-only log | DONE (pre-existing, verified) | `SkillVerification` append-only; assess/reassess/invalidate all record `(from,to,actor,note)`; test proves `UNVERIFIED→SUBMITTED→VERIFIED→REVOKED` chain survives revocation |
+| M4.3 Reassessment and invalidation | revision/reassess/reject/revoke | DONE (pre-existing + audit) | Endpoints exist; history endpoint serves owner + privileged reviewers; revocation preserves prior events; reassessment supported |
+| M4.4 Domain classification | foundations/AI/ML separation | DONE (verified) | `_skill_domain` rewritten: legacy foundation modules `00/01/02` → shared-foundations (NOT AI); legacy 03–12 → AI; sf.*/lesson-sf-* → foundations; arena tracks enforced; 8 classification tests |
+| M4.5 Learner interface | status, feedback, history, actions | DONE (verified) | Passport cards show verification badge, reviewer note, verify/reassess buttons, expandable history; 28 targeted tests + passport/admin suites green (72 passed) |
+
+**Notes:** `is_admin` kept as synced compatibility flag; effective administrator == `is_admin` OR `role='administrator'`. Admin portal selects role explicitly. Migration upgrade verified on disposable SQLite; single head `f0a1b2c3d4e5`.

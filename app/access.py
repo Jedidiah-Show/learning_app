@@ -12,7 +12,8 @@ def json_admin_required(view):
     def wrapped(*args, **kwargs):
         if not current_user.is_authenticated:
             return jsonify({'error': 'Authentication required'}), 401
-        if not getattr(current_user, 'is_admin', False):
+        from app.services.authorization import effective_role
+        if effective_role(current_user) != 'administrator':
             return jsonify({'error': 'Administrator access required'}), 403
         if not getattr(current_user, 'is_active', True):
             return jsonify({'error': 'Administrator access required'}), 403

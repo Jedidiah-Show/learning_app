@@ -49,18 +49,47 @@ def _progress_or_404(user_id, skill_id):
 
 
 def _skill_domain(skill):
+    """Classify a skill into exactly one domain.
+
+    Mapping rules (M4.4):
+    - ``ml-``/``mle.*`` ids and Machine Learning category -> machine-learning
+    - ``sf.*`` ids, ``lesson-sf-*`` nodes, legacy curriculum modules 00-02 ->
+      shared-foundations (legacy foundation modules are NOT AI Engineering)
+    - AI Engineering (``ai.*``, ``lesson-ai-*``, ``curriculum-03``+,
+      ``curriculum-`` 03-12, category curriculum/projects, AI arena track)
+      -> ai-engineering
+    - Algorithms arena skills -> shared-foundations (general CS, not AI-specific)
+    - Everything else fails safe to shared-foundations rather than AI.
+    """
     sid = (skill.get('id') or '').lower()
     category = (skill.get('category') or '').lower()
     title = (skill.get('title') or '').lower()
-    if sid in ML_COMPETENCIES or sid.startswith(('ml-', 'mle.')) or 'machine learning' in category:
+
+    if sid in ML_COMPETENCIES or sid.startswith(('ml-', 'mle.')):
         return 'machine-learning'
-    if sid in CURRICULUM_SKILLS or sid.startswith(('curriculum-', 'lesson-', 'project-studio')):
+    if category == 'machine-learning':
+        return 'machine-learning'
+
+    # Legacy shared-curriculum ids: modules 00-02 are the foundation block.
+    if sid.startswith(('curriculum-00', 'curriculum-01', 'curriculum-02')):
+        return 'shared-foundations'
+    if sid.startswith(('lesson-0-', 'lesson-1-', 'lesson-2-')):
+        return 'shared-foundations'
+    if sid.startswith(('sf.', 'lesson-sf-')):
+        return 'shared-foundations'
+
+    if sid in CURRICULUM_SKILLS or sid.startswith(('curriculum-', 'lesson-')):
+        return 'ai-engineering'
+    if sid.startswith(('project-studio', 'ai-', 'lesson-ai-')):
         return 'ai-engineering'
     if category in {'projects', 'curriculum'}:
         return 'ai-engineering'
-    if category in {'shared-foundations', 'foundations'} or 'foundation' in title:
+    if category in {'ai-engineering'}:
+        return 'ai-engineering'
+    if category in {'algorithms', 'shared-foundations', 'foundations'}:
         return 'shared-foundations'
-    # Practice arena/problem skills can span tracks; keep explicit when possible.
+    if 'foundation' in title or category in {'shared-foundations', 'foundations'}:
+        return 'shared-foundations'
     return 'shared-foundations'
 
 

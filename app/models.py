@@ -29,6 +29,12 @@ class User(UserMixin, db.Model):
     last_active = db.Column(db.DateTime(timezone=True), default=utcnow)
     subjects_configured = db.Column(db.Boolean, default=False)
     is_admin = db.Column(db.Boolean, default=False, nullable=False, server_default='0')
+    # Canonical role for authorization decisions (M4). is_admin is kept as a
+    # synced compatibility flag: effective administrator == is_admin OR role
+    # == 'administrator'. New grants/revocations must update both.
+    role = db.Column(
+        db.String(16), nullable=False, default='learner', server_default='learner'
+    )
     # Overrides UserMixin.is_active so deactivated accounts cannot sign in and
     # active sessions are rejected by the user loader after the version bump.
     is_active = db.Column(
