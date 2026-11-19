@@ -44,7 +44,7 @@
 | M0.4 Release metadata | `/healthz`, `/readyz`, `/version` | DONE (verified) | `app/version.py` (APP_VERSION 1.1.0); `/healthz` liveness, `/readyz` DB readiness, `/version` release identity (no secrets); covered by `ReleaseMetadataTests` |
 | M0.5 Tests | export/secret-scan/authz/metadata tests | DONE (pending full-suite result) | New: `tests/test_authorization.py`, `tests/test_release_export.py`; updated passport tests; CI secret scan strengthened with export verification step |
 
-**M0 exit criteria review (2026-11-19):** archive scan ✓ (`tests/test_release_export.py`); credential remediation documented ✓ (rotation owner-confirmed; local copies deleted; sweep clean); authorization regression tests ✓ (Chunked full suite 655 passed); release metadata ✓ (`/healthz` `/readyz` `/version`); backup/recovery documented and drill-verified ✓ (disposable DB restored; 60 tables; head `f0a1b2c3d4e5` matches).
+**M0 exit criteria review (2026-11-19):** archive scan ✓ (`tests/test_release_export.py`); credential remediation documented ✓ (rotation owner-confirmed; local copies deleted; sweep clean); authorization regression tests ✓ (Chunked full suite 655 passed); release metadata ✓ (`/healthz` `/readyz` `/version`); backup/recovery documented and drill-verified ✓ (disposable DB restored; 60 tables; head `g1a2b3c4d5e6` matches).
 
 ## M1 — Canonical Curriculum and Pathway Integrity
 
@@ -127,7 +127,7 @@ recorded decision here._
 | M4.4 Domain classification | foundations/AI/ML separation | DONE (verified) | `_skill_domain` rewritten: legacy foundation modules `00/01/02` → shared-foundations (NOT AI); legacy 03–12 → AI; sf.*/lesson-sf-* → foundations; arena tracks enforced; 8 classification tests |
 | M4.5 Learner interface | status, feedback, history, actions | DONE (verified) | Passport cards show verification badge, reviewer note, verify/reassess buttons, expandable history; 28 targeted tests + passport/admin suites green (72 passed) |
 
-**Notes:** `is_admin` kept as synced compatibility flag; effective administrator == `is_admin` OR `role='administrator'`. Admin portal selects role explicitly. Migration upgrade verified on disposable SQLite; single head `f0a1b2c3d4e5`.
+**Notes:** `is_admin` kept as synced compatibility flag; effective administrator == `is_admin` OR `role='administrator'`. Admin portal selects role explicitly. Migration upgrade verified on disposable SQLite; single head `g1a2b3c4d5e6`.
 
 ## M5 — AI Tutor 3.0
 
@@ -166,7 +166,7 @@ recorded decision here._
 
 | Task | Status | Evidence |
 |---|---|---|
-| M7.1 Database and migration reliability | DONE (verified) | Single head `f0a1b2c3d4e5`; fresh SQLite upgrade → downgrade base → re-upgrade all exit 0 (required fixing `c231009e995c` and `b5855622047f` downgrades for portability); recovery procedures in `MIGRATION.md`/`docs/RELEASE_PROCESS.md`; production migrations remain guarded by the manual `db-migrate.yml` workflow (BACKUP_TAKEN) |
+| M7.1 Database and migration reliability | DONE (verified) | Single head `g1a2b3c4d5e6`; fresh SQLite upgrade → downgrade base → re-upgrade all exit 0 (required fixing `c231009e995c` and `b5855622047f` downgrades for portability); recovery procedures in `MIGRATION.md`/`docs/RELEASE_PROCESS.md`; production migrations remain guarded by the manual `db-migrate.yml` workflow (BACKUP_TAKEN) |
 | M7.2 Performance | PARTIAL — baselines recorded (indicative, SQLite, local) | `scripts/benchmark_release.py`: dashboard 5, catalogue 5, arena 1, passport 14, mastery 13 queries; judge runs off request threads (durable queue + separate worker); pools pinned at 2+2/Neon 20 (pre-existing change); Redis cache + pre-existing Gunicorn tuning |
 | M7.3 Accessibility | PARTIAL — spot checks only | All `<img>` carry `alt`; inputs wrapped in implicit labels; landmarks/aria present (40+ aria-labels on base shell); passport/mastery pages use semantic sections, labelledby/labels, role=status regions |
 | M7.4 Browser E2E | NOT RUNNABLE HERE — delegated to CI | Environment ships Node 18 (Playwright needs ≥20); CI `browser-ide` job runs Node 20 + Chromium (`ide_runtime.spec.js`, `learner_continuity.spec.js`). Full-journey E2E (registration→credential→portfolio privacy) is not covered by automated browser tests today |

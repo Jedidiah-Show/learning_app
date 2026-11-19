@@ -611,7 +611,7 @@ records untouched.
 
 ## Appendix (M7.1, 2026-11-19): downgrade evidence for 1.1.0
 
-- Single intended migration head: `f0a1b2c3d4e5` (`flask db heads`).
+- Single intended migration head: `g1a2b3c4d5e6` (`flask db heads`).
 - Fresh disposable SQLite: full `upgrade` → `downgrade base` → `re-upgrade`
   all exit 0 after two portability fixes (`c231009e995c` FK-cascade downgrade
   rewritten to existence-checked drops/recreations; `b5855622047f` initial
@@ -625,7 +625,7 @@ records untouched.
 
 ## Appendix (M0.3, 2026-11-19): backup/restore drill evidence
 
-- Disposable drill DB upgraded to head `f0a1b2c3d4e5` (60 tables).
+- Disposable drill DB upgraded to head `g1a2b3c4d5e6` (60 tables).
 - `shutil.copy2` snapshot taken; byte-level restore into a new file;
   tables and `alembic_version` identical to source after restore.
 - Local `data/learning_app.db` is a legacy sandbox artifact (4 tables,
