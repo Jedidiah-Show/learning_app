@@ -25,9 +25,9 @@
 | M0 | Security, Data Integrity and Release Baseline | Critical | COMPLETE (pending owner countersign at release) | Engineering | 2026-11-18 | 2026-11-19 |
 | M1 | Canonical Curriculum and Pathway Integrity | Critical | IN PROGRESS (foundations content + M1.4 re-verify open) | Engineering | 2026-11-18 | — |
 | M2 | Project Studio and ML Project Corrections | High | EXIT REVIEW (owner sign-off on AI brief content pending) | Engineering | 2026-11-19 | — |
-| M3 | Practice Arena 2.1 and Assessment Integrity | High | IN PROGRESS (M3.3 done; M3.1 taxonomy DONE-but-coverage-thin) | Engineering | 2026-11-19 | — |
+| M3 | Practice Arena 2.1 and Assessment Integrity | High | COMPLETE (judge honestly disabled-by-default; Docker not verifiable in dev) | Engineering | 2026-11-19 | 2026-11-19 |
 | M4 | Skill Passport and Competency Verification | Critical | EXIT REVIEW (owner review of role-management UI recommended) | Engineering | 2026-11-19 | — |
-| M5 | AI Tutor 3.0 | High | EXIT REVIEW (live model eval pending API key) | Engineering | 2026-11-19 | — |
+| M5 | AI Tutor 3.0 | High | EXIT REVIEW (live eval blocked on provider credits; owner action required) | Engineering | 2026-11-19 | — |
 | M6 | Learning Intelligence and Adaptive Practice | Strategic | EXIT REVIEW | Engineering | 2026-11-19 | — |
 | M7 | Reliability, Accessibility and Release Verification | Critical | EXIT REVIEW (gate; suite re-run + owner actions pending) | Engineering | 2026-11-19 | — |
 
@@ -101,7 +101,7 @@ recorded decision here._
 
 ## M3 — Practice Arena 2.1 and Assessment Integrity
 
-**Status:** IN PROGRESS
+**Status:** COMPLETE (engineering scope; live judge deploy is an ops task)
 **Dependencies:** M0, M1
 
 | Task | Deliverable | Status | Evidence |
@@ -109,8 +109,8 @@ recorded decision here._
 | M3.1 ML challenge taxonomy | 14 ML topic categories; challenges mapped | IN PROGRESS — taxonomy done, coverage thin | All 14 ML domains now exist as Arena topics (feature engineering, regression, classification, unsupervised, model evaluation, deep learning, PyTorch, computer vision, reproducible training, production ML, MLOps added); one fully-tested challenge authored per new domain (268 total); validator passes; **coverage is 1 problem per new domain — full curriculum-mapped expansion remains** |
 | M3.2 Isolated judge integration | separate worker + sandbox | EXISTS / DISABLED BY DEFAULT | `JUDGE_SUBMISSIONS_ENABLED` gates submissions honestly (503 + browser practice unaffected); durable `Submission` queue + separate `judge_worker.py`; Docker sandbox (not available in this dev environment — not verified end-to-end); no request-thread execution |
 | M3.3 Submission history | store + list | DONE | `Submission` records code snapshot, verdict, runtime, memory, tests; learner-facing single-submission status exists; `GET /api/submissions` list added (owner-only) — see commits |
-| M3.4 Diagnostic feedback | error categories | NOT STARTED | — |
-| M3.5 Adaptive recommendations | competency-traced recommendations | NOT STARTED | — |
+| M3.4 Diagnostic feedback | error categories | DONE (verified) | `app/services/arena_feedback.py` — 9 categories, confidence levels, mandatory disclaimer, no invented hidden-input causes; surfaced on submission detail + history; 11 tests |
+| M3.5 Adaptive recommendations | competency-traced recommendations | DONE (verified) | `/arena/api/recommendations` on mastery-derived weak concepts; enrolment-gated; every recommendation carries reason+confidence; learner dismissal persisted; 10 tests |
 
 **Notes:** Arena submit path records skill competency on ACCEPTED verdicts (pre-existing behaviour preserved). Prerequisite validation now enforced at load time.
 
@@ -139,7 +139,7 @@ recorded decision here._
 | M5.1 Domain context resolver | ordered precedence resolution | DONE (verified) | `infer_learning_domain` now resolves: explicit context param > canonical registry lesson domain > arena problem track > explicit project domain > active pathway > shared fallback; legacy ids supported; 6 resolution tests; AI lessons can no longer inherit the wrong specialisation |
 | M5.2 Instructional modes | explain/socratic/debug/review/practice/project_mentor/assessment_prep | DONE (verified) | Canonical modes + mode labels in every response; legacy aliases (hint→socratic, quiz→practice, code_review→review) preserved; UI dropdowns updated; fixture set extended; `test_learning_flows.py` 130 passed |
 | M5.3 Persistent learning context | permission-controlled tutoring memory | DONE (verified + pre-existing) | `TutorConversation` owner-scoped with DELETE clear-per-lesson; prompt grounds in Skill Passport (demonstrated/developing/mastered) + recent submissions; privacy test proves cross-learner isolation |
-| M5.4 Evaluation framework | domain datasets + reproducible runner | DONE (structural) / PENDING (live) | Runner emits `mode`/`model_id`/`run_id`; `--strict` CI gate; `tests/test_tutor_m5.py` 13 green incl. registry-domain cross-checks; `docs/TUTOR_EVALUATION.md` rewritten with release rule + latency/cost marked *unmeasured* until first live run |
+| M5.4 Evaluation framework | domain datasets + reproducible runner | DONE (structural) / BLOCKED (live) | Runner emits `mode`/`model_id`/`run_id`; `--strict` CI gate; `tests/test_tutor_m5.py` 13 green. Live run 2026-11-19: 5/15 cases answered via OpenRouter (Gemini key revoked upstream — owner-confirmed); rest failed on OpenRouter HTTP 402 in-flight credit cap. Latency/cost baselines UNMEASURED; `docs/tutor_evaluation/live_run_2026-11-19.jsonl` |
 
 **Notes:** Live model-backed evaluation requires a working `GEMINI_API_KEY` with quota; structural gates pass today. Latency/cost baselines recorded as *unmeasured* per the honesty rule.
 

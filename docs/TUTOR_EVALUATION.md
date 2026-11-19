@@ -42,12 +42,26 @@ Record model and prompt version, scores, latency, errors, and token/cost data
 with the release results. Do not mark model quality validation complete until
 the responses have been reviewed against this rubric.
 
-## Latency and cost baselines
+## Live run attempts (2026-11-19)
 
-Not yet measured in this environment — record them on the first live run
-(report: p50/p95 latency, tokens per response, cost per 1k tutoring requests)
-and store the result alongside the release notes. Until then, latency/cost
-must be reported as *unmeasured*, not as passing.
+Gemini integration has never worked in this deployment; the configured
+`GEMINI_API_KEY` returns HTTP 401 (revoked/never valid). The application is
+wired and healthy with OpenRouter as the provider (owner-confirmed).
+
+First live run (`docs/tutor_evaluation/live_run_2026-11-19.jsonl`, run_id in
+the file): **5 of 15 cases answered** — `sf-01`, `sf-02`, `sf-05`, `ai-03`,
+`ml-05`. Average latency of answered cases ≈ 11.7 s (max ≈ 17.6 s), driven by
+OpenRouter retries. The remaining 10 cases failed with OpenRouter **HTTP 402
+(in-flight credit limit exceeded)** or truncated output. Conclusion: live
+model-backed evaluation is **blocked by provider credits**, not by the app.
+Latency/cost baselines are therefore **unmeasured** — do not cite the run as
+passing. To complete this step: add OpenRouter credits, then
+
+    GEMINI_API_KEY= .venv/bin/python docs/tutor_evaluation/run_tutor_eval.py \
+        --domain all --out docs/tutor_evaluation/live_run_<date>.jsonl
+
+and score each response per the rubric below before promoting the tutor
+prompt. Structural gates (`--strict`) continue to run in CI.
 
 ## Release rule
 
