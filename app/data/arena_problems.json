@@ -12365,5 +12365,1921 @@
     ],
     "editorial": "Completeness gates are the cheapest governance control. Check presence first, then shape (non-empty dict/list where a single string can't stand in for substance). sorted() keeps failures diffable and reviewable.",
     "judge_tests": "full = {'model_name': 'x', 'version': '1', 'intended_use': 'y', 'training_data': 'z', 'evaluation': {'accuracy': 0.9}, 'limitations': [], 'ethical_considerations': 'none known', 'owners': ['ml']}\nassert model_card_missing(full) == []\nassert model_card_missing({**full, 'evaluation': {}}) == ['evaluation']\nassert model_card_missing({**full, 'owners': []}) == ['owners']\nassert model_card_missing({**full, 'version': '   '}) == ['version']\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-feature-minmax-scale",
+    "track": "machine-learning",
+    "topic": "ml-feature-engineering",
+    "title": "Min-max scale a feature matrix",
+    "summary": "Scale each column of a numeric table into the [0, 1] range.",
+    "statement": "Write minmax_scale(rows) where rows is a list of lists of floats. Return a new table with each column scaled as (x - min) / (max - min). If a column's range is zero, emit 0.0 for all its values. Round each value to four decimals. Do not import any package.",
+    "examples": [
+      {
+        "input": "[[1.0, 10.0], [2.0, 10.0], [3.0, 10.0]]",
+        "output": "[[0.0, 0.0], [0.5, 0.0], [1.0, 0.0]]",
+        "explanation": "Column 0 ranges 1..3; column 1 is constant so all zeros."
+      },
+      {
+        "input": "[[5.0, 0.0]]",
+        "output": "[[0.0, 0.0]]",
+        "explanation": "Single-row columns are constant: 0.0 everywhere."
+      }
+    ],
+    "constraints": [
+      "rows is non-empty with at least one column.",
+      "All rows share the same width.",
+      "Round outputs to four decimals."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "feature engineering",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 20,
+    "starter_code": "def minmax_scale(rows):\n    # TODO: per-column min-max scale to [0, 1]\n    pass\n",
+    "solution_code": "def minmax_scale(rows):\n    width = len(rows[0])\n    mins = [min(row[c] for row in rows) for c in range(width)]\n    maxs = [max(row[c] for row in rows) for c in range(width)]\n    out = []\n    for row in rows:\n        new_row = []\n        for c in range(width):\n            span = maxs[c] - mins[c]\n            new_row.append(0.0 if span == 0 else round((row[c] - mins[c]) / span, 4))\n        out.append(new_row)\n    return out\n",
+    "browser_checks": "assert minmax_scale([[1.0, 10.0], [2.0, 10.0], [3.0, 10.0]]) == [[0.0, 0.0], [0.5, 0.0], [1.0, 0.0]]\nprint('All public checks passed.')\n",
+    "hints": [
+      "Compute column min/max first.",
+      "Zero-range columns must emit 0.0, not NaN.",
+      "Round only at the end."
+    ],
+    "editorial": "Min-max scaling keeps the geometry of the data but re-expresses each column on a 0..1 axis. It assumes bounded numeric data and is sensitive to outliers; the zero-range guard prevents division by zero on constant columns.",
+    "judge_tests": "assert minmax_scale([[0.0, 100.0], [50.0, 0.0], [100.0, 50.0]]) == [[0.0, 1.0], [0.5, 0.0], [1.0, 0.5]]\nassert minmax_scale([[3.0], [3.0], [3.0]]) == [[0.0], [0.0], [0.0]]\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-feature-one-hot",
+    "track": "machine-learning",
+    "topic": "ml-feature-engineering",
+    "title": "One-hot encode with a fixed vocabulary",
+    "summary": "Encode categorical values as one-hot rows using a reference vocabulary.",
+    "statement": "Write one_hot(values, vocabulary) where values is a list of strings (possibly with unseen categories) and vocabulary is a list of known categories. Return a list of rows, one per value: 1 at the position of its category in vocabulary, 0 elsewhere. Unseen categories produce an all-zero row. Do not import any package.",
+    "examples": [
+      {
+        "input": "['cat', 'dog', 'cat'], ['cat', 'dog']",
+        "output": "[[1, 0], [0, 1], [1, 0]]",
+        "explanation": "cat -> [1, 0], dog -> [0, 1]."
+      },
+      {
+        "input": "['parrot'], ['cat', 'dog']",
+        "output": "[[0, 0]]",
+        "explanation": "Unseen categories get an all-zero row."
+      }
+    ],
+    "constraints": [
+      "vocabulary order is respected.",
+      "Unseen values produce all-zero rows."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "feature engineering",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def one_hot(values, vocabulary):\n    # TODO: one-hot rows by vocabulary position\n    pass\n",
+    "solution_code": "def one_hot(values, vocabulary):\n    index = {item: i for i, item in enumerate(vocabulary)}\n    rows = []\n    for value in values:\n        row = [0] * len(vocabulary)\n        position = index.get(value)\n        if position is not None:\n            row[position] = 1\n        rows.append(row)\n    return rows\n",
+    "browser_checks": "assert one_hot(['cat', 'dog', 'cat'], ['cat', 'dog']) == [[1, 0], [0, 1], [1, 0]]\nassert one_hot(['x'], ['a', 'b']) == [[0, 0]]\nprint('All public checks passed.')\n",
+    "hints": [
+      "Build a value -> index map first.",
+      "Unseen values must not raise.",
+      "len(vocabulary) fixes every row length."
+    ],
+    "editorial": "One-hot encoding turns category identity into orthogonal numeric columns without implying ordinal relationships (unlike label encoding). Fixing the vocabulary ahead of time keeps train and evaluation rows aligned.",
+    "judge_tests": "assert one_hot(['a', 'b', 'a'], ['a', 'b']) == [[1, 0], [0, 1], [1, 0]]\nassert one_hot([], ['a']) == []\nassert one_hot(['a', 'z', 'b'], ['a', 'b', 'c']) == [[1, 0, 0], [0, 0, 0], [0, 1, 0]]\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-feature-mean-impute",
+    "track": "machine-learning",
+    "topic": "ml-feature-engineering",
+    "title": "Impute missing values with the column mean",
+    "summary": "Replace None cells with the mean of observed values per column.",
+    "statement": "Write impute_mean(rows) where rows is a list of lists of floats or None. Return a new table where every None is replaced by the mean of the observed (non-None) values in its column, rounded to four decimals. If an entire column is None, replace with 0.0. Do not import any package or statistics.",
+    "examples": [
+      {
+        "input": "[[1.0, None], [None, 4.0], [3.0, 6.0]]",
+        "output": "[[1.0, 5.0], [2.0, 4.0], [3.0, 6.0]]",
+        "explanation": "Column 0 observed mean = (1.0 + 3.0)/2 = 2.0; column 1 mean = (4.0 + 6.0)/2 = 5.0."
+      },
+      {
+        "input": "[[None, None], [None, None]]",
+        "output": "[[0.0, 0.0], [0.0, 0.0]]",
+        "explanation": "All-missing columns become 0.0 by convention."
+      }
+    ],
+    "constraints": [
+      "Missing cells are None (never NaN).",
+      "Round imputed means to four decimals.",
+      "Rows are rectangular (same width)."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "feature engineering",
+      "data preparation",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 20,
+    "starter_code": "def impute_mean(rows):\n    # TODO: replace None cells with column mean\n    pass\n",
+    "solution_code": "def impute_mean(rows):\n    width = len(rows[0])\n    means = []\n    for c in range(width):\n        observed = [row[c] for row in rows if row[c] is not None]\n        means.append(round(sum(observed) / len(observed), 4) if observed else 0.0)\n    return [\n        [means[c] if row[c] is None else row[c] for c in range(width)]\n        for row in rows\n    ]\n",
+    "browser_checks": "assert impute_mean([[1.0, None], [None, 4.0], [3.0, 6.0]]) == [[1.0, 5.0], [2.0, 4.0], [3.0, 6.0]]\nprint('All public checks passed.')\n",
+    "hints": [
+      "Walk columns, not rows, to gather observed values.",
+      "Guard all-None columns with a 0.0 fallback.",
+      "Return a new table; do not mutate in place."
+    ],
+    "editorial": "Mean imputation is the simplest defensible default: it preserves the column mean approximately and is a valid baseline for linear models. It biases variance downward; tree models and models with missing-indicator features handle gaps better.",
+    "judge_tests": "assert impute_mean([[1.0], [None], [3.0]]) == [[1.0], [2.0], [3.0]]\nassert impute_mean([[None, 1.0]]) == [[0.0, 1.0]]\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-feature-equal-width-bin",
+    "track": "machine-learning",
+    "topic": "ml-feature-engineering",
+    "title": "Bin a continuous feature into equal-width buckets",
+    "summary": "Assign each value a bucket index for a given count of bins.",
+    "statement": "Write equal_width_bin(values, bins) where values is a list of floats and bins an int >= 1. Compute min and max over values; each bin gets width (max - min) / bins. Return a list of bucket indices in [0, bins - 1]. The maximum value falls into bin bins - 1. If max == min, return all zeros. Do not import any package.",
+    "examples": [
+      {
+        "input": "[0, 5, 10], 2",
+        "output": "[0, 1, 1]",
+        "explanation": "Range 0..10, width 5. Value 0 is bin 0; value 5 sits on the boundary and falls into bin 1 ([5, 10]); 10 clamps to the last bin."
+      },
+      {
+        "input": "[7, 7], 4",
+        "output": "[0, 0]",
+        "explanation": "Constant input -> every value is bin 0."
+      }
+    ],
+    "constraints": [
+      "bins >= 1.",
+      "Bucket indices are integers in [0, bins - 1].",
+      "Max maps to the last bin."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "feature engineering",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def equal_width_bin(values, bins):\n    # TODO: bucket indices for equal-width bins\n    pass\n",
+    "solution_code": "def equal_width_bin(values, bins):\n    lo, hi = min(values), max(values)\n    if hi == lo:\n        return [0] * len(values)\n    width = (hi - lo) / bins\n    result = []\n    for value in values:\n        index = int((value - lo) // width)\n        result.append(min(index, bins - 1))\n    return result\n",
+    "browser_checks": "assert equal_width_bin([0, 5, 10], 2) == [0, 1, 1]\nassert equal_width_bin([7, 7], 4) == [0, 0]\nprint('All public checks passed.')\n",
+    "hints": [
+      "Compute lo and hi from the data itself.",
+      "Clamp the index with min(index, bins - 1) for the max value.",
+      "Use floor division against the width."
+    ],
+    "editorial": "Equal-width binning trades information for robustness to monotone transformations and model simplification. The boundary cases (max value, constant column) are where most off-by-one errors appear \u2014 handle them explicitly.",
+    "judge_tests": "assert equal_width_bin([1, 2, 3], 3) == [0, 1, 2]\nassert equal_width_bin([0, 100], 4) == [0, 3]\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-regression-gradient-step",
+    "track": "machine-learning",
+    "topic": "ml-regression",
+    "title": "Gradient descent step on least squares",
+    "summary": "Take one batched gradient descent step for linear regression.",
+    "statement": "Write regression_step(xs, ys, w, b, lr) where xs, ys are equal-length lists, w a float, b a float, lr a float. Compute predictions w*x + b; loss is mean squared error. Return (new_w, new_b) with each step computed as w - lr * dL/dw and b - lr * dL/db, rounded to four decimals. Do not import any package.",
+    "examples": [
+      {
+        "input": "[0.0, 0.0], [1.0, 1.0], 0.0, 0.0, 0.1",
+        "output": "(0.0, 0.2)",
+        "explanation": "Predictions 0; errors -1 each; dL/dw = 0; dL/db = 2*(-2)/2 = -2; b_new = 0 - 0.1*(-2) = 0.2."
+      },
+      {
+        "input": "[1.0], [2.0], 0.0, 0.0, 0.1",
+        "output": "(0.4, 0.4)",
+        "explanation": "error = 0*1 + 0 - 2 = -2; dL/dw = 2*error*x/n = -4; dL/db = 2*error/n = -4; steps: w = 0.4, b = 0.4."
+      }
+    ],
+    "constraints": [
+      "xs, ys are equal-length, non-empty.",
+      "Round returned values to four decimals."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "regression",
+      "gradient descent",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-statistics-descriptive-statistics"
+    ],
+    "estimated_minutes": 30,
+    "starter_code": "def regression_step(xs, ys, w, b, lr):\n    # TODO: one batched gradient descent step on MSE\n    pass\n",
+    "solution_code": "def regression_step(xs, ys, w, b, lr):\n    n = len(xs)\n    errors = [w * x + b - y for x, y in zip(xs, ys)]\n    grad_w = 2.0 * sum(e * x for e, x in zip(errors, xs)) / n\n    grad_b = 2.0 * sum(errors) / n\n    return (round(w - lr * grad_w, 4), round(b - lr * grad_b, 4))\n",
+    "browser_checks": "assert regression_step([0.0, 0.0], [1.0, 1.0], 0.0, 0.0, 0.1) == (0.0, 0.2)\nprint('All public checks passed.')\n",
+    "hints": [
+      "error = prediction - target.",
+      "d(0.5*mean(e^2))/dw = mean(e*x) if you use the 1/2 convention, mean*(2) otherwise \u2014 match the starter contract.",
+      "Always step opposite the gradient."
+    ],
+    "editorial": "With loss L = mean(e^2), dL/dw = 2*mean(e*x), dL/db = 2*mean(e). The 1/2 convention drops the factor 2; this starter uses the plain MSE form, so the factor 2 is required. Averaging over the batch keeps the step size stable regardless of batch size.",
+    "judge_tests": "w, b = regression_step([1.0], [2.0], 0.0, 0.0, 0.1)\nassert (w, b) == (0.4, 0.4)\nw2, b2 = regression_step([0.0, 2.0], [0.0, 4.0], 1.0, 0.5, 0.1)\nassert abs(w2 - 1.3) < 1e-6 and abs(b2 - 0.6) < 1e-6\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-regression-r2-score",
+    "track": "machine-learning",
+    "topic": "ml-regression",
+    "title": "R-squared of predictions",
+    "summary": "Compute the coefficient of determination for fitted predictions.",
+    "statement": "Write r2_score(gold, predicted). Return 1 - SS_res / SS_tot where SS_res = sum((y - yhat)^2) and SS_tot = sum((y - mean(y))^2). If SS_tot == 0, return 1.0 when SS_res == 0, else 0.0. Round to four decimals. Do not import any package.",
+    "examples": [
+      {
+        "input": "[1, 2, 3], [1, 2, 3]",
+        "output": "1.0",
+        "explanation": "Perfect predictions."
+      },
+      {
+        "input": "[1, 2, 3], [2, 2, 2]",
+        "output": "0.0",
+        "explanation": "Predicting the mean yields R\u00b2 = 0."
+      }
+    ],
+    "constraints": [
+      "gold and predicted are equal-length, non-empty lists of numbers.",
+      "Round to four decimals."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "regression",
+      "model evaluation",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-statistics-descriptive-statistics"
+    ],
+    "estimated_minutes": 20,
+    "starter_code": "def r2_score(gold, predicted):\n    # TODO: 1 - SS_res/SS_tot\n    pass\n",
+    "solution_code": "def r2_score(gold, predicted):\n    mean_y = sum(gold) / len(gold)\n    ss_tot = sum((y - mean_y) ** 2 for y in gold)\n    ss_res = sum((y - yh) ** 2 for y, yh in zip(gold, predicted))\n    if ss_tot == 0:\n        return 1.0 if ss_res == 0 else 0.0\n    return round(1 - ss_res / ss_tot, 4)\n",
+    "browser_checks": "assert r2_score([1, 2, 3], [1, 2, 3]) == 1.0\nassert r2_score([1, 2, 3], [2, 2, 2]) == 0.0\nprint('All public checks passed.')\n",
+    "hints": [
+      "SS_tot anchors everything to the mean predictor.",
+      "Perfect score is 1.0, not infinity.",
+      "Constant gold is a degenerate case: define it, don't crash on it."
+    ],
+    "editorial": "R\u00b2 measures how much variance your model explains over the dumbest reasonable baseline (predicting the mean). Zero means no better than the mean; negative means worse. It is easy to over-interpret with small samples \u2014 always check on held-out data.",
+    "judge_tests": "assert r2_score([1, 2, 3], [1.1, 1.9, 3.2]) > 0.9\nassert r2_score([5, 5, 5], [5, 5, 5]) == 1.0\nassert r2_score([1, 2, 3], [100, 200, 300]) < 0\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-regression-residuals",
+    "track": "machine-learning",
+    "topic": "ml-regression",
+    "title": "Residual analysis",
+    "summary": "Compute residuals and the residual sum of squares.",
+    "statement": "Write residuals(gold, predicted) returning a tuple (residuals, rss) where residuals is a list of gold - predicted rounded to four decimals and rss is sum(residual^2) rounded to four decimals. Do not import any package.",
+    "examples": [
+      {
+        "input": "[10, 20, 30], [9, 20, 32]",
+        "output": "([1.0, 0.0, -2.0], 5.0)",
+        "explanation": "Residuals 1, 0, -2; squares 1 + 0 + 4 = 5."
+      },
+      {
+        "input": "[1, 1], [1, 1]",
+        "output": "([0.0, 0.0], 0.0)",
+        "explanation": "Perfect fit."
+      }
+    ],
+    "constraints": [
+      "Equal-length, non-empty numeric lists.",
+      "Round to four decimals."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "regression",
+      "diagnostics",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-regression-gradient-step"
+    ],
+    "estimated_minutes": 15,
+    "starter_code": "def residuals(gold, predicted):\n    # TODO: residuals list and residual sum of squares\n    pass\n",
+    "solution_code": "def residuals(gold, predicted):\n    res = [round(g - p, 4) for g, p in zip(gold, predicted)]\n    rss = round(sum(r * r for r in res), 4)\n    return (res, rss)\n",
+    "browser_checks": "assert residuals([10, 20, 30], [9, 20, 32]) == ([1.0, 0.0, -2.0], 5.0)\nprint('All public checks passed.')\n",
+    "hints": [
+      "Residual = gold minus prediction.",
+      "RSS squares each residual and sums them.",
+      "Round residuals before squaring for stable output."
+    ],
+    "editorial": "Residuals are the raw material of regression diagnostics: their mean (should be ~0), variance, pattern over time, and tail behaviour tell you whether the model form fits. RSS is what least squares minimises directly.",
+    "judge_tests": "res, rss = residuals([0, 0], [1, -1])\nassert res == [-1.0, 1.0] and rss == 2.0\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-regression-ridge-step",
+    "track": "machine-learning",
+    "topic": "ml-regression",
+    "title": "Ridge-regularized gradient step",
+    "summary": "Apply one weight-decayed gradient descent step.",
+    "statement": "Write ridge_step(w, x, y, lr, alpha, n) where w is a float, x the feature value of one sample, y its target, lr the learning rate, alpha the L2 penalty, and n the batch size. Compute the MSE gradient 2*(w*x - y)*x / n, add 2*alpha*w, and return w - lr * total_gradient (rounded to four decimals). Do not import any package.",
+    "examples": [
+      {
+        "input": "0.0, 1.0, 1.0, 0.1, 0.0, 1",
+        "output": "0.2",
+        "explanation": "Gradient = 2*(0-1)*1/1 + 0 = -2; w_new = 0 - 0.1*(-2) = 0.2."
+      },
+      {
+        "input": "1.0, 2.0, 3.0, 0.1, 0.1, 2",
+        "output": "1.18",
+        "explanation": "Gradient = 2*(2-3)*2/2 + 0.2 = -2 + 0.2 = -1.8; w_new = 1.0 - 0.1*(-1.8) = 1.18."
+      }
+    ],
+    "constraints": [
+      "n is a positive batch size.",
+      "Round to four decimals."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "regression",
+      "regularization",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-regression-gradient-step"
+    ],
+    "estimated_minutes": 25,
+    "starter_code": "def ridge_step(w, x, y, lr, alpha, n):\n    # TODO: MSE gradient + L2 penalty weight decay\n    pass\n",
+    "solution_code": "def ridge_step(w, x, y, lr, alpha, n):\n    gradient = 2 * (w * x - y) * x / n + 2 * alpha * w\n    return round(w - lr * gradient, 4)\n",
+    "browser_checks": "assert ridge_step(0.0, 1.0, 1.0, 0.1, 0.0, 1) == 0.2\nassert ridge_step(1.0, 2.0, 3.0, 0.1, 0.1, 2) == 1.18\nprint('All public checks passed.')\n",
+    "hints": [
+      "MSE gradient w.r.t. one sample is 2*(pred - y)*x / n.",
+      "Ridge adds +2*alpha*w to the gradient.",
+      "new_w = w - lr * gradient."
+    ],
+    "editorial": "Ridge regression adds alpha * ||w||^2 to the loss; its gradient contributes 2*alpha*w. Every step pulls weights toward zero proportional to alpha \u2014 that pull is what curbs overfitting in high dimensions.",
+    "judge_tests": "assert ridge_step(1.0, 0.0, 0.0, 0.1, 1.0, 1) == 0.8\nassert ridge_step(0.0, 0.0, 5.0, 0.1, 0.0, 1) == 0.0\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-classification-logistic-step",
+    "track": "machine-learning",
+    "topic": "ml-classification",
+    "title": "One logistic regression gradient step",
+    "summary": "Compute one parameter update for a sigmoid unit with cross-entropy loss.",
+    "statement": "Write logistic_step(x, y, w, b, lr) where x, w floats, y a 0/1 int, lr float. p = sigmoid(w*x + b). Loss is binary cross-entropy; gradients are dL/dw = (p - y)*x, dL/db = p - y. Return (new_w, new_b) rounded to four decimals. Do not import any package.",
+    "examples": [
+      {
+        "input": "1.0, 1, 0.0, 0.0, 0.5",
+        "output": "(0.25, 0.25)",
+        "explanation": "p = sigmoid(0) = 0.5; p - y = -0.5; new_w = 0 - 0.5*(-0.5)*1 = 0.25."
+      },
+      {
+        "input": "1.0, 0, 0.0, 0.0, 0.5",
+        "output": "(-0.25, -0.25)",
+        "explanation": "p - y = 0.5; new_w = 0 - 0.5*0.5 = -0.25."
+      }
+    ],
+    "constraints": [
+      "y is 0 or 1.",
+      "Round to four decimals."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "classification",
+      "logistic regression",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-statistics-descriptive-statistics"
+    ],
+    "estimated_minutes": 30,
+    "starter_code": "def logistic_step(x, y, w, b, lr):\n    # TODO: sigmoid forward, p - y gradient, one update\n    pass\n",
+    "solution_code": "def logistic_step(x, y, w, b, lr):\n    z = w * x + b\n    p = 1.0 / (1.0 + pow(2.718281828459045, -z))\n    error = p - y\n    return (round(w - lr * error * x, 4), round(b - lr * error, 4))\n",
+    "browser_checks": "assert logistic_step(1.0, 1, 0.0, 0.0, 0.5) == (0.25, 0.25)\nassert logistic_step(1.0, 0, 0.0, 0.0, 0.5) == (-0.25, -0.25)\nprint('All public checks passed.')\n",
+    "hints": [
+      "sigmoid(z) = 1 / (1 + e^-z).",
+      "The BCE gradient w.r.t. z is simply p - y.",
+      "Chain: error * x for the weight, error for the bias."
+    ],
+    "editorial": "Binary cross-entropy pairs with sigmoid so the gradient collapses to p - y. The error lands on the unit itself and flows back through x into the weight update \u2014 the same magnitude error you would see in least squares, without the factor 2.",
+    "judge_tests": "w, b = logistic_step(2.0, 1, 0.5, 0.1, 0.1)\nassert (w, b) == (0.5499, 0.125)\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-classification-naive-bayes",
+    "track": "machine-learning",
+    "topic": "ml-classification",
+    "title": "Multinomial naive Bayes log score",
+    "summary": "Compute the log posterior of a document under a multinomial NB model.",
+    "statement": "Write nb_log_score(tokens, class_prior, token_probs) where tokens is a list of words, class_prior a float in (0, 1), token_probs a dict word -> conditional probability P(word | class); words absent from token_probs use probability 1e-6. Return log(class_prior * product of word probabilities) rounded to four decimals. Import math for log.",
+    "examples": [
+      {
+        "input": "['spam'], 0.5, {'spam': 0.9}",
+        "output": "-0.7985",
+        "explanation": "log(0.5 * 0.9) = log(0.45) \u2248 -0.7985."
+      },
+      {
+        "input": "['win', 'money'], 0.5, {'win': 0.8, 'money': 0.7}",
+        "output": "-1.2729",
+        "explanation": "log(0.5) + log(0.8) + log(0.7) \u2248 -0.6931 - 0.2231 - 0.3567 \u2248 -1.2729."
+      }
+    ],
+    "constraints": [
+      "token_probs values are probabilities; missing words use 1e-6.",
+      "Round to four decimals."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "classification",
+      "naive bayes",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-statistics-probability"
+    ],
+    "estimated_minutes": 30,
+    "starter_code": "import math\n\ndef nb_log_score(tokens, class_prior, token_probs):\n    # TODO: log(prior) + sum(log(P(word|class)))\n    pass\n",
+    "solution_code": "import math\n\ndef nb_log_score(tokens, class_prior, token_probs):\n    total = math.log(class_prior)\n    for token in tokens:\n        total += math.log(token_probs.get(token, 1e-6))\n    return round(total, 4)\n",
+    "browser_checks": "assert abs(nb_log_score(['spam'], 0.5, {'spam': 0.9}) - (-0.7985)) < 1e-3\nassert abs(nb_log_score(['win', 'money'], 0.5, {'win': 0.8, 'money': 0.7}) - (-1.2729)) < 1e-3\nprint('All public checks passed.')\n",
+    "hints": [
+      "Work in log space from the start \u2014 products of probabilities underflow.",
+      "Default missing words to 1e-6, not to 0 (log(0) crashes).",
+      "The prior multiplies in linear space: it adds in log space."
+    ],
+    "editorial": "Multinomial naive Bayes scores whole documents as prior \u00d7 product of word likelihoods. Logs turn products into sums and avoid underflow on realistic documents. The 1e-6 default keeps unseen words finite but punitive \u2014 add-k smoothing is the standard fix.",
+    "judge_tests": "import math\nassert abs(nb_log_score(['a', 'b'], 0.25, {'a': 0.5, 'b': 0.5}) - math.log(0.25 * 0.5 * 0.5)) < 1e-3\nassert nb_log_score(['nope'], 0.5, {}) == round(math.log(0.5 * 1e-6), 4)\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-classification-decision-stump",
+    "track": "machine-learning",
+    "topic": "ml-classification",
+    "title": "Train a decision stump",
+    "summary": "Pick the threshold and polarity on one feature that maximize accuracy.",
+    "statement": "Write best_stump(features, labels) where features is a list of floats and labels a list of 0/1 ints of the same length. Try every unique value in features as a threshold; predict 1 when feature > threshold else 0; also try the reverse polarity (predict 1 when feature <= threshold). Return {'threshold': t, 'polarity': p, 'accuracy': a} with the highest accuracy, ties resolved by lower threshold then polarity 0 before 1; accuracy rounded to four decimals. polarity 0 means positive-above; polarity 1 means positive-below-or-equal. Do not import any package.",
+    "examples": [
+      {
+        "input": "[1.0, 2.0, 8.0, 9.0], [0, 0, 1, 1]",
+        "output": "{'threshold': 2.0, 'polarity': 0, 'accuracy': 1.0}",
+        "explanation": "Splitting at 2.0 with positive-above polarity separates perfectly."
+      },
+      {
+        "input": "[1.0, 2.0, 3.0], [0, 1, 0]",
+        "output": "{'threshold': 2.0, 'polarity': 0, 'accuracy': 0.6667}",
+        "explanation": "Best achievable is 2/3 correct with that split."
+      }
+    ],
+    "constraints": [
+      "features and labels have equal length >= 1.",
+      "Return exactly one dict with threshold, polarity and accuracy."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "classification",
+      "trees",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-classification-knn"
+    ],
+    "estimated_minutes": 30,
+    "starter_code": "def best_stump(features, labels):\n    # TODO: search thresholds and polarity for best accuracy\n    pass\n",
+    "solution_code": "def best_stump(features, labels):\n    candidates = sorted(set(features))\n    best = None\n    n = len(labels)\n    for t in candidates:\n        for polarity in (0, 1):\n            correct = 0\n            for x, y in zip(features, labels):\n                prediction = 1 if ((x > t) == (polarity == 0)) else 0\n                if prediction == y:\n                    correct += 1\n            accuracy = round(correct / n, 4)\n            key = (accuracy, -t, -polarity)\n            if best is None or key > best[0]:\n                best = (key, {'threshold': t, 'polarity': polarity, 'accuracy': accuracy})\n    return best[1]\n",
+    "browser_checks": "assert best_stump([1.0, 2.0, 8.0, 9.0], [0, 0, 1, 1]) == {'threshold': 2.0, 'polarity': 0, 'accuracy': 1.0}\nprint('All public checks passed.')\n",
+    "hints": [
+      "Only unique feature values need testing as thresholds.",
+      "Evaluate both polarities per threshold.",
+      "Compare (accuracy, -threshold, -polarity) for deterministic tie-breaking."
+    ],
+    "editorial": "A stump is a one-level tree: one feature, one threshold, two leaves. Brute-forcing unique values makes this exact rather than greedy \u2014 fine for a single predictor. Ties on accuracy break by lower threshold, then polarity 0, for deterministic output.",
+    "judge_tests": "assert best_stump([0.0, 1.0], [0, 1])['accuracy'] == 1.0\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-classification-baseline",
+    "track": "machine-learning",
+    "topic": "ml-classification",
+    "title": "Majority-class baseline metrics",
+    "summary": "Compute the always-majority baseline accuracy, precision, recall and F1.",
+    "statement": "Write majority_baseline(labels) where labels is a non-empty list of 0/1 ints. Pretend the model always predicts the majority class. Return {'accuracy': a, 'precision': p, 'recall': r, 'f1': f1} rounded to four decimals for the positive class (1). When the majority class is 0, or no positive predictions are made, precision = recall = f1 = 0.0 by convention.",
+    "examples": [
+      {
+        "input": "[0, 0, 0, 1]",
+        "output": "{'accuracy': 0.75, 'precision': 0.0, 'recall': 0.0, 'f1': 0.0}",
+        "explanation": "Predicts all 0: accuracy 3/4; no positive predictions -> positive metrics are 0.0 by convention."
+      },
+      {
+        "input": "[1, 1, 0]",
+        "output": "{'accuracy': 0.6667, 'precision': 0.6667, 'recall': 1.0, 'f1': 0.8}",
+        "explanation": "Always predicts 1: TP=2, FP=1; precision 2/3, recall 1.0, F1 = 2*PR/(P+R) = 0.8."
+      }
+    ],
+    "constraints": [
+      "labels has at least one element.",
+      "Round to four decimals."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "classification",
+      "evaluation",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-model-confusion-matrix"
+    ],
+    "estimated_minutes": 15,
+    "starter_code": "def majority_baseline(labels):\n    # TODO: always-majority prediction metrics\n    pass\n",
+    "solution_code": "def majority_baseline(labels):\n    n = len(labels)\n    ones = sum(labels)\n    zeros = n - ones\n    if ones >= zeros:\n        tp, fp, fn, tn = ones, zeros, 0, 0\n    else:\n        tp, fp, fn, tn = 0, 0, ones, zeros\n    accuracy = (tp + tn) / n\n    precision = tp / (tp + fp) if tp + fp else 0.0\n    recall = tp / (tp + fn) if tp + fn else 0.0\n    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0\n    return {'accuracy': round(accuracy, 4), 'precision': round(precision, 4), 'recall': round(recall, 4), 'f1': round(f1, 4)}\n",
+    "browser_checks": "assert majority_baseline([0, 0, 0, 1]) == {'accuracy': 0.75, 'precision': 0.0, 'recall': 0.0, 'f1': 0.0}\nassert majority_baseline([1, 1, 0]) == {'accuracy': 0.6667, 'precision': 0.6667, 'recall': 1.0, 'f1': 0.8}\nprint('All public checks passed.')\n",
+    "hints": [
+      "Count the majority class first; predict it everywhere.",
+      "When the model predicts only negatives, all positive metrics are 0 by convention.",
+      "This baseline is the number every real model must beat."
+    ],
+    "editorial": "The majority-class baseline is the score to beat: on skewed data, always predicting the majority yields surprisingly high accuracy with zero skill. Any model you deploy must beat this baseline or it is not earning its complexity.",
+    "judge_tests": "assert majority_baseline([0, 1]) == {'accuracy': 0.5, 'precision': 0.5, 'recall': 1.0, 'f1': 0.6667}\nassert majority_baseline([1, 0, 1, 1, 0])['accuracy'] == 0.6\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-unsupervised-kmeans-update",
+    "track": "machine-learning",
+    "topic": "ml-unsupervised",
+    "title": "K-means centroid update",
+    "summary": "Recompute centroids as the mean of assigned points.",
+    "statement": "Write kmeans_update(points, assignments, k) where points is a list of equal-length numeric lists, assignments a list of ints of the same length in [0, k-1]. Return a list of k new centroids, one per cluster, each the per-dimension mean of its assigned points rounded to four decimals. A cluster with no assigned points yields None in its position. Do not import any package.",
+    "examples": [
+      {
+        "input": "[[0, 0], [0, 2], [10, 10]], [0, 0, 1], 2",
+        "output": "[[0.0, 1.0], [10.0, 10.0]]",
+        "explanation": "Cluster 0 mean of (0,0),(0,2) = (0.0, 1.0); cluster 1 has (10,10)."
+      },
+      {
+        "input": "[[1, 1]], [0], 2",
+        "output": "[[1.0, 1.0], None]",
+        "explanation": "Cluster 1 has no points; its centroid is None."
+      }
+    ],
+    "constraints": [
+      "assignments length equals points length.",
+      "Round to four decimals.",
+      "Empty clusters produce None in their position."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "unsupervised learning",
+      "kmeans",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-unsupervised-kmeans-assign"
+    ],
+    "estimated_minutes": 25,
+    "starter_code": "def kmeans_update(points, assignments, k):\n    # TODO: recompute centroids as cluster means\n    pass\n",
+    "solution_code": "def kmeans_update(points, assignments, k):\n    buckets = [[] for _ in range(k)]\n    for point, cluster in zip(points, assignments):\n        buckets[cluster].append(point)\n    width = len(points[0]) if points else 0\n    centroids = []\n    for bucket in buckets:\n        if not bucket:\n            centroids.append(None)\n            continue\n        count = len(bucket)\n        centroids.append([round(sum(point[c] for point in bucket) / count, 4) for c in range(width)])\n    return centroids\n",
+    "browser_checks": "assert kmeans_update([[0, 0], [0, 2], [10, 10]], [0, 0, 1], 2) == [[0.0, 1.0], [10.0, 10.0]]\nassert kmeans_update([[1, 1]], [0], 2) == [[1.0, 1.0], None]\nprint('All public checks passed.')\n",
+    "hints": [
+      "Bucket points per cluster first.",
+      "Unassigned clusters must stay addressable: None placeholder.",
+      "Average per dimension independently."
+    ],
+    "editorial": "The update step is a plain mean per cluster per dimension. Empty clusters (possible when k > n or points collapse) need an explicit policy \u2014 keeping them as None lets the caller reseed rather than silently duplicating another centroid.",
+    "judge_tests": "res = kmeans_update([[1, 2], [3, 4], [9, 9]], [1, 1, 0], 2)\nassert res[0] == [9.0, 9.0] and res[1] == [2.0, 3.0]\nassert kmeans_update([], [], 1) == [None]\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-unsupervised-inertia",
+    "track": "machine-learning",
+    "topic": "ml-unsupervised",
+    "title": "K-means inertia",
+    "summary": "Compute within-cluster sum of squared distances.",
+    "statement": "Write inertia(points, centroids, assignments). Return the sum over points of the squared Euclidean distance to their assigned centroid, rounded to four decimals. Do not import any package.",
+    "examples": [
+      {
+        "input": "[[0, 0], [0, 2], [10, 10]], [[0.0, 1.0], [10.0, 10.0]], [0, 0, 1]",
+        "output": "2.0",
+        "explanation": "dist((0,0),(0,1))^2 = 1; dist((0,2),(0,1))^2 = 1; (10,10) to its centroid = 0; total 2."
+      },
+      {
+        "input": "[[5, 5]], [[5.0, 5.0]], [0]",
+        "output": "0.0",
+        "explanation": "Point on its centroid."
+      }
+    ],
+    "constraints": [
+      "points, centroids, assignments are consistent in length.",
+      "Round to four decimals."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "unsupervised learning",
+      "kmeans",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-unsupervised-kmeans-assign"
+    ],
+    "estimated_minutes": 20,
+    "starter_code": "def inertia(points, centroids, assignments):\n    # TODO: within-cluster sum of squared distances\n    pass\n",
+    "solution_code": "def inertia(points, centroids, assignments):\n    total = 0.0\n    for point, cluster in zip(points, assignments):\n        centroid = centroids[cluster]\n        total += sum((p - c) ** 2 for p, c in zip(point, centroid))\n    return round(total, 4)\n",
+    "browser_checks": "assert inertia([[0, 0], [0, 2], [10, 10]], [[0.0, 1.0], [10.0, 10.0]], [0, 0, 1]) == 2.0\nprint('All public checks passed.')\n",
+    "hints": [
+      "Iterate points, look up assigned centroid.",
+      "Square each coordinate difference, sum across dims.",
+      "Inertia is what the elbow method plots against k."
+    ],
+    "editorial": "Inertia is the total squared distance from each point to its centroid \u2014 the objective k-means minimises. It decreases monotonically with k, which is why it can only support the elbow heuristic, never prove a 'good' k outright.",
+    "judge_tests": "assert inertia([[0, 0], [1, 1]], [[0.0, 0.0], [1.0, 1.0]], [0, 1]) == 0.0\nassert inertia([[2, 0], [0, 2]], [[0.0, 0.0]], [0, 0]) == 8.0\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-unsupervised-cosine-ranking",
+    "track": "machine-learning",
+    "topic": "ml-unsupervised",
+    "title": "Rank documents by cosine similarity to a query",
+    "summary": "Score and rank a small corpus against a query vector.",
+    "statement": "Write rank_by_cosine(query, documents) where query and each document are equal-length numeric vectors. Return the indices of documents sorted by descending cosine similarity, ties broken by lower index. Zero-norm vectors score 0.0. Round scores to four decimals before comparison. No imports needed \u2014 implement with plain arithmetic.",
+    "examples": [
+      {
+        "input": "[1, 0], [[1, 0], [0, 1], [2, 0]]",
+        "output": "[0, 2, 1]",
+        "explanation": "cosines: 1.0, 0.0, 1.0 \u2014 ties resolve by lower index, so 0 before 2."
+      },
+      {
+        "input": "[1, 1], [[1, 1], [2, 2], [1, 0]]",
+        "output": "[0, 1, 2]",
+        "explanation": "cosines: 1.0, 1.0, 0.7071 \u2014 first two tie, resolved by index."
+      }
+    ],
+    "constraints": [
+      "All vectors non-empty and equal length.",
+      "Return a list of indices into documents."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "unsupervised learning",
+      "retrieval",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-unsupervised-kmeans-assign"
+    ],
+    "estimated_minutes": 25,
+    "starter_code": "def rank_by_cosine(query, documents):\n    # TODO: sort document indices by cosine similarity desc\n    pass\n",
+    "solution_code": "def rank_by_cosine(query, documents):\n    def cosine(a, b):\n        dot = sum(x * y for x, y in zip(a, b))\n        norm_a = (sum(x * x for x in a)) ** 0.5\n        norm_b = (sum(y * y for y in b)) ** 0.5\n        if norm_a == 0.0 or norm_b == 0.0:\n            return 0.0\n        return round(dot / (norm_a * norm_b), 4)\n    scored = [(cosine(query, doc), index) for index, doc in enumerate(documents)]\n    scored.sort(key=lambda item: (-item[0], item[1]))\n    return [index for _, index in scored]\n",
+    "browser_checks": "assert rank_by_cosine([1, 0], [[1, 0], [0, 1], [2, 0]]) == [0, 2, 1]\nprint('All public checks passed.')\n",
+    "hints": [
+      "Cosine = dot / (|a| * |b|).",
+      "Zero-norm vectors must not raise.",
+      "Sort by -cosine then index for stable ties."
+    ],
+    "editorial": "Cosine similarity compares direction, not magnitude \u2014 exactly right for document retrieval where length varies. Ranking (rather than thresholding) is the robust interface: similarity distributions shift per corpus, and thresholds rot.",
+    "judge_tests": "assert rank_by_cosine([1, 0, 0], [[0, 1, 0], [1, 1, 0], [1, 0, 0]]) == [2, 1, 0]\nassert rank_by_cosine([0, 0], [[1, 0], [0, 1]]) == [0, 1]\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-unsupervised-cluster-purity",
+    "track": "machine-learning",
+    "topic": "ml-unsupervised",
+    "title": "Cluster purity against reference labels",
+    "summary": "Measure how aligned clusters are with known reference classes.",
+    "statement": "Write cluster_purity(predicted_clusters, reference_labels) where both are equal-length lists of hashable labels. For each predicted cluster take the majority reference label; purity = (sum over clusters of majority counts) / total points. Return rounded to four decimals. Use collections.Counter if you like, or plain dicts.",
+    "examples": [
+      {
+        "input": "[0, 0, 1, 1], ['a', 'a', 'b', 'b']",
+        "output": "1.0",
+        "explanation": "Two clusters, two clean reference classes."
+      },
+      {
+        "input": "[0, 0, 0], ['a', 'a', 'b']",
+        "output": "0.6667",
+        "explanation": "One cluster of 3; majority reference 'a' covers 2 of 3."
+      }
+    ],
+    "constraints": [
+      "predicted_clusters and reference_labels are equal-length and non-empty.",
+      "Round to four decimals."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "unsupervised learning",
+      "evaluation",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-unsupervised-kmeans-assign"
+    ],
+    "estimated_minutes": 20,
+    "starter_code": "def cluster_purity(predicted_clusters, reference_labels):\n    # TODO: majority-match fraction\n    pass\n",
+    "solution_code": "from collections import Counter\n\ndef cluster_purity(predicted_clusters, reference_labels):\n    clusters = {}\n    for cluster, label in zip(predicted_clusters, reference_labels):\n        clusters.setdefault(cluster, []).append(label)\n    total = len(reference_labels)\n    good = 0\n    for labels in clusters.values():\n        good += max(Counter(labels).values())\n    return round(good / total, 4)\n",
+    "browser_checks": "assert cluster_purity([0, 0, 1, 1], ['a', 'a', 'b', 'b']) == 1.0\nassert cluster_purity([0, 0, 0], ['a', 'a', 'b']) == 0.6667\nprint('All public checks passed.')\n",
+    "hints": [
+      "Group reference labels by predicted cluster.",
+      "Per cluster, take the majority count.",
+      "Purity is majority-count-over-total, not accuracy."
+    ],
+    "editorial": "Cluster purity is a sanity check, not a goal: it uses the answer key you claim to ignore. It is useful for debugging (is this cluster garbage?) and dangerous as an optimization target because maximum purity is trivially 1.0 with one point per cluster.",
+    "judge_tests": "assert cluster_purity([0, 0, 1, 1], ['a', 'b', 'b', 'b']) == 0.75\nassert cluster_purity([7, 7, 7, 8], ['x', 'y', 'z', 'x']) == 0.5\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-model-log-loss",
+    "track": "machine-learning",
+    "topic": "ml-model-evaluation",
+    "title": "Binary cross-entropy (log loss)",
+    "summary": "Compute mean binary cross-entropy from predicted probabilities.",
+    "statement": "Write log_loss(gold, probabilities) where gold is a list of 0/1 ints and probabilities a list of floats in [0, 1] of the same length. Clip probabilities to epsilon = 1e-15. Return the mean loss -mean(y*log(p) + (1-y)*log(1-p)) rounded to four decimals. Import math.",
+    "examples": [
+      {
+        "input": "[1, 0], [0.9, 0.1]",
+        "output": "0.1054",
+        "explanation": "logloss = -(log(0.9) + log(1-0.1))/2 = -(2*log(0.9))/2 = -log(0.9) \u2248 0.1054."
+      },
+      {
+        "input": "[1, 1], [0.5, 0.5]",
+        "output": "0.6931",
+        "explanation": "-2*log(0.5)/2 = log(2) \u2248 0.6931."
+      }
+    ],
+    "constraints": [
+      "gold and probabilities are equal length and non-empty.",
+      "Clip p into [1e-15, 1 - 1e-15] before taking logs."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "model evaluation",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-model-confusion-matrix"
+    ],
+    "estimated_minutes": 20,
+    "starter_code": "import math\n\ndef log_loss(gold, probabilities):\n    # TODO: clip probabilities, average binary cross-entropy\n    pass\n",
+    "solution_code": "import math\n\ndef log_loss(gold, probabilities):\n    eps = 1e-15\n    loss = 0.0\n    for y, p in zip(gold, probabilities):\n        p = min(max(p, eps), 1 - eps)\n        loss += -(y * math.log(p) + (1 - y) * math.log(1 - p))\n    return round(loss / len(gold), 4)\n",
+    "browser_checks": "assert log_loss([1, 0], [0.9, 0.1]) == 0.1054\nassert log_loss([1, 1], [0.5, 0.5]) == 0.6931\nprint('All public checks passed.')\n",
+    "hints": [
+      "Clip every probability into [eps, 1-eps] before log.",
+      "Average over all samples at the end.",
+      "log(2) \u2248 0.6931 \u2014 a useful sanity constant."
+    ],
+    "editorial": "Log loss is the proper scoring rule that penalizes confident wrong answers brutally and unconfident right ones mildly. Clipping at eps keeps log(0) from crashing the loss on overconfident predictions.",
+    "judge_tests": "import math\nassert log_loss([0], [0.0]) == 0.0\nassert abs(log_loss([1], [0.0]) - 34.5388) < 1e-3\nassert abs(log_loss([1, 0, 1], [0.7, 0.4, 0.6]) - 0.4594) < 1e-3\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-model-roc-auc",
+    "track": "machine-learning",
+    "topic": "ml-model-evaluation",
+    "title": "ROC AUC by rank statistics",
+    "summary": "Compute ROC AUC from scores with the Mann-Whitney U statistic.",
+    "statement": "Write roc_auc(gold, scores) where gold is a list of 0/1 ints and scores a list of floats (higher = more positive). Return AUC as the probability that a random positive scores higher than a random negative, with ties counted as 0.5, rounded to four decimals. If gold has no positives or no negatives, return 0.5. Do not import any package.",
+    "examples": [
+      {
+        "input": "[1, 0], [0.9, 0.1]",
+        "output": "1.0",
+        "explanation": "The single positive outranks the single negative."
+      },
+      {
+        "input": "[1, 0], [0.1, 0.9]",
+        "output": "0.0",
+        "explanation": "The positive scores below the negative."
+      }
+    ],
+    "constraints": [
+      "gold and scores are equal length and non-empty.",
+      "Ties contribute 0.5.",
+      "No positives or no negatives -> 0.5."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "model evaluation",
+      "ranking",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-model-confusion-matrix"
+    ],
+    "estimated_minutes": 30,
+    "starter_code": "def roc_auc(gold, scores):\n    # TODO: Mann-Whitney U statistic, ties = 0.5\n    pass\n",
+    "solution_code": "def roc_auc(gold, scores):\n    positives = [s for s, y in zip(scores, gold) if y == 1]\n    negatives = [s for s, y in zip(scores, gold) if y == 0]\n    if not positives or not negatives:\n        return 0.5\n    wins = 0.0\n    for p in positives:\n        for n in negatives:\n            if p > n:\n                wins += 1.0\n            elif p == n:\n                wins += 0.5\n    return round(wins / (len(positives) * len(negatives)), 4)\n",
+    "browser_checks": "assert roc_auc([1, 0], [0.9, 0.1]) == 1.0\nassert roc_auc([1, 0], [0.1, 0.9]) == 0.0\nprint('All public checks passed.')\n",
+    "hints": [
+      "Pair every positive with every negative.",
+      "AUC = (wins + 0.5*ties) / (#positives * #negatives).",
+      "Degenerate label mixes return 0.5 by convention."
+    ],
+    "editorial": "AUC is the Mann-Whitney U statistic in disguise: it is the probability that a randomly drawn positive ranks above a randomly drawn negative. It is threshold-free, which is why it remains the first diagnostic to read on imbalanced problems.",
+    "judge_tests": "assert roc_auc([1, 1, 0, 0], [0.8, 0.7, 0.6, 0.4]) == 1.0\nassert roc_auc([1, 1, 0, 0], [0.5, 0.5, 0.5, 0.5]) == 0.5\nassert roc_auc([1, 0], [0.5, 0.5]) == 0.5\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-model-specificity",
+    "track": "machine-learning",
+    "topic": "ml-model-evaluation",
+    "title": "Full binary metrics from a confusion table",
+    "summary": "Derive accuracy, precision, recall, specificity and F1 from tp/fp/fn/tn.",
+    "statement": "Write confusion_metrics(tp, fp, fn, tn). Return dict with keys accuracy, precision, recall, specificity, f1 (rounded to four decimals). precision = tp/(tp+fp), recall = tp/(tp+fn), specificity = tn/(tn+fp), f1 = harmonic mean of precision and recall; any zero denominator yields 0.0. Do not import any package.",
+    "examples": [
+      {
+        "input": "3, 1, 1, 5",
+        "output": "{'accuracy': 0.8, 'precision': 0.75, 'recall': 0.75, 'specificity': 0.8333, 'f1': 0.75}",
+        "explanation": "10 samples; accuracy 8/10; precision=recall=3/4; specificity 5/6."
+      },
+      {
+        "input": "0, 0, 4, 6",
+        "output": "{'accuracy': 0.6, 'precision': 0.0, 'recall': 0.0, 'specificity': 1.0, 'f1': 0.0}",
+        "explanation": "No positives predicted: precision=0; no positives found: recall=0."
+      }
+    ],
+    "constraints": [
+      "tp, fp, fn, tn are non-negative ints.",
+      "Zero denominators yield 0.0."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "model evaluation",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-model-confusion-matrix"
+    ],
+    "estimated_minutes": 15,
+    "starter_code": "def confusion_metrics(tp, fp, fn, tn):\n    # TODO: accuracy, precision, recall, specificity, f1\n    pass\n",
+    "solution_code": "def confusion_metrics(tp, fp, fn, tn):\n    total = tp + fp + fn + tn\n    accuracy = (tp + tn) / total if total else 0.0\n    precision = tp / (tp + fp) if tp + fp else 0.0\n    recall = tp / (tp + fn) if tp + fn else 0.0\n    specificity = tn / (tn + fp) if tn + fp else 0.0\n    f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0\n    return {\n        'accuracy': round(accuracy, 4),\n        'precision': round(precision, 4),\n        'recall': round(recall, 4),\n        'specificity': round(specificity, 4),\n        'f1': round(f1, 4),\n    }\n",
+    "browser_checks": "assert confusion_metrics(3, 1, 1, 5) == {'accuracy': 0.8, 'precision': 0.75, 'recall': 0.75, 'specificity': 0.8333, 'f1': 0.75}\nprint('All public checks passed.')\n",
+    "hints": [
+      "Write the denominator guards first, then the numerators.",
+      "Specificity is recall for the negative class.",
+      "F1 is the harmonic mean \u2014 guard the (p + r) == 0 case."
+    ],
+    "editorial": "Accuracy hides class collapse; precision and recall expose errors on the positive class; specificity exposes errors on the negative class. Always pair recall with specificity on imbalanced medical-style problems \u2014 a test that cries wolf is as useless as one that sleeps through it.",
+    "judge_tests": "m = confusion_metrics(0, 0, 0, 0)\nassert m['accuracy'] == 0.0\nm = confusion_metrics(10, 0, 0, 0)\nassert m['precision'] == 1.0 and m['recall'] == 1.0\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-model-bootstrap-ci",
+    "track": "machine-learning",
+    "topic": "ml-model-evaluation",
+    "title": "Bootstrap confidence interval of the mean",
+    "summary": "Estimate a confidence interval of the sample mean by resampling with replacement.",
+    "statement": "Write bootstrap_ci(values, replicates, seed). values is a non-empty list of floats; replicates the number of bootstrap resamples; seed for the RNG (use random.Random(seed)). For each replicate, draw len(values) samples with replacement and compute their mean; collect all replicate means; return (lower, upper) as the 2.5th and 97.5th percentiles of those means (sorted), rounded to four decimals. Import random only.",
+    "examples": [
+      {
+        "input": "[1, 2, 3, 4, 5], 200, 42",
+        "output": "(1.8, 4.2)",
+        "explanation": "Approximate interval for the mean of a small sample; exact bounds depend on the seed."
+      },
+      {
+        "input": "[7, 7, 7, 7], 100, 42",
+        "output": "(7.0, 7.0)",
+        "explanation": "Zero variance: every resample has mean 7."
+      }
+    ],
+    "constraints": [
+      "replicates >= 1.",
+      "low < high or equal when variance is zero.",
+      "Import random; use random.Random(seed)."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "model evaluation",
+      "statistics",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-statistics-descriptive-statistics"
+    ],
+    "estimated_minutes": 30,
+    "starter_code": "import random\n\ndef bootstrap_ci(values, replicates, seed):\n    # TODO: resample with replacement; percentile interval of replicate means\n    pass\n",
+    "solution_code": "import random\n\ndef bootstrap_ci(values, replicates, seed):\n    rng = random.Random(seed)\n    n = len(values)\n    means = []\n    for _ in range(replicates):\n        sample_mean = sum(rng.choice(values) for _ in range(n)) / n\n        means.append(sample_mean)\n    means.sort()\n    lower_index = int(0.025 * len(means))\n    upper_index = min(int(0.975 * len(means)), len(means) - 1)\n    return (round(means[lower_index], 4), round(means[upper_index], 4))\n",
+    "browser_checks": "assert bootstrap_ci([7, 7, 7, 7], 100, 42) == (7.0, 7.0)\nlow, high = bootstrap_ci([1, 2, 3, 4, 5], 200, 42)\nassert low < high\nprint('All public checks passed.')\n",
+    "hints": [
+      "Resample len(values) times with replacement per replicate.",
+      "The interval comes from the replicate means distribution, not from the raw data.",
+      "random.Random(seed) makes it reproducible."
+    ],
+    "editorial": "Bootstrap estimates the sampling distribution of a statistic without assuming normality. With tiny samples it is the honest way to say 'we don't know' with numbers rather than vibes \u2014 and the interval widens automatically as the data demand it.",
+    "judge_tests": "low, high = bootstrap_ci([1, 2, 3], 100, 7)\nassert low <= high\nassert bootstrap_ci([0], 50, 1) == (0.0, 0.0)\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-deep-learning-softmax",
+    "track": "machine-learning",
+    "topic": "ml-deep-learning",
+    "title": "Numerically stable softmax",
+    "summary": "Compute softmax with max subtraction to avoid overflow.",
+    "statement": "Write softmax(logits) where logits is a non-empty list of floats. Compute exp(x - max(logits)) for each x; return the list of probabilities rounded to four decimals. Do not import math \u2014 use pow(2.718281828459045, x) or e ** x.",
+    "examples": [
+      {
+        "input": "[1.0, 1.0]",
+        "output": "[0.5, 0.5]",
+        "explanation": "Equal logits split the mass evenly."
+      },
+      {
+        "input": "[0.0, 0.0, 10.0]",
+        "output": "[0.0, 0.0, 0.9999]",
+        "explanation": "Dominant logit takes essentially all the mass; rounding to 4 decimals gives 0.9999."
+      }
+    ],
+    "constraints": [
+      "logits non-empty.",
+      "Probabilities sum to ~1.0 within rounding."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "deep learning",
+      "softmax",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 20,
+    "starter_code": "def softmax(logits):\n    # TODO: stable softmax \u2014 subtract the max before exp\n    pass\n",
+    "solution_code": "def softmax(logits):\n    top = max(logits)\n    exps = [pow(2.718281828459045, x - top) for x in logits]\n    total = sum(exps)\n    return [round(e / total, 4) for e in exps]\n",
+    "browser_checks": "assert softmax([1.0, 1.0]) == [0.5, 0.5]\nassert softmax([0.0, 0.0, 10.0])[-1] == 0.9999\nprint('All public checks passed.')\n",
+    "hints": [
+      "Subtract max(logits) before exp \u2014 always, never optional.",
+      "The denominator is the sum of the shifted exps.",
+      "Equal logits produce uniform probabilities \u2014 a good sanity check."
+    ],
+    "editorial": "Naive exp overflows for logits above ~709 in float64. Subtracting the max makes the largest term 1, everything else smaller, and the sum guaranteed finite \u2014 identical math, stable arithmetic. The result is a probability distribution over the classes.",
+    "judge_tests": "probs = softmax([1000.0, 1000.0, 1001.0])\nassert abs(sum(probs) - 1.0) < 1e-3\nassert probs[2] > probs[0]\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-deep-learning-cross-entropy",
+    "track": "machine-learning",
+    "topic": "ml-deep-learning",
+    "title": "Cross-entropy from sigmoid predictions",
+    "summary": "Compute the binary cross-entropy for a batch of sigmoid outputs.",
+    "statement": "Write bce_loss(gold, probabilities) where gold is a list of 0/1 ints and probabilities a list of predictions in (0, 1) clipped into [1e-15, 1 - 1e-15]. Return the mean loss -mean(y*log(p) + (1-y)*log(1-p)) rounded to four decimals. Import math.",
+    "examples": [
+      {
+        "input": "[1, 0], [0.8, 0.1]",
+        "output": "0.1644",
+        "explanation": "(-log(0.8) - log(0.9)) / 2 \u2248 (0.2231 + 0.1054) / 2 \u2248 0.1643... compute exactly."
+      },
+      {
+        "input": "[1], [0.5]",
+        "output": "0.6931",
+        "explanation": "-log(0.5) \u2248 0.6931."
+      }
+    ],
+    "constraints": [
+      "gold and probabilities are equal-length and non-empty.",
+      "Clip into [1e-15, 1-1e-15].",
+      "Round to four decimals."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "deep learning",
+      "loss",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-deep-learning-gradient-step"
+    ],
+    "estimated_minutes": 20,
+    "starter_code": "import math\n\ndef bce_loss(gold, probabilities):\n    # TODO: clip, then average binary cross-entropy\n    pass\n",
+    "solution_code": "import math\n\ndef bce_loss(gold, probabilities):\n    eps = 1e-15\n    total = 0.0\n    for y, p in zip(gold, probabilities):\n        p = min(max(p, eps), 1 - eps)\n        total += -(y * math.log(p) + (1 - y) * math.log(1 - p))\n    return round(total / len(gold), 4)\n",
+    "browser_checks": "assert bce_loss([1], [0.5]) == 0.6931\nassert abs(bce_loss([1, 0], [0.8, 0.1]) - 0.1643) < 1e-3\nprint('All public checks passed.')\n",
+    "hints": [
+      "Clip each probability into [eps, 1-eps].",
+      "Mean over the batch, not sum.",
+      "For a perfect confident prediction the loss approaches 0 \u2014 test it."
+    ],
+    "editorial": "BCE is the canonical loss for sigmoid-output classifiers. Per-sample, it's -log(p) when y=1 and -log(1-p) when y=0; the mean over the batch is what optimizers consume. Watch for silent NaNs when unclipped zeros slip in.",
+    "judge_tests": "import math\nassert abs(bce_loss([1], [1.0 - 1e-15])) < 1e-3\nassert abs(bce_loss([0], [1e-15])) < 1e-3\nassert abs(bce_loss([1, 0], [0.9, 0.1]) - 0.1054) < 1e-3\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-deep-learning-batchnorm",
+    "track": "machine-learning",
+    "topic": "ml-deep-learning",
+    "title": "Batch normalization for one column",
+    "summary": "Normalize a column of activations to zero mean and unit variance.",
+    "statement": "Write batch_norm(values) where values is a non-empty list of floats. Compute the mean and population variance (divide by n, not n-1); return the list of (x - mean) / sqrt(var + eps) with eps = 1e-5, rounded to four decimals. Do not import any package.",
+    "examples": [
+      {
+        "input": "[1.0, 2.0, 3.0]",
+        "output": "[-1.2247, 0.0, 1.2247]",
+        "explanation": "Mean 2, variance 2/3, std \u2248 0.8165."
+      },
+      {
+        "input": "[5.0, 5.0, 5.0]",
+        "output": "[0.0, 0.0, 0.0]",
+        "explanation": "Zero variance: all outputs 0 (variance term eps prevents division by zero)."
+      }
+    ],
+    "constraints": [
+      "values non-empty.",
+      "Population variance (n, not n-1).",
+      "eps = 1e-5 inside the sqrt."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "deep learning",
+      "batchnorm",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-statistics-descriptive-statistics"
+    ],
+    "estimated_minutes": 25,
+    "starter_code": "def batch_norm(values):\n    # TODO: (x - mean) / sqrt(var + 1e-5), population variance\n    pass\n",
+    "solution_code": "def batch_norm(values):\n    n = len(values)\n    mean = sum(values) / n\n    variance = sum((x - mean) ** 2 for x in values) / n\n    std = (variance + 1e-5) ** 0.5\n    return [round((x - mean) / std, 4) for x in values]\n",
+    "browser_checks": "assert batch_norm([1.0, 2.0, 3.0]) == [-1.2247, 0.0, 1.2247]\nassert batch_norm([5.0, 5.0, 5.0]) == [0.0, 0.0, 0.0]\nprint('All public checks passed.')\n",
+    "hints": [
+      "Population variance divides by n.",
+      "Add eps INSIDE the sqrt, never outside.",
+      "Zero-variance columns must yield 0, not NaN."
+    ],
+    "editorial": "BatchNorm stabilizes the distribution of activations between layers, letting networks train deeper with larger learning rates. The eps guards the sqrt against zero variance; gamma/beta are applied afterwards in the full layer \u2014 this exercise isolates the normalization itself.",
+    "judge_tests": "out = batch_norm([1.0, 2.0, 3.0, 4.0])\nassert abs(sum(out)) < 1e-3\nassert batch_norm([0.0]) == [0.0]\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-deep-learning-relu-gradient",
+    "track": "machine-learning",
+    "topic": "ml-deep-learning",
+    "title": "ReLU forward and backward",
+    "summary": "Implement ReLU activation and its derivative-based gradient signal.",
+    "statement": "Write relu_backward(x, upstream_grad) where x is the pre-activation input list of floats and upstream_grad the gradient flowing into the ReLU output list of the same length. Return the gradient to pass backward: upstream_grad[i] where x[i] > 0 else 0.0. Round to four decimals. Do not import any package.",
+    "examples": [
+      {
+        "input": "[-1.0, 0.5, 2.0], [10.0, 20.0, 30.0]",
+        "output": "[0.0, 20.0, 30.0]",
+        "explanation": "Positive pre-activations pass gradient through; negative ones block it."
+      },
+      {
+        "input": "[0.0, -0.1], [1.0, 1.0]",
+        "output": "[0.0, 0.0]",
+        "explanation": "Zero is treated as negative (gradient 0)."
+      }
+    ],
+    "constraints": [
+      "x and upstream_grad are equal-length and non-empty.",
+      "x[i] > 0 passes gradient; otherwise 0.0."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "deep learning",
+      "activations",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def relu_backward(x, upstream_grad):\n    # TODO: pass gradient through where x > 0, else 0\n    pass\n",
+    "solution_code": "def relu_backward(x, upstream_grad):\n    return [round(g, 4) if xi > 0 else 0.0 for xi, g in zip(x, upstream_grad)]\n",
+    "browser_checks": "assert relu_backward([-1.0, 0.5, 2.0], [10.0, 20.0, 30.0]) == [0.0, 20.0, 30.0]\nassert relu_backward([0.0, -0.1], [1.0, 1.0]) == [0.0, 0.0]\nprint('All public checks passed.')\n",
+    "hints": [
+      "ReLU blocks gradient for x <= 0, passes it for x > 0.",
+      "Use element-wise multiplication by the indicator.",
+      "This is the whole backward pass for a ReLU layer."
+    ],
+    "editorial": "ReLU's forward is max(0, x); its backward gate is exactly that: x > 0 ? 1 : 0, multiplied into the upstream gradient. Dead neurons (all-negative pre-activations) never learn \u2014 the infamous 'dying ReLU' \u2014 which is why Leaky ReLU variants exist.",
+    "judge_tests": "assert relu_backward([1.0, -1.0, 1e-9], [1.0, 1.0, 1.0]) == [1.0, 0.0, 1.0]\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-pytorch-sgd-momentum",
+    "track": "machine-learning",
+    "topic": "ml-pytorch",
+    "title": "SGD with momentum update",
+    "summary": "Apply one gradient descent step with momentum.",
+    "statement": "Write sgd_momentum(w, grad, v, lr, momentum) where w is a float, grad the gradient, v the previous velocity (0.0 for the first step), lr the learning rate, momentum the coefficient (e.g. 0.9). Compute v_new = momentum * v + grad; w_new = w - lr * v_new. Return (w_new, v_new) rounded to four decimals. Do not import any package.",
+    "examples": [
+      {
+        "input": "0.0, 1.0, 0.0, 0.1, 0.9",
+        "output": "(-0.1, 1.0)",
+        "explanation": "v = 0.9*0 + 1.0 = 1.0; w = 0 - 0.1*1.0 = -0.1."
+      },
+      {
+        "input": "0.0, 1.0, 1.0, 0.1, 0.9",
+        "output": "(-0.19, 1.9)",
+        "explanation": "v = 0.9*1.0 + 1.0 = 1.9; w = 0 - 0.1*1.9 = -0.19."
+      }
+    ],
+    "constraints": [
+      "Types are floats.",
+      "Round to four decimals."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "pytorch",
+      "optimizers",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 20,
+    "starter_code": "def sgd_momentum(w, grad, v, lr, momentum):\n    # TODO: velocity first, then parameter update\n    pass\n",
+    "solution_code": "def sgd_momentum(w, grad, v, lr, momentum):\n    v_new = momentum * v + grad\n    w_new = w - lr * v_new\n    return (round(w_new, 4), round(v_new, 4))\n",
+    "browser_checks": "assert sgd_momentum(0.0, 1.0, 0.0, 0.1, 0.9) == (-0.1, 1.0)\nassert sgd_momentum(0.0, 1.0, 1.0, 0.1, 0.9) == (-0.19, 1.9)\nprint('All public checks passed.')\n",
+    "hints": [
+      "Velocity first: v_new = momentum*v + grad.",
+      "Then step against the velocity, not the raw gradient.",
+      "Momentum accumulates consistent gradient direction."
+    ],
+    "editorial": "Momentum smooths the update direction by accumulating past gradients \u2014 noisy upward steps cancel while consistent directions amplify. The update uses the velocity, which is why momentum feels like inertia to practitioners.",
+    "judge_tests": "w, v = sgd_momentum(1.0, 0.5, 0.0, 0.2, 0.9)\nassert (w, v) == (0.9, 0.5)\nw, v = sgd_momentum(0.0, 1.0, 1.0, 0.1, 0.9)\nassert (w, v) == (-0.19, 1.9)\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-pytorch-matvec",
+    "track": "machine-learning",
+    "topic": "ml-pytorch",
+    "title": "Matrix-vector product",
+    "summary": "Compute A @ x for a matrix A and vector x.",
+    "statement": "Write matvec(matrix, vector) where matrix is a list of equal-length numeric lists and vector a single list. Return a new list with one dot product per row. Raise ValueError('shape mismatch') when a row's length differs from the vector's length. Do not import any package.",
+    "examples": [
+      {
+        "input": "[[1, 2], [3, 4]], [1, 1]",
+        "output": "[3, 7]",
+        "explanation": "Row dots: 1*1+2*1=3; 3*1+4*1=7."
+      },
+      {
+        "input": "[[1, 0], [0, 1]], [5, 6]",
+        "output": "[5, 6]",
+        "explanation": "Identity matrix returns the vector."
+      }
+    ],
+    "constraints": [
+      "matrix rows are rectangular.",
+      "ValueError('shape mismatch') on length conflict."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "pytorch",
+      "tensors",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def matvec(matrix, vector):\n    # TODO: one dot product per row\n    pass\n",
+    "solution_code": "def matvec(matrix, vector):\n    width = len(vector)\n    result = []\n    for row in matrix:\n        if len(row) != width:\n            raise ValueError('shape mismatch')\n        result.append(sum(a * b for a, b in zip(row, vector)))\n    return result\n",
+    "browser_checks": "assert matvec([[1, 2], [3, 4]], [1, 1]) == [3, 7]\nassert matvec([[1, 0], [0, 1]], [5, 6]) == [5, 6]\nprint('All public checks passed.')\n",
+    "hints": [
+      "Each output element is a dot product of a row with the vector.",
+      "Validate row widths before multiplying.",
+      "zip pairs elements by position."
+    ],
+    "editorial": "Matrix-vector multiplication is the inner loop of every neural network layer below an activation. Shape discipline (validate before multiply) is what catches broadcasting bugs before they produce silently wrong batches.",
+    "judge_tests": "assert matvec([[2, 0], [0, 3], [1, 1]], [1, 1]) == [2, 3, 2]\ntry:\n    matvec([[1, 2, 3]], [1, 1])\n    assert False\nexcept ValueError:\n    pass\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-pytorch-flatten",
+    "track": "machine-learning",
+    "topic": "ml-pytorch",
+    "title": "Flatten a nested tensor",
+    "summary": "Flatten arbitrarily nested lists into one flat list (depth-first).",
+    "statement": "Write flatten(values) where values is a list that may contain numbers or other lists of arbitrary nesting depth. Return a single flat list of all numbers, depth-first. Do not import any package.",
+    "examples": [
+      {
+        "input": "[[1, [2, 3]], [4]]",
+        "output": "[1, 2, 3, 4]",
+        "explanation": "Depth-first traversal preserves left-to-right order."
+      },
+      {
+        "input": "[]",
+        "output": "[]",
+        "explanation": "Empty input yields an empty list."
+      }
+    ],
+    "constraints": [
+      "Arbitrary nesting depth.",
+      "Order is depth-first, left to right."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "pytorch",
+      "tensors",
+      "recursion",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def flatten(values):\n    # TODO: depth-first flatten of nested lists\n    pass\n",
+    "solution_code": "def flatten(values):\n    out = []\n    def walk(node):\n        if isinstance(node, list):\n            for item in node:\n                walk(item)\n        else:\n            out.append(node)\n    walk(values)\n    return out\n",
+    "browser_checks": "assert flatten([[1, [2, 3]], [4]]) == [1, 2, 3, 4]\nassert flatten([]) == []\nprint('All public checks passed.')\n",
+    "hints": [
+      "Recursion is the shape of the data \u2014 nest in like the data nests.",
+      "Accumulate into an outer list to keep it simple.",
+      "isinstance(x, list) distinguishes containers from leaves."
+    ],
+    "editorial": "Flattening is the simplest tensor reshape in existence and the gateway to understanding view/reshape semantics: the memory order of a tensor is its iteration order, and reshaping is re-indexing along that exact rule.",
+    "judge_tests": "assert flatten([1, [2, [3, [4, [5]]]]]) == [1, 2, 3, 4, 5]\nassert flatten([[], [[]], [1]]) == [1]\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-pytorch-lr-warmup",
+    "track": "machine-learning",
+    "topic": "ml-pytorch",
+    "title": "Linear learning-rate warmup",
+    "summary": "Compute the learning rate at a given step of a linear warmup schedule.",
+    "statement": "Write warmup_lr(step, warmup_steps, base_lr) where step is the current 0-indexed step, warmup_steps the number of warmup steps (int > 0), base_lr the target learning rate. Return min(base_lr, base_lr * (step + 1) / warmup_steps) rounded to eight decimals. Do not import any package.",
+    "examples": [
+      {
+        "input": "0, 10, 0.01",
+        "output": "0.001",
+        "explanation": "Step 0 of 10 warmup steps: 0.01 * 1/10 = 0.001."
+      },
+      {
+        "input": "9, 10, 0.01",
+        "output": "0.01",
+        "explanation": "Last warmup step reaches base_lr exactly."
+      }
+    ],
+    "constraints": [
+      "warmup_steps >= 1.",
+      "Return float, rounded to 8 decimals.",
+      "After warmup, return base_lr."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "pytorch",
+      "training",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def warmup_lr(step, warmup_steps, base_lr):\n    # TODO: linear warmup capped at base_lr\n    pass\n",
+    "solution_code": "def warmup_lr(step, warmup_steps, base_lr):\n    lr = base_lr * (step + 1) / warmup_steps\n    return round(min(base_lr, lr), 8)\n",
+    "browser_checks": "assert warmup_lr(0, 10, 0.01) == 0.001\nassert warmup_lr(9, 10, 0.01) == 0.01\nprint('All public checks passed.')\n",
+    "hints": [
+      "Step counter starts at 0, but the factor is (step + 1) so step 0 is not a zero LR.",
+      "Clamp to base_lr after warmup.",
+      "Warmup avoids explosive first-step gradients on large batch training."
+    ],
+    "editorial": "Warmup ramps the optimizer from near-zero into the real learning rate over the first N steps \u2014 empirically essential for transformer stability. The (step + 1) ensures the schedule is continuous and never exactly zero during warmup.",
+    "judge_tests": "assert warmup_lr(4, 10, 1.0) == 0.5\nassert warmup_lr(100, 10, 0.01) == 0.01\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-computer-vision-convolve2d",
+    "track": "machine-learning",
+    "topic": "ml-computer-vision",
+    "title": "2D convolution (valid mode)",
+    "summary": "Convolve a kernel over a grayscale image.",
+    "statement": "Write convolve2d(image, kernel) where image is a non-empty rectangular list of lists of ints and kernel is a 3x3 list of lists of ints. Compute valid-mode convolution (no padding): for each 3x3 sliding window, sum image[r+i][c+j] * kernel[i][j]. Return the output grid (rows-2 x cols-2) of ints. Do not import any package.",
+    "examples": [
+      {
+        "input": "[[1, 2, 3], [4, 5, 6], [7, 8, 9]], [[1, 0, 0], [0, 0, 0], [0, 0, 0]]",
+        "output": "[[1]]",
+        "explanation": "A top-left spike filter picks the top-left pixel of every window."
+      },
+      {
+        "input": "[[1, 1, 1], [1, 1, 1], [1, 1, 1]], [[1, 1, 1], [1, 1, 1], [1, 1, 1]]",
+        "output": "[[9]]",
+        "explanation": "All-ones kernel over all-ones image gives 9."
+      }
+    ],
+    "constraints": [
+      "image rows are rectangular.",
+      "image is at least 3x3.",
+      "kernel is exactly 3x3."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "computer vision",
+      "convolution",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-computer-vision-grayscale"
+    ],
+    "estimated_minutes": 30,
+    "starter_code": "def convolve2d(image, kernel):\n    # TODO: valid-mode 3x3 convolution\n    pass\n",
+    "solution_code": "def convolve2d(image, kernel):\n    rows, cols = len(image), len(image[0])\n    out = []\n    for r in range(rows - 2):\n        row = []\n        for c in range(cols - 2):\n            total = 0\n            for i in range(3):\n                for j in range(3):\n                    total += image[r + i][c + j] * kernel[i][j]\n            row.append(total)\n        out.append(row)\n    return out\n",
+    "browser_checks": "assert convolve2d([[1, 2, 3], [4, 5, 6], [7, 8, 9]], [[1, 0, 0], [0, 0, 0], [0, 0, 0]]) == [[1]]\nassert convolve2d([[1, 1, 1], [1, 1, 1], [1, 1, 1]], [[1, 1, 1], [1, 1, 1], [1, 1, 1]]) == [[9]]\nprint('All public checks passed.')\n",
+    "hints": [
+      "Valid mode: output is (rows-2) x (cols-2).",
+      "Sliding window: image[r+i][c+j] * kernel[i][j].",
+      "This IS a neural network layer without the activation."
+    ],
+    "editorial": "Convolution is a sliding dot product between kernel and local patch. Valid mode drops the border (output smaller than input); same mode pads zeros to preserve size. Every CNN layer stacks thousands of these 3x3 dot products at once.",
+    "judge_tests": "assert convolve2d([[1, 0, 1], [0, 2, 0], [1, 0, 1]], [[0, 1, 0], [1, 1, 1], [0, 1, 0]]) == [[2]]\nassert convolve2d([[1]*4 for _ in range(4)], [[1]*3 for _ in range(3)]) == [[9, 9], [9, 9]]\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-computer-vision-normalize",
+    "track": "machine-learning",
+    "topic": "ml-computer-vision",
+    "title": "Normalize pixels to [0, 1]",
+    "summary": "Scale a pixel grid from 0-255 to 0.0-1.0.",
+    "statement": "Write normalize_pixels(pixels) where pixels is a non-empty list of rows of ints 0-255. Return a new nested list of pixels scaled as value / 255.0, rounded to four decimals. Do not import any package.",
+    "examples": [
+      {
+        "input": "[[0, 128, 255]]",
+        "output": "[[0.0, 0.502, 1.0]]",
+        "explanation": "128 / 255 \u2248 0.5020."
+      },
+      {
+        "input": "[[255]]",
+        "output": "[[1.0]]",
+        "explanation": "The maximum maps to exactly 1.0."
+      }
+    ],
+    "constraints": [
+      "pixels is non-empty; rows are non-empty.",
+      "Round to four decimals."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "computer vision",
+      "preprocessing",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-computer-vision-grayscale"
+    ],
+    "estimated_minutes": 10,
+    "starter_code": "def normalize_pixels(pixels):\n    # TODO: divide every pixel by 255.0\n    pass\n",
+    "solution_code": "def normalize_pixels(pixels):\n    return [[round(value / 255.0, 4) for value in row] for row in pixels]\n",
+    "browser_checks": "assert normalize_pixels([[0, 128, 255]]) == [[0.0, 0.502, 1.0]]\nassert normalize_pixels([[255]]) == [[1.0]]\nprint('All public checks passed.')\n",
+    "hints": [
+      "255.0 is the only constant you need.",
+      "Keep the nested list structure.",
+      "This is the first line of every vision preprocessing pipeline."
+    ],
+    "editorial": "Networks expect inputs in a small range \u2014 usually [0, 1] or [-1, 1]. Raw 0-255 ints blow up the first-layer gradients; dividing by 255.0 is the whole trick, and almost every vision framework normalizes silently for you.",
+    "judge_tests": "assert normalize_pixels([[0, 255], [128, 64]]) == [[0.0, 1.0], [0.502, 0.251]]\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-computer-vision-iou",
+    "track": "machine-learning",
+    "topic": "ml-computer-vision",
+    "title": "Intersection over union of bounding boxes",
+    "summary": "Compute IoU between two axis-aligned boxes.",
+    "statement": "Write iou(box_a, box_b) where each box is (x1, y1, x2, y2) with x1 < x2 and y1 < y2. Compute intersection area and union area; return IoU = intersection / union rounded to four decimals, or 0.0 when the boxes do not overlap. Do not import any package.",
+    "examples": [
+      {
+        "input": "(0, 0, 10, 10), (5, 5, 15, 15)",
+        "output": "0.1429",
+        "explanation": "Intersection 5x5=25; union 100+100-25=175; 25/175 \u2248 0.1429."
+      },
+      {
+        "input": "(0, 0, 10, 10), (20, 20, 30, 30)",
+        "output": "0.0",
+        "explanation": "Boxes disjoint."
+      }
+    ],
+    "constraints": [
+      "Boxes are (x1, y1, x2, y2) with x1 < x2, y1 < y2.",
+      "No overlap -> 0.0.",
+      "Round to four decimals."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "computer vision",
+      "detection",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-computer-vision-grayscale"
+    ],
+    "estimated_minutes": 25,
+    "starter_code": "def iou(box_a, box_b):\n    # TODO: intersection / union\n    pass\n",
+    "solution_code": "def iou(box_a, box_b):\n    ax1, ay1, ax2, ay2 = box_a\n    bx1, by1, bx2, by2 = box_b\n    ix1, iy1 = max(ax1, bx1), max(ay1, by1)\n    ix2, iy2 = min(ax2, bx2), min(ay2, by2)\n    width = max(0, ix2 - ix1)\n    height = max(0, iy2 - iy1)\n    intersection = width * height\n    area_a = (ax2 - ax1) * (ay2 - ay1)\n    area_b = (bx2 - bx1) * (by2 - by1)\n    union = area_a + area_b - intersection\n    return round(intersection / union, 4) if union else 0.0\n",
+    "browser_checks": "assert iou((0, 0, 10, 10), (5, 5, 15, 15)) == 0.1429\nassert iou((0, 0, 10, 10), (20, 20, 30, 30)) == 0.0\nprint('All public checks passed.')\n",
+    "hints": [
+      "Intersection width/height = min(rights) - max(lefts), clamped at zero.",
+      "Union = area_a + area_b - intersection.",
+      "Disjoint boxes give intersection 0 without special-casing if width/height clamp to 0."
+    ],
+    "editorial": "IoU is the universal overlap metric for object detection \u2014 the same formula decides whether a predicted box counts as a detection or a miss at evaluation, and non-max suppression uses it to deduplicate hits.",
+    "judge_tests": "assert iou((0, 0, 10, 10), (0, 0, 10, 10)) == 1.0\nassert iou((0, 0, 10, 10), (5, 5, 10, 10)) == 0.25\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-computer-vision-histogram",
+    "track": "machine-learning",
+    "topic": "ml-computer-vision",
+    "title": "Intensity histogram of a grayscale grid",
+    "summary": "Count pixel occurrences per 256 intensity levels.",
+    "statement": "Write intensity_histogram(pixels) where pixels is a non-empty rectangular list of rows of ints 0-255. Return a list of 256 ints, each the count of pixels with that intensity, in ascending order. Do not import any package.",
+    "examples": [
+      {
+        "input": "[[0, 0, 255], [128, 255, 0]]",
+        "output": "[3, 0, ..., 1, ..., 2, ...]",
+        "explanation": "Three 0s, one 128, two 255s \u2014 the list has exactly 256 slots."
+      },
+      {
+        "input": "[[7]]",
+        "output": "[0, 0, 0, 0, 0, 0, 0, 1]",
+        "explanation": "One pixel at intensity 7; the rest are zero."
+      }
+    ],
+    "constraints": [
+      "pixels is non-empty; rows are rectangular ints in [0, 255].",
+      "Return exactly 256 counts."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "computer vision",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-computer-vision-grayscale"
+    ],
+    "estimated_minutes": 15,
+    "starter_code": "def intensity_histogram(pixels):\n    # TODO: 256-bucket pixel histogram\n    pass\n",
+    "solution_code": "def intensity_histogram(pixels):\n    hist = [0] * 256\n    for row in pixels:\n        for value in row:\n            hist[value] += 1\n    return hist\n",
+    "browser_checks": "hist = intensity_histogram([[0, 0, 255], [128, 255, 0]])\nassert hist[0] == 3 and hist[128] == 1 and hist[255] == 2 and len(hist) == 256\nassert sum(hist) == 6\nprint('All public checks passed.')\n",
+    "hints": [
+      "Pre-allocate 256 zeros \u2014 indexing beats resizing.",
+      "Every pixel increments exactly one bucket.",
+      "Sum of all buckets equals total pixel count."
+    ],
+    "editorial": "Histograms compress an entire image into 256 numbers, and they lose all spatial information \u2014 which is both their limitation and their point. They power histogram equalization, auto-exposure heuristics, and cheap image retrieval.",
+    "judge_tests": "hist = intensity_histogram([[255, 255], [0, 0]])\nassert hist[255] == 2 and hist[0] == 2\nassert intensity_histogram([[0]])[:3] == [1, 0, 0]\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-reproducible-lcg-sequence",
+    "track": "machine-learning",
+    "topic": "ml-reproducible-training",
+    "title": "Linear congruential generator sequence",
+    "summary": "Generate the first n outputs of a linear congruential generator.",
+    "statement": "Write lcg_sequence(seed, n) where seed is a non-negative int and n a positive int. Use the classic constants multiplier = 1664525, increment = 1013904223, modulus = 2**32. x_{k+1} = (multiplier * x_k + increment) % modulus. Return the list of the first n outputs (starting from the seed as x_0: x_1, x_2, ..., x_n). Do not import any package.",
+    "examples": [
+      {
+        "input": "0, 3",
+        "output": "[1013904223, 1196435762, 3519870697]",
+        "explanation": "x1 = (1664525*0 + 1013904223) % 2^32 = 1013904223; x2 and x3 follow from the recurrence."
+      },
+      {
+        "input": "12345, 1",
+        "output": "[87628868]",
+        "explanation": "x1 = (1664525*12345 + 1013904223) % 2^32."
+      }
+    ],
+    "constraints": [
+      "seed >= 0.",
+      "n >= 1.",
+      "Returns exactly n integers in [0, 2**32)."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "reproducible training",
+      "rng",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 20,
+    "starter_code": "def lcg_sequence(seed, n):\n    # TODO: classic glibc LCG constants\n    pass\n",
+    "solution_code": "def lcg_sequence(seed, n):\n    multiplier, increment, modulus = 1664525, 1013904223, 2**32\n    values = []\n    x = seed\n    for _ in range(n):\n        x = (multiplier * x + increment) % modulus\n        values.append(x)\n    return values\n",
+    "browser_checks": "assert lcg_sequence(0, 3) == [1013904223, 1196435762, 3519870697]\nassert len(lcg_sequence(42, 5)) == 5\nprint('All public checks passed.')\n",
+    "hints": [
+      "Constants first: multiplier 1664525, increment 1013904223, modulus 2**32.",
+      "Iterate exactly n times from the seed.",
+      "The same seed always produces the same sequence \u2014 that's the point."
+    ],
+    "editorial": "LCGs are the simplest pseudo-random engines: one multiply, one add, one modulo per step. Same seed, same stream, forever \u2014 which is exactly why two runs of a training job see the same 'random' batches.",
+    "judge_tests": "assert lcg_sequence(0, 2) == [1013904223, 1196435762]\nassert lcg_sequence(12345, 1) == [87628868]\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-reproducible-config-hash",
+    "track": "machine-learning",
+    "topic": "ml-reproducible-training",
+    "title": "Configuration fingerprint",
+    "summary": "Hash an experiment config dict to a stable identifier.",
+    "statement": "Write config_hash(config) where config is a dict with JSON-serializable values. Serialize canonically with json.dumps(config, sort_keys=True, separators=(',', ':'), default=str) and return the sha256 hex digest. Import json and hashlib.",
+    "examples": [
+      {
+        "input": "{'a': 1, 'b': [2, 3]}",
+        "output": "(64 hex chars)",
+        "explanation": "Canonical key order makes the digest content-addressed."
+      },
+      {
+        "input": "{}",
+        "output": "(64 hex chars)",
+        "explanation": "Empty config still hashes."
+      }
+    ],
+    "constraints": [
+      "config is a dict with JSON-serializable values.",
+      "Key order must not change the digest."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "reproducible training",
+      "hashing",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-reproducible-fingerprint"
+    ],
+    "estimated_minutes": 15,
+    "starter_code": "import json\nimport hashlib\n\ndef config_hash(config):\n    # TODO: canonical JSON + sha256\n    pass\n",
+    "solution_code": "import json\nimport hashlib\n\ndef config_hash(config):\n    blob = json.dumps(config, sort_keys=True, separators=(',', ':'), default=str)\n    return hashlib.sha256(blob.encode('utf-8')).hexdigest()\n",
+    "browser_checks": "h1 = config_hash({'a': 1, 'b': [2, 3]})\nh2 = config_hash({'b': [2, 3], 'a': 1})\nassert h1 == h2 and len(h1) == 64\nprint('All public checks passed.')\n",
+    "hints": [
+      "json.dumps with sort_keys and tight separators is the canonical form.",
+      "sha256 of the utf-8 bytes.",
+      "The digest must depend on content only."
+    ],
+    "editorial": "Content-addressed configs let a registry reject duplicates and detect drift between 'the config used last week' and 'the config used now'. Key sorting makes the hash stable across serialization orders.",
+    "judge_tests": "assert config_hash({}) == config_hash({})\nassert config_hash({'x': [1, 2, {'y': 'a'}]}) != config_hash({'x': [1, 2, {'y': 'b'}]})\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-reproducible-determinism-check",
+    "track": "machine-learning",
+    "topic": "ml-reproducible-training",
+    "title": "Determinism check across runs",
+    "summary": "Flag whether two metric dicts from identical runs diverge.",
+    "statement": "Write runs_agree(metrics_a, metrics_b, tolerance) where both metrics are dicts of metric -> float. Return True when every shared key's values differ by at most tolerance; missing keys in either dict make the runs disagree (return False). Import nothing.",
+    "examples": [
+      {
+        "input": "{'f1': 0.8}, {'f1': 0.8}, 0.0",
+        "output": "True",
+        "explanation": "Bit-identical runs."
+      },
+      {
+        "input": "{'f1': 0.8}, {'f1': 0.9}, 0.05",
+        "output": "False",
+        "explanation": "0.8 vs 0.9 exceeds tolerance 0.05."
+      }
+    ],
+    "constraints": [
+      "metrics dicts map names to floats.",
+      "tolerance >= 0.",
+      "Mismatched keys -> False."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "reproducible training",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-reproducible-fingerprint"
+    ],
+    "estimated_minutes": 15,
+    "starter_code": "def runs_agree(metrics_a, metrics_b, tolerance):\n    # TODO: compare shared keys with absolute tolerance\n    pass\n",
+    "solution_code": "def runs_agree(metrics_a, metrics_b, tolerance):\n    if set(metrics_a) != set(metrics_b):\n        return False\n    return all(abs(metrics_a[k] - metrics_b[k]) <= tolerance for k in metrics_a)\n",
+    "browser_checks": "assert runs_agree({'f1': 0.8}, {'f1': 0.8}, 0.0) is True\nassert runs_agree({'f1': 0.8}, {'f1': 0.9}, 0.05) is False\nprint('All public checks passed.')\n",
+    "hints": [
+      "Compare key sets first.",
+      "abs difference per shared key, compare to tolerance.",
+      "Agreement must be total, not average."
+    ],
+    "editorial": "Two runs that should be identical either are or are not \u2014 averaging their agreement away hides nondeterminism. Exact key-set equality plus per-key tolerance is the honest check; anything fancier is hope dressed as math.",
+    "judge_tests": "assert runs_agree({'a': 1.0, 'b': 2.0}, {'a': 1.0, 'b': 2.0}, 0.0) is True\nassert runs_agree({'a': 1.0}, {'a': 1.0, 'b': 2.0}, 1e9) is False\nassert runs_agree({}, {}, 0.0) is True\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-reproducible-split-assignment",
+    "track": "machine-learning",
+    "topic": "ml-reproducible-training",
+    "title": "Deterministic hash-based train/eval split",
+    "summary": "Assign each id to train or eval by hashing its name.",
+    "statement": "Write split_assignment(ids, eval_fraction, seed) where ids is a list of unique string ids, eval_fraction in (0, 1), seed an integer. For each id compute h = sha256(f'{seed}:{id}') \u2014 use the top 8 bytes of the digest as an int / 2**64 to get a float in [0, 1); ids with float < eval_fraction go to 'eval', else 'train'. Return a dict {id: 'train'|'eval'}. Import hashlib only.",
+    "examples": [
+      {
+        "input": "['a', 'b', 'c', 'd'], 0.5, 42",
+        "output": "(assignment depends on digests \u2014 check your own output)",
+        "explanation": "The split is deterministic given the same seed, but the exact labels depend on the hash of each id."
+      },
+      {
+        "input": "['x'], 0.5, 42",
+        "output": "{'x': 'train' | 'eval'}",
+        "explanation": "Single id may land in either split."
+      }
+    ],
+    "constraints": [
+      "ids are non-empty strings, unique as given.",
+      "eval_fraction in (0, 1).",
+      "Same seed -> same assignment."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "reproducible training",
+      "hashing",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-reproducible-fingerprint"
+    ],
+    "estimated_minutes": 25,
+    "starter_code": "import hashlib\n\ndef split_assignment(ids, eval_fraction, seed):\n    # TODO: hash-based deterministic split\n    pass\n",
+    "solution_code": "import hashlib\n\ndef split_assignment(ids, eval_fraction, seed):\n    result = {}\n    for id_ in ids:\n        digest = hashlib.sha256(f'{seed}:{id_}'.encode('utf-8')).digest()\n        score = int.from_bytes(digest[:8], 'big') / 2**64\n        result[id_] = 'eval' if score < eval_fraction else 'train'\n    return result\n",
+    "browser_checks": "out = split_assignment(['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'], 0.5, 42)\nassert set(out) == {'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'}\nassert all(v in ('train', 'eval') for v in out.values())\nassert split_assignment(['a', 'b'], 0.5, 42) == split_assignment(['a', 'b'], 0.5, 42)\nprint('All public checks passed.')\n",
+    "hints": [
+      "sha256(seed:id) as the random oracle.",
+      "Use the first 8 digest bytes as a big-endian int.",
+      "Dividing by 2**64 yields a float in [0, 1)."
+    ],
+    "editorial": "Hash-based splitting is the poor person's stratification: no RNG state, no shuffle, no leakage of order into the assignment. Same ids, same seed, same split, forever \u2014 and dropping or adding a row only moves its own assignment, not anyone else's.",
+    "judge_tests": "out = split_assignment(['apple', 'banana'], 0.5, 1)\nassert set(out) == {'apple', 'banana'}\nassert split_assignment(['apple'], 0.5, 1) == split_assignment(['apple'], 0.5, 1)\nassert split_assignment(['apple'], 0.5, 1) != split_assignment(['apple'], 0.5, 2) or True\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-production-rate-limiter",
+    "track": "machine-learning",
+    "topic": "ml-production-ml",
+    "title": "Token bucket rate limiter",
+    "summary": "Implement one step of a token bucket: refill and consume.",
+    "statement": "Write token_bucket_step(tokens, capacity, refill_per_second, elapsed_seconds, cost). Refill: tokens += refill_per_second * elapsed_seconds, capped at capacity. If tokens >= cost, subtract cost and return (True, tokens); else return (False, tokens). Round to four decimals. Do not import any package.",
+    "examples": [
+      {
+        "input": "10.0, 10.0, 1.0, 5.0, 3.0",
+        "output": "(True, 10.0)",
+        "explanation": "Refill to capacity 10; consume 3 to leave 7? Refill capped at 10: tokens = min(10 + 5, 10) = 10; consume 3 -> 7.0, True."
+      },
+      {
+        "input": "0.0, 10.0, 2.0, 1.0, 3.0",
+        "output": "(False, 2.0)",
+        "explanation": "Refill to 2; cost 3 not affordable: reject, tokens stay 2."
+      }
+    ],
+    "constraints": [
+      "tokens, capacity, refill and elapsed are floats >= 0.",
+      "cost > 0.",
+      "Round to four decimals."
+    ],
+    "difficulty": "intermediate",
+    "skills": [
+      "production ml",
+      "rate limiting",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 20,
+    "starter_code": "def token_bucket_step(tokens, capacity, refill_per_second, elapsed_seconds, cost):\n    # TODO: refill, then consume if affordable\n    pass\n",
+    "solution_code": "def token_bucket_step(tokens, capacity, refill_per_second, elapsed_seconds, cost):\n    tokens = min(capacity, tokens + refill_per_second * elapsed_seconds)\n    if tokens >= cost:\n        return (True, round(tokens - cost, 4))\n    return (False, round(tokens, 4))\n",
+    "browser_checks": "assert token_bucket_step(10.0, 10.0, 1.0, 5.0, 3.0) == (True, 7.0)\nassert token_bucket_step(0.0, 10.0, 2.0, 1.0, 3.0) == (False, 2.0)\nprint('All public checks passed.')\n",
+    "hints": [
+      "Refill first, cap at capacity.",
+      "Check affordability after refill.",
+      "Rejected requests do not consume tokens."
+    ],
+    "editorial": "Token bucket is the workhorse of API and inference rate limiting: smooth average rate via refill, burst capacity via the bucket ceiling. Short bursts are free; sustained overload is rejected \u2014 exactly what protecting an expensive model wants.",
+    "judge_tests": "assert token_bucket_step(5.0, 10.0, 1.0, 100.0, 4.0) == (True, 6.0)\nassert token_bucket_step(1.0, 5.0, 1.0, 0.5, 2.0) == (False, 1.5)\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-production-canary-promotion",
+    "track": "machine-learning",
+    "topic": "ml-production-ml",
+    "title": "Canary promotion decision",
+    "summary": "Promote a canary when its error rate is not worse than baseline.",
+    "statement": "Write canary_decision(baseline_error_rate, canary_error_rate, tolerance). Return 'rollback' when canary_error_rate > baseline_error_rate + tolerance, else 'promote'. Both inputs in [0, 1]; tolerance >= 0. Do not import any package.",
+    "examples": [
+      {
+        "input": "0.05, 0.07, 0.01",
+        "output": "'rollback'",
+        "explanation": "Canary is 2 points worse than baseline plus 1 point tolerance."
+      },
+      {
+        "input": "0.05, 0.055, 0.01",
+        "output": "'promote'",
+        "explanation": "Within tolerance."
+      }
+    ],
+    "constraints": [
+      "Rates in [0, 1].",
+      "tolerance >= 0.",
+      "Return exactly 'promote' or 'rollback'."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "production ml",
+      "rollout",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def canary_decision(baseline_error_rate, canary_error_rate, tolerance):\n    # TODO: compare canary against baseline + tolerance\n    pass\n",
+    "solution_code": "def canary_decision(baseline_error_rate, canary_error_rate, tolerance):\n    return 'rollback' if canary_error_rate > baseline_error_rate + tolerance else 'promote'\n",
+    "browser_checks": "assert canary_decision(0.05, 0.07, 0.01) == 'rollback'\nassert canary_decision(0.05, 0.055, 0.01) == 'promote'\nprint('All public checks passed.')\n",
+    "hints": [
+      "One comparison: canary vs baseline + tolerance.",
+      "Fixtures-only, no stats fancywork \u2014 the gate is mechanical.",
+      "Automatic promotion on evidence, automatic rollback on regression."
+    ],
+    "editorial": "Canary promotion gates the blast radius of an AI system: a tiny fraction of traffic sees the new build, and the gate is purely mechanical \u2014 regress beyond tolerance and the rollback fires without a human in the loop.",
+    "judge_tests": "assert canary_decision(0.1, 0.1, 0.0) == 'promote'\nassert canary_decision(0.1, 0.10001, 0.0) == 'rollback'\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-production-latency-budget",
+    "track": "machine-learning",
+    "topic": "ml-production-ml",
+    "title": "Check a staged latency budget",
+    "summary": "Sum stage timings and verify they fit the latency budget.",
+    "statement": "Write latency_budget(stages, budget_ms) where stages is a dict of stage name -> milliseconds (floats) and budget_ms a float. Return (within_budget, total_ms) where within_budget is True iff sum(stages.values()) <= budget_ms; total_ms rounded to four decimals. Do not import any package.",
+    "examples": [
+      {
+        "input": "{'tokenize': 10.0, 'retrieve': 40.0, 'generate': 120.0}, 200.0",
+        "output": "(True, 170.0)",
+        "explanation": "Total 170 <= 200."
+      },
+      {
+        "input": "{'tokenize': 10.0, 'generate': 250.0}, 200.0",
+        "output": "(False, 260.0)",
+        "explanation": "Over budget."
+      }
+    ],
+    "constraints": [
+      "stages may be empty.",
+      "Return a tuple (bool, float).",
+      "Round total to four decimals."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "production ml",
+      "latency",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def latency_budget(stages, budget_ms):\n    # TODO: sum the stages, compare with budget\n    pass\n",
+    "solution_code": "def latency_budget(stages, budget_ms):\n    total = round(sum(stages.values()), 4)\n    return (total <= budget_ms, total)\n",
+    "browser_checks": "assert latency_budget({'tokenize': 10.0, 'retrieve': 40.0, 'generate': 120.0}, 200.0) == (True, 170.0)\nassert latency_budget({'tokenize': 10.0, 'generate': 250.0}, 200.0) == (False, 260.0)\nprint('All public checks passed.')\n",
+    "hints": [
+      "Sum the dict values; compare to budget.",
+      "Return (within, total) \u2014 not just the bool.",
+      "Sharing the total makes the SLO report self-explanatory."
+    ],
+    "editorial": "A latency budget is the contract between engineering and the product. Decomposing it by stage (tokenize, retrieve, generate, post-process) shows exactly who spent what \u2014 the difference between capacity planning and finger-pointing.",
+    "judge_tests": "assert latency_budget({}, 100.0) == (True, 0.0)\nassert latency_budget({'a': 150.0, 'b': 60.0}, 200.0) == (False, 210.0)\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-production-rollback-trigger",
+    "track": "machine-learning",
+    "topic": "ml-production-ml",
+    "title": "Sustained error-rate rollback trigger",
+    "summary": "Roll back after N consecutive breaching windows.",
+    "statement": "Write rollback_trigger(error_rates, threshold, consecutive) where error_rates is a list of per-window error rates, threshold the breach level, consecutive the required breaching streak. Return True if there exists a run of at least consecutive consecutive windows with rate >= threshold; else False. Do not import any package.",
+    "examples": [
+      {
+        "input": "[0.01, 0.09, 0.08, 0.07, 0.02], 0.05, 3",
+        "output": "True",
+        "explanation": "Three consecutive windows >= 0.05."
+      },
+      {
+        "input": "[0.09, 0.01, 0.09, 0.09], 0.05, 2",
+        "output": "True",
+        "explanation": "Two consecutive 0.09s."
+      }
+    ],
+    "constraints": [
+      "error_rates is a list of floats.",
+      "threshold >= 0.",
+      "consecutive >= 1."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "production ml",
+      "monitoring",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-production-canary-promotion"
+    ],
+    "estimated_minutes": 20,
+    "starter_code": "def rollback_trigger(error_rates, threshold, consecutive):\n    # TODO: True if any streak >= consecutive of rates >= threshold\n    pass\n",
+    "solution_code": "def rollback_trigger(error_rates, threshold, consecutive):\n    streak = 0\n    for rate in error_rates:\n        if rate >= threshold:\n            streak += 1\n            if streak >= consecutive:\n                return True\n        else:\n            streak = 0\n    return False\n",
+    "browser_checks": "assert rollback_trigger([0.01, 0.09, 0.08, 0.07, 0.02], 0.05, 3) is True\nassert rollback_trigger([0.09, 0.01, 0.09, 0.09], 0.05, 2) is True\nprint('All public checks passed.')\n",
+    "hints": [
+      "One pass: count consecutive breaching windows.",
+      "Reset the streak to zero on any clean window.",
+      "The streak-length check matters \u2014 single spikes should not roll back."
+    ],
+    "editorial": "A single bad window is an anecdote; three in a row is a regression. Requiring consecutive breaches filters provider hiccups and deploys the true remedy \u2014 automatic rollback \u2014 only when the evidence is sustained.",
+    "judge_tests": "assert rollback_trigger([0.5, 0.5, 0.5, 0.5], 0.1, 10) is False\nassert rollback_trigger([0.5, 0.5, 0.01, 0.5, 0.5], 0.1, 2) is True\nassert rollback_trigger([], 0.1, 1) is False\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-mlops-artifact-path",
+    "track": "machine-learning",
+    "topic": "ml-mlops",
+    "title": "Build an artifact registry path",
+    "summary": "Compose a normalized storage path for a model artifact.",
+    "statement": "Write artifact_path(environment, model, version, filename). Return f'{environment}/models/{model}/{version}/{filename}' with each part stripped of leading/trailing slashes ('/'), spaces converted to '-', and lowercased. Raise ValueError('empty part') if any part is empty after stripping. Do not import any package.",
+    "examples": [
+      {
+        "input": "'Production', 'Churn Model', '1.4.0', 'model.bin'",
+        "output": "'production/models/churn-model/1.4.0/model.bin'",
+        "explanation": "Lowercased, spaces to dashes, slashes trimmed."
+      },
+      {
+        "input": "'/staging/', '/clf/', '/0.2/', '/weights.bin/'",
+        "output": "'staging/models/clf/0.2/weights.bin'",
+        "explanation": "Leading/trailing slashes removed at each level."
+      }
+    ],
+    "constraints": [
+      "All four parts must be non-empty after normalization.",
+      "Lowercase output; spaces become dashes."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "mlops",
+      "artifacts",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def artifact_path(environment, model, version, filename):\n    # TODO: normalize parts; build registry path\n    pass\n",
+    "solution_code": "def artifact_path(environment, model, version, filename):\n    parts = [part.strip('/').lower().replace(' ', '-') for part in (environment, model, version, filename)]\n    if any(part == '' for part in parts):\n        raise ValueError('empty part')\n    return f'{parts[0]}/models/{parts[1]}/{parts[2]}/{parts[3]}'\n",
+    "browser_checks": "assert artifact_path('Production', 'Churn Model', '1.4.0', 'model.bin') == 'production/models/churn-model/1.4.0/model.bin'\nassert artifact_path('/staging/', '/clf/', '/0.2/', '/weights.bin/') == 'staging/models/clf/0.2/weights.bin'\nprint('All public checks passed.')\n",
+    "hints": [
+      "Strip slashes, lowercase, then replace spaces with dashes \u2014 in that order.",
+      "Validate before joining.",
+      "f-strings keep the layout obvious."
+    ],
+    "editorial": "A registry path is a contract: same model, same version, same environment, same object \u2014 forever. Normalization is what keeps 'Production', 'production', and 'production ' from becoming three different artifacts.",
+    "judge_tests": "assert artifact_path('a', 'b', 'c', 'd') == 'a/models/b/c/d'\ntry:\n    artifact_path('', 'b', 'c', 'd')\n    assert False\nexcept ValueError:\n    pass\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-mlops-experiment-entry",
+    "track": "machine-learning",
+    "topic": "ml-mlops",
+    "title": "Validate an experiment registry entry",
+    "summary": "Check required keys and value types for an experiment entry.",
+    "statement": "Write validate_experiment(entry) where entry is a dict. Required keys with float values: score, threshold. Required keys with non-empty str values: run_id, dataset. Optional keys: notes (str). Return a sorted list of problem strings, empty when valid: 'missing <key>' for absent keys, 'bad type <key>' for wrong types, 'empty <key>' for empty strings, 'unknown key <key>' for keys outside the allowed set. Do not import any package.",
+    "examples": [
+      {
+        "input": "{'run_id': 'r1', 'dataset': 'd1', 'score': 0.9, 'threshold': 0.85}",
+        "output": "[]",
+        "explanation": "Valid entry."
+      },
+      {
+        "input": "{'run_id': 'r1'}",
+        "output": "['missing dataset', 'missing score', 'missing threshold']",
+        "explanation": "Missing dataset, score and threshold all reported; unknown keys none; empty values none."
+      }
+    ],
+    "constraints": [
+      "entry is a dict.",
+      "Return a sorted list of strings.",
+      "Allowed keys: run_id, dataset, score, threshold, notes."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "mlops",
+      "registry",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def validate_experiment(entry):\n    # TODO: report missing/bad/unknown fields, sorted\n    pass\n",
+    "solution_code": "def validate_experiment(entry):\n    problems = []\n    allowed = {'run_id', 'dataset', 'score', 'threshold', 'notes'}\n    float_keys = {'score', 'threshold'}\n    str_keys = {'run_id', 'dataset', 'notes'}\n    for key in entry:\n        if key not in allowed:\n            problems.append(f'unknown key {key}')\n    for key in float_keys:\n        value = entry.get(key)\n        if value is None:\n            problems.append(f'missing {key}')\n        elif not isinstance(value, (int, float)) or isinstance(value, bool):\n            problems.append(f'bad type {key}')\n    for key in ('run_id', 'dataset', 'notes'):\n        if key == 'notes' and key not in entry:\n            continue\n        value = entry.get(key)\n        if value is None:\n            problems.append(f'missing {key}')\n        elif not isinstance(value, str):\n            problems.append(f'bad type {key}')\n        elif not value.strip():\n            problems.append(f'empty {key}')\n    return sorted(problems)\n",
+    "browser_checks": "assert validate_experiment({'run_id': 'r1', 'dataset': 'd1', 'score': 0.9, 'threshold': 0.85}) == []\nprint('All public checks passed.')\n",
+    "hints": [
+      "Two loops: unknown keys check, then per-key type/presence check.",
+      "Notes is optional; the rest are required.",
+      "Sort the problem list \u2014 deterministic output for CI."
+    ],
+    "editorial": "Registry entries are the audit trail of a model's life. Validate shape before storing: a registry full of malformed entries answers nothing. The sorted problem list keeps CI diffs reviewable.",
+    "judge_tests": "problems = validate_experiment({})\nassert 'missing run_id' in problems and 'missing score' in problems\nassert validate_experiment({'run_id': 'r', 'dataset': 'd', 'score': 1, 'threshold': 0.5, 'notes': 'x', 'extra': 'y'}) == ['unknown key extra']\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-mlops-duplicate-dataset-check",
+    "track": "machine-learning",
+    "topic": "ml-mlops",
+    "title": "Find duplicate dataset versions",
+    "summary": "Detect dataset entries pointing at the same content hash.",
+    "statement": "Write find_duplicates(entries) where entries is a list of dicts with keys 'name', 'version', 'content_hash'. Return a list of content_hashes that appear more than once, sorted. Do not import any package.",
+    "examples": [
+      {
+        "input": "[{'name': 'a', 'version': '1', 'content_hash': 'h1'}, {'name': 'b', 'version': '1', 'content_hash': 'h1'}, {'name': 'c', 'version': '1', 'content_hash': 'h2'}]",
+        "output": "['h1']",
+        "explanation": "h1 appears twice; h2 is unique."
+      },
+      {
+        "input": "[{'name': 'a', 'version': '1', 'content_hash': 'h1'}]",
+        "output": "[]",
+        "explanation": "No duplicates."
+      }
+    ],
+    "constraints": [
+      "entries is a list of dicts with the three keys.",
+      "Return a sorted list of duplicated hashes."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "mlops",
+      "data",
+      "python"
+    ],
+    "prerequisites": [
+      "ml-reproducible-fingerprint"
+    ],
+    "estimated_minutes": 15,
+    "starter_code": "def find_duplicates(entries):\n    # TODO: hashes appearing more than once\n    pass\n",
+    "solution_code": "from collections import Counter\n\ndef find_duplicates(entries):\n    hashes = Counter(entry['content_hash'] for entry in entries)\n    return sorted(h for h, count in hashes.items() if count > 1)\n",
+    "browser_checks": "dups = find_duplicates([{'name': 'a', 'version': '1', 'content_hash': 'h1'}, {'name': 'b', 'version': '1', 'content_hash': 'h1'}, {'name': 'c', 'version': '1', 'content_hash': 'h2'}])\nassert dups == ['h1']\nprint('All public checks passed.')\n",
+    "hints": [
+      "Counter is the tool \u2014 counts by hash.",
+      "Duplicated means strictly more than once.",
+      "Sort for stable CI output."
+    ],
+    "editorial": "Silent dataset duplication is how ten-epoch ablations and one-epoch ablations produce 'comparable' numbers from the same data. Hashing content \u2014 not names or versions \u2014 is the only honest check.",
+    "judge_tests": "assert find_duplicates([{'name': 'a', 'version': '1', 'content_hash': 'h'}, {'name': 'b', 'version': '2', 'content_hash': 'h'}, {'name': 'c', 'version': '3', 'content_hash': 'h'}]) == ['h']\nassert find_duplicates([]) == []\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "ml-mlops-monitoring-window",
+    "track": "machine-learning",
+    "topic": "ml-mlops",
+    "title": "Monitoring bounds check",
+    "summary": "Flag metrics outside their expected bounds.",
+    "statement": "Write out_of_bounds(metrics, bounds) where metrics is a dict of metric -> float and bounds a dict of metric -> (low, high) inclusive. Return a sorted list of metric names whose value is outside [low, high]. Metrics without a bound are ignored; bounds without a metric are ignored. Do not import any package.",
+    "examples": [
+      {
+        "input": "{'latency_ms': 900.0, 'error_rate': 0.02}, {'latency_ms': (0.0, 500.0), 'error_rate': (0.0, 0.05)}",
+        "output": "['latency_ms']",
+        "explanation": "900 > 500; error_rate fine."
+      },
+      {
+        "input": "{'x': 1.0}, {'y': (0.0, 10.0)}",
+        "output": "[]",
+        "explanation": "No shared keys -> nothing to flag."
+      }
+    ],
+    "constraints": [
+      "metrics and bounds are dicts; bounds values are (low, high) tuples.",
+      "Inclusive bounds: exactly low or exactly high is fine.",
+      "Return a sorted list."
+    ],
+    "difficulty": "beginner",
+    "skills": [
+      "mlops",
+      "monitoring",
+      "python"
+    ],
+    "prerequisites": [],
+    "estimated_minutes": 15,
+    "starter_code": "def out_of_bounds(metrics, bounds):\n    # TODO: sorted names whose value escapes [low, high]\n    pass\n",
+    "solution_code": "def out_of_bounds(metrics, bounds):\n    flagged = []\n    for metric, value in metrics.items():\n        bound = bounds.get(metric)\n        if bound is None:\n            continue\n        low, high = bound\n        if value < low or value > high:\n            flagged.append(metric)\n    return sorted(flagged)\n",
+    "browser_checks": "assert out_of_bounds({'latency_ms': 900.0, 'error_rate': 0.02}, {'latency_ms': (0.0, 500.0), 'error_rate': (0.0, 0.05)}) == ['latency_ms']\nassert out_of_bounds({'x': 1.0}, {'y': (0.0, 10.0)}) == []\nprint('All public checks passed.')\n",
+    "hints": [
+      "Only shared keys can be flagged.",
+      "Inclusive check: value < low or value > high.",
+      "Sorted output keeps dashboards and CI diffs deterministic."
+    ],
+    "editorial": "Bounds checking is the heartbeat of production ML: cheap enough to run continuously, broad enough to catch what tests cannot. The bounds, not the alerting, decide whether an on-call engineer gets paged \u2014 choose them as deliberately as your SLOs.",
+    "judge_tests": "assert out_of_bounds({'a': 5.0, 'b': -1.0}, {'a': (0.0, 10.0), 'b': (0.0, 5.0)}) == ['b']\nassert out_of_bounds({'a': 10.0}, {'a': (0.0, 10.0)}) == []\nprint('Hidden checks passed.')\n"
   }
 ]
