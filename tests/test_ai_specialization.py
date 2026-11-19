@@ -80,6 +80,7 @@ class AISpecializationFlowTests(unittest.TestCase):
         self.assertEqual(response.status_code, 400)
 
         payload = {
+            'problem_statement': 'Our support team answers the same forty billing questions every day; we need an AI copilot grounded in the help centre that drafts answers agents can approve, with a citation per claim and a hard refusal when the knowledge base lacks an answer.',
             'reflection': 'I built a RAG pipeline with chunking and retrieval, then evaluated it against a held-out set.',
             'architecture_decisions': 'Used cosine similarity with a small embedding model to balance latency and quality.',
         }
@@ -97,6 +98,59 @@ class AISpecializationFlowTests(unittest.TestCase):
         self.assertIsNotNone(record)
         self.assertIn('RAG pipeline', record.submission)
         self.assertIn('cosine similarity', record.submission)
+
+    def test_submit_project_requires_problem_statement(self):
+        response = self.client.post(
+            f'/specializations/ai-engineering/projects/{self.module_id}/submit',
+            json={'reflection': 'I built a RAG pipeline with chunking and retrieval, then evaluated it against a held-out set.'},
+        )
+        self.assertEqual(response.status_code, 400)
+
+    def test_submit_project_rejects_unknown_fields(self):
+        response = self.client.post(
+            f'/specializations/ai-engineering/projects/{self.module_id}/submit',
+            json={
+                'problem_statement': 'Our support team answers the same forty billing questions every day; we need an AI copilot grounded in the help centre.',
+                'reflection': 'I built a RAG pipeline with chunking and retrieval, then evaluated it against a held-out set.',
+                'model_key': 'should-not-be-accepted',
+            },
+        )
+        self.assertEqual(response.status_code, 400)
+        self.assertIn('Unknown submission fields', response.get_json()['error'])
+
+    def test_submit_project_persists_all_submission_fields(self):
+        problem = ('Our support team answers the same forty billing questions every day; '
+                   'we need an AI copilot grounded in the help centre.')
+        response = self.client.post(
+            f'/specializations/ai-engineering/projects/{self.module_id}/submit',
+            json={
+                'problem_statement': problem,
+                'reflection': 'I built a RAG pipeline with chunking and retrieval, then evaluated it against a held-out set.',
+                'architecture_decisions': 'Cosine similarity with a small embedding model.',
+                'api_contracts': '[{"method": "POST", "path": "/api/answers", "request": {"question": "str"}, "response": {"answer": "str", "citations": []}}]',
+                'deployment_evidence': 'https://copilot.example.com — deployed as v1.4.0, /healthz returns 200.',
+            },
+        )
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            record = AISpecializationProject.query.filter_by(
+                user_id=1, pathway_id=PATHWAY_ID, module_id=self.module_id,
+            ).first()
+        import json as _json
+        submission = _json.loads(record.submission)
+        self.assertEqual(submission['problem_statement'], problem)
+        self.assertIn('/api/answers', submission['api_contracts'])
+        self.assertIn('copilot.example.com', submission['deployment_evidence'])
+        self.assertEqual(submission['reflection'].count('RAG pipeline'), 1)
+
+    def test_artefact_apis_reject_ml_module_ids(self):
+        # AI Engineering artefacts must never accept ML module contexts,
+        # and ML project evidence cannot be stored through AI endpoints.
+        response = self.client.post(
+            '/api/ai-engineering/prompt-versions',
+            json={'module_id': 'mle.classical-ml', 'prompt_content': 'cross-domain attempt'},
+        )
+        self.assertEqual(response.status_code, 404)
 
     def test_artefacts_are_learner_scoped(self):
         # Create a prompt version as the registered learner.

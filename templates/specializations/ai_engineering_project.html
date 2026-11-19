@@ -14,14 +14,29 @@
 
     <form id="project-form" action="{{ url_for('ai_specialization.submit_project', module_id=module.id) }}" method="POST" class="mt-6 space-y-4" novalidate>
       <div>
+        <label class="block text-sm font-medium text-slate-700">Problem statement</label>
+        <textarea required name="problem_statement" rows="4" minlength="40" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ submission.problem_statement or '' }}</textarea>
+        <p class="mt-1 text-xs text-slate-500">The problem the project solves, for whom, and how success is recognized (40–12000 characters).</p>
+      </div>
+      <div>
         <label class="block text-sm font-medium text-slate-700">Reflection</label>
-        <textarea name="reflection" rows="5" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ submission.reflection or '' }}</textarea>
+        <textarea required name="reflection" rows="5" minlength="80" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ submission.reflection or '' }}</textarea>
         <p class="mt-1 text-xs text-slate-500">What you built, the approach you took, and what you learned (80–12000 characters).</p>
       </div>
       <div>
         <label class="block text-sm font-medium text-slate-700">Architecture decisions</label>
         <textarea name="architecture_decisions" rows="5" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ submission.architecture_decisions or '' }}</textarea>
         <p class="mt-1 text-xs text-slate-500">Model choices, retrieval strategy, agent design, cost/latency trade-offs.</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">API contracts</label>
+        <textarea name="api_contracts" rows="5" spellcheck="false" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 font-mono text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder='[{"method": "POST", "path": "/api/…", "request": {…}, "response": {…}}]'>{{ submission.api_contracts or '' }}</textarea>
+        <p class="mt-1 text-xs text-slate-500">The endpoints your system exposes, or consumes: method, path, request and response shapes, error model. JSON or fenced text.</p>
+      </div>
+      <div>
+        <label class="block text-sm font-medium text-slate-700">Deployment evidence</label>
+        <textarea name="deployment_evidence" rows="4" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="deployment URL, image tag, health check output, runbook link…">{{ submission.deployment_evidence or '' }}</textarea>
+        <p class="mt-1 text-xs text-slate-500">For deployment-focused modules: where the system runs and the evidence it is operating. Optional otherwise.</p>
       </div>
       <button type="submit" class="inline-flex rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800">Save project draft</button>
       <p id="form-message" class="mt-2 text-sm"></p>
@@ -86,12 +101,14 @@
     msg.textContent = 'Saving…';
     try {
       const result = await api(form.action, {
+        problem_statement: form.problem_statement.value,
         reflection: form.reflection.value,
         architecture_decisions: form.architecture_decisions.value,
+        api_contracts: form.api_contracts.value,
+        deployment_evidence: form.deployment_evidence.value,
       });
       msg.className = 'mt-2 text-sm text-emerald-700';
       msg.textContent = 'Draft saved.';
-      form.reset();
     } catch (err) {
       msg.className = 'mt-2 text-sm text-red-600';
       msg.textContent = err.message;

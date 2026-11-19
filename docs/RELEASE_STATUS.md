@@ -95,6 +95,6 @@ recorded decision here._
 | Task | Deliverable | Status | Evidence |
 |---|---|---|---|
 | M2.1 Manifest-driven ML project templates | per-module project_title/objectives/instructions + template rewrite + skeleton report | DONE (verified) | All 12 modules publish `project_title`, `objectives`, `instructions`, dataset, deliverables, rubric, contract; template renders them (no module-number branches); example report is types-only (no expected-value leakage); `ml_pathway.py` validates every module at load; `tests/test_ml_project_templates.py` (6 tests) + `test_ml_specialization.py` pass |
-| M2.2 AI Engineering project workspace | AI-specific workspace | NOT STARTED | — |
+| M2.2 AI Engineering project workspace | AI-specific workspace | DONE (verified) | Dedicated AI artefact models (separate tables from ML) + pathway_id enforcement at service boundary; submission schema strengthened (`problem_statement` required, `api_contracts`, `deployment_evidence`; unknown fields rejected); form exposes artefacts; ML-module IDs rejected by AI artefact APIs (test); 13 tests passing |
 | M2.3 Shared project lifecycle | lifecycle engine with audit | NOT STARTED | — |
 | M2.4 Project milestones and evidence | milestones/evidence/competency mapping | NOT STARTED | — |

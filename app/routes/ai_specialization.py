@@ -25,6 +25,22 @@ ai_specialization_bp = Blueprint('ai_specialization', __name__)
 
 _JSON_LIMIT = 12000
 _REFLECTION_LIMITS = (80, 12000)
+# AI Engineering project submission schema (M2.2). Prompt versions, model
+# configuration, retrieval configuration, agent traces and evaluation records
+# are captured through their own learner-scoped artefact endpoints; the
+# project submission anchors the problem, the architecture, the API surface,
+# deployment evidence and the reflection.
+_SUBMISSION_FIELDS = (
+    'problem_statement', 'reflection', 'architecture_decisions',
+    'api_contracts', 'deployment_evidence',
+)
+_FIELD_LIMITS = {
+    'problem_statement': (40, 12000),
+    'reflection': _REFLECTION_LIMITS,
+    'architecture_decisions': (0, 12000),
+    'api_contracts': (0, _JSON_LIMIT),
+    'deployment_evidence': (0, 12000),
+}
 
 
 def _bounded_int(value, field_name, minimum=0):
@@ -180,22 +196,25 @@ def submit_project(module_id):
     data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'error': 'Request body must be a JSON object'}), 400
-    reflection, error = _bounded_string(
-        data.get('reflection'), *_REFLECTION_LIMITS, 'reflection'
-    )
-    if error:
-        return jsonify({'error': error}), 400
-    architecture_decisions, error = _bounded_string(
-        data.get('architecture_decisions'), 0, _JSON_LIMIT,
-        'architecture_decisions',
-    )
-    if error:
-        return jsonify({'error': error}), 400
+    unknown = sorted(set(data) - set(_SUBMISSION_FIELDS))
+    if unknown:
+        return jsonify({
+            'error': f'Unknown submission fields: {", ".join(unknown)}. '
+                     f'Allowed fields: {", ".join(_SUBMISSION_FIELDS)}.',
+        }), 400
+    submission = {}
+    for field in _SUBMISSION_FIELDS:
+        minimum, maximum = _FIELD_LIMITS[field]
+        value, error = _bounded_string(data.get(field, ''), minimum, maximum, field)
+        if error:
+            return jsonify({'error': error}), 400
+        if value:
+            submission[field] = value
+    for required in ('problem_statement', 'reflection'):
+        if required not in submission:
+            return jsonify({'error': f'{required} is required'}), 400
     record = _project(module_id, create=True)
-    record.submission = json.dumps({
-        'reflection': reflection,
-        'architecture_decisions': architecture_decisions or '',
-    }, ensure_ascii=False)
+    record.submission = json.dumps(submission, ensure_ascii=False)
     record.completed = False
     record.evaluation = None
     record.failure_stage = None
