@@ -80,9 +80,40 @@ class FoundationsRouteTests(unittest.TestCase):
         response = self.client.get('/specializations/shared-foundations/lessons/sf.00.01')
         self.assertIn(response.status_code, (302, 401))
 
-    def test_first_lesson_renders_pending_notice(self):
+    def test_first_lesson_renders_content(self):
         self._register()
         response = self.client.get('/specializations/shared-foundations/lessons/sf.00.01')
+        self.assertEqual(response.status_code, 200)
+        body = response.get_data(as_text=True)
+        self.assertIn('Variables and Types', body)
+        self.assertIn('Check your understanding', body)
+
+    def test_ready_lesson_quiz_records_completion(self):
+        self._register()
+        response = self.client.post(
+            '/specializations/shared-foundations/lessons/sf.00.01',
+            data={'answer': '1'},
+            follow_redirects=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        with self.app.app_context():
+            from app.models import LessonCompletion
+            completion = LessonCompletion.query.filter_by(
+                lesson_id='sf.00.01', completed=True,
+            ).first()
+            self.assertIsNotNone(completion)
+
+    def test_pending_lesson_renders_notice(self):
+        self._register()
+        # sf.01.01 is pending and only reachable once sf.00 is complete.
+        for lesson_id, answer in [('sf.00.01', '1'), ('sf.00.02', '0'),
+                                  ('sf.00.03', '1'), ('sf.00.04', '3')]:
+            response = self.client.post(
+                f'/specializations/shared-foundations/lessons/{lesson_id}',
+                data={'answer': answer},
+            )
+            self.assertEqual(response.status_code, 302, lesson_id)
+        response = self.client.get('/specializations/shared-foundations/lessons/sf.01.01')
         self.assertEqual(response.status_code, 200)
         self.assertIn('being written', response.get_data(as_text=True))
 

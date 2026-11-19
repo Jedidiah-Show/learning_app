@@ -14,22 +14,182 @@
         {
           "id": "sf.00.01",
           "title": "Variables and Types",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 30,
+          "goal": "Write Python programs that store values in variables, choose the right primitive type, and predict what an expression evaluates to without running it.",
+          "sections": [
+            {
+              "heading": "A variable is a named box",
+              "body": [
+                "A variable gives a value a name so you can reuse it later. In Python you create one with a single equals sign: name = value. The name goes on the left, the value on the right \u2014 the equals sign here means \"bind this name to this value\", not \"assert they are equal\".",
+                "Names are case-sensitive: total and Total are different variables. Good names are lowercase with underscores, like order_total or retry_count. A name that describes what the value holds will save you hours of staring at code in three months.",
+                "You can rebind a name at any time. price = 10 followed by price = 12 is two separate assignments; the second simply makes price point at a new value."
+              ]
+            },
+            {
+              "heading": "The four primitive types you will use constantly",
+              "body": [
+                "int holds whole numbers: 0, 42, -7. float holds numbers with a fractional part: 3.14, 0.0, 1e6. str holds text, always wrapped in quotes: \"hello\" or 'hello'. bool holds exactly two values: True and False.",
+                "Mixing types is the source of many beginner bugs. \"2\" + \"3\" is the string \"23\", not 5. 2 + 3 is 5. And \"2\" + 3 is a TypeError \u2014 Python will not guess whether you meant text or numbers. That refusal is a feature: Python makes you resolve ambiguity explicitly with int(), float(), or str().",
+                "Use type(x) when you are unsure what a value is. Useful while learning; unnecessary in code that is already correct."
+              ]
+            },
+            {
+              "heading": "Expressions evaluate to values",
+              "body": [
+                "An expression is any piece of code that produces a value: 2 + 3 produces 5; user_name.upper() produces a string; count is already a value. Assignments and function calls are how programs move values from one place to another.",
+                "Operators follow precedence you would expect from math \u2014 * and / before + and -, with parentheses to override it. When in doubt, add parentheses; they cost nothing and remove doubt.",
+                "Printing with print(...) is how you make values visible. This is the closest thing to a debugger the language offers out of the box, and professionals use it constantly."
+              ]
+            }
+          ],
+          "task": "Write a script that stores a product name (str), a unit price (float), a quantity (int), and an in-stock flag (bool). Print a single line: \"<name> x<quantity> = <total>\". Then, deliberately trigger a TypeError by adding the price to a message string, read the traceback, and explain it in a comment.",
+          "quiz": {
+            "question": "What does the following print?\n\ncount = 2\ncount = count + 1\nprint(count)",
+            "choices": [
+              "2",
+              "3",
+              "count + 1",
+              "A TypeError"
+            ],
+            "answer": 1,
+            "explanation": "The right-hand side count + 1 evaluates first using the current value (2), giving 3; the assignment rebinds count to 3. The old value is simply no longer referenced."
+          }
         },
         {
           "id": "sf.00.02",
           "title": "Control Flow",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 30,
+          "goal": "Write programs that make decisions with if/elif/else and repeat work with for and while loops, choosing the construct that fits the problem.",
+          "sections": [
+            {
+              "heading": "Decisions with if, elif and else",
+              "body": [
+                "if condition: runs a block only when the condition is truthy. elif adds more branches, and else is the fallback. Conditions use comparison operators (==, !=, <, <=, >, >=) and combine with and, or, not.",
+                "Python has no switch statement for general use \u2014 long chains of elif are idiomatic. Keep the conditions mutually exclusive and order them from most to least likely when performance matters, or by logic when clarity does.",
+                "A common trap: = assigns, == compares. Writing if x = 5 is a SyntaxError in Python, which is unusually kind of it. In other languages the same mistake compiles and quietly corrupts state."
+              ]
+            },
+            {
+              "heading": "Repeating work with for",
+              "body": [
+                "for item in iterable: walks each element of a sequence. for i in range(5) gives you 0..4. range(2, 10, 2) gives 2, 4, 6, 8 \u2014 start, stop (exclusive), step.",
+                "Looping over a list directly, for name in names:, is preferable to indexing when you do not need the index. When you do need both, use enumerate(names) to get (index, name) pairs.",
+                "break exits the loop early; continue skips to the next iteration. Use both deliberately and sparingly \u2014 deeply nested loops with breaks can be harder to reason about than a well-named helper function."
+              ]
+            },
+            {
+              "heading": "while for unknown durations",
+              "body": [
+                "while condition: repeats as long as the condition holds. It is the right tool when you do not know how many iterations you need \u2014 reading input until the user types \"quit\", retrying a request until it succeeds, or converging on a numeric answer.",
+                "The eternal danger is the infinite loop: the condition never becomes false. Always ask yourself \"what changes each iteration, and does it move toward the end?\" If you cannot answer, use a for loop with a bounded range instead.",
+                "Loop-and-filter and loop-and-accumulate patterns cover most real code: select items matching a predicate, or fold a sequence into one value (sum, max, count-of-matches)."
+              ]
+            }
+          ],
+          "task": "Write a program that reads a list of daily step counts and prints (1) how many days exceed 8,000 steps, (2) the longest run of consecutive qualifying days, and (3) stops at the first day with zero steps and prints a warning. Use if/elif/else and one loop with break.",
+          "quiz": {
+            "question": "What does range(2, 10, 3) produce?",
+            "choices": [
+              "2, 5, 8",
+              "2, 4, 6, 8",
+              "2, 5, 8, 11",
+              "2, 3, ..., 9"
+            ],
+            "answer": 0,
+            "explanation": "range(start, stop, step) starts at 2, steps by 3, and excludes 10 \u2014 so 2, 5, 8. The stop value is never included."
+          }
         },
         {
           "id": "sf.00.03",
           "title": "Functions",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 30,
+          "goal": "Decompose a program into small, total, named functions with parameters and return values, and explain what each one does without reading its body.",
+          "sections": [
+            {
+              "heading": "A function is a reusable, named piece of logic",
+              "body": [
+                "def name(parameters): defines a function; return hands a value back to the caller. A function without return returns None \u2014 legal, but almost never what you want when a value is expected.",
+                "Parameters are placeholders; arguments are what the caller passes. Positional arguments arrive in order; keyword arguments arrive by name and make call sites self-describing: search(query=\"rust\", limit=10).",
+                "Good functions do one thing. If you can describe what a function does with \"and\", it probably wants to be two functions."
+              ]
+            },
+            {
+              "heading": "Scope: what a function can see",
+              "body": [
+                "Names assigned inside a function are local to it and vanish when it returns. Names at module level are visible everywhere in the module. Reading a module-level name from inside a function is fine; assigning to it without the global keyword does not change the outer name \u2014 it creates a local one.",
+                "Minimize what a function touches beyond its parameters and return value. A function that depends only on its inputs is trivially testable: feed it inputs, check output, done.",
+                "That property \u2014 same input, same output, no hidden dependencies \u2014 is called purity. You do not need to make everything pure, but you will thank yourself for making most of it so."
+              ]
+            },
+            {
+              "heading": "Docstrings and small compositions",
+              "body": [
+                "A one-line docstring under def tells the next reader (and your future self) the contract: what goes in, what comes out, and what the function assumes. Keep it factual \u2014 describe behaviour, not implementation.",
+                "Compose small functions rather than writing one large one: cleaned = normalize(text); tokens = tokenize(cleaned); counts = count_words(tokens). Each step is independently checkable and independently reusable.",
+                "Recursion is a function calling itself and is elegant for tree-shaped problems; iteration is usually the clearer choice for sequences. Know both; reach for recursion deliberately."
+              ]
+            }
+          ],
+          "task": "Refactor a 40-line script you wrote for sf.00.02 into three functions: qualifies(day_steps) -> bool, longest_streak(days) -> int, summary(days) -> str. Add a one-line docstring to each. Confirm the output is identical before and after.",
+          "quiz": {
+            "question": "What is the output of the following?\n\ndef add(a, b):\n    a = a + b\n    return a\n\nx = 5\ny = add(x, 3)\nprint(x, y)",
+            "choices": [
+              "8 8",
+              "5 8",
+              "5 5",
+              "8 5"
+            ],
+            "answer": 1,
+            "explanation": "a is a local name for the parameter; rebinding it inside the function does not affect the caller\u2019s x. x stays 5; y receives the returned 8."
+          }
         },
         {
           "id": "sf.00.04",
           "title": "Data Structures",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 35,
+          "goal": "Choose between list, tuple, dict and set for a given problem, and use indexing, slicing, keys and membership tests correctly.",
+          "sections": [
+            {
+              "heading": "Lists: ordered, mutable sequences",
+              "body": [
+                "A list holds an ordered collection of anything: numbers, strings, objects, other lists. Index with zero-based positions: items[0] is the first element, items[-1] the last. Slices items[1:4] give elements 1 through 3 (stop is exclusive).",
+                "Lists grow and shrink: append, insert, extend, pop, remove. Sorting with sorted(items) returns a new list; items.sort() sorts in place. Know which one you are calling.",
+                "Lists are the default container for sequences whose shape is not fixed. If you find yourself tracking a fixed set of named attributes with positional indices, you want a dict or a small class instead."
+              ]
+            },
+            {
+              "heading": "Dicts: look values up by key",
+              "body": [
+                "A dict maps keys to values: user = {\"name\": \"Ada\", \"role\": \"engineer\"}. Keys must be hashable (strings, numbers, tuples \u2014 not lists). Access with user[\"name\"], test presence with \"name\" in user, and default safely with user.get(\"nickname\", user[\"name\"]).",
+                "Dicts preserve insertion order in modern Python, iterate by key by default, and support items() for (key, value) pairs: for key, value in user.items().",
+                "Reach for a dict whenever you would catch yourself writing user_name, user_role, user_email as parallel variables. One dict with one lookup beats three loose variables."
+              ]
+            },
+            {
+              "heading": "Tuples and sets: when lists are wrong",
+              "body": [
+                "A tuple is an immutable list: point = (3, 4). Use tuples for fixed-shape records (coordinates, rows) and as dict keys. Immutability documents intent: nothing downstream can accidentally mutate a record you were handed.",
+                "A set is an unordered collection of unique items with O(1) membership tests: seen = set(); if x in seen. Sets also do algebra \u2014 union |, intersection &, difference - \u2014 which makes them the right tool for \"which tags are new?\" questions.",
+                "Choosing well: ordered + mutable \u2192 list; ordered + immutable + fixed shape \u2192 tuple; key-value lookup \u2192 dict; uniqueness/membership \u2192 set. When unsure, start with a list, then move to the structure that matches how you actually use the data."
+              ]
+            }
+          ],
+          "task": "Given a hard-coded list of 50 project records (name, owner, status), write code that (1) counts records per status using a dict, (2) finds owners with more than one active project using a set, and (3) prints a report keyed by owner sorted alphabetically. No imports beyond the standard library.",
+          "quiz": {
+            "question": "Which data structure should back a lookup of \"is this issue id in our processed set?\"",
+            "choices": [
+              "list",
+              "dict",
+              "tuple",
+              "set"
+            ],
+            "answer": 3,
+            "explanation": "Sets give O(1) membership tests and enforce uniqueness \u2014 exactly what a processed/seen set needs. A list would scan every element each check; a dict stores key-value pairs you do not need."
+          }
         }
       ],
       "prerequisites": [],
