@@ -208,22 +208,182 @@
         {
           "id": "sf.01.01",
           "title": "Python Basics",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 30,
+          "goal": "Run Python programs two ways \u2014 the interactive interpreter and script files \u2014 and write a small program that reads input, computes a result, and prints it.",
+          "sections": [
+            {
+              "heading": "Two ways to run Python",
+              "body": [
+                "The interpreter (python3) is a live REPL: type an expression, see the value instantly. Perfect for probing syntax and trying one-liners. Scripts are files ending in .py that run top-to-bottom \u2014 the unit of work you keep in version control.",
+                "Indentation is syntax, not style: Python groups the body of an if/for/def by leading spaces. Four spaces is the convention; mixing tabs and spaces is the fastest way to an error that makes no sense at first glance.",
+                "Comments with # explain why code does what it does, not what it obviously does. A comment that restates the code is noise; a comment that records a constraint or a failed approach is gold."
+              ]
+            },
+            {
+              "heading": "Input, processing, output",
+              "body": [
+                "Almost every beginner program is a pipeline: read something (input(), CLI args, a file), transform it, emit something (print(), a file, a return value). The pipeline framing keeps big programs understandable.",
+                "input() returns a string \u2014 always. \"42\" is text, not the number 42. Convert deliberately: int(\"42\") raises ValueError on bad input, which is exactly the moment you want the program to fail loudly and tell you the problem.",
+                "print() formats with f-strings: f\"{price:.2f}\" renders 3.5 as 3.50. Formatting at the boundary (the print) beats scattering round() calls through your logic."
+              ]
+            },
+            {
+              "heading": "Naming, errors, and the traceback",
+              "body": [
+                "Names are lowercase_with_underscores. Constants in caps (TAX_RATE). Avoid single letters except loop indices. A good name is the cheapest documentation a language will ever give you.",
+                "A traceback is not an enemy; it is the program telling you exactly where and why it died. Read it bottom-up: the last line names the error type and message; the frames above it walk back to your code.",
+                "Common first-week errors you will meet: NameError (used before defined), SyntaxError (typo in the code), TypeError (wrong kind of thing), ValueError (right kind, bad value), and IndentationError (the whitespace betrayed you)."
+              ]
+            }
+          ],
+          "task": "Write a script area_converter.py that asks for a room name and its width and length in metres (as text), computes the floor area, and prints \"<name>: <area> m^2\". Handle non-numeric input by printing a friendly message and exiting with code 1. Test it with three rooms, including one invalid entry.",
+          "quiz": {
+            "question": "What does input(\"Age: \") + 1 do?",
+            "choices": [
+              "Returns the next integer",
+              "Concatenates text like \"31\" + 1",
+              "A TypeError",
+              "Prints Age: 1"
+            ],
+            "answer": 2,
+            "explanation": "input() returns str; str + int is a TypeError. Convert first with int(), and handle ValueError for non-numeric input."
+          }
         },
         {
           "id": "sf.01.02",
           "title": "Lists and Dictionaries",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 35,
+          "goal": "Model collections of items with lists and dictionaries, iterate them without indexing errors, and pick the right container for the job.",
+          "sections": [
+            {
+              "heading": "Lists: ordered, mutable, indexable",
+              "body": [
+                "items = [3, 1, 4] keeps order and lets you read, replace or remove by position. items[0] is the head; items[-1] is the tail; items[1:3] is a slice (start inclusive, stop exclusive) that produces a new list.",
+                "Lists are mutable: append, extend, insert, pop, remove, sort. sort() rearranges in place; sorted(items) returns a new list. Copying naively with b = a aliases the same list \u2014 use b = a.copy() or b = list(a) when you need independence.",
+                "Common idioms: sum(items), len(items), max/min, any/all, and the membership test x in items. Looping with enumerate(items) gives both index and value \u2014 no range(len(...)) needed."
+              ]
+            },
+            {
+              "heading": "Dictionaries: keys to values",
+              "body": [
+                "points = {\"alice\": 3, \"bob\": 7} maps string keys to values. Read with points[\"alice\"] (KeyError if absent) or points.get(\"carol\", 0) (default when absent). Check membership with \"alice\" in points \u2014 not in points.values().",
+                "Dicts preserve insertion order (since Python 3.7) and iterate the keys by default; points.items() yields (key, value) pairs; points.values() yields values. Use update() to merge and pop(key, default) to remove with a default.",
+                "Grouping with dicts is idiomatic: bucket = {}; for item in items: bucket.setdefault(item.kind, []).append(item). setdefault creates the list the first time a new kind appears."
+              ]
+            },
+            {
+              "heading": "Choosing between them",
+              "body": [
+                "Ask one question: do I look things up by position/order (list) or by label (dict)? Ordered rolls of participants \u2192 list. Score by name \u2192 dict. Unique tags \u2192 set. Fixed shape \u2192 tuple (or a small class when meaning grows).",
+                "Lists cost O(n) for membership; dicts cost O(1). A list of ten thousand records scanned per lookup is slow at scale; one dict lookup is instant. Measured intuition like this is half of data-structure choice.",
+                "List comprehensions compress loop-and-build patterns: [p * 2 for p in prices if p > 0] builds a filtered, transformed list in one expression. Use them for clarity; if the logic inside grows a second sentence, write the loop."
+              ]
+            }
+          ],
+          "task": "Given a hard-coded list of order dicts {\"item\": str, \"qty\": int, \"price\": float}, produce (1) total revenue per item as a dict, (2) the three best-selling items by total quantity as a sorted list, (3) a flat list of unit revenues (qty * price) with any non-positive price filtered out, using a comprehension.",
+          "quiz": {
+            "question": "What does items[1:3] produce for items = [10, 20, 30, 40]?",
+            "choices": [
+              "[10, 20]",
+              "[20, 30]",
+              "[20, 30, 40]",
+              "[30, 40]"
+            ],
+            "answer": 1,
+            "explanation": "Slicing is start-inclusive, stop-exclusive: indices 1 and 2, giving [20, 30]. items[1:4] would include 40."
+          }
         },
         {
           "id": "sf.01.03",
           "title": "Modules and Packages",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 35,
+          "goal": "Import standard library modules confidently, split a program across files, and understand what __name__ == \"__main__\" does.",
+          "sections": [
+            {
+              "heading": "The standard library is huge",
+              "body": [
+                "Batteries included: math (sqrt, floor, ceil), statistics (mean, median), random (choice, randint, shuffle, seed), json (load, dump), pathlib (cross-platform paths), datetime, collections (Counter, deque, defaultdict), itertools, re, and dozens more.",
+                "import json then json.loads(text), or from json import loads then loads(text). The first keeps provenance visible (json.loads is obviously JSON); the second saves typing when a module is used heavily.",
+                "The docs at docs.python.org are the canonical reference. Reading one page of real documentation beats any tutorial for building durable skill."
+              ]
+            },
+            {
+              "heading": "Your own modules and __main__",
+              "body": [
+                "Any .py file is a module. A folder with an __init__.py is a package. Splitting helpers into geometry.py and importing it from main.py is how scripts graduate into maintainable projects.",
+                "Every module has a built-in name __name__. It is \"__main__\" when the file is executed directly, and the module name when imported. The guard if __name__ == \"__main__\": main() lets the same file be both importable library and runnable script without side effects on import.",
+                "Import order convention: stdlib, third-party, your package \u2014 alphabetically inside each group, one group per block. Linters (ruff, flake8) enforce it so diffs stay clean."
+              ]
+            },
+            {
+              "heading": "Dependencies and environments",
+              "body": [
+                "Third-party packages (requests, numpy, flask) are installed into environments, not globally into the OS interpreter. venv creates an isolated environment per project: python3 -m venv .venv && source .venv/bin/activate && pip install requests.",
+                "requirements.txt (or pyproject.toml) records exact dependencies so the project builds identically on your machine and CI. Commit it always; commit .venv never.",
+                "Locking matters because \"it works on my machine\" is usually \"my machine has different package versions\". Deterministic environments are how teams stop arguing about ghosts."
+              ]
+            }
+          ],
+          "task": "Create a package shop/ with __init__.py, pricing.py (compute_total(items) where items are price, qty tuples) and cli.py with a main() that prints a receipt for a fixed basket. Guard cli.py with __name__ == \"__main__\". Add a README-free test: run python -m shop.cli and python -c \"from shop.pricing import compute_total; print(compute_total([(2.5, 3)]))\".",
+          "quiz": {
+            "question": "Why does a file use if __name__ == \"__main__\"?",
+            "choices": [
+              "To enable hot reload",
+              "To avoid running main() on import",
+              "To satisfy the linter",
+              "To make imports faster"
+            ],
+            "answer": 1,
+            "explanation": "When imported, __name__ is the module name, not \"__main__\"; the guard keeps import side-effect free while still allowing direct execution."
+          }
         },
         {
           "id": "sf.01.04",
           "title": "Error Handling",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 35,
+          "goal": "Handle expected failures with try/except, choose the exception type deliberately, and decide between crashing loudly and recovering gracefully.",
+          "sections": [
+            {
+              "heading": "try, except, else, finally",
+              "body": [
+                "try: runs the risky block; except SomeError: handles the known failure; else: runs when no exception occurred (ideal for the success path); finally: always runs \u2014 use it for cleanup like closing files.",
+                "Catch the narrowest exception that names what can actually go wrong. except Exception: is a net that swallows bugs you did not foresee; except ValueError: is a contract that names the exact failure you planned for.",
+                "except Exception as e: lets you read the message; raise ValueError(\"bad total\") from e re-raises with context preserved for the caller. Never catch and silently pass \u2014 silent failure is the hardest bug class to find."
+              ]
+            },
+            {
+              "heading": "The exceptions you will meet constantly",
+              "body": [
+                "ValueError \u2014 right type, bad value: int(\"abc\"), float(\"nan\") edge cases. KeyError \u2014 dict key missing: use .get() or accept the error deliberately. IndexError \u2014 list index out of range: check bounds or let it crash with context.",
+                "FileNotFoundError \u2014 file missing: check the path first, or catch and print a helpful message. TypeError \u2014 wrong kind of argument. ZeroDivisionError \u2014 exactly what it says; check the denominator.",
+                "Catching TypeError/KeyError blindly is a code smell: it usually means the program entered an impossible state, and continuing produces silently wrong results. Crash beats corrupt."
+              ]
+            },
+            {
+              "heading": "Fail loud, recover deliberate",
+              "body": [
+                "The design question is never \"how do I avoid crashing?\" It is \"who is responsible for handling this?\" \u2014 the function that detects the problem (validate and raise) or the caller that has context to recover (log, retry, default).",
+                "For user-facing input (CLI, forms), recover gracefully with a clear message and ask again. For internal invariants, crash immediately: an violated precondition (e.g., negative quantity) means the program is already broken, and continuing corrupts data.",
+                "Error messages are for the human: say what happened, what input caused it, and what to do next. \"invalid literal for int() with base 10: '12,5'\" is fine; \"error\" is not."
+              ]
+            }
+          ],
+          "task": "Write a word frequency counter over a user-supplied file that (1) exits with a clear message if the file is missing, (2) skips blank lines, (3) reports a summary of the 5 most common words as \"word: count\", and (4) raises ValueError with a helpful message if the file contains no words. Provide three sample inputs: normal text, empty file, missing file.",
+          "quiz": {
+            "question": "Which exception should you catch around int(\"abc\")?",
+            "choices": [
+              "TypeError",
+              "KeyError",
+              "ValueError",
+              "Exception"
+            ],
+            "answer": 2,
+            "explanation": "int(\"abc\") has the right type (string) but an invalid value, which raises ValueError. Catching it names the exact failure you anticipated."
+          }
         }
       ],
       "prerequisites": [
@@ -244,22 +404,182 @@
         {
           "id": "sf.02.01",
           "title": "Git Basics",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 35,
+          "goal": "Track work in git: init, add, commit, branch, and understand what each one does to the history of a project.",
+          "sections": [
+            {
+              "heading": "A snapshot history, not a file backup",
+              "body": [
+                "Git records snapshots of your tree over time. Each commit is a full snapshot plus metadata (who, when, message) and pointers to parent commits. Navigating that history is the whole game: checkout, log, diff, blame.",
+                "git init starts tracking in a directory; git add stages changes; git commit -m \"message\" snapshots the staged changes. The staging area is a deliberate design choice: you decide what belongs in each snapshot \u2014 three files fixed a bug, two are unrelated experimentation that stays unstaged.",
+                "Configuration is identity: git config user.name and git config user.email label every commit you make. Expect the question \"who wrote this?\" answered by the git log."
+              ]
+            },
+            {
+              "heading": "Reading history: log, diff, show",
+              "body": [
+                "git log --oneline --graph shows the commit graph. git diff HEAD shows uncommitted changes against the last commit; git diff HEAD~1 HEAD shows what changed in the last commit. git show <sha> inspects one commit in full.",
+                "Messages matter because history is read more than it is written: imperative mood (\"Add retry logic\", not \"added retry\" or \"fixes\"), one line under 72 chars, body if the why is not obvious. Future-you is the audience.",
+                "Blame (git blame file) annotates every line with who touched it and when \u2014 not to assign fault but to find the person who knows why. Ask them before you rewrite."
+              ]
+            },
+            {
+              "heading": "Branches are cheap",
+              "body": [
+                "A branch is a movable pointer to a commit. git switch -c feature/login creates and moves to a new one; git switch main goes back; git merge feature/login incorporates it. Branching is free, so branch per piece of work.",
+                "Merging integrates; conflicts occur when the same lines changed in both branches. Git marks conflicts in the file with <<<<<<< ======= >>>>>>> markers \u2014 you choose, then git add and commit. Conflicts are routine, resolve calmly.",
+                "Uncommitted work does not block switching branches \u2014 git stash parks it temporarily (stash list, stash pop). Clean tree before big operations you fear losing."
+              ]
+            }
+          ],
+          "task": "In a scratch directory: create a project with two commits on main, branch to feature/uppercase, make a change, commit, switch back to main and observe the difference in files. Merge back and resolve any induced conflict by editing the marked file, staging it, and committing. Write down the commands you ran.",
+          "quiz": {
+            "question": "What does git commit -m \"msg\" actually record?",
+            "choices": [
+              "A backup of the working directory",
+              "A snapshot of the staged index plus parent pointers",
+              "A list of changed files only",
+              "A copy in the remote repository"
+            ],
+            "answer": 1,
+            "explanation": "A commit is a full snapshot of what was staged (the index), with metadata and parent references. Working-directory changes that were not staged are not in the commit."
+          }
         },
         {
           "id": "sf.02.02",
           "title": "Repository Workflow",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 40,
+          "goal": "Follow the daily engineering loop \u2014 issue, branch, commit, pull request, review, merge \u2014 and write a PR a reviewer can act on.",
+          "sections": [
+            {
+              "heading": "The working rhythm",
+              "body": [
+                "Real teams run a loop: pick an issue \u2192 cut a branch (feature/short-description) \u2192 make small commits \u2192 push to origin \u2192 open a pull request \u2192 review \u2192 merge \u2192 delete the branch. Rinse, repeat.",
+                "Small commits with clear messages beat monumental ones: they review better, revert cleaner, and bisect easier. One logical change per commit is the discipline.",
+                "Pull --rebase before you start work on an existing branch, and again before you merge: it folds in upstream changes and keeps history linear instead of a braid of merge commits."
+              ]
+            },
+            {
+              "heading": "The pull request is the unit of collaboration",
+              "body": [
+                "A PR is a conversation, not a submission. Title it imperatively (\"Add request-id header\"). Body: what changed, why, how to test it. Link the issue (#123). Paste evidence (logs, screenshots, before/after) when behaviour changed.",
+                "Reviewers look for: does it do what it says, is it tested, is it safe to merge. Write code that is easy to say yes to: small diffs, tests included, no unrelated refactors riding along.",
+                "Respond to review comments as commits responding to each thread, not as a rebuttal essay \u2014 though reasoned pushback is expected when the reviewer missed context."
+              ]
+            },
+            {
+              "heading": "Protected branches and CI",
+              "body": [
+                "main is protected: no direct pushes, force-push disabled, merge requires green CI. Every merge to main must come through a reviewed, green PR. This single rule is why main stays shippable.",
+                "CI runs on every push: tests, lint, type checks. Red CI blocks merge \u2014 fix it before anything else, because the next engineer inherits the red too.",
+                "Tagging releases (v1.1.0) marks immutable points in history. Release notes in the repo tell operators what changed without reading 300 commits."
+              ]
+            }
+          ],
+          "task": "Draft a pull request description (markdown, not posted anywhere) for a fix you actually made this week: title, summary of the change, why, how to test, and a checklist. Then write the review comment you would leave on someone else's PR of the same change.",
+          "quiz": {
+            "question": "Before opening a PR from a long-lived branch, which is the better hygiene?",
+            "choices": [
+              "Force-push main to match your branch",
+              "git pull --rebase origin main into your branch",
+              "git stash everything",
+              "git merge main into main"
+            ],
+            "answer": 1,
+            "explanation": "Rebasing your branch onto the latest main keeps your diff focused and prevents avoidable conflicts surfacing during review."
+          }
         },
         {
           "id": "sf.02.03",
           "title": "Testing fundamentals",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 40,
+          "goal": "Write tests that fail when the code breaks, understand what a test is proving, and know the three layers of testing.",
+          "sections": [
+            {
+              "heading": "Why tests are non-negotiable",
+              "body": [
+                "Untested code works until someone changes it \u2014 then nobody knows what still works. Tests are the executable specification: they tell the next engineer what behaviour is expected and catch regressions the moment they appear.",
+                "The red/green loop: write a failing test first (red), make the smallest change that passes (green), refactor safely with the test as your safety net. Even without strict TDD discipline, every bug fix should come with a test that would have caught it.",
+                "Flaky tests (pass sometimes, fail sometimes) erode trust worse than no tests \u2014 people stop reading them. Fix or delete flaky tests immediately; never ship with them."
+              ]
+            },
+            {
+              "heading": "The test pyramid: unit, integration, end-to-end",
+              "body": [
+                "Unit tests exercise one function with controlled inputs \u2014 milliseconds each, hundreds of them. Integration tests exercise components together (route + database + serializer) \u2014 seconds, dozens of them. End-to-end tests drive the real system (browser, real DB) \u2014 minutes, a few of them.",
+                "Mostly unit tests, some integration, few e2e is the pyramid \u2014 and it is why \"add more tests\" almost always means \"write unit tests for the broken unit\".",
+                "Test behaviour, not implementation: prefer testing what comes out over how it was computed, unless the how is the whole point (e.g., choosing the right index)."
+              ]
+            },
+            {
+              "heading": "Anatomy of a good test",
+              "body": [
+                "Arrange\u2013act\u2013assert: set up inputs, call the unit, assert the observable outcome. One logical assertion per test; if two behaviours matter, write two tests.",
+                "assert_equal(actual, expected) style APIs produce readable failures; when a test fails, its message should tell you what broke, not just that something did. Name tests after the behaviour: test_expired_token_is_rejected, not test_1.",
+                "Determinism: no real clocks, no real network, no random seeds unpinned. Freeze time, stub HTTP, seed RNG \u2014 a test that fails only on Tuesdays in CI is worse than no test."
+              ]
+            }
+          ],
+          "task": "Write three pytest tests for a function discount(price, pct) with rules: pct in [0, 100] (else ValueError), result is never negative, and discount of 0 returns the price unchanged. Include one test that would have caught a real bug you have made before.",
+          "quiz": {
+            "question": "Which is the first question to ask when writing a test?",
+            "choices": [
+              "What coverage number will this reach?",
+              "What behaviour should this prove?",
+              "How fast must it run?",
+              "Which mocking library?"
+            ],
+            "answer": 1,
+            "explanation": "A test exists to prove a behaviour. Coverage numbers and mocking are means to that end, not the end itself."
+          }
         },
         {
           "id": "sf.02.04",
           "title": "Project Structure",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 35,
+          "goal": "Lay out a small project so it scales past the first hundred lines: src layout, entry points, configuration, and documentation.",
+          "sections": [
+            {
+              "heading": "Layout conventions that work",
+              "body": [
+                "src/<package>/ for importable code, tests/ for tests, pyproject.toml (or setup.cfg) for metadata and dependencies, README.md for humans. The flat layout breaks past a few modules; the src layout never surprises import paths.",
+                "Keep entry points thin: cli.py parses arguments and calls a main() in a module; it imports logic rather than embedding it. This makes the logic importable and testable without the shell.",
+                "Name by domain meaning: billing/, not helpers/utils/stuff/misc/. When everything fits in a module, the module name IS the map."
+              ]
+            },
+            {
+              "heading": "Configuration and secrets outside the tree",
+              "body": [
+                "Config (ports, feature flags, timeouts) belongs in environment variables or a config file not committed with secrets. Code reads env vars at startup, with sensible defaults for local dev.",
+                "Secrets never enter git: no keys in code, no keys in config files, no keys in commit messages. Use .env locally (gitignored), and the platform secret manager in production. If a secret ever lands in a commit, rotate it \u2014 do not scrub history and pretend.",
+                "Fail fast on missing config: crash at startup with \"GEMINI_API_KEY is required\" rather than a confusing NoneType error at hour 3 of production."
+              ]
+            },
+            {
+              "heading": "README and docs are the front door",
+              "body": [
+                "README answers: what is this, who is it for, how do I run it, how do I contribute. That is 80% of what a README needs. Screenshots for UI, quickstart commands for CLIs.",
+                "Architecture diagrams age well when small: one box-and-arrow image of the main flows beats ten pages of prose. Update it when the system changes, not when you remember to.",
+                "CHANGELOG.md (or release notes) answers \"what changed since I last pulled?\" \u2014 it is the difference between an upgrade you trust and an upgrade you fear."
+              ]
+            }
+          ],
+          "task": "Sketch the layout of a CLI todo app (name its files): src package, entry point, tests, config approach, README outline, and .gitignore entries. Then implement the skeleton (directories + files with docstrings, no logic) and verify pytest collects the (empty) test files without error.",
+          "quiz": {
+            "question": "Where should the CLI argument parsing live in a well-structured project?",
+            "choices": [
+              "Inside every business-logic module",
+              "In a thin entry-point module that calls into importable logic",
+              "In a Makefile",
+              "In the tests"
+            ],
+            "answer": 1,
+            "explanation": "A thin entry point keeps business logic importable and testable without invoking the shell or parsing argv."
+          }
         }
       ],
       "prerequisites": [
@@ -280,17 +600,137 @@
         {
           "id": "sf.03.01",
           "title": "CI/CD Basics",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 40,
+          "goal": "Explain what continuous integration and continuous delivery actually do on every push, and trace a failing pipeline to its step.",
+          "sections": [
+            {
+              "heading": "What CI actually checks",
+              "body": [
+                "Continuous integration means every push is built, linted, type-checked and tested automatically on a clean machine. The goal is not ceremony \u2014 it is that no commit lands on main without a robot vouching for it.",
+                "A typical pipeline: checkout the commit, install dependencies (deterministically, from a lockfile), compile/lint/type-check, run the test suite, build artifacts, report status back to the PR. Each stage fails fast and loudly.",
+                "CI that takes an hour is fiction \u2014 nobody waits for it. Keep the core suite under ~10 minutes by splitting slow integration/e2e tests into separate jobs that run in parallel or nightly."
+              ]
+            },
+            {
+              "heading": "CD: shipping what passed",
+              "body": [
+                "Continuous delivery packages every green commit into a deployable artifact; continuous deployment additionally promotes it automatically. Most teams do CD to staging and gated CD to production.",
+                "Deterministic builds matter: same inputs \u2192 same artifact. Pin base images, pin dependency versions, stamp artifacts with the commit SHA, and store them in a registry. \"It deployed from my laptop\" is not a release.",
+                "The pipeline is code \u2014 review it like code. A bad YAML edit that disables tests is a security incident, not a style nit."
+              ]
+            },
+            {
+              "heading": "Reading a failing pipeline",
+              "body": [
+                "Click the red X on the PR. Find the first red job. Read its log from the failure upwards \u2014 the first error is usually the real one; later errors are cascade noise.",
+                "Classic failures: dependency resolution changed (lockfile drifted), flaky test, missing secret/permission, timeout, lint regression. Each has a signature in the log; learn to spot them fast.",
+                "Re-running the job fixes flaky infrastructure, not flaky tests. If re-run passes, note which test flapped and quarantine or fix it \u2014 do not shrug."
+              ]
+            }
+          ],
+          "task": "Find the workflow file in this very repository (.github/workflows/ci.yml). Write a short description of each job: what it builds/tests/verifies, and why each one exists. Flag any job you do not understand and look up its purpose \u2014 CI configs are documentation you can execute.",
+          "quiz": {
+            "question": "What does a green CI check on a PR actually certify?",
+            "choices": [
+              "The code is correct and bug-free",
+              "The automated gates the project defined passed on that commit",
+              "The reviewer approved it",
+              "The deploy to production succeeded"
+            ],
+            "answer": 1,
+            "explanation": "CI certifies exactly the gates defined in the workflow \u2014 tests, lint, builds \u2014 nothing more. It says nothing about human review or production health."
+          }
         },
         {
           "id": "sf.03.02",
           "title": "Debugging",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 40,
+          "goal": "Debug systematically: reproduce, isolate, hypothesize, verify \u2014 instead of changing code randomly until the error stops.",
+          "sections": [
+            {
+              "heading": "The method before the tools",
+              "body": [
+                "Reproduce first: make the bug happen on demand, ideally in the smallest input. If you cannot make it happen reliably, you do not yet know you have found it. Shrink the repro until it is embarrassingly small.",
+                "Read the error message fully, then the traceback bottom-up. Most beginners stop at the first line \u2014 the actual failing line and error type tell you what went wrong and where.",
+                "Hypothesize one cause at a time and test it. \"I changed three things and it works now\" tells you nothing \u2014 you cannot fix, only revert blindly next time."
+              ]
+            },
+            {
+              "heading": "Print debugging, done right",
+              "body": [
+                "Printing values is a legitimate first tool. Do it with labels: print(\"totals:\", totals, \"items=\", len(items)) so the log is greppable and tells a story. Print at boundaries, not on every line.",
+                "Bisect: when a bug appeared, ask \"which commit introduced it?\" via git bisect to binary-search the history. It reliably finds the culprit in minutes instead of days.",
+                "Compare good vs bad: run the working case and the broken case side by side and diff the values. The first divergence is usually where the bug lives."
+              ]
+            },
+            {
+              "heading": "Debuggers and structured logs",
+              "body": [
+                "A real debugger (pdb/ipdb, IDE breakpoints) pauses execution and inspects state: step over/into, watch expressions, change values mid-flight. Learn five commands \u2014 n, s, c, p expr, l \u2014 and you are 80% productive.",
+                "Logging with levels (debug/info/warning/error) and structured fields (json) beats print for anything that ships. The failing request will tell you the exact inputs if you log them with a request-id.",
+                "When stuck for more than ~20 minutes on \"why is this happening?\", change strategy: rubber-duck the problem out loud, or ask someone with no context \u2014 your attempt to explain exposes the wrong assumption reliably."
+              ]
+            }
+          ],
+          "task": "Take any bug you fixed recently. Write down: the exact repro, the first wrong value you observed, the hypothesis you tested first (and whether it was right), and the smallest change that fixed it. Then do the same for a bug someone else wrote in this repo history (use git log to find a fix commit and trace its test).",
+          "quiz": {
+            "question": "Your function returns the wrong value. What is the first debugging step?",
+            "choices": [
+              "Add more prints everywhere",
+              "Rewrite the function",
+              "Reproduce the wrong output with the smallest failing input and identify the first incorrect intermediate value",
+              "Revert the last commit"
+            ],
+            "answer": 2,
+            "explanation": "You cannot fix what you cannot reproduce, and you cannot find a cause without locating the first divergence from expected behaviour."
+          }
         },
         {
           "id": "sf.03.03",
           "title": "Tool Integration",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 35,
+          "goal": "Automate the repetitive parts of engineering work \u2014 editor, linter, formatter, test runner, pre-commit hooks \u2014 so the tools serve the work.",
+          "sections": [
+            {
+              "heading": "Editor as a force multiplier",
+              "body": [
+                "One editor, configured deeply: syntax highlighting, format-on-save, lint-on-type, go-to-definition, rename-symbol. Keybindings over menus. The 30 seconds you spend configuring a tool saves hours across the year.",
+                "Know three shortcuts cold: search project files, find symbol, find references. Everything else is optional. Learn your editor's escape hatch for \"my editor is misbehaving\" \u2014 restart with safe mode rarely loses work.",
+                "Dotfiles in a repo (git mirror of ~/.config) make a new machine productive in one command \u2014 a hallmark of senior engineers."
+              ]
+            },
+            {
+              "heading": "Lint, format, and type checks",
+              "body": [
+                "Lint (ruff, flake8) catches suspicious code: unused imports, bare excepts, undefined names. Format (black, ruff-format) removes style arguments forever by deciding them mechanically. Type checks (mypy, pyright) prove calling conventions before runtime.",
+                "Configure them in the repo (pyproject.toml) so the project, not your machine, owns the rules. CI enforces them; editors show them; both are cheaper than review comments about style.",
+                "Pre-commit hooks (pre-commit framework) run format/lint on staged files before every commit \u2014 the fastest feedback loop you can buy, seconds instead of a CI round trip."
+              ]
+            },
+            {
+              "heading": "Scripts and task runners",
+              "body": [
+                "Stop typing long commands: Makefile, just, npm scripts, or a tasks.py \u2014 give the common workflows names (test, lint, migrate, run). New contributors should not need to memorise incantations.",
+                "Make scripts report loudly: \"\u2713 412 passed\" is better than silence; \"\u2717 2 failed: test_total, test_split\" tells you where to look. Exit codes propagate \u2014 scripts that hide failures are worse than no script.",
+                "Automate the boring: changelog generation, dependency bumping (renovate/dependabot), license checks, bundle analysis. Every manual step is a future mistake."
+              ]
+            }
+          ],
+          "task": "Add a Makefile with targets test, lint and run to a scratch project with one passing test and one deliberate lint violation. Run make test and make lint and record the outputs. Then add a pre-commit hook that blocks commits containing trailing whitespace and test it with a deliberately dirty file.",
+          "quiz": {
+            "question": "What is the strongest argument for configuring lint/format in the repository rather than per developer?",
+            "choices": [
+              "Faster editor startup",
+              "Every contributor and CI enforces identical rules, so style never enters review",
+              "It saves disk space",
+              "It makes the editor quieter"
+            ],
+            "answer": 1,
+            "explanation": "Repo-owned config makes the rules part of the project: humans and machines apply the same gate, ending style debates and drift."
+          }
         }
       ],
       "prerequisites": [
@@ -311,17 +751,137 @@
         {
           "id": "sf.04.01",
           "title": "HTTP Fundamentals",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 35,
+          "goal": "Read an HTTP exchange like a document: method, path, headers, status, body \u2014 and diagnose failures with curl.",
+          "sections": [
+            {
+              "heading": "The request and the response",
+              "body": [
+                "An HTTP request is one text block: METHOD PATH HTTP/1.1, headers (Host, Content-Type, Authorization), blank line, optional body. The response mirrors it: status code, headers, body. Every web interaction you have ever made is this shape.",
+                "Methods carry intent: GET reads (safe, idempotent, cacheable), POST creates, PUT replaces, PATCH partially updates, DELETE removes. Status codes carry meaning at a glance: 2xx success, 3xx redirect, 4xx your fault, 5xx my fault (the server).",
+                "curl is the universal HTTP microscope: curl -i shows the response with headers; curl -X POST -H \"Content-Type: application/json\" -d '{\"a\": 1}' sends a JSON POST. If you cannot curl it, you do not yet understand it."
+              ]
+            },
+            {
+              "heading": "Headers that matter",
+              "body": [
+                "Content-Type declares what the body is (application/json, text/html); Content-Length frames it; Authorization carries credentials (Bearer tokens, Basic auth); Accept tells the server what you can consume; Cache-Control governs freshness.",
+                "Cookies are state that rides along: Set-Cookie on response, Cookie on request. They are why HTTP feels stateful when it is fundamentally stateless \u2014 and why sessions work at all.",
+                "Every hop may add headers: proxies, load balancers, CDNs. X-Request-Id style correlation headers let you trace one user request through five services."
+              ]
+            },
+            {
+              "heading": "Status codes you actually meet",
+              "body": [
+                "200 OK, 201 Created, 204 No Content. 301/302 redirects (GET location). 304 Not Modified (cache). 400 Bad Request (malformed), 401 Unauthenticated (who are you?), 403 Forbidden (no), 404 Not Found, 409 Conflict, 422 Unprocessable. 500 Internal, 502 Bad Gateway, 503 Unavailable, 504 Timeout.",
+                "Idempotency: GET/PUT/DELETE are idempotent (same call N times = same effect); POST is not. This is why safe retries exist for the former and dangerous replays are avoided for the latter.",
+                "Latency lives in the network too \u2014 DNS, TLS handshake, time to first byte. A 200 in 50ms vs 5s tells different stories even with identical bodies."
+              ]
+            }
+          ],
+          "task": "Use curl against a public endpoint (e.g., https://api.github.com/zen or your own local server). Record: the exact command, the status code, three interesting headers, and the body. Then POST to any endpoint that echoes JSON (httpbin.org/anything) with a small payload and capture the response.",
+          "quiz": {
+            "question": "A client receives HTTP 401. What does it mean and what should it do?",
+            "choices": [
+              "The server crashed \u2014 retry",
+              "Authentication missing or invalid \u2014 obtain or fix credentials",
+              "The resource does not exist",
+              "The request was malformed \u2014 fix the JSON"
+            ],
+            "answer": 1,
+            "explanation": "401 means \"who are you?\" \u2014 authenticate with valid credentials (or sign in), then retry. 403 means \"I know you and you still cannot have it\"; 404 means the thing is not there."
+          }
         },
         {
           "id": "sf.04.02",
           "title": "API Design",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 40,
+          "goal": "Design REST endpoints that are predictable to consume: resources, verbs, status codes, pagination, versioning.",
+          "sections": [
+            {
+              "heading": "Resources and nouns, not verbs",
+              "body": [
+                "URLs name resources: /users, /users/42, /users/42/orders. The method says what you do to them: GET /users (list), POST /users (create), GET /users/42, PATCH /users/42, DELETE /users/42. No /getUser?id= or /deleteUser endpoints.",
+                "Nest only one level deep: /users/42/orders is fine; /users/42/orders/7/items/3/notes is a design smell \u2014 flatten to /order-items/3 or /orders/7/notes. Deep nesting encodes navigational structure, not meaning.",
+                "Collections return arrays; single items return objects. A collection of one is still an array \u2014 clients that special-case it write bugs."
+              ]
+            },
+            {
+              "heading": "Predictable responses",
+              "body": [
+                "Errors are part of the contract: a consistent error body {\"error\": {\"code\": \"VALIDATION_FAILED\", \"message\": \"...\", \"details\": [...]}} lets clients handle failures programmatically. Empty 500s with no body are hostile.",
+                "List endpoints paginate: limit/offset or cursors, always with a stable sort. Unbounded lists become 30-second responses \u2014 and keep users (and your database) honest.",
+                "Validation failures are 422 with the offending fields listed \u2014 not \"invalid input\". Partial success (207) exists for batches but use it only when partial really is the intent."
+              ]
+            },
+            {
+              "heading": "Versioning and change management",
+              "body": [
+                "Never break existing clients mid-flight. Version in the path (/v1/, /v2/) so old and new can coexist; deprecate loudly with sunset headers and changelogs; remove nothing without notice.",
+                "Additive changes are free; subtractive changes are expensive. Add new fields; never remove or retype old ones \u2014 there are clients you cannot see.",
+                "Rate limiting is part of availability: 429 with Retry-After tells well-behaved clients exactly what to do. Unbounded public APIs exhaust themselves."
+              ]
+            }
+          ],
+          "task": "Design the JSON API for a minimal \"team task tracker\": list/create tasks, comment on a task, assign a task. Write the routes, example request/response bodies (including one error case and one paginated list), and name the status code for each. No code \u2014 the design is the deliverable.",
+          "quiz": {
+            "question": "Which endpoint pair best follows REST conventions?",
+            "choices": [
+              "GET /getUsers and POST /createUser",
+              "GET /users and POST /users",
+              "POST /users/list and GET /users/add",
+              "GET /users/fetchAll and POST /users/save"
+            ],
+            "answer": 1,
+            "explanation": "URLs name resources; the HTTP method names the action. /users + GET lists, /users + POST creates \u2014 nothing else should be in the URL."
+          }
         },
         {
           "id": "sf.04.03",
           "title": "Backend Basics",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 40,
+          "goal": "Understand what a backend does between the request and the response: routing, validation, business logic, persistence \u2014 and where it fails.",
+          "sections": [
+            {
+              "heading": "The request lifecycle",
+              "body": [
+                "Every backend request runs the same pipeline: route \u2192 middleware (auth, logging, parsing) \u2192 validate input \u2192 execute business logic \u2192 persist/load \u2192 serialize response. Design entry points to stay thin by pushing work into services.",
+                "Validation is a wall, not a gate you walk through: reject bad input before any logic runs. Schema validation (types, required fields, ranges) at the edge keeps everything downstream simpler.",
+                "Business logic lives in the domain layer, not in the route handler; persistence lives in repositories/queries. Routes orchestrate; they should be trivially readable."
+              ]
+            },
+            {
+              "heading": "Data and state",
+              "body": [
+                "Stateless services scale horizontally \u2014 any instance can serve any request. State that must be shared goes in a database or cache, not in process memory (which disappears on restart).",
+                "Databases: relational (Postgres) for structured, transactional, relational data with constraints enforced; document (Mongo) for flexible shapes; cache (Redis) for hot, ephemeral reads. Choose by access pattern, not fashion.",
+                "Transactions tie multi-step writes together atomically: either the transfer debits and credits both, or neither. Partial writes are how ledgers go corrupt."
+              ]
+            },
+            {
+              "heading": "Failure modes and resilience",
+              "body": [
+                "Timeouts everywhere: outbound calls without deadlines hang forever and cascade. Retries with exponential backoff and jitter; circuit breakers stop hammering a dying dependency; bulkheads isolate failure domains.",
+                "Idempotency keys (client-generated UUIDs) make retried payments/creates safe \u2014 the server deduplicates instead of double-charging.",
+                "Observability: structured logs with request-ids, metrics (latency, error rate, saturation), and traces across services. You cannot fix what you cannot see; dashboards earn their keep in incidents."
+              ]
+            }
+          ],
+          "task": "Sketch the sequence of layers a POST /orders request passes through in a typical backend, naming what happens in each layer for (a) an invalid email in the payload, (b) a database outage, (c) a duplicate idempotency key. Then write the one log line per failure case you would want at 3 a.m.",
+          "quiz": {
+            "question": "Where should input validation happen in the pipeline?",
+            "choices": [
+              "In the database constraints only",
+              "At the edge, before business logic runs",
+              "In the client only",
+              "After the business logic commits"
+            ],
+            "answer": 1,
+            "explanation": "Validate at the boundary before any logic or writes run \u2014 it keeps every downstream layer simpler and prevents corrupt state at the door."
+          }
         }
       ],
       "prerequisites": [
@@ -342,17 +902,137 @@
         {
           "id": "sf.05.01",
           "title": "Algorithmic Thinking",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 45,
+          "goal": "Decompose a problem into a correct, verifiable algorithm before writing code: specification, invariant, walkthrough, then implementation.",
+          "sections": [
+            {
+              "heading": "Start from the specification, not the keyboard",
+              "body": [
+                "Every good algorithm starts as a precise statement: given X (inputs), produce Y (outputs), satisfying Z (constraints). \"Find duplicates\" is vague; \"given a list of \u226410\u2076 ids, return all values appearing \u22652 times, order-preserving\" is buildable.",
+                "Identify the decision procedure: for each output element, what rule decides it? If you can say the rule in one sentence, you are ready to implement. If not, you are still defining the problem.",
+                "Work a tiny example by hand first \u2014 three to five cases \u2014 and write down each step. The hand-solved example becomes your first unit test and your spec."
+              ]
+            },
+            {
+              "heading": "Invariants and walkthroughs",
+              "body": [
+                "An invariant is a statement true before, during and after the algorithm: \"every value before index i is already known to be smaller than everything after\". Correctness is mostly preserving the invariant.",
+                "Walk through your example in slow motion: track the state after each step. If the state matches your intuition at step k, the invariant holds; if it breaks, your algorithm is wrong \u2014 not your intuition.",
+                "Greedy solutions (take the locally best choice) work only when local optima compose into global ones \u2014 e.g., scheduling by earliest finish. When in doubt, prove a tiny counterexample or choose the exact approach."
+              ]
+            },
+            {
+              "heading": "From algorithm to code",
+              "body": [
+                "Translate mechanically: inputs \u2192 arguments, spec \u2192 assert/comment, invariant \u2192 comment at the loop head. The code should look like your walkthrough, not a clever re-derivation.",
+                "Pick boring data structures first: list and dict cover 90% of problems. Fancy structures exist for the remaining 10% and carry their own complexity.",
+                "Decompose into named pieces: half the time \"the algorithm\" is three functions: normalize, decide, emit. Each becomes independently testable."
+              ]
+            }
+          ],
+          "task": "Design (on paper) an algorithm that, given a stream of support tickets with timestamps, returns the longest silence gap and its start/end. Write the spec, the invariant, a hand-worked example (or two), then implement it in Python with tests for empty, one-ticket, and out-of-order input.",
+          "quiz": {
+            "question": "What does an \"invariant\" buy you?",
+            "choices": [
+              "Faster code",
+              "A property you can lean on at every step to reason about correctness",
+              "Better error messages",
+              "Shorter functions"
+            ],
+            "answer": 1,
+            "explanation": "The invariant is the backbone of the correctness argument: it is what you assume going in and what you guarantee going out, at every iteration."
+          }
         },
         {
           "id": "sf.05.02",
           "title": "Data Structures",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 45,
+          "goal": "Know the workhorse structures beyond list and dict \u2014 stacks, queues, linked lists, trees, and graphs \u2014 and when to reach for each.",
+          "sections": [
+            {
+              "heading": "Stacks and queues: order disciplines",
+              "body": [
+                "A stack is last-in-first-out: push/pop from one end. Uses: undo history, expression parsing, DFS, call stacks themselves, matching brackets. In Python, a list with append/pop(-1) is a stack.",
+                "A queue is first-in-first-out: push one end, pop the other. Uses: BFS, task scheduling, producer-consumer buffering. collections.deque is the O(1) implementation; list.pop(0) is O(n) and will hurt at scale.",
+                "Deques (double-ended) let you push/pop at both ends \u2014 the right tool for sliding-window problems and palindrome checks."
+              ]
+            },
+            {
+              "heading": "Trees and hash tables under the hood",
+              "body": [
+                "A tree is a connected, acyclic, parent-child structure: filesystems, the DOM, org charts, the parse tree of this sentence. Traversals: depth-first (pre/in/post) and breadth-first. Binary search trees give log(n) search/insert \u2014 when balanced (self-balancing variants).",
+                "A hash table maps keys to values in expected O(1) by hashing keys into buckets and handling collisions (chaining or open addressing). Everything in your dict and set internals is this.",
+                "Load factor (items/buckets) controls collision rate; resize doubles buckets to keep amortized O(1). Understanding this demystifies why dict is fast and why iteration order survived 3.7+."
+              ]
+            },
+            {
+              "heading": "Graphs: relationships everywhere",
+              "body": [
+                "A graph is nodes and edges \u2014 everything is a graph: dependencies (lessons), social networks, road routes, package imports. Represent with adjacency list (dict of lists) for sparse graphs; adjacency matrix only when dense.",
+                "BFS (queue) finds shortest paths in unweighted graphs and spreads level-by-level; DFS (stack/recursion) explores depth first: cycle detection, topological sort, connected components.",
+                "Cycles matter: software builds must be acyclic in dependencies; a cycle means impossible task order. Topological sort exists precisely for this."
+              ]
+            }
+          ],
+          "task": "Implement a small \"dependency resolver\" print order: given a dict of lesson -> list of prerequisite lessons, output a valid order (Kahn's algorithm or DFS). Handle a cycle of your choosing and print a clear error naming the lessons in the cycle. Provide three example graphs: valid chain, diamond, cycle.",
+          "quiz": {
+            "question": "Which structure finds the shortest path in an unweighted graph fastest and simplest?",
+            "choices": [
+              "DFS",
+              "BFS",
+              "Binary search",
+              "Union-find"
+            ],
+            "answer": 1,
+            "explanation": "BFS expands level by level, so the first time it reaches a node determines its shortest distance in edges \u2014 the correct tool for unweighted shortest paths."
+          }
         },
         {
           "id": "sf.05.03",
           "title": "Complexity Analysis",
-          "status": "pending"
+          "status": "ready",
+          "study_minutes": 40,
+          "goal": "Reason about how an algorithm scales: O-notation, best/average/worst cases, time vs space trade-offs, and what actually matters at your data sizes.",
+          "sections": [
+            {
+              "heading": "Big-O in plain terms",
+              "body": [
+                "Big-O is an upper bound on growth, not a stopwatch: O(n) means the work grows at most linearly with input size n. Constant factors fall away: O(2n) is O(n); O(n + log n) is O(n).",
+                "The ladder: O(1) < O(log n) < O(n) < O(n log n) < O(n\u00b2) < O(2\u207f) < O(n!). At n = 10\u2076, O(n) is fine, O(n log n) is fine, O(n\u00b2) is 10\u00b9\u00b2 steps \u2014 hours; O(2\u207f) is heat death of the universe.",
+                "Notation drops constants and lower-order terms deliberately so you compare shapes, not nanoseconds. Hardware is constant; scale is the variable."
+              ]
+            },
+            {
+              "heading": "Time vs space, best/average/worst",
+              "body": [
+                "Big-O hides two stories: time and space. Memoization buys speed with memory (naive recursion \u2192 DP). Choose deliberately: linear space for log-time beats quadratic time for constant space when memory is free.",
+                "Average vs worst: hash tables are expected O(1) but O(n) at pathological collision chains; quicksort averages O(n log n) but degrades to O(n\u00b2) \u2014 which is why implementations shuffle or switch to heapsort.",
+                "Amortized: a list append is O(1) on average across resizes even though individual resizes are O(n); an expensive operation every k-th call can still be O(1) amortized."
+              ]
+            },
+            {
+              "heading": "What matters in practice",
+              "body": [
+                "Profile before optimizing: 80% of time is usually in 20% of code. Big-O guides where to look; benchmarks tell you what to fix.",
+                "Constant factors and IO dominate real systems: a hash lookup vs. an SQL row fetch is nanoseconds vs. milliseconds \u2014 algorithmic purity loses to cache locality and round trips.",
+                "Choose the right tool: the gap between O(n\u00b2) piped code and O(n log n) algorithm is irrelevant at n = 100 but decisive at n = 10\u2078. Know your n."
+              ]
+            }
+          ],
+          "task": "Given a list of 100,000 order dicts with customer ids, compute (a) customers with more than one order and (b) the id with the highest total spend. First do it the naive way and time it; then do it with a dict and time it again. Report both timings and the theoretical comparison.",
+          "quiz": {
+            "question": "A nested loop over the same list is typically:",
+            "choices": [
+              "O(n)",
+              "O(log n)",
+              "O(n\u00b2)",
+              "O(1)"
+            ],
+            "answer": 2,
+            "explanation": "Two independent traversals of an input of size n multiply: n \u00d7 n = O(n\u00b2) work in the worst case."
+          }
         }
       ],
       "prerequisites": [

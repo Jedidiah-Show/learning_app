@@ -24,17 +24,40 @@ class FoundationsManifestTests(unittest.TestCase):
         self.assertEqual(pathway['id'], 'shared-foundations')
         self.assertEqual(len(pathway['modules']), 6)
 
-    def test_all_21_lessons_present_and_seeded(self):
+    def test_all_21_lessons_authored_and_ready(self):
         lessons = shared_foundations_lessons()
         self.assertEqual(len(lessons), 21)
-        statuses = {lesson['status'] for lesson in lessons}
-        self.assertIn(statuses, ({'pending'}, {'pending', 'ready'}))
+        for lesson in lessons:
+            self.assertEqual(lesson['status'], 'ready', lesson['id'])
+            self.assertTrue(lesson.get('sections'), lesson['id'])
+            self.assertTrue(lesson.get('quiz'), lesson['id'])
+            self.assertTrue(lesson.get('goal'), lesson['id'])
+            self.assertGreater(lesson.get('study_minutes', 0), 0)
 
-    def test_pending_lessons_carry_no_content(self):
-        for lesson in shared_foundations_lessons():
-            if lesson['status'] == 'pending':
-                self.assertNotIn('sections', lesson)
-                self.assertNotIn('quiz', lesson)
+    def test_pending_lesson_with_content_is_rejected_by_loader(self):
+        import json
+        from pathlib import Path
+        from unittest.mock import patch
+        import app.foundations_pathway as fp
+
+        bad = json.loads(Path(fp.PATHWAY_PATH).read_text(encoding='utf-8'))
+        mut = dict(bad['modules'][0])
+        mut_lessons = [dict(l) for l in mut['lessons']]
+        mut_lessons[0] = dict(mut_lessons[0], status='pending',
+                              sections=[{'heading': 'x', 'body': ['y']}])
+        mut['lessons'] = mut_lessons
+        bad['modules'] = [mut] + bad['modules'][1:]
+
+        bad_path = Path('/tmp/bad_foundations_manifest.json')
+        bad_path.write_text(json.dumps(bad), encoding='utf-8')
+        with patch.object(fp, 'PATHWAY_PATH', new=bad_path):
+            fp.shared_foundations_pathway.cache_clear()
+            try:
+                with self.assertRaises(ValueError):
+                    fp.shared_foundations_pathway()
+            finally:
+                fp.shared_foundations_pathway.cache_clear()
+        bad_path.unlink()
 
     def test_lesson_lookup(self):
         lesson = get_shared_foundations_lesson('sf.00.01')
@@ -104,16 +127,17 @@ class FoundationsRouteTests(unittest.TestCase):
             self.assertIsNotNone(completion)
 
     def test_pending_lesson_renders_notice(self):
+        """A seeded pending lesson shows the notice and records nothing."""
+        from unittest.mock import patch
         self._register()
-        # sf.01.01 is pending and only reachable once sf.00 is complete.
-        for lesson_id, answer in [('sf.00.01', '1'), ('sf.00.02', '0'),
-                                  ('sf.00.03', '1'), ('sf.00.04', '3')]:
-            response = self.client.post(
-                f'/specializations/shared-foundations/lessons/{lesson_id}',
-                data={'answer': answer},
-            )
-            self.assertEqual(response.status_code, 302, lesson_id)
-        response = self.client.get('/specializations/shared-foundations/lessons/sf.01.01')
+        pending = {
+            'id': 'sf.09.01', 'title': 'Coming soon', 'status': 'pending',
+            'module_id': 'sf.00', 'module_title': 'Programming Foundations',
+            'module_number': 0,
+        }
+        with patch('app.routes.main.get_shared_foundations_lesson', return_value=pending), \
+             patch('app.routes.main.foundation_lesson_is_open', return_value=True):
+            response = self.client.get('/specializations/shared-foundations/lessons/sf.09.01')
         self.assertEqual(response.status_code, 200)
         self.assertIn('being written', response.get_data(as_text=True))
 
