@@ -24,7 +24,7 @@
 |---|---|---|---|---|---|---|
 | M0 | Security, Data Integrity and Release Baseline | Critical | IN PROGRESS (external: credential rotation) | Engineering | 2026-11-18 | — |
 | M1 | Canonical Curriculum and Pathway Integrity | Critical | IN PROGRESS (foundations content + M1.4 re-verify open) | Engineering | 2026-11-18 | — |
-| M2 | Project Studio and ML Project Corrections | High | IN PROGRESS (M2.1 done, uncommitted→see commits) | Engineering | 2026-11-19 | — |
+| M2 | Project Studio and ML Project Corrections | High | EXIT REVIEW (owner sign-off on AI brief content pending) | Engineering | 2026-11-19 | — |
 | M3 | Practice Arena 2.1 and Assessment Integrity | High | NOT STARTED | — | — | — |
 | M4 | Skill Passport and Competency Verification | Critical | NOT STARTED | — | — | — |
 | M5 | AI Tutor 3.0 | High | NOT STARTED | — | — | — |
@@ -97,4 +97,4 @@ recorded decision here._
 | M2.1 Manifest-driven ML project templates | per-module project_title/objectives/instructions + template rewrite + skeleton report | DONE (verified) | All 12 modules publish `project_title`, `objectives`, `instructions`, dataset, deliverables, rubric, contract; template renders them (no module-number branches); example report is types-only (no expected-value leakage); `ml_pathway.py` validates every module at load; `tests/test_ml_project_templates.py` (6 tests) + `test_ml_specialization.py` pass |
 | M2.2 AI Engineering project workspace | AI-specific workspace | DONE (verified) | Dedicated AI artefact models (separate tables from ML) + pathway_id enforcement at service boundary; submission schema strengthened (`problem_statement` required, `api_contracts`, `deployment_evidence`; unknown fields rejected); form exposes artefacts; ML-module IDs rejected by AI artefact APIs (test); 13 tests passing |
 | M2.3 Shared project lifecycle | lifecycle engine with audit | DONE (verified) | `app/services/project_lifecycle.py` (validated stages `draft→…→archived`; separation of duties; idempotent submits; append-only `project_lifecycle_event`), model + migration `c7d8e9f0a1b2` (upgrade/downgrade verified on disposable SQLite); AI & ML submit flows record transitions; `GET /api/projects/lifecycle/<domain>/<key>`; 14 tests + AI/ML suite green |
-| M2.4 Project milestones and evidence | milestones/evidence/competency mapping | NOT STARTED | — |
+| M2.4 Project milestones and evidence | milestones/evidence/competency mapping | DONE (verified) | Milestone definitions derived from each module's published `project_deliverables` (ML pathway + AI manifest); `project_milestone` table + migration `d8e9f0a1b2c3` (verified); milestone checklist UI on both project workbenches; AI manifest modules gained project briefs/objectives/deliverables (human-reviewed recommendation — flagged for owner review); `/showcase/u/<id>` now whitelists approved public fields (evaluation/review feedback and CI links no longer published); 8 tests + showcase security suite green |

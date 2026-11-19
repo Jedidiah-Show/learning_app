@@ -42,7 +42,21 @@
       "competencies": [
         "llm",
         "prompt engineering"
-      ]
+      ],
+      "project_title": "Build a grounded prompt playground",
+      "project": "Build a small CLI or notebook workflow that sends versioned prompts to one LLM API, captures token usage and outputs, and compares at least three prompt variants on a fixed set of inputs.",
+      "objectives": [
+        "Version and pin prompts as artifacts, not ad-hoc strings",
+        "Measure token use, latency and output quality side by side",
+        "Pick a prompt variant with written criteria, not vibes"
+      ],
+      "project_deliverables": [
+        "A repository with prompts stored as files, each with an id and version",
+        "A run log recording model, parameters, latency and token counts",
+        "A comparison table across at least three prompt variants",
+        "A short README stating the selection criterion and the winner"
+      ],
+      "instructions": "Implement the prompt playground, keep model name and parameters identical across variants, and capture metrics for every run. Paste the report summary in your submission and explain the variant you would ship and why."
     },
     {
       "id": "ai.04",
@@ -71,7 +85,21 @@
       "competencies": [
         "llm application",
         "production"
-      ]
+      ],
+      "project_title": "LLM application with routing and fallback",
+      "project": "Build a small LLM-backed service (e.g. ticket triage) with a primary model, a fallback model, and a validation layer that rejects malformed or unsafe outputs before they reach the caller.",
+      "objectives": [
+        "Route requests with explicit rules and log every decision",
+        "Fall back deterministically when the primary model fails validation",
+        "Validate structured output against a schema"
+      ],
+      "project_deliverables": [
+        "A service exposing one endpoint with schema-validated output",
+        "A routing log showing primary/fallback decisions",
+        "A validation report for a fixed input set",
+        "A README covering failure modes and limits"
+      ],
+      "instructions": "Build the service with routing, fallback and validation. Exercise both paths with a fixed test set and include the routing log and validation report in your submission."
     },
     {
       "id": "ai.05",
@@ -100,7 +128,21 @@
       "competencies": [
         "rag",
         "retrieval"
-      ]
+      ],
+      "project_title": "RAG pipeline with measured retrieval",
+      "project": "Build a retrieval-augmented generation pipeline over a small document collection: chunking, embeddings, vector search, and answer generation with citations. Measure retrieval quality on a hand-labelled question set.",
+      "objectives": [
+        "Chunk documents deliberately and record the chunking decision",
+        "Evaluate retrieval (hit rate@k) separately from answer quality",
+        "Generate answers with citations to source chunks"
+      ],
+      "project_deliverables": [
+        "A working ingest + query pipeline with a fixed document set",
+        "A retrieval evaluation (hit rate@5 or similar) on at least 15 questions",
+        "Answers with citations for the same question set",
+        "A README documenting chunk size, overlap and embedding model"
+      ],
+      "instructions": "Build the ingest and query path, then measure retrieval quality on your question set. Submit the evaluation numbers, two example cited answers, and the chunking rationale."
     },
     {
       "id": "ai.06",
@@ -129,7 +171,21 @@
       "competencies": [
         "agents",
         "tool integration"
-      ]
+      ],
+      "project_title": "Tool-using agent for a narrow job",
+      "project": "Build a single-purpose agent (e.g. release-note triage or expense extraction) that uses at least three tools, records every tool call as a trace, and stops safely when a tool fails.",
+      "objectives": [
+        "Design tools with clear names, schemas and errors",
+        "Bound the agent loop (max steps, timeouts, cost cap)",
+        "Produce a readable execution trace per run"
+      ],
+      "project_deliverables": [
+        "An agent with at least three working tools and a bounded loop",
+        "Structured execution traces for at least five runs",
+        "A failure-injection test (tool errors do not crash or hang)",
+        "A README with the tool contracts and stop conditions"
+      ],
+      "instructions": "Build the agent and its trace format. Run the failure-injection cases and include two full traces in your submission."
     },
     {
       "id": "ai.07",
@@ -158,7 +214,21 @@
       "competencies": [
         "orchestration",
         "multi-agent"
-      ]
+      ],
+      "project_title": "Multi-agent workflow with checkpoints",
+      "project": "Build a two- or three-agent workflow (e.g. drafter + reviewer, or researcher + writer) with explicit hand-offs, checkpoints and a single shared state object. Show what happens when one agent misbehaves.",
+      "objectives": [
+        "Define agent roles, inputs and outputs as contracts",
+        "Persist workflow state so a run can resume from a checkpoint",
+        "Degrade gracefully when one agent fails"
+      ],
+      "project_deliverables": [
+        "A runnable workflow with at least two agents and explicit hand-offs",
+        "A checkpoint/resume demonstration (kill mid-run, resume)",
+        "An orchestrator log showing per-agent inputs and outputs",
+        "A README describing roles, contracts and failure handling"
+      ],
+      "instructions": "Implement the workflow and its shared state. Demonstrate the checkpoint/resume path and include the kill/resume log in your submission."
     },
     {
       "id": "ai.08",
@@ -187,7 +257,21 @@
       "competencies": [
         "mcp",
         "context management"
-      ]
+      ],
+      "project_title": "MCP server exposing your tools",
+      "project": "Build a small MCP (Model Context Protocol) server that exposes two or three tools to a host application, with explicit parameter schemas, provenance metadata on results, and a permission boundary.",
+      "objectives": [
+        "Write an MCP server with validated tool schemas",
+        "Attach provenance to every tool result",
+        "Scope what the server can read and write"
+      ],
+      "project_deliverables": [
+        "A running MCP server with at least two tools",
+        "Tool schemas with validation and documented error cases",
+        "A client transcript showing calls and provenance metadata",
+        "A README covering the permission boundary and threat notes"
+      ],
+      "instructions": "Implement the MCP server and at least one real client session. Include the transcript and the permission boundary documentation in your submission."
     },
     {
       "id": "ai.09",
@@ -220,7 +304,21 @@
       "competencies": [
         "production",
         "observability"
-      ]
+      ],
+      "project_title": "Observable AI service in production shape",
+      "project": "Take a small LLM service and put it in production shape: structured logs, metrics (latency, error rate, token cost per request), alerts, and a written incident runbook. Deploy it and capture evidence.",
+      "objectives": [
+        "Instrument the service: latency, errors, token cost",
+        "Alert on SLO breaches with a documented response",
+        "Prove deploy/rollback works on the target platform"
+      ],
+      "project_deliverables": [
+        "A deployed service with a public health endpoint",
+        "A dashboard or log extract showing latency/error/cost metrics",
+        "Alert rules with one triggered (or simulated) incident",
+        "A runbook: deploy, rotate, rollback, and escalate"
+      ],
+      "instructions": "Deploy the instrumented service, trigger or simulate one alert, and submit the metrics extract plus the runbook."
     },
     {
       "id": "ai.10",
@@ -249,7 +347,21 @@
       "competencies": [
         "docker",
         "deployment"
-      ]
+      ],
+      "project_title": "Containerized AI workload with CI",
+      "project": "Containerize an AI workload (model server or agent) with a pinned, minimal image, a tested compose/k8s path, and CI that builds, scans and smoke-tests on every push.",
+      "objectives": [
+        "Build a reproducible image: pinned base, lockfile, non-root user",
+        "Automate build + smoke test in CI",
+        "Measure image size and cold-start time"
+      ],
+      "project_deliverables": [
+        "A Dockerfile with pinned base image and non-root runtime",
+        "CI workflow: lint, build, vulnerability scan, smoke test",
+        "A measured cold-start and image size report",
+        "A README with the deploy command and rollback"
+      ],
+      "instructions": "Containerize the workload and wire the CI pipeline. Include the image size/cold-start measurements and a green CI run URL in your submission."
     },
     {
       "id": "ai.11",
@@ -277,7 +389,21 @@
       "competencies": [
         "system design",
         "architecture"
-      ]
+      ],
+      "project_title": "End-to-end AI system design record",
+      "project": "Write the system design for a real AI product slice: requirements, threat model, architecture diagram, capacity and cost estimate, rollout plan and rollback, and the decision record for two rejected alternatives.",
+      "objectives": [
+        "Produce a defensible architecture with explicit trade-offs",
+        "Estimate latency, throughput and monthly cost",
+        "Write a threat model with mitigations"
+      ],
+      "project_deliverables": [
+        "An architecture document with diagram and data-flow",
+        "A capacity and monthly cost estimate with assumptions",
+        "A threat model with at least five threats and mitigations",
+        "A decision record for two rejected alternatives"
+      ],
+      "instructions": "Write the design for one concrete AI product slice. Submit the architecture document, cost estimate and threat model; be explicit about what you would build first."
     }
   ],
   "prerequisites": {

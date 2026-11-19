@@ -187,6 +187,32 @@ def _record(module):
     ).first()
 
 
+def _public_project_payload(item):
+    """Whitelist the fields a public showcase may expose.
+
+    Internal review feedback (evaluation, criterion evidence, failure detail)
+    and CI plumbing are never published; the learner's repository, demo and
+    completion/verification state are the approved public record.
+    """
+    module = item.get('module') or {}
+    project = item.get('project') or {}
+    return {
+        'module': {'number': module.get('number')},
+        'project': {
+            'title': project.get('title') or module.get('title'),
+            'brief': project.get('brief') or module.get('description', ''),
+        },
+        'module_title': module.get('title'),
+        'domain': item.get('domain'),
+        'domain_label': item.get('domain_label'),
+        'repository_url': item.get('repository_url'),
+        'demo_url': item.get('demo_url'),
+        'checks_verified': bool(item.get('checks_verified')),
+        'completed': True,
+        'verification_status': item.get('verification_status'),
+    }
+
+
 def _plan(create=False):
     record = CoursePlan.query.filter_by(user_id=current_user.id).first()
     if record is None and create:
@@ -1006,7 +1032,7 @@ def public_showcase(public_id):
         abort(404)
     domain_filter = request.args.get('domain')
     projects = _build_portfolio_data(user, domain_filter=domain_filter)
-    projects = [item for item in projects if item.get('completed')]
+    projects = [_public_project_payload(item) for item in projects if item.get('completed')]
     return render_template(
         'portfolio.html',
         user=user,
@@ -1122,3 +1148,48 @@ def project_lifecycle(domain, project_key):
         'stage': current_stage(owner_id, domain, project_key),
         'history': history(owner_id, domain, project_key),
     }), 200
+
+
+@projects_bp.route('/api/projects/milestones/<domain>/<project_key>', methods=['GET'])
+@login_required
+def project_milestones_get(domain, project_key):
+    """Milestone state for a project. Owner or privileged reviewer."""
+    from app.services.project_milestones import DOMAINS, milestone_state
+    from app.services.authorization import can_view_verification_history
+    if domain not in DOMAINS:
+        return jsonify({'error': f'Unknown domain {domain!r}; expected one of {DOMAINS}'}), 400
+    owner_id = current_user.id
+    raw = request.args.get('user_id')
+    if raw is not None:
+        try:
+            owner_id = int(raw)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'user_id must be an integer'}), 400
+    if not can_view_verification_history(current_user, owner_id):
+        return jsonify({'error': 'You are not authorized to view these milestones'}), 403
+    state = milestone_state(owner_id, domain, project_key)
+    if state is None:
+        return jsonify({'error': 'Unknown project'}), 404
+    return jsonify({'domain': domain, 'project_key': project_key, 'user_id': owner_id, 'milestones': state}), 200
+
+
+@projects_bp.route('/api/projects/milestones/<domain>/<project_key>', methods=['POST'])
+@login_required
+def project_milestones_set(domain, project_key):
+    """Toggle one milestone. Owner-only; reviewers may not edit learner state."""
+    from app.services.project_milestones import DOMAINS, set_milestone
+    if domain not in DOMAINS:
+        return jsonify({'error': f'Unknown domain {domain!r}; expected one of {DOMAINS}'}), 400
+    data = get_json_object()
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Request body must be a JSON object'}), 400
+    milestone_id = data.get('milestone_id')
+    completed = data.get('completed')
+    if not isinstance(milestone_id, str) or not isinstance(completed, bool):
+        return jsonify({'error': 'milestone_id (str) and completed (bool) are required'}), 400
+    try:
+        state = set_milestone(current_user.id, domain, project_key,
+                              milestone_id, completed, note=data.get('note'))
+    except ValueError as error:
+        return jsonify({'error': str(error)}), 400
+    return jsonify({'domain': domain, 'project_key': project_key, 'milestones': state}), 200

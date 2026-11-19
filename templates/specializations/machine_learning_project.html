@@ -39,6 +39,14 @@
     <p class="mt-2 text-xs text-slate-500">Or build the same kit in your browser — no local Python required: <a class="font-semibold text-indigo-700 underline" href="{{ url_for('workspace.page', project_key='ml-module-' ~ module.number) }}">Open the in-browser workspace →</a></p>
   </section>
 
+  <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-6" aria-labelledby="milestones-heading"
+           data-milestones-domain="machine-learning" data-milestones-key="{{ module.id }}">
+    <h3 id="milestones-heading" class="text-lg font-bold">Project milestones</h3>
+    <p class="mt-1 text-sm text-slate-600">Work through the deliverables and check them off — your progress is saved automatically.</p>
+    <ul id="milestones-list" class="mt-4 space-y-2 text-sm"></ul>
+    <p id="milestones-status" class="mt-2 text-sm text-slate-600" role="status"></p>
+  </section>
+
   <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-6">
     <h3 class="text-lg font-bold">Submit your evidence</h3>
     <p class="mt-2 text-sm leading-6 text-slate-600">{{ module.instructions }}</p>
@@ -90,6 +98,57 @@
   </section>
   {% endif %}
 </article>
+<script>
+(function () {
+  const box = document.querySelector('[data-milestones-domain]');
+  if (!box) return;
+  const domain = box.dataset.milestonesDomain;
+  const projectKey = box.dataset.milestonesKey;
+  const list = document.getElementById('milestones-list');
+  const status = document.getElementById('milestones-status');
+  const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
+  const escapeHtml = (value) => String(value || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+  function render(data) {
+    const items = data.milestones || [];
+    if (!items.length) { list.innerHTML = '<li class="text-slate-500">No deliverables published yet.</li>'; return; }
+    list.innerHTML = items.map((m, index) => `
+      <li class="flex items-start gap-3 rounded-lg border border-slate-200 p-3">
+        <input type="checkbox" class="mt-1 h-4 w-4" id="ms-${escapeHtml(m.id)}" data-milestone-id="${escapeHtml(m.id)}"${m.completed ? ' checked' : ''}>
+        <label for="ms-${escapeHtml(m.id)}" class="flex-1 cursor-pointer"><span class="font-medium">${index + 1}. ${escapeHtml(m.label)}</span></label>
+      </li>`).join('');
+  }
+  async function load() {
+    const response = await fetch(`/api/projects/milestones/${encodeURIComponent(domain)}/${encodeURIComponent(projectKey)}`);
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Unable to load milestones.');
+    render(data);
+  }
+  list.addEventListener('change', async (event) => {
+    const input = event.target.closest('[data-milestone-id]');
+    if (!input) return;
+    input.disabled = true;
+    status.textContent = 'Saving…';
+    try {
+      const response = await fetch(`/api/projects/milestones/${encodeURIComponent(domain)}/${encodeURIComponent(projectKey)}`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+        body: JSON.stringify({milestone_id: input.dataset.milestoneId, completed: input.checked}),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Unable to save milestone.');
+      render(data);
+      const completedCount = data.milestones.filter(m => m.completed).length;
+      status.textContent = `${completedCount}/${data.milestones.length} deliverables complete.`;
+    } catch (error) {
+      input.checked = !input.checked;
+      status.textContent = error.message;
+    } finally {
+      input.disabled = false;
+    }
+  });
+  load().catch(error => { status.textContent = error.message; });
+})();
+</script>
 <script>
 (() => {
   const form = document.getElementById('ml-project-form');

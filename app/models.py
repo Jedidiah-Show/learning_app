@@ -1438,3 +1438,40 @@ class ProjectLifecycleEvent(db.Model):
     __table_args__ = (
         db.Index('idx_project_lifecycle_owner_key', 'user_id', 'domain', 'project_key', 'id'),
     )
+
+
+class ProjectMilestone(db.Model):
+    """Per-deliverable milestone state for AI/ML module projects (M2.4).
+
+    Milestone *definitions* come from the module's published deliverables in
+    the canonical manifests; rows here record the learner's progress and
+    notes against each deliverable. Assessment outcomes live in the AI/ML
+    project services — this table only tracks milestones.
+    """
+    __tablename__ = 'project_milestone'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    domain = db.Column(db.String(40), nullable=False)  # ai-engineering | machine-learning
+    project_key = db.Column(db.String(100), nullable=False)  # module_id
+    milestone_id = db.Column(db.String(20), nullable=False)  # m1..mN index into deliverables
+    completed = db.Column(
+        db.Boolean, nullable=False, default=False, server_default=db.false()
+    )
+    note = db.Column(db.Text, nullable=True)
+    completed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    created_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    updated_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+    __table_args__ = (
+        db.UniqueConstraint(
+            'user_id', 'domain', 'project_key', 'milestone_id',
+            name='uq_project_milestone_user_key',
+        ),
+        db.Index('idx_project_milestone_user_project', 'user_id', 'domain', 'project_key'),
+    )
