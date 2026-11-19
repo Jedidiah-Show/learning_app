@@ -17,6 +17,9 @@ from app.ml_pathway import get_machine_learning_lesson, machine_learning_lessons
 from app.ml_pathway import machine_learning_lesson_is_open, ml_pathway_overview
 from app.ml_pathway import ml_module_progress
 from app.ml_pathway import ml_pathway_pacing, record_pathway_review
+from app.foundations_pathway import (
+    get_shared_foundations_lesson, foundation_lesson_is_open, foundation_module_of_lesson,
+)
 from app.learning import (
     completed_lesson_ids, completed_project_modules, course_progress,
     lesson_is_available, monthly_milestone_progress, user_track,
@@ -629,6 +632,63 @@ def machine_learning_lesson(lesson_id):
         lesson_note=note.content if note else '',
         practice_exercises=pathway_exercises_for_lesson(lesson_id),
         tutor_greeting=tutor_greeting,
+    )
+
+
+@main_bp.route('/specializations/shared-foundations/lessons/<lesson_id>', methods=['GET', 'POST'])
+@login_required
+def shared_foundations_lesson(lesson_id):
+    """Shared Foundations lesson page.
+
+    Published (``ready``) lessons render content and accept completion.
+    Seeded ``pending`` lessons render an honest "being written" notice and
+    accept no completion attempts.
+    """
+    lesson = get_shared_foundations_lesson(lesson_id)
+    if lesson is None:
+        abort(404)
+    if not foundation_lesson_is_open(current_user.id, lesson_id):
+        abort(403)
+
+    ready = lesson.get('status') == 'ready'
+    completed_row = LessonCompletion.query.filter_by(
+        user_id=current_user.id, lesson_id=lesson_id,
+    ).first()
+    existing = bool(completed_row and completed_row.completed)
+
+    if ready and request.method == 'POST':
+        try:
+            selected = int(request.form.get('answer', '-1'))
+        except (TypeError, ValueError):
+            selected = -1
+        if selected != lesson['quiz']['answer']:
+            flash('That answer needs another look. Try the lesson sections once more.', 'error')
+        else:
+            module = foundation_module_of_lesson(lesson_id) or {}
+            now = datetime.now(timezone.utc)
+            completion = completed_row
+            if completion is None:
+                completion = LessonCompletion(
+                    user_id=current_user.id,
+                    lesson_id=lesson_id,
+                    subject_id=module.get('id', 'sf'),
+                    day_number=int(module.get('number', 0)),
+                )
+                db.session.add(completion)
+            if not completion.completed:
+                completion.completed = True
+                completion.started_at = completion.started_at or now
+                completion.completed_at = now
+                completion.completion_source = 'lesson'
+                from app.leaderboard import refresh_leaderboard_score
+                refresh_leaderboard_score(current_user.id, commit=False)
+            db.session.commit()
+            flash('Lesson complete. Shared Foundations progress has been saved.', 'success')
+            return redirect(url_for('main.shared_foundations_lesson', lesson_id=lesson_id))
+
+    return render_template(
+        'specializations/shared_foundations_lesson.html',
+        lesson=lesson, completed=existing,
     )
 
 

@@ -1,0 +1,207 @@
+{
+  "id": "shared-foundations",
+  "pathway_id": "shared-foundations",
+  "version": "1.0.0",
+  "description": "Lesson content for the standalone Shared Foundations pathway. Pending lessons publish nothing until human-authored content is reviewed; set status to \"ready\" only with complete sections/quiz.",
+  "modules": [
+    {
+      "id": "sf.00",
+      "number": 0,
+      "title": "Programming Foundations",
+      "description": "Core programming concepts: variables, control flow, functions, and data structures",
+      "estimated_hours": 15,
+      "lessons": [
+        {
+          "id": "sf.00.01",
+          "title": "Variables and Types",
+          "status": "pending"
+        },
+        {
+          "id": "sf.00.02",
+          "title": "Control Flow",
+          "status": "pending"
+        },
+        {
+          "id": "sf.00.03",
+          "title": "Functions",
+          "status": "pending"
+        },
+        {
+          "id": "sf.00.04",
+          "title": "Data Structures",
+          "status": "pending"
+        }
+      ],
+      "prerequisites": [],
+      "competencies": [
+        "programming",
+        "python"
+      ]
+    },
+    {
+      "id": "sf.01",
+      "number": 1,
+      "title": "Python Foundations",
+      "description": "Python language fundamentals for engineering applications",
+      "estimated_hours": 20,
+      "lessons": [
+        {
+          "id": "sf.01.01",
+          "title": "Python Basics",
+          "status": "pending"
+        },
+        {
+          "id": "sf.01.02",
+          "title": "Lists and Dictionaries",
+          "status": "pending"
+        },
+        {
+          "id": "sf.01.03",
+          "title": "Modules and Packages",
+          "status": "pending"
+        },
+        {
+          "id": "sf.01.04",
+          "title": "Error Handling",
+          "status": "pending"
+        }
+      ],
+      "prerequisites": [
+        "sf.00"
+      ],
+      "competencies": [
+        "python",
+        "programming"
+      ]
+    },
+    {
+      "id": "sf.02",
+      "number": 2,
+      "title": "Software Engineering Foundations",
+      "description": "Version control, testing, and project structure",
+      "estimated_hours": 18,
+      "lessons": [
+        {
+          "id": "sf.02.01",
+          "title": "Git Basics",
+          "status": "pending"
+        },
+        {
+          "id": "sf.02.02",
+          "title": "Repository Workflow",
+          "status": "pending"
+        },
+        {
+          "id": "sf.02.03",
+          "title": "Testing fundamentals",
+          "status": "pending"
+        },
+        {
+          "id": "sf.02.04",
+          "title": "Project Structure",
+          "status": "pending"
+        }
+      ],
+      "prerequisites": [
+        "sf.01"
+      ],
+      "competencies": [
+        "git",
+        "software engineering"
+      ]
+    },
+    {
+      "id": "sf.03",
+      "number": 3,
+      "title": "Development Tools and Workflow",
+      "description": "CI/CD, debugging, and tool integration",
+      "estimated_hours": 12,
+      "lessons": [
+        {
+          "id": "sf.03.01",
+          "title": "CI/CD Basics",
+          "status": "pending"
+        },
+        {
+          "id": "sf.03.02",
+          "title": "Debugging",
+          "status": "pending"
+        },
+        {
+          "id": "sf.03.03",
+          "title": "Tool Integration",
+          "status": "pending"
+        }
+      ],
+      "prerequisites": [
+        "sf.02"
+      ],
+      "competencies": [
+        "ci-cd",
+        "debugging"
+      ]
+    },
+    {
+      "id": "sf.04",
+      "number": 4,
+      "title": "API and Backend Foundations",
+      "description": "HTTP, APIs, and backend fundamentals",
+      "estimated_hours": 15,
+      "lessons": [
+        {
+          "id": "sf.04.01",
+          "title": "HTTP Fundamentals",
+          "status": "pending"
+        },
+        {
+          "id": "sf.04.02",
+          "title": "API Design",
+          "status": "pending"
+        },
+        {
+          "id": "sf.04.03",
+          "title": "Backend Basics",
+          "status": "pending"
+        }
+      ],
+      "prerequisites": [
+        "sf.03"
+      ],
+      "competencies": [
+        "api",
+        "backend"
+      ]
+    },
+    {
+      "id": "sf.05",
+      "number": 5,
+      "title": "Data and Computational Thinking",
+      "description": "Algorithms, data structures, and computational thinking",
+      "estimated_hours": 20,
+      "lessons": [
+        {
+          "id": "sf.05.01",
+          "title": "Algorithmic Thinking",
+          "status": "pending"
+        },
+        {
+          "id": "sf.05.02",
+          "title": "Data Structures",
+          "status": "pending"
+        },
+        {
+          "id": "sf.05.03",
+          "title": "Complexity Analysis",
+          "status": "pending"
+        }
+      ],
+      "prerequisites": [
+        "sf.04"
+      ],
+      "competencies": [
+        "algorithms",
+        "data structures"
+      ]
+    }
+  ]
+}

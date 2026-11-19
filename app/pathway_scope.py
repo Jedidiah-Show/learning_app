@@ -629,15 +629,10 @@ def foundation_modules():
     metadata.  Used by the foundation completion flow to iterate over all
     foundation modules and create LessonCompletion / CourseProject records.
     """
-    from app.curriculum import all_modules as _all_modules
-    import json
-    from pathlib import Path
-
-    # Load the shared foundations curriculum (6 modules sf.00–sf.05)
-    curriculum_path = Path(__file__).parent.parent / 'shared_foundations_curriculum.json'
-    with open(curriculum_path) as f:
-        curriculum = json.load(f)
-    return curriculum['modules']
+    # Resolve through the canonical registry (validated, cached) instead of
+    # re-reading the manifest from disk on every call.
+    from app.curriculum_registry import registry
+    return registry.get_domain('shared-foundations').modules
 
 
 def pathway_pace(user_id, pathway_id, weekly_hours=None):

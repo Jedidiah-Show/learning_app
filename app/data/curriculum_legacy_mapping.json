@@ -1,0 +1,2028 @@
+{
+  "version": "1.0.0",
+  "generated_utc": "2026-11-19T09:13:31Z",
+  "description": "Deterministic mapping from legacy RUACH (dynamoai) curriculum IDs to the canonical three-domain curriculum introduced in Release 1.1.",
+  "rules": [
+    "Module mappings are authoritative; lesson mappings inherit the module rule.",
+    "Legacy lessons map to their canonical MODULE, not to individual canonical lessons (granularity differs).",
+    "Unresolved legacy records must be preserved verbatim and surfaced for manual review; they must never be silently discarded or force-mapped.",
+    "Applying this mapping must be idempotent: re-running must not create duplicate completion records."
+  ],
+  "module_mappings": {
+    "00": {
+      "domain": "shared-foundations",
+      "module": "sf.00",
+      "confidence": "MEDIUM",
+      "note": "Legacy \"AI Engineering Foundations\" covers AI framing plus programming basics; maps to Programming Foundations and feeds sf.05 computational thinking. Manual review recommended."
+    },
+    "01": {
+      "domain": "shared-foundations",
+      "module": "sf.01",
+      "confidence": "HIGH",
+      "note": "Python for AI Engineers -> Python Foundations."
+    },
+    "02": {
+      "domain": "shared-foundations",
+      "module": "sf.04",
+      "confidence": "MEDIUM",
+      "note": "Backend Engineering -> API and Backend Foundations (sf.04). Overlaps sf.02 (Software Engineering Foundations) and sf.03 (Tools and Workflow) in areas such as Git, testing and HTTP workflows; see exceptions."
+    },
+    "03": {
+      "domain": "ai-engineering",
+      "module": "ai.03",
+      "confidence": "HIGH",
+      "note": "LLM Fundamentals."
+    },
+    "04": {
+      "domain": "ai-engineering",
+      "module": "ai.04",
+      "confidence": "HIGH",
+      "note": "LLM Application Engineering."
+    },
+    "05": {
+      "domain": "ai-engineering",
+      "module": "ai.05",
+      "confidence": "HIGH",
+      "note": "Retrieval-Augmented Generation."
+    },
+    "06": {
+      "domain": "ai-engineering",
+      "module": "ai.06",
+      "confidence": "HIGH",
+      "note": "AI Agents."
+    },
+    "07": {
+      "domain": "ai-engineering",
+      "module": "ai.07",
+      "confidence": "HIGH",
+      "note": "Agent Orchestration."
+    },
+    "08": {
+      "domain": "ai-engineering",
+      "module": "ai.08",
+      "confidence": "HIGH",
+      "note": "Model Context Protocol -> ai.08 (MCP / context management)."
+    },
+    "09": {
+      "domain": "ai-engineering",
+      "module": "ai.09",
+      "confidence": "HIGH",
+      "note": "Production AI Engineering."
+    },
+    "10": {
+      "domain": "ai-engineering",
+      "module": "ai.10",
+      "confidence": "HIGH",
+      "note": "Docker & Deployment."
+    },
+    "11": {
+      "domain": "ai-engineering",
+      "module": "ai.11",
+      "confidence": "HIGH",
+      "note": "AI System Design."
+    },
+    "12": {
+      "domain": null,
+      "module": null,
+      "confidence": "UNRESOLVED",
+      "note": "Final Capstone has no canonical AI Engineering module; it is preserved but not auto-mapped. Flagged for manual review; see exceptions."
+    }
+  },
+  "lesson_count": 213,
+  "lesson_mappings": [
+    {
+      "legacy_id": "0.01",
+      "legacy_title": "Welcome to the Course",
+      "legacy_module": "00",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.00",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "0.02",
+      "legacy_title": "What Is an AI Engineer?",
+      "legacy_module": "00",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.00",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "0.03",
+      "legacy_title": "Anatomy of a Modern AI Application",
+      "legacy_module": "00",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.00",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "0.04",
+      "legacy_title": "AI Engineering Stack",
+      "legacy_module": "00",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.00",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "0.05",
+      "legacy_title": "Course Roadmap",
+      "legacy_module": "00",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.00",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "0.06",
+      "legacy_title": "Your first Python program",
+      "legacy_module": "00",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.00",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "0.07",
+      "legacy_title": "Lists, dictionaries, and loops",
+      "legacy_module": "00",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.00",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "0.08",
+      "legacy_title": "Functions, inputs, and return values",
+      "legacy_module": "00",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.00",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "0.09",
+      "legacy_title": "Files, JSON, and the command line",
+      "legacy_module": "00",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.00",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "0.10",
+      "legacy_title": "Git and GitHub from zero",
+      "legacy_module": "00",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.00",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "0.11",
+      "legacy_title": "HTTP and APIs from zero",
+      "legacy_module": "00",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.00",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "1.00",
+      "legacy_title": "Reading numbers: averages, percentiles, and cost",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.01",
+      "legacy_title": "Python review: data, loops, and tracebacks",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.02",
+      "legacy_title": "Python project structure",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.03",
+      "legacy_title": "Functions",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.04",
+      "legacy_title": "Type hints",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.05",
+      "legacy_title": "Classes & OOP",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.06",
+      "legacy_title": "Dataclasses",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.07",
+      "legacy_title": "Pydantic",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.08",
+      "legacy_title": "Error handling",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.09",
+      "legacy_title": "JSON",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.10",
+      "legacy_title": "HTTP requests",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.11",
+      "legacy_title": "Environment variables",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.12",
+      "legacy_title": "Virtual environments",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.13",
+      "legacy_title": "Dependencies",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.14",
+      "legacy_title": "Async Python",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.15",
+      "legacy_title": "async / await",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.16",
+      "legacy_title": "Testing with pytest",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "1.17",
+      "legacy_title": "Git & GitHub essentials",
+      "legacy_module": "01",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.01",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "2.01",
+      "legacy_title": "How the Internet Works",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.02",
+      "legacy_title": "HTTP",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.03",
+      "legacy_title": "REST APIs",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.04",
+      "legacy_title": "API Design",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.05",
+      "legacy_title": "FastAPI",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.06",
+      "legacy_title": "Routes",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.07",
+      "legacy_title": "Request Validation",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.08",
+      "legacy_title": "Response Models",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.09",
+      "legacy_title": "Dependency Injection",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.10",
+      "legacy_title": "Authentication",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.11",
+      "legacy_title": "Authorization",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.12",
+      "legacy_title": "PostgreSQL",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.13",
+      "legacy_title": "SQL",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.14",
+      "legacy_title": "Database Design",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.15",
+      "legacy_title": "SQLAlchemy",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.16",
+      "legacy_title": "Database Migrations",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.17",
+      "legacy_title": "Redis",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.18",
+      "legacy_title": "Caching",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.19",
+      "legacy_title": "Background Jobs",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.20",
+      "legacy_title": "Queues",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "2.21",
+      "legacy_title": "Async Backend Architecture",
+      "legacy_module": "02",
+      "domain": "shared-foundations",
+      "canonical_module": "sf.04",
+      "canonical_lesson": null,
+      "confidence": "MEDIUM"
+    },
+    {
+      "legacy_id": "3.01",
+      "legacy_title": "What Are LLMs?",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.02",
+      "legacy_title": "How LLMs Work",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.03",
+      "legacy_title": "Tokens",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.04",
+      "legacy_title": "Context Windows",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.05",
+      "legacy_title": "Generation Controls and Nondeterminism",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.06",
+      "legacy_title": "Multimodal Model Inputs",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.07",
+      "legacy_title": "System Prompts",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.08",
+      "legacy_title": "User Prompts",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.09",
+      "legacy_title": "Prompt Engineering",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.10",
+      "legacy_title": "Structured Outputs",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.11",
+      "legacy_title": "LLM APIs",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.12",
+      "legacy_title": "Streaming",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.13",
+      "legacy_title": "LLM Errors",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.14",
+      "legacy_title": "Model Selection",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.15",
+      "legacy_title": "Choosing and Adapting Model Deployments",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.16",
+      "legacy_title": "Open-weight and self-hosted models",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.17",
+      "legacy_title": "Reasoning models and inference-time compute",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "3.18",
+      "legacy_title": "Fine-tuning and adaptation decisions",
+      "legacy_module": "03",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.03",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "4.01",
+      "legacy_title": "LLM Application Architecture",
+      "legacy_module": "04",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.04",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "4.02",
+      "legacy_title": "Prompt Templates",
+      "legacy_module": "04",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.04",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "4.03",
+      "legacy_title": "Structured Data Extraction",
+      "legacy_module": "04",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.04",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "4.04",
+      "legacy_title": "Function Calling",
+      "legacy_module": "04",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.04",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "4.05",
+      "legacy_title": "Tool Calling",
+      "legacy_module": "04",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.04",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "4.06",
+      "legacy_title": "Model Routing",
+      "legacy_module": "04",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.04",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "4.07",
+      "legacy_title": "Multiple Providers",
+      "legacy_module": "04",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.04",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "4.08",
+      "legacy_title": "Fallback Strategies",
+      "legacy_module": "04",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.04",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "4.09",
+      "legacy_title": "Streaming Architecture",
+      "legacy_module": "04",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.04",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "4.10",
+      "legacy_title": "Token Management",
+      "legacy_module": "04",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.04",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "4.11",
+      "legacy_title": "Cost Management",
+      "legacy_module": "04",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.04",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "4.12",
+      "legacy_title": "Context Management",
+      "legacy_module": "04",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.04",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "4.13",
+      "legacy_title": "Error Handling",
+      "legacy_module": "04",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.04",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "4.14",
+      "legacy_title": "Production LLM Service",
+      "legacy_module": "04",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.04",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.01",
+      "legacy_title": "Why LLMs Hallucinate",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.02",
+      "legacy_title": "What Is RAG?",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.03",
+      "legacy_title": "RAG Architecture",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.04",
+      "legacy_title": "Embeddings",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.05",
+      "legacy_title": "Vector Databases",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.06",
+      "legacy_title": "Document Ingestion",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.07",
+      "legacy_title": "Document Processing",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.08",
+      "legacy_title": "Chunking",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.09",
+      "legacy_title": "Embedding Generation",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.10",
+      "legacy_title": "Retrieval",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.11",
+      "legacy_title": "Metadata Filtering",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.12",
+      "legacy_title": "Similarity Search",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.13",
+      "legacy_title": "Hybrid Search",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.14",
+      "legacy_title": "Reranking",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.15",
+      "legacy_title": "Context Construction",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.16",
+      "legacy_title": "RAG Prompting",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.17",
+      "legacy_title": "RAG Evaluation",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.18",
+      "legacy_title": "Common RAG Failures",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "5.19",
+      "legacy_title": "Production RAG Architecture",
+      "legacy_module": "05",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.05",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.01",
+      "legacy_title": "What Is an AI Agent?",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.02",
+      "legacy_title": "Agent vs Chatbot",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.03",
+      "legacy_title": "Agent vs Workflow",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.04",
+      "legacy_title": "Anatomy of an Agent",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.05",
+      "legacy_title": "Agent Loops",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.06",
+      "legacy_title": "Tool Calling",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.07",
+      "legacy_title": "Designing Agent Tools",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.08",
+      "legacy_title": "Tool Execution",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.09",
+      "legacy_title": "Agent State",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.10",
+      "legacy_title": "Agent Memory",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.11",
+      "legacy_title": "Short-Term Memory",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.12",
+      "legacy_title": "Long-Term Memory",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.13",
+      "legacy_title": "Planning",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.14",
+      "legacy_title": "Human-in-the-Loop",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.15",
+      "legacy_title": "Agent Error Handling",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.16",
+      "legacy_title": "Agent Security",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.17",
+      "legacy_title": "Build an Agent From Scratch",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "6.18",
+      "legacy_title": "Computer-use and browser agents",
+      "legacy_module": "06",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.06",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.01",
+      "legacy_title": "Why Agent Frameworks Exist",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.02",
+      "legacy_title": "Framework Case Study: LangChain",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.03",
+      "legacy_title": "Framework Case Study: LangGraph",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.04",
+      "legacy_title": "Workflows vs Agents",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.05",
+      "legacy_title": "Graph-Based Agent Architecture",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.06",
+      "legacy_title": "Nodes",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.07",
+      "legacy_title": "Edges",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.08",
+      "legacy_title": "Conditional Routing",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.09",
+      "legacy_title": "State Management",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.10",
+      "legacy_title": "Persistence",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.11",
+      "legacy_title": "Checkpointing",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.12",
+      "legacy_title": "Streaming",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.13",
+      "legacy_title": "Human Approval",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.14",
+      "legacy_title": "Multi-Agent Systems",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.15",
+      "legacy_title": "Supervisor Architecture",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.16",
+      "legacy_title": "Agent Collaboration",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.17",
+      "legacy_title": "Production Agent Graph",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "7.18",
+      "legacy_title": "Agent-to-agent (A2A) collaboration",
+      "legacy_module": "07",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.07",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "8.01",
+      "legacy_title": "What Is MCP?",
+      "legacy_module": "08",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.08",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "8.02",
+      "legacy_title": "Why MCP Exists",
+      "legacy_module": "08",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.08",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "8.03",
+      "legacy_title": "MCP Architecture and Protocol Eras",
+      "legacy_module": "08",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.08",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "8.04",
+      "legacy_title": "MCP Clients and Compatibility",
+      "legacy_module": "08",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.08",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "8.05",
+      "legacy_title": "MCP Servers",
+      "legacy_module": "08",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.08",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "8.06",
+      "legacy_title": "MCP Tools",
+      "legacy_module": "08",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.08",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "8.07",
+      "legacy_title": "MCP Resources",
+      "legacy_module": "08",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.08",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "8.08",
+      "legacy_title": "MCP Prompts",
+      "legacy_module": "08",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.08",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "8.09",
+      "legacy_title": "Build an MCP Server",
+      "legacy_module": "08",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.08",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "8.10",
+      "legacy_title": "Connect an Agent to MCP",
+      "legacy_module": "08",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.08",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "8.11",
+      "legacy_title": "MCP Security",
+      "legacy_module": "08",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.08",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "8.12",
+      "legacy_title": "Production MCP Architecture and Upgrades",
+      "legacy_module": "08",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.08",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.01",
+      "legacy_title": "Prototype \u2192 Production",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.02",
+      "legacy_title": "Production AI Architecture",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.03",
+      "legacy_title": "Project Structure",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.04",
+      "legacy_title": "Configuration Management",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.05",
+      "legacy_title": "Secrets Management",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.06",
+      "legacy_title": "Logging",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.07",
+      "legacy_title": "Error Handling",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.08",
+      "legacy_title": "Retries",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.09",
+      "legacy_title": "Rate Limiting",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.10",
+      "legacy_title": "AI Data Governance and Retention",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.11",
+      "legacy_title": "Authentication",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.12",
+      "legacy_title": "Authorization",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.13",
+      "legacy_title": "AI Security and Risk Mapping",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.14",
+      "legacy_title": "Prompt Injection",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.15",
+      "legacy_title": "Guardrails",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.16",
+      "legacy_title": "Output Validation",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.17",
+      "legacy_title": "LLM Evaluation",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.18",
+      "legacy_title": "Agent Evaluation",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.19",
+      "legacy_title": "Testing AI Systems",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.20",
+      "legacy_title": "Regression Testing",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.21",
+      "legacy_title": "Observability",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.22",
+      "legacy_title": "Tracing",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.23",
+      "legacy_title": "Monitoring",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.24",
+      "legacy_title": "AI Cost Monitoring",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.25",
+      "legacy_title": "Prompt Versioning",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "9.26",
+      "legacy_title": "Model Versioning",
+      "legacy_module": "09",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.09",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "10.01",
+      "legacy_title": "Why Docker?",
+      "legacy_module": "10",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.10",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "10.02",
+      "legacy_title": "Docker Fundamentals",
+      "legacy_module": "10",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.10",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "10.03",
+      "legacy_title": "Dockerfile",
+      "legacy_module": "10",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.10",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "10.04",
+      "legacy_title": "Containerizing FastAPI",
+      "legacy_module": "10",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.10",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "10.05",
+      "legacy_title": "PostgreSQL + Redis + API",
+      "legacy_module": "10",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.10",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "10.06",
+      "legacy_title": "Docker Compose",
+      "legacy_module": "10",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.10",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "10.07",
+      "legacy_title": "Production Containers",
+      "legacy_module": "10",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.10",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "10.08",
+      "legacy_title": "CI/CD",
+      "legacy_module": "10",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.10",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "10.09",
+      "legacy_title": "Environment Management",
+      "legacy_module": "10",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.10",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "10.10",
+      "legacy_title": "Cloud Deployment",
+      "legacy_module": "10",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.10",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "10.11",
+      "legacy_title": "Scaling AI Applications",
+      "legacy_module": "10",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.10",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "10.12",
+      "legacy_title": "Production Architecture",
+      "legacy_module": "10",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.10",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "11.01",
+      "legacy_title": "AI System Design",
+      "legacy_module": "11",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.11",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "11.02",
+      "legacy_title": "Designing for Scale",
+      "legacy_module": "11",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.11",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "11.03",
+      "legacy_title": "Synchronous vs Asynchronous AI",
+      "legacy_module": "11",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.11",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "11.04",
+      "legacy_title": "Queues & Workers",
+      "legacy_module": "11",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.11",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "11.05",
+      "legacy_title": "Caching Strategies",
+      "legacy_module": "11",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.11",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "11.06",
+      "legacy_title": "Database Architecture",
+      "legacy_module": "11",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.11",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "11.07",
+      "legacy_title": "Vector Database Architecture",
+      "legacy_module": "11",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.11",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "11.08",
+      "legacy_title": "Model Routing",
+      "legacy_module": "11",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.11",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "11.09",
+      "legacy_title": "Multi-Model Systems",
+      "legacy_module": "11",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.11",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "11.10",
+      "legacy_title": "Reliability",
+      "legacy_module": "11",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.11",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "11.11",
+      "legacy_title": "Fault Tolerance",
+      "legacy_module": "11",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.11",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "11.12",
+      "legacy_title": "Cost vs Performance",
+      "legacy_module": "11",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.11",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "11.13",
+      "legacy_title": "Design an AI Platform From Scratch",
+      "legacy_module": "11",
+      "domain": "ai-engineering",
+      "canonical_module": "ai.11",
+      "canonical_lesson": null,
+      "confidence": "HIGH"
+    },
+    {
+      "legacy_id": "12.01",
+      "legacy_title": "Phase 1 \u2014 Requirements",
+      "legacy_module": "12",
+      "domain": null,
+      "canonical_module": null,
+      "canonical_lesson": null,
+      "confidence": "UNRESOLVED"
+    },
+    {
+      "legacy_id": "12.02",
+      "legacy_title": "Phase 2 \u2014 Architecture",
+      "legacy_module": "12",
+      "domain": null,
+      "canonical_module": null,
+      "canonical_lesson": null,
+      "confidence": "UNRESOLVED"
+    },
+    {
+      "legacy_id": "12.03",
+      "legacy_title": "Phase 3 \u2014 Repository",
+      "legacy_module": "12",
+      "domain": null,
+      "canonical_module": null,
+      "canonical_lesson": null,
+      "confidence": "UNRESOLVED"
+    },
+    {
+      "legacy_id": "12.04",
+      "legacy_title": "Phase 4 \u2014 Backend",
+      "legacy_module": "12",
+      "domain": null,
+      "canonical_module": null,
+      "canonical_lesson": null,
+      "confidence": "UNRESOLVED"
+    },
+    {
+      "legacy_id": "12.05",
+      "legacy_title": "Phase 5 \u2014 AI Layer",
+      "legacy_module": "12",
+      "domain": null,
+      "canonical_module": null,
+      "canonical_lesson": null,
+      "confidence": "UNRESOLVED"
+    },
+    {
+      "legacy_id": "12.06",
+      "legacy_title": "Phase 6 \u2014 Choose Workflow or Agent",
+      "legacy_module": "12",
+      "domain": null,
+      "canonical_module": null,
+      "canonical_lesson": null,
+      "confidence": "UNRESOLVED"
+    },
+    {
+      "legacy_id": "12.07",
+      "legacy_title": "Phase 7 \u2014 Choose Retrieval and Grounding",
+      "legacy_module": "12",
+      "domain": null,
+      "canonical_module": null,
+      "canonical_lesson": null,
+      "confidence": "UNRESOLVED"
+    },
+    {
+      "legacy_id": "12.08",
+      "legacy_title": "Phase 8 \u2014 Choose Tool Integration and MCP",
+      "legacy_module": "12",
+      "domain": null,
+      "canonical_module": null,
+      "canonical_lesson": null,
+      "confidence": "UNRESOLVED"
+    },
+    {
+      "legacy_id": "12.09",
+      "legacy_title": "Phase 9 \u2014 Choose the Right Orchestration Shape",
+      "legacy_module": "12",
+      "domain": null,
+      "canonical_module": null,
+      "canonical_lesson": null,
+      "confidence": "UNRESOLVED"
+    },
+    {
+      "legacy_id": "12.10",
+      "legacy_title": "Phase 10 \u2014 Production",
+      "legacy_module": "12",
+      "domain": null,
+      "canonical_module": null,
+      "canonical_lesson": null,
+      "confidence": "UNRESOLVED"
+    },
+    {
+      "legacy_id": "12.11",
+      "legacy_title": "Phase 11 \u2014 Infrastructure",
+      "legacy_module": "12",
+      "domain": null,
+      "canonical_module": null,
+      "canonical_lesson": null,
+      "confidence": "UNRESOLVED"
+    },
+    {
+      "legacy_id": "12.12",
+      "legacy_title": "Phase 12 \u2014 Deployment",
+      "legacy_module": "12",
+      "domain": null,
+      "canonical_module": null,
+      "canonical_lesson": null,
+      "confidence": "UNRESOLVED"
+    },
+    {
+      "legacy_id": "12.13",
+      "legacy_title": "Phase 13 \u2014 Final Architecture Review",
+      "legacy_module": "12",
+      "domain": null,
+      "canonical_module": null,
+      "canonical_lesson": null,
+      "confidence": "UNRESOLVED"
+    }
+  ],
+  "exceptions": [
+    {
+      "legacy_module": "02",
+      "issue": "Overlaps canonical sf.02 (Software Engineering Foundations) and sf.03 (Engineering Tools and Workflow) which have no dedicated legacy counterpart.",
+      "resolution": "Map to sf.04 as primary; sf.02/sf.03 completion is NOT inferred and must be completed through the canonical experience."
+    },
+    {
+      "legacy_module": "12",
+      "issue": "Final Capstone has no canonical AI Engineering module.",
+      "resolution": "Preserved verbatim in lesson_mappings with domain=null. No progress awarded. Manual review decides awarding ai.11 or a future capstone module."
+    },
+    {
+      "legacy_lesson": "*",
+      "issue": "Legacy lesson ids (e.g. \"0.01\") are not unique across module namespaces once de-duplicated.",
+      "resolution": "Mappings key on (legacy_module, legacy_id) pairs. Consumers must not treat legacy lesson ids as globally unique."
+    }
+  ]
+}

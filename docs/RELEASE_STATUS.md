@@ -23,7 +23,7 @@
 | Milestone | Name | Priority | Status | Owner | Started | Completed |
 |---|---|---|---|---|---|---|
 | M0 | Security, Data Integrity and Release Baseline | Critical | IN PROGRESS | Engineering | 2026-11-18 | — |
-| M1 | Canonical Curriculum and Pathway Integrity | Critical | NOT STARTED | — | — | — |
+| M1 | Canonical Curriculum and Pathway Integrity | Critical | IN PROGRESS | Engineering | 2026-11-18 | — |
 | M2 | Project Studio and ML Project Corrections | High | NOT STARTED | — | — | — |
 | M3 | Practice Arena 2.1 and Assessment Integrity | High | NOT STARTED | — | — | — |
 | M4 | Skill Passport and Competency Verification | Critical | NOT STARTED | — | — | — |
@@ -53,11 +53,13 @@
 
 | Task | Deliverable | Status | Evidence |
 |---|---|---|---|
-| M1.1 Curriculum registry | `app/curriculum_registry.py`, `app/services/curriculum.py` | NOT STARTED | — |
-| M1.2 Legacy curriculum migration | `docs/CURRICULUM_ID_MIGRATION.md`, `app/data/curriculum_legacy_mapping.json` | NOT STARTED | — |
-| M1.3 Shared Foundations lesson experience | foundation catalogue/detail/progress wiring | NOT STARTED | — |
-| M1.4 Independent pathway navigation | enrolment vs focus separation | NOT STARTED | — |
-| M1.5 Curriculum contract tests | automated validation suite | NOT STARTED | — |
+| M1.1 Curriculum registry | `app/curriculum_registry.py`, `app/services/curriculum.py` | DONE (loader + validation verified); consumer wiring in progress | `tests/test_curriculum_registry.py` 18 passing; all 3 manifests load, duplicate IDs / cross-domain edges rejected; `pathway_scope.foundation_modules()` and `ai_pathway.ai_engineering_pathway()` now resolve via the cached registry |
+| M1.2 Legacy curriculum migration | `docs/CURRICULUM_ID_MIGRATION.md`, `app/data/curriculum_legacy_mapping.json` | DONE (mapping defined + validated); application to learner records NOT enabled | 213 legacy lessons mapped at module level; 12 of 13 legacy modules mapped; capstone (`12`) explicitly UNRESOLVED; runbook documents idempotency/verification; auto-application ships with M1 exit |
+| M1.3 Shared Foundations lesson experience | foundation catalogue/detail/progress wiring | IN PROGRESS — plumbing DONE, content authoring pending | `app/foundations_pathway.py` (validated manifest cross-checked against registry), `app/data/shared_foundations_lessons.json` (21 lessons seeded `pending`, no learner-facing content), route `/specializations/shared-foundations/lessons/<id>` (pending lessons render honest "being written" notice, no completion accepted; ready lessons validate strictly), template + 9 tests passing (`tests/test_foundations_pathway.py`). Human-authored content review module-by-module required to open the pathway |
+| M1.4 Independent pathway navigation | enrolment vs focus separation | PARTIALLY IN PLACE (pre-existing Foundations-first work); not yet re-verified against M1 registry | `pathway_scope.active_pathway_enrolments`, dual-enrolment and pause/resume logic exists; full acceptance re-run pending M1 completion |
+| M1.5 Curriculum contract tests | automated validation suite | DONE (registry + mapping contracts); CI gate pending commit | `tests/test_curriculum_registry.py`; `machine_learning_curriculum.json` backfilled with per-module competency tags (was empty) |
+
+**M1 notes:** ML manifest had zero competency metadata — backfilled per module (documented). AI Engineering manifest passes registry validation unchanged.
 
 ## Milestones M2–M7
 
@@ -69,6 +71,12 @@ M1/M3; M6 requires M1, M3, M4, M5; M7 is the release gate.
 _None yet. Each milestone exit requires: tests passing, security review,
 documentation updated, migration validation where applicable, and an explicit
 recorded decision here._
+
+## Commits
+
+- `68b3125` — baseline (Parallel Pathways 1.0.0 + dev)
+- `1ff50da` — "Started M0" (2026-11-18, Jedidiah-Show): CI export verification, `app/version.py`, passport authorization, `curriculum_registry.py` + `services/curriculum.py`, export script, policies, M0/M1 test suites, authoritative tracker. **Note:** three pre-restart working-tree edits (registry wiring in `pathway_scope.py`/`ai_pathway.py`, ML competency backfill) were lost in the restart and reapplied on 2026-11-19.
+- Uncommitted: M1.3 foundations plumbing (`app/foundations_pathway.py`, content manifest, template, route, tests), M1.2 mapping, registry consumer wiring, ML competency backfill. No commit made by the agent — pending owner review after the git repair (see `.git.broken-backup/`, untracked, 68 MB).
 
 ## Known constraints and notes
 

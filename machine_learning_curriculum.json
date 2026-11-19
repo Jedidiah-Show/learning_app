@@ -225,7 +225,10 @@
         }
       ],
       "prerequisites": [],
-      "competencies": [],
+      "competencies": [
+        "ai tools",
+        "machine learning literacy"
+      ],
       "estimated_hours": 3.2
     },
     {
@@ -628,7 +631,10 @@
         }
       ],
       "prerequisites": [],
-      "competencies": [],
+      "competencies": [
+        "mathematics",
+        "statistics"
+      ],
       "estimated_hours": 6.9
     },
     {
@@ -1023,7 +1029,10 @@
         }
       ],
       "prerequisites": [],
-      "competencies": [],
+      "competencies": [
+        "problem formulation",
+        "data analysis"
+      ],
       "estimated_hours": 5.9
     },
     {
@@ -1366,7 +1375,11 @@
         }
       ],
       "prerequisites": [],
-      "competencies": [],
+      "competencies": [
+        "regression",
+        "classification",
+        "feature engineering"
+      ],
       "estimated_hours": 5.8
     },
     {
@@ -1597,7 +1610,10 @@
         }
       ],
       "prerequisites": [],
-      "competencies": [],
+      "competencies": [
+        "classification",
+        "model evaluation"
+      ],
       "estimated_hours": 3.6
     },
     {
@@ -1848,7 +1864,10 @@
         }
       ],
       "prerequisites": [],
-      "competencies": [],
+      "competencies": [
+        "unsupervised learning",
+        "clustering"
+      ],
       "estimated_hours": 3.8
     },
     {
@@ -2099,7 +2118,10 @@
         }
       ],
       "prerequisites": [],
-      "competencies": [],
+      "competencies": [
+        "deep learning",
+        "neural networks"
+      ],
       "estimated_hours": 3.8
     },
     {
@@ -2398,7 +2420,9 @@
         }
       ],
       "prerequisites": [],
-      "competencies": [],
+      "competencies": [
+        "computer vision"
+      ],
       "estimated_hours": 4.1
     },
     {
@@ -2532,7 +2556,10 @@
         }
       ],
       "prerequisites": [],
-      "competencies": [],
+      "competencies": [
+        "reproducible training",
+        "experiment tracking"
+      ],
       "estimated_hours": 2.2
     },
     {
@@ -2625,7 +2652,10 @@
         }
       ],
       "prerequisites": [],
-      "competencies": [],
+      "competencies": [
+        "pytorch",
+        "deep learning"
+      ],
       "estimated_hours": 1.6
     },
     {
@@ -2759,7 +2789,10 @@
         }
       ],
       "prerequisites": [],
-      "competencies": [],
+      "competencies": [
+        "production ml",
+        "mlops"
+      ],
       "estimated_hours": 2.5
     },
     {
@@ -2852,7 +2885,10 @@
         }
       ],
       "prerequisites": [],
-      "competencies": [],
+      "competencies": [
+        "machine learning systems",
+        "end-to-end delivery"
+      ],
       "estimated_hours": 1.5
     }
   ],
