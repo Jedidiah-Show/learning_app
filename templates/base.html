@@ -134,6 +134,9 @@
                         <span class="nav-icon" aria-hidden="true">🗂️</span><span class="nav-label">Showcase</span>
                     </a>
                     <div class="nav-section-label mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Review &amp; progress</div>
+                    <a aria-label="Mastery" title="Concept-level mastery and recommended practice" href="{{ url_for('main.mastery_dashboard') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.mastery_dashboard' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">🧭</span><span class="nav-label">Mastery</span>
+                    </a>
                     <a aria-label="Quizzes" title="Quizzes" href="{{ url_for('main.quizzes') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.quizzes' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🎯</span><span class="nav-label">Quizzes</span>
                     </a>

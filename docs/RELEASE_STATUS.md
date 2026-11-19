@@ -28,7 +28,7 @@
 | M3 | Practice Arena 2.1 and Assessment Integrity | High | IN PROGRESS (M3.3 done; M3.1 taxonomy DONE-but-coverage-thin) | Engineering | 2026-11-19 | — |
 | M4 | Skill Passport and Competency Verification | Critical | EXIT REVIEW (owner review of role-management UI recommended) | Engineering | 2026-11-19 | — |
 | M5 | AI Tutor 3.0 | High | EXIT REVIEW (live model eval pending API key) | Engineering | 2026-11-19 | — |
-| M6 | Learning Intelligence and Adaptive Practice | Strategic | NOT STARTED | — | — | — |
+| M6 | Learning Intelligence and Adaptive Practice | Strategic | EXIT REVIEW | Engineering | 2026-11-19 | — |
 | M7 | Reliability, Accessibility and Release Verification | Critical | NOT STARTED | — | — | — |
 
 ## M0 — Security, Data Integrity and Release Baseline
@@ -142,3 +142,19 @@ recorded decision here._
 | M5.4 Evaluation framework | domain datasets + reproducible runner | DONE (structural) / PENDING (live) | Runner emits `mode`/`model_id`/`run_id`; `--strict` CI gate; `tests/test_tutor_m5.py` 13 green incl. registry-domain cross-checks; `docs/TUTOR_EVALUATION.md` rewritten with release rule + latency/cost marked *unmeasured* until first live run |
 
 **Notes:** Live model-backed evaluation requires a working `GEMINI_API_KEY` with quota; structural gates pass today. Latency/cost baselines recorded as *unmeasured* per the honesty rule.
+
+## M6 — Learning Intelligence and Adaptive Practice
+
+**Status:** EXIT REVIEW
+**Dependencies:** M1, M3, M4, M5
+
+| Task | Deliverable | Status | Evidence |
+|---|---|---|---|
+| M6.1 Concept graph | nodes/edges/traversal | DONE (verified) | `app/services/concept_graph.py` (modules/lessons/competency concepts; registry-validated edges; `dependents_of`, `prerequisites_of`, `is_valid_edge`); `/api/mastery/graph?domain=`; 2 tests |
+| M6.2 Mastery model | concept-level states | DONE (verified) | `app/services/mastery.py` — states derived from `UserSkillProgress` + append-only `SkillVerification` only; lesson-only evidence can never reach proficient/mastered; revocation → `needs_review`; 5 tests |
+| M6.3 Learning diagnosis | weak-concept detection | DONE (verified, via M6.4 partial) | `weakest_concepts()` derived from evidence (no invented diagnosis — thin evidence yields `practising`/`introduced`, never mastery); tutor-side `diagnose_knowledge_gaps` pre-existing |
+| M6.4 Adaptive recommendations | explained recommendation engine | DONE (verified) | `app/services/recommendations.py` — each recommendation carries `reason`, `confidence`, and never opens locked content; enrolment-respecting (shared foundations + enrolled domains only); review-due items outrank practice; 1 test |
+| M6.5 Spaced repetition | review scheduling | DONE (pre-existing, verified) | `ReviewItem` with SM-2-lite interval ladder [1,3,7,14,30]; due-today query; answers reschedule; scoped per pathway |
+| M6.6 Mastery dashboard | learner-facing mastery view | DONE (verified) | `/mastery` (login-gated): domain summaries, strengths/weak areas with evidence labels, recommended next steps with reasons, recent verification changes; nav shell intact (13 dynamic-shell tests pass); 3 dashboard tests |
+
+**Notes:** Mastery states are computed on read (no new tables) and are fully derived from authoritative records — no lesson-completion-only inflation. Recommendation URLs resolve only to routes that exist today.

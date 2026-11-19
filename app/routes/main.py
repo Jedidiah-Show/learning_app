@@ -150,6 +150,53 @@ def version():
     return response, 200
 
 
+@main_bp.route('/api/mastery/graph')
+@login_required
+def mastery_graph():
+    domain = request.args.get('domain')
+    from app.services.concept_graph import build_graph
+    from app.curriculum_registry import DOMAIN_IDS
+    if domain and domain not in DOMAIN_IDS:
+        return jsonify({'error': f'Unknown domain {domain!r}; expected one of {DOMAIN_IDS}'}), 400
+    graph = build_graph(domain)
+    return jsonify({'domain': domain, **graph}), 200
+
+
+@main_bp.route('/mastery')
+@login_required
+def mastery_dashboard():
+    """Concept-level mastery overview derived from authoritative evidence."""
+    from app.services.mastery import (
+        concept_mastery, domain_summary, strongest_concepts, weakest_concepts,
+    )
+    from app.services.recommendations import recommend, due_reviews
+    from app.models import SkillVerification
+    items = concept_mastery(current_user.id)
+    by_domain = {}
+    for item in items:
+        by_domain.setdefault(item['domain'], []).append(item)
+    recent_events = (
+        SkillVerification.query.filter_by(user_id=current_user.id)
+        .order_by(SkillVerification.created_at.desc())
+        .limit(10)
+        .all()
+    )
+    return render_template(
+        'mastery.html',
+        summary=domain_summary(current_user.id),
+        by_domain=by_domain,
+        strengths=strongest_concepts(current_user.id, limit=6),
+        weak_areas=weakest_concepts(current_user.id, limit=6),
+        recommendations=recommend(current_user.id, limit=5),
+        due_review_count=len(due_reviews(current_user.id)),
+        recent_events=recent_events,
+        state_order=[
+            'not_introduced', 'introduced', 'practising', 'developing',
+            'proficient', 'mastered', 'needs_review',
+        ],
+    )
+
+
 @main_bp.route('/search')
 @login_required
 def search():
