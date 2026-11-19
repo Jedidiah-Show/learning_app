@@ -245,6 +245,7 @@ class Submission(db.Model):
     error_details = db.Column(db.Text)
     output = db.Column(db.Text)
     mode = db.Column(db.String(16), default='judge')
+    problem_version = db.Column(db.String(40), nullable=True)
     submitted_at = db.Column(db.DateTime(timezone=True), default=utcnow)
     started_at = db.Column(db.DateTime(timezone=True))
     completed_at = db.Column(db.DateTime(timezone=True))

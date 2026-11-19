@@ -25,6 +25,7 @@
 | M0 | Security, Data Integrity and Release Baseline | Critical | IN PROGRESS (external: credential rotation) | Engineering | 2026-11-18 | — |
 | M1 | Canonical Curriculum and Pathway Integrity | Critical | IN PROGRESS (foundations content + M1.4 re-verify open) | Engineering | 2026-11-18 | — |
 | M2 | Project Studio and ML Project Corrections | High | EXIT REVIEW (owner sign-off on AI brief content pending) | Engineering | 2026-11-19 | — |
+| M3 | Practice Arena 2.1 and Assessment Integrity | High | IN PROGRESS (M3.3 done; M3.1 taxonomy DONE-but-coverage-thin) | Engineering | 2026-11-19 | — |
 | M3 | Practice Arena 2.1 and Assessment Integrity | High | NOT STARTED | — | — | — |
 | M4 | Skill Passport and Competency Verification | Critical | NOT STARTED | — | — | — |
 | M5 | AI Tutor 3.0 | High | NOT STARTED | — | — | — |
@@ -98,3 +99,18 @@ recorded decision here._
 | M2.2 AI Engineering project workspace | AI-specific workspace | DONE (verified) | Dedicated AI artefact models (separate tables from ML) + pathway_id enforcement at service boundary; submission schema strengthened (`problem_statement` required, `api_contracts`, `deployment_evidence`; unknown fields rejected); form exposes artefacts; ML-module IDs rejected by AI artefact APIs (test); 13 tests passing |
 | M2.3 Shared project lifecycle | lifecycle engine with audit | DONE (verified) | `app/services/project_lifecycle.py` (validated stages `draft→…→archived`; separation of duties; idempotent submits; append-only `project_lifecycle_event`), model + migration `c7d8e9f0a1b2` (upgrade/downgrade verified on disposable SQLite); AI & ML submit flows record transitions; `GET /api/projects/lifecycle/<domain>/<key>`; 14 tests + AI/ML suite green |
 | M2.4 Project milestones and evidence | milestones/evidence/competency mapping | DONE (verified) | Milestone definitions derived from each module's published `project_deliverables` (ML pathway + AI manifest); `project_milestone` table + migration `d8e9f0a1b2c3` (verified); milestone checklist UI on both project workbenches; AI manifest modules gained project briefs/objectives/deliverables (human-reviewed recommendation — flagged for owner review); `/showcase/u/<id>` now whitelists approved public fields (evaluation/review feedback and CI links no longer published); 8 tests + showcase security suite green |
+
+## M3 — Practice Arena 2.1 and Assessment Integrity
+
+**Status:** IN PROGRESS
+**Dependencies:** M0, M1
+
+| Task | Deliverable | Status | Evidence |
+|---|---|---|---|
+| M3.1 ML challenge taxonomy | 14 ML topic categories; challenges mapped | IN PROGRESS — taxonomy done, coverage thin | All 14 ML domains now exist as Arena topics (feature engineering, regression, classification, unsupervised, model evaluation, deep learning, PyTorch, computer vision, reproducible training, production ML, MLOps added); one fully-tested challenge authored per new domain (268 total); validator passes; **coverage is 1 problem per new domain — full curriculum-mapped expansion remains** |
+| M3.2 Isolated judge integration | separate worker + sandbox | EXISTS / DISABLED BY DEFAULT | `JUDGE_SUBMISSIONS_ENABLED` gates submissions honestly (503 + browser practice unaffected); durable `Submission` queue + separate `judge_worker.py`; Docker sandbox (not available in this dev environment — not verified end-to-end); no request-thread execution |
+| M3.3 Submission history | store + list | DONE | `Submission` records code snapshot, verdict, runtime, memory, tests; learner-facing single-submission status exists; `GET /api/submissions` list added (owner-only) — see commits |
+| M3.4 Diagnostic feedback | error categories | NOT STARTED | — |
+| M3.5 Adaptive recommendations | competency-traced recommendations | NOT STARTED | — |
+
+**Notes:** Arena submit path records skill competency on ACCEPTED verdicts (pre-existing behaviour preserved). Prerequisite validation now enforced at load time.

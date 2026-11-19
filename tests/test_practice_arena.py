@@ -93,7 +93,11 @@ class ArenaTaxonomyTests(unittest.TestCase):
         }
         self.assertEqual(
             {topic['id'] for topic in topics.values()},
-            {'ml-statistics', 'ml-python', 'ml-data-analysis'},
+            {'ml-statistics', 'ml-python', 'ml-data-analysis',
+             'ml-feature-engineering', 'ml-regression', 'ml-classification',
+             'ml-unsupervised', 'ml-model-evaluation', 'ml-deep-learning',
+             'ml-pytorch', 'ml-computer-vision', 'ml-reproducible-training',
+             'ml-production-ml', 'ml-mlops'},
         )
         self.assertEqual(topics['ml-statistics']['name'], 'Statistics')
         self.assertEqual(topics['ml-python']['name'], 'Python for ML')
@@ -577,6 +581,44 @@ class ArenaApiTests(ArenaTestCase):
                 Submission, queued.get_json()['submission_id'],
             )
             self.assertEqual(record.verdict, 'PENDING')
+
+    def test_submission_history_lists_own_submissions_newest_first(self):
+        self.register('historian')
+        queued = self.client.post(
+            '/arena/api/problems/algo-binary-search/submit',
+            json={'code': 'def binary_search(numbers, target):\n    return -1\n'},
+        )
+        self.assertEqual(queued.status_code, 202)
+        submit_id = queued.get_json()['submission_id']
+        with self.app.app_context():
+            user = User.query.filter_by(username='historian').one()
+            db.session.add(Submission(
+                id='older-submission', user_id=user.id,
+                problem_id='algo-binary-search',
+                code_snapshot='def binary_search(numbers, target): return -1',
+                verdict='ACCEPTED', problem_version='deadbeef1234',
+            ))
+            db.session.commit()
+        history = self.client.get('/arena/api/submissions')
+        self.assertEqual(history.status_code, 200)
+        rows = history.get_json()['submissions']
+        self.assertEqual(len(rows), 2)
+        self.assertNotIn('code_snapshot', rows[0])
+        self.assertEqual({row['submission_id'] for row in rows},
+                         {submit_id, 'older-submission'})
+        filtered = self.client.get('/arena/api/submissions?problem_id=ml-statistics-descriptive-statistics')
+        self.assertEqual(filtered.get_json()['submissions'], [])
+        detail = self.client.get(f'/arena/api/submissions/{submit_id}')
+        self.assertEqual(detail.status_code, 200)
+        self.assertEqual(detail.get_json()['code'], 'def binary_search(numbers, target):\n    return -1\n')
+        self.assertTrue(detail.get_json()['problem_version'])
+        stranger = self.client.get('/arena/api/submissions/older-submission')
+        # Owner-only: the route is registered to the same blueprint, so a
+        # second learner must get 403, not another learner's code.
+        self.client.post('/logout', follow_redirects=True)
+        self.register('nosying')
+        stranger = self.client.get('/arena/api/submissions/older-submission')
+        self.assertEqual(stranger.status_code, 403)
 
     def test_run_fails_closed_when_no_authoritative_judge_is_configured(self):
         self.register('unavailablejudge')

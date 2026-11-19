@@ -68,6 +68,17 @@ TOPICS = (
     {'id': 'ml-statistics', 'track': 'machine-learning', 'name': 'Statistics'},
     {'id': 'ml-python', 'track': 'machine-learning', 'name': 'Python for ML'},
     {'id': 'ml-data-analysis', 'track': 'machine-learning', 'name': 'Data Analysis'},
+    {'id': 'ml-feature-engineering', 'track': 'machine-learning', 'name': 'Feature Engineering'},
+    {'id': 'ml-regression', 'track': 'machine-learning', 'name': 'Regression'},
+    {'id': 'ml-classification', 'track': 'machine-learning', 'name': 'Classification'},
+    {'id': 'ml-unsupervised', 'track': 'machine-learning', 'name': 'Unsupervised Learning'},
+    {'id': 'ml-model-evaluation', 'track': 'machine-learning', 'name': 'Model Evaluation'},
+    {'id': 'ml-deep-learning', 'track': 'machine-learning', 'name': 'Deep Learning'},
+    {'id': 'ml-pytorch', 'track': 'machine-learning', 'name': 'PyTorch'},
+    {'id': 'ml-computer-vision', 'track': 'machine-learning', 'name': 'Computer Vision'},
+    {'id': 'ml-reproducible-training', 'track': 'machine-learning', 'name': 'Reproducible Training'},
+    {'id': 'ml-production-ml', 'track': 'machine-learning', 'name': 'Production ML'},
+    {'id': 'ml-mlops', 'track': 'machine-learning', 'name': 'MLOps'},
 )
 
 DIFFICULTIES = ('beginner', 'intermediate', 'advanced')

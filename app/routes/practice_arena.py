@@ -468,6 +468,10 @@ def submit_problem(problem_id):
     from uuid import uuid4
     submission_id = uuid4().hex
 
+    import hashlib
+    version_source = f"{problem_id}:{raw.get('judge_tests', '')}".encode('utf-8')
+    problem_version = hashlib.sha256(version_source).hexdigest()[:16]
+
     submission = Submission(
         id=submission_id,
         user_id=current_user.id,
@@ -475,6 +479,7 @@ def submit_problem(problem_id):
         language='python',
         code_snapshot=code,
         verdict='PENDING',
+        problem_version=problem_version,
         submitted_at=utcnow(),
     )
     db.session.add(submission)
@@ -612,6 +617,8 @@ def submission_status(submission_id):
 
     return jsonify({
         'submission_id': submission.id,
+        'code': submission.code_snapshot,
+        'problem_version': submission.problem_version,
         'verdict': submission.verdict,
         'execution_time_ms': submission.execution_time_ms,
         'memory_kb': submission.memory_kb,
@@ -620,6 +627,40 @@ def submission_status(submission_id):
         'error_details': submission.error_details,
         'submitted_at': submission.submitted_at.isoformat() if submission.submitted_at else None,
     })
+
+
+@practice_arena_bp.route('/api/submissions')
+@login_required
+def submission_history():
+    """List the caller's own submissions, newest first.
+
+    Code snapshots stay out of the list payload; they are available on the
+    per-submission detail endpoint. Owner-only — learners can never read
+    another learner's submissions.
+    """
+    query = Submission.query.filter_by(user_id=current_user.id)
+    problem_id = request.args.get('problem_id')
+    if problem_id:
+        query = query.filter_by(problem_id=problem_id)
+    try:
+        limit = min(max(int(request.args.get('limit', 50)), 1), 200)
+    except (TypeError, ValueError):
+        limit = 50
+    rows = query.order_by(Submission.submitted_at.desc()).limit(limit).all()
+    return jsonify({
+        'submissions': [{
+            'submission_id': row.id,
+            'problem_id': row.problem_id,
+            'problem_version': row.problem_version,
+            'mode': row.mode,
+            'verdict': row.verdict,
+            'tests_passed': row.tests_passed,
+            'total_tests': row.total_tests,
+            'execution_time_ms': row.execution_time_ms,
+            'memory_kb': row.memory_kb,
+            'submitted_at': row.submitted_at.isoformat() if row.submitted_at else None,
+        } for row in rows],
+    }), 200
 
 
 LAB_RUBRIC_CRITERIA = ('Diagnosis', 'Verification', 'Clarity')
