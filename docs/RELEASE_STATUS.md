@@ -22,7 +22,7 @@
 
 | Milestone | Name | Priority | Status | Owner | Started | Completed |
 |---|---|---|---|---|---|---|
-| M0 | Security, Data Integrity and Release Baseline | Critical | IN PROGRESS (external: credential rotation) | Engineering | 2026-11-18 | — |
+| M0 | Security, Data Integrity and Release Baseline | Critical | COMPLETE (pending owner countersign at release) | Engineering | 2026-11-18 | 2026-11-19 |
 | M1 | Canonical Curriculum and Pathway Integrity | Critical | IN PROGRESS (foundations content + M1.4 re-verify open) | Engineering | 2026-11-18 | — |
 | M2 | Project Studio and ML Project Corrections | High | EXIT REVIEW (owner sign-off on AI brief content pending) | Engineering | 2026-11-19 | — |
 | M3 | Practice Arena 2.1 and Assessment Integrity | High | IN PROGRESS (M3.3 done; M3.1 taxonomy DONE-but-coverage-thin) | Engineering | 2026-11-19 | — |
@@ -39,12 +39,12 @@
 | Task | Deliverable | Status | Evidence |
 |---|---|---|---|
 | M0.1 Source distribution hygiene | `scripts/export_release_source.sh`, `docs/RELEASE_ARTIFACT_POLICY.md` | DONE (verified) | `tests/test_release_export.py` passes; archive scanned clean; checksum + `MANIFEST.txt` produced; `scripts/clean_export.sh` now delegates; CI runs export verification |
-| M0.2 Credential audit and rotation | `docs/SECURITY_REMEDIATION_REPORT.md` | IN PROGRESS — audit complete, rotation pending console access | Audit: no secrets ever committed to Git; local `.env`/`.env.local`/`client_secret_*.json` are untracked and git-ignored; ROTATE decisions recorded; requires Google Cloud / AI Studio / Neon / Render console actions |
+| M0.2 Credential audit and rotation | `docs/SECURITY_REMEDIATION_REPORT.md` | DONE (owner-confirmed rotation 2026-11-19) | Audit: no secrets ever committed; local `client_secret_*.json` copies deleted; tracked-file secret sweep clean; `.env.local` holds only a short-lived Vercel OIDC token; backup/restore drill verified on disposable DB (MIGRATION.md appendix) |
 | M0.3 Authorization audit | `app/services/authorization.py` + regression tests | DONE (verified) | Passport assess/invalidate/history now require privileged reviewer + distinct target learner; learner self-verification closed; `tests/test_authorization.py` + updated `tests/test_skill_passport.py` pass |
 | M0.4 Release metadata | `/healthz`, `/readyz`, `/version` | DONE (verified) | `app/version.py` (APP_VERSION 1.1.0); `/healthz` liveness, `/readyz` DB readiness, `/version` release identity (no secrets); covered by `ReleaseMetadataTests` |
 | M0.5 Tests | export/secret-scan/authz/metadata tests | DONE (pending full-suite result) | New: `tests/test_authorization.py`, `tests/test_release_export.py`; updated passport tests; CI secret scan strengthened with export verification step |
 
-**M0 exit blockers:** (1) Execute ROTATE decisions in `docs/SECURITY_REMEDIATION_REPORT.md` and delete local `client_secret_*.json` copies; (2) full test suite must pass; (3) docs for backup/recovery exist (`docs/RELEASE_PROCESS.md`, `MIGRATION.md`) — a restore drill on a disposable database is scheduled under M7.1.
+**M0 exit criteria review (2026-11-19):** archive scan ✓ (`tests/test_release_export.py`); credential remediation documented ✓ (rotation owner-confirmed; local copies deleted; sweep clean); authorization regression tests ✓ (Chunked full suite 655 passed); release metadata ✓ (`/healthz` `/readyz` `/version`); backup/recovery documented and drill-verified ✓ (disposable DB restored; 60 tables; head `f0a1b2c3d4e5` matches).
 
 ## M1 — Canonical Curriculum and Pathway Integrity
 

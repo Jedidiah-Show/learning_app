@@ -58,11 +58,11 @@ of these files leaving the development machine does.
 
 | Credential | Exposure assessment | Decision | Verification |
 |---|---|---|---|
-| Google OAuth client secret | Local files only; never committed | **ROTATE** — treat as compromised; the duplicate copies increase exposure surface. Delete both JSON files after rotation. | New secret set in Render/Vercel env; old secret deleted in Google Cloud Console; local copies removed |
-| `GEMINI_API_KEY` | Local file only | **ROTATE** if the workspace was ever shared/archived; otherwise re-issue as routine hygiene | New key works; old key revoked in AI Studio |
-| `DATABASE_URL` (Neon) | Local file only | **ROTATE** the database password (Neon → reset role password); update `.env` and Render env | App connects with new URL; old password rejected |
-| `ADMIN_API_TOKEN` | Local file only | **ROTATE** | Admin endpoints accept new token only |
-| `SECRET_KEY` | Local file only | **ROTATE** — invalidates existing sessions (acceptable) | Re-login required post-rotation |
+| Google OAuth client secret | Local files only; never committed | **ROTATED (owner-confirmed 2026-11-19); local copies deleted 2026-11-19** | New secret set in Render/Vercel env; old secret deleted in Google Cloud Console; local copies removed |
+| `GEMINI_API_KEY` | Local file only | **ROTATED (owner-confirmed 2026-11-19)** | New key works; old key revoked in AI Studio |
+| `DATABASE_URL` (Neon) | Local file only | **ROTATED (owner-confirmed 2026-11-19)** | App connects with new URL; old password rejected |
+| `ADMIN_API_TOKEN` | Local file only | **ROTATED (owner-confirmed 2026-11-19)** | Admin endpoints accept new token only |
+| `SECRET_KEY` | Local file only | **ROTATED (owner-confirmed 2026-11-19)** | Re-login required post-rotation |
 | `TOKEN_ENCRYPTION_KEY` | Not present in local env (placeholder in example) | Verify it exists in production env and is stable | Credential decryption still works after any rotation |
 | `VERCEL_OIDC_TOKEN` | Short-lived by design | **No action** unless Vercel reports anomaly; do not commit | Token expiry unaffected |
 | Signing keys (`docs/CREDENTIAL_SIGNING.md`) | Generated via `scripts/generate_credential_keypair.py`; not found in repo | Confirm private keys are stored only in production secret store | JWKS endpoint serves public key only |
@@ -85,7 +85,9 @@ See M0.3 audit below and `tests/test_authorization.py`. Summary:
 - Admin-portal actions already require `is_admin` and are covered by
   `tests/test_admin_portal.py`.
 
-## Outstanding physical actions (release blockers for M0 exit)
+## Outstanding physical actions — ALL CLOSED 2026-11-19
+
+Owner confirmed credential rotation is complete. The two local `client_secret_*.json` copies were deleted on 2026-11-19. A tracked-file secret sweep (GOCSPX-style OAuth secrets, private keys, `sk_live_*`, `xox[baprs]-`) returns clean. `.env.local` retains only a short-lived Vercel OIDC token (expires naturally). Backup/restore drill verified on a disposable DB (see MIGRATION.md appendix).
 
 1. Execute the ROTATE decisions above in the issuing consoles.
 2. Delete the two local `client_secret_*.json` copies after rotation.

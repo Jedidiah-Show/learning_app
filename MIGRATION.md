@@ -622,3 +622,12 @@ records untouched.
   downgrade (cannot distinguish pre-existing from introduced uniqueness).
 - `.dockerignore`/export path: release archive built from `git archive HEAD`
   via `scripts/export_release_source.sh` (never a dirty tree).
+
+## Appendix (M0.3, 2026-11-19): backup/restore drill evidence
+
+- Disposable drill DB upgraded to head `f0a1b2c3d4e5` (60 tables).
+- `shutil.copy2` snapshot taken; byte-level restore into a new file;
+  tables and `alembic_version` identical to source after restore.
+- Local `data/learning_app.db` is a legacy sandbox artifact (4 tables,
+  no learner data); production databases are Neon Postgres — drills against
+  Neon require the manual `db-migrate.yml` workflow.
