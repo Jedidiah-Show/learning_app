@@ -1406,3 +1406,35 @@ class EngineeringLabCompletion(db.Model):
         db.UniqueConstraint('user_id', 'domain_id', 'lab_id', name='uq_engineering_lab_completion_user_lab'),
         db.Index('idx_engineering_lab_completion_user', 'user_id'),
     )
+
+
+class ProjectLifecycleEvent(db.Model):
+    """Append-only audit log for the shared project lifecycle (M2.3).
+
+    One row per stage transition. Never updated or deleted; the current
+    stage is derived from the newest row for (user_id, domain, project_key).
+    Domain-specific assessment rules live in the AI/ML services; this table
+    only records lifecycle transitions.
+    """
+    __tablename__ = 'project_lifecycle_event'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False,
+        doc='Owner of the project',
+    )
+    domain = db.Column(db.String(40), nullable=False)  # ai-engineering | machine-learning
+    project_key = db.Column(db.String(100), nullable=False)  # module_id
+    from_stage = db.Column(db.String(32), nullable=True)
+    to_stage = db.Column(db.String(32), nullable=False)
+    actor_user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True,
+        doc='Who performed the transition; NULL for automated/system transitions',
+    )
+    note = db.Column(db.String(300), nullable=True)
+    created_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utcnow,
+    )
+    __table_args__ = (
+        db.Index('idx_project_lifecycle_owner_key', 'user_id', 'domain', 'project_key', 'id'),
+    )

@@ -219,6 +219,12 @@ def submit_project(module_id):
     record.evaluation = None
     record.failure_stage = None
     record.failure_detail = None
+    from app.services.project_lifecycle import LifecycleError, record_transition
+    try:
+        record_transition(current_user.id, 'ai-engineering', module_id,
+                          'submitted', actor=current_user)
+    except LifecycleError as error:
+        return jsonify({'error': str(error)}), 409
     db.session.commit()
     return jsonify({'ok': True, 'draft_saved': True})
 

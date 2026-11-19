@@ -409,9 +409,19 @@ def submit_project(module_id):
     reset_skill_progress_from_ml_project(
         current_user.id, module_id, commit=False,
     )
+    from app.services.project_lifecycle import LifecycleError, record_transition
+    try:
+        record_transition(current_user.id, 'machine-learning', module_id,
+                          'submitted', actor=current_user)
+    except LifecycleError as error:
+        return jsonify({'error': str(error)}), 409
     db.session.commit()
 
     if not _report_matches(module_id, report):
+        record_transition(
+            current_user.id, 'machine-learning', module_id, 'revision_requested',
+            actor=None, note='Automated report contract checks failed',
+        )
         _attempt_outcome(
             record, 'report_contract',
             'The submitted report does not meet the fixed dataset checks and metric thresholds. '
@@ -482,6 +492,11 @@ def submit_project(module_id):
         )
     # A completed rubric below threshold is a failure too, with its own stage.
     refresh_leaderboard_score(current_user.id, commit=False)
+    record_transition(
+        current_user.id, 'machine-learning', module_id,
+        'approved' if record.completed else 'revision_requested',
+        actor=None, note='Automated rubric review',
+    )
     _attempt_outcome(
         record, None if record.completed else 'rubric_below_threshold',
     )

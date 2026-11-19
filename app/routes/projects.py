@@ -1092,3 +1092,33 @@ def github_webhook():
         return jsonify({'status': 'verified', 'projects_updated': matched}), 200
 
     return jsonify({'status': 'no_matching_pending_project'}), 200
+
+
+@projects_bp.route('/api/projects/lifecycle/<domain>/<project_key>', methods=['GET'])
+@login_required
+def project_lifecycle(domain, project_key):
+    """Current lifecycle stage and transition history.
+
+    Learners read their own project's history; privileged reviewers may read
+    any learner's history via ?user_id=.
+    """
+    from app.services.project_lifecycle import DOMAINS, current_stage, history
+    from app.services.authorization import can_view_verification_history
+    if domain not in DOMAINS:
+        return jsonify({'error': f'Unknown domain {domain!r}; expected one of {DOMAINS}'}), 400
+    owner_id = current_user.id
+    raw = request.args.get('user_id')
+    if raw is not None:
+        try:
+            owner_id = int(raw)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'user_id must be an integer'}), 400
+    if not can_view_verification_history(current_user, owner_id):
+        return jsonify({'error': 'You are not authorized to view this history'}), 403
+    return jsonify({
+        'domain': domain,
+        'project_key': project_key,
+        'user_id': owner_id,
+        'stage': current_stage(owner_id, domain, project_key),
+        'history': history(owner_id, domain, project_key),
+    }), 200
