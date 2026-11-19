@@ -23,7 +23,7 @@
 | Milestone | Name | Priority | Status | Owner | Started | Completed |
 |---|---|---|---|---|---|---|
 | M0 | Security, Data Integrity and Release Baseline | Critical | COMPLETE (pending owner countersign at release) | Engineering | 2026-11-18 | 2026-11-19 |
-| M1 | Canonical Curriculum and Pathway Integrity | Critical | IN PROGRESS (foundations content + M1.4 re-verify open) | Engineering | 2026-11-18 | — |
+| M1 | Canonical Curriculum and Pathway Integrity | Critical | COMPLETE (pending owner countersign at release; foundations content 100% authored & validated) | Engineering | 2026-11-18 | 2026-11-19 |
 | M2 | Project Studio and ML Project Corrections | High | EXIT REVIEW (owner sign-off on AI brief content pending) | Engineering | 2026-11-19 | — |
 | M3 | Practice Arena 2.1 and Assessment Integrity | High | COMPLETE (judge honestly disabled-by-default; Docker not verifiable in dev) | Engineering | 2026-11-19 | 2026-11-19 |
 | M4 | Skill Passport and Competency Verification | Critical | EXIT REVIEW (owner review of role-management UI recommended) | Engineering | 2026-11-19 | — |
@@ -55,8 +55,8 @@
 |---|---|---|---|
 | M1.1 Curriculum registry | `app/curriculum_registry.py`, `app/services/curriculum.py` | DONE (loader + validation verified); consumer wiring in progress | `tests/test_curriculum_registry.py` 18 passing; all 3 manifests load, duplicate IDs / cross-domain edges rejected; `pathway_scope.foundation_modules()` and `ai_pathway.ai_engineering_pathway()` now resolve via the cached registry |
 | M1.2 Legacy curriculum migration | `docs/CURRICULUM_ID_MIGRATION.md`, `app/data/curriculum_legacy_mapping.json` | DONE (mapping defined + validated); application to learner records NOT enabled | 213 legacy lessons mapped at module level; 12 of 13 legacy modules mapped; capstone (`12`) explicitly UNRESOLVED; runbook documents idempotency/verification; auto-application ships with M1 exit |
-| M1.3 Shared Foundations lesson experience | foundation catalogue/detail/progress wiring | IN PROGRESS — plumbing DONE, content authoring pending | `app/foundations_pathway.py` (validated manifest cross-checked against registry), `app/data/shared_foundations_lessons.json` (21 lessons seeded `pending`, no learner-facing content), route `/specializations/shared-foundations/lessons/<id>` (pending lessons render honest "being written" notice, no completion accepted; ready lessons validate strictly), template + 9 tests passing (`tests/test_foundations_pathway.py`). Human-authored content review module-by-module required to open the pathway |
-| M1.4 Independent pathway navigation | enrolment vs focus separation | PARTIALLY IN PLACE (pre-existing Foundations-first work); not yet re-verified against M1 registry | `pathway_scope.active_pathway_enrolments`, dual-enrolment and pause/resume logic exists; full acceptance re-run pending M1 completion |
+| M1.3 Shared Foundations lesson experience | foundation catalogue/detail/progress wiring | DONE (verified) | All 21 lessons authored with goal/sections/quiz/task and marked ready (2026-11-19); pathway loader validates content strictly and cross-checks registry; `/specializations/shared-foundations/lessons/<id>` serves all modules in order; quiz-completion persists sf.* ids; 11 tests green; owner content review recommended pre-tag |
+| M1.4 Independent pathway navigation | enrolment vs focus separation | DONE (verified) | 56 enrolment/switch/fit tests + 160 AI/ML/learning-flow tests green (2026-11-19); dual enrolment, pause/resume, and focus switching behave per spec |
 | M1.5 Curriculum contract tests | automated validation suite | DONE (registry + mapping contracts); CI gate pending commit | `tests/test_curriculum_registry.py`; `machine_learning_curriculum.json` backfilled with per-module competency tags (was empty) |
 
 **M1 notes:** ML manifest had zero competency metadata — backfilled per module (documented). AI Engineering manifest passes registry validation unchanged.
