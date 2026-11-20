@@ -44,5 +44,15 @@
     {% if completed %}<p class="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">{{ lesson.quiz.explanation }}</p>{% endif %}
   </section>
   {% endif %}
+  {% if next_lesson %}
+  <nav class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5" aria-label="Lesson navigation">
+    <a class="text-sm font-semibold text-indigo-700 hover:underline" href="{{ url_for('main.foundations') }}">← All foundations modules</a>
+    {% if next_open %}
+    <a class="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800" href="{{ url_for('main.shared_foundations_lesson', lesson_id=next_lesson.id) }}">Next lesson: {{ next_lesson.title }} →</a>
+    {% else %}
+    <span class="rounded-lg bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-500" role="status">Next lesson locked — complete this lesson first</span>
+    {% endif %}
+  </nav>
+  {% endif %}
 </article>
 {% endblock %}

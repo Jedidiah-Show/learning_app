@@ -19,6 +19,7 @@ from app.ml_pathway import ml_module_progress
 from app.ml_pathway import ml_pathway_pacing, record_pathway_review
 from app.foundations_pathway import (
     get_shared_foundations_lesson, foundation_lesson_is_open, foundation_module_of_lesson,
+    shared_foundations_lessons,
 )
 from app.learning import (
     completed_lesson_ids, completed_project_modules, course_progress,
@@ -733,9 +734,18 @@ def shared_foundations_lesson(lesson_id):
             flash('Lesson complete. Shared Foundations progress has been saved.', 'success')
             return redirect(url_for('main.shared_foundations_lesson', lesson_id=lesson_id))
 
+    chain = shared_foundations_lessons()
+    next_lesson, next_open = None, False
+    for position, candidate in enumerate(chain):
+        if candidate['id'] == lesson_id and position + 1 < len(chain):
+            next_lesson = chain[position + 1]
+            next_open = foundation_lesson_is_open(current_user.id, next_lesson['id'])
+            break
+
     return render_template(
         'specializations/shared_foundations_lesson.html',
         lesson=lesson, completed=existing,
+        next_lesson=next_lesson, next_open=next_open,
     )
 
 
@@ -1215,6 +1225,32 @@ def foundations():
         module['_project_ready'] = not module['_missing_lessons']
         module['_project_completed'] = module['id'] in completed_projects
     state = foundation_completion_state(current_user.id)
+    # Canonical lessons (sf.*) are the authoritative progression record. The
+    # legacy 00–02 modules remain in this catalogue for project/evidence
+    # continuity, but "Continue"/"next lesson" must follow the canonical
+    # chain — otherwise a completed sf.* lesson never unlocks the next one.
+    from app.foundations_pathway import (
+        foundation_lesson_is_open, shared_foundations_lessons,
+    )
+    canonical_module_for_legacy = {'00': 'sf.00', '01': 'sf.01', '02': 'sf.04'}
+    all_sf = shared_foundations_lessons()
+    for module in modules:
+        sf_lessons = [
+            lesson for lesson in all_sf
+            if lesson['module_id'] == canonical_module_for_legacy.get(module['id'])
+        ]
+        module['_canonical_total'] = len(sf_lessons)
+        module['_canonical_completed'] = sum(
+            1 for lesson in sf_lessons if lesson['id'] in completed
+        )
+        module['_canonical_next'] = next(
+            (
+                lesson for lesson in sf_lessons
+                if lesson['id'] not in completed
+                and foundation_lesson_is_open(current_user.id, lesson['id'])
+            ),
+            None,
+        )
     return render_template(
         'foundations.html', modules=modules, foundation=state,
         pathway_destination=destination,

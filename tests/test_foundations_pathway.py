@@ -126,6 +126,24 @@ class FoundationsRouteTests(unittest.TestCase):
             ).first()
             self.assertIsNotNone(completion)
 
+    def test_next_lesson_unlocks_after_current_lesson_is_completed(self):
+        self._register()
+        first = '/specializations/shared-foundations/lessons/sf.00.01'
+        second = '/specializations/shared-foundations/lessons/sf.00.02'
+
+        page = self.client.get(first).get_data(as_text=True)
+        self.assertIn('Next lesson locked', page)
+
+        response = self.client.post(first, data={'answer': '1'}, follow_redirects=True)
+        self.assertEqual(response.status_code, 200)
+        page = response.get_data(as_text=True)
+        self.assertIn(f'href="{second}"', page)
+        self.assertEqual(self.client.get(second).status_code, 200)
+
+        foundations = self.client.get('/foundations').get_data(as_text=True)
+        self.assertIn(f'href="{second}"', foundations)
+        self.assertIn('Published lessons: 1 / 4 complete', foundations)
+
     def test_pending_lesson_renders_notice(self):
         """A seeded pending lesson shows the notice and records nothing."""
         from unittest.mock import patch
