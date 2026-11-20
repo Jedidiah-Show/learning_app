@@ -190,3 +190,7 @@ Fix:
 - Regression: `tests/test_foundations_pathway.py` (12 tests) proves the chain
   sf.00.01 → sf.00.02 unlocks after a correct quiz answer and that
   `/foundations` links to it. No schema change.
+
+**Verification (2026-11-20):** CI run `44755242235` green (browser-ide, Python 3.12 + 3.13). Deployed to both targets at commit `b5938fc`:
+- `https://ruach-learning-app.onrender.com` — `/healthz` 200, `/readyz` `migration_current: true` @ `g1a2b3c4d5e6`, `/version` 1.1.0 production.
+- `https://learning-app-psi-black.vercel.app` — `/healthz` 200, `/readyz` `migration_current: true` @ `g1a2b3c4d5e6`, `/version` 1.1.0.
