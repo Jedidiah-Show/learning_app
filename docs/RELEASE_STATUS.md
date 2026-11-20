@@ -173,3 +173,20 @@ recorded decision here._
 | M7.5 Release operations | PARTIAL | Release notes `docs/releases/1.1.0.md`; release archive verified (test_release_export); security scans clean; **full suite GREEN: 655 passed, 1 skipped (chunked run; one-process run killed by memory pressure)**; tag v1.1.0 NOT created (owner action) |
 
 **Gate status (2026-11-19):** Engineering gate satisfied locally — 655 passed, 1 skipped (chunked); migration upgrade/downgrade/re-upgrade verified; export clean; single head `g1a2b3c4d5e6`; production-like smoke verified on gunicorn (`/healthz`, `/readyz` = ok @ head `g1a2b3c4d5e6`, `/version` shows 1.1.0 with commit SHA, `/login` loads; register → dashboard → `/passport`, `/mastery`, `/specializations/shared-foundations/lessons/sf.00.01` all render authenticated). Remaining items are owner actions, not engineering: CI-green incl. `browser-ide` job (push to origin), OpenRouter credits (for M5.4 live eval), the v1.1.0 tag, production deploy + smoke tests, then record approvals here to mark M7 (and the release) COMPLETE.
+
+## Post-deploy bug fix (2026-11-20)
+
+**Shared Foundations next lesson locked after completion.** Root cause:
+`LessonCompletion` rows use canonical `sf.*` IDs, but `/foundations` computed
+"Continue module"/"next" from legacy `0.01`-style IDs and linked to the legacy
+`/lesson/<id>` route, whose gating never saw canonical completions.
+
+Fix:
+- `/foundations` maps legacy modules 00/01/02 → canonical sf.00/sf.01/sf.04,
+  shows published-lesson progress, and links "Continue" to the dedicated
+  `main.shared_foundations_lesson` route with a canonical next lesson.
+- The dedicated lesson page now has real next-lesson navigation (open once
+  the current lesson is complete, locked notice otherwise).
+- Regression: `tests/test_foundations_pathway.py` (12 tests) proves the chain
+  sf.00.01 → sf.00.02 unlocks after a correct quiz answer and that
+  `/foundations` links to it. No schema change.
