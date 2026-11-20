@@ -11,9 +11,10 @@ import tempfile
 import unittest
 
 from app import create_app, db
-from app.models import LessonCompletion, User
+from app.models import FoundationLessonProgress, LessonCompletion, User
 from app.foundations_pathway import (
-    foundation_lesson_is_open, get_shared_foundations_lesson,
+    foundation_completed_lesson_ids, foundation_lesson_is_open,
+    get_shared_foundations_lesson, mark_foundation_lesson_complete,
     shared_foundations_lessons, shared_foundations_pathway,
 )
 
@@ -64,6 +65,62 @@ class FoundationsManifestTests(unittest.TestCase):
         self.assertIsNotNone(lesson)
         self.assertEqual(lesson['module_id'], 'sf.00')
         self.assertIsNone(get_shared_foundations_lesson('sf.99.99'))
+
+
+class FoundationProgressIndependenceTests(unittest.TestCase):
+    """Foundation unlocks depend only on earlier foundation lessons."""
+
+    def setUp(self):
+        self.temp_dir = tempfile.TemporaryDirectory()
+        self.previous_database_url = os.environ.get('DATABASE_URL')
+        os.environ['DATABASE_URL'] = f'sqlite:///{self.temp_dir.name}/t.db'
+        self.app = create_app()
+        self.app.config.update(TESTING=True, GEMINI_API_KEY=None)
+        with self.app.app_context():
+            db.create_all()
+            user = User(username='solo', email='solo@example.test', password_hash='x')
+            db.session.add(user)
+            db.session.commit()
+            self.user_id = user.id
+
+    def tearDown(self):
+        with self.app.app_context():
+            db.session.remove()
+            db.drop_all()
+            db.engine.dispose()
+        if self.previous_database_url is None:
+            os.environ.pop('DATABASE_URL', None)
+        else:
+            os.environ['DATABASE_URL'] = self.previous_database_url
+        self.temp_dir.cleanup()
+
+    def test_pathway_lesson_completions_do_not_unlock_foundations(self):
+        with self.app.app_context():
+            # Even a fully completed legacy/pathway course cannot unlock sf.00.02.
+            for lesson_id in ('0.01', '0.02', '3.01', 'mle.tools.01'):
+                db.session.add(LessonCompletion(
+                    user_id=self.user_id, lesson_id=lesson_id,
+                    subject_id='00', day_number=0, completed=True,
+                ))
+            db.session.commit()
+            self.assertFalse(foundation_lesson_is_open(self.user_id, 'sf.00.02'))
+            mark_foundation_lesson_complete(self.user_id, 'sf.00.01')
+            self.assertTrue(foundation_lesson_is_open(self.user_id, 'sf.00.02'))
+            self.assertEqual(FoundationLessonProgress.query.count(), 1)
+
+    def test_existing_sf_completions_backfill_into_dedicated_table(self):
+        with self.app.app_context():
+            db.session.add(LessonCompletion(
+                user_id=self.user_id, lesson_id='sf.00.01',
+                subject_id='sf.00', day_number=0, completed=True,
+            ))
+            db.session.commit()
+            self.assertEqual(foundation_completed_lesson_ids(self.user_id), {'sf.00.01'})
+            self.assertEqual(
+                [row.lesson_id for row in FoundationLessonProgress.query.all()],
+                ['sf.00.01'],
+            )
+            self.assertTrue(foundation_lesson_is_open(self.user_id, 'sf.00.02'))
 
 
 class FoundationsRouteTests(unittest.TestCase):

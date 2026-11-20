@@ -1505,3 +1505,27 @@ class ArenaRecommendationDismissal(db.Model):
         db.UniqueConstraint('user_id', 'problem_id', name='uq_arena_rec_dismissal_user_problem'),
         db.Index('idx_arena_rec_dismissal_user', 'user_id'),
     )
+
+
+class FoundationLessonProgress(db.Model):
+    """Owner-scoped completion record for Shared Foundations lessons (M1).
+
+    Deliberately separate from ``LessonCompletion`` (which pathway lessons
+    share). Foundation unlocks depend only on earlier foundation lessons in
+    the canonical chain — never on any AI/ML pathway lesson, module project,
+    or legacy course state.
+    """
+    __tablename__ = 'foundation_lesson_progress'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    lesson_id = db.Column(db.String(100), nullable=False)
+    completed_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utcnow
+    )
+    __table_args__ = (
+        db.UniqueConstraint('user_id', 'lesson_id', name='uq_foundation_progress_user_lesson'),
+        db.Index('idx_foundation_progress_user', 'user_id'),
+    )

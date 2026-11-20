@@ -19,6 +19,7 @@ from app.ml_pathway import ml_module_progress
 from app.ml_pathway import ml_pathway_pacing, record_pathway_review
 from app.foundations_pathway import (
     get_shared_foundations_lesson, foundation_lesson_is_open, foundation_module_of_lesson,
+    foundation_completed_lesson_ids, mark_foundation_lesson_complete,
     shared_foundations_lessons,
 )
 from app.learning import (
@@ -731,6 +732,7 @@ def shared_foundations_lesson(lesson_id):
                 from app.leaderboard import refresh_leaderboard_score
                 refresh_leaderboard_score(current_user.id, commit=False)
             db.session.commit()
+            mark_foundation_lesson_complete(current_user.id, lesson_id)
             flash('Lesson complete. Shared Foundations progress has been saved.', 'success')
             return redirect(url_for('main.shared_foundations_lesson', lesson_id=lesson_id))
 
@@ -1225,6 +1227,7 @@ def foundations():
         module['_project_ready'] = not module['_missing_lessons']
         module['_project_completed'] = module['id'] in completed_projects
     state = foundation_completion_state(current_user.id)
+    sf_completed = foundation_completed_lesson_ids(current_user.id)
     # Canonical lessons (sf.*) are the authoritative progression record. The
     # legacy 00–02 modules remain in this catalogue for project/evidence
     # continuity, but "Continue"/"next lesson" must follow the canonical
@@ -1241,12 +1244,12 @@ def foundations():
         ]
         module['_canonical_total'] = len(sf_lessons)
         module['_canonical_completed'] = sum(
-            1 for lesson in sf_lessons if lesson['id'] in completed
+            1 for lesson in sf_lessons if lesson['id'] in sf_completed
         )
         module['_canonical_next'] = next(
             (
                 lesson for lesson in sf_lessons
-                if lesson['id'] not in completed
+                if lesson['id'] not in sf_completed
                 and foundation_lesson_is_open(current_user.id, lesson['id'])
             ),
             None,

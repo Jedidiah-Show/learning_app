@@ -151,17 +151,57 @@ def foundation_module_of_lesson(lesson_id):
     return None
 
 
-def foundation_lesson_is_open(user_id, lesson_id):
-    """Strict chain: a lesson opens only when every earlier lesson is complete.
+def foundation_completed_lesson_ids(user_id):
+    """Canonical foundation completions, independent of any pathway lesson.
 
-    Pending lessons block progression (there is no content to complete), so
-    the pathway can only be walked in authored order.
+    Existing ``LessonCompletion`` rows with ``sf.*`` ids are mirrored once
+    (idempotently) so learners keep progress earned before this dedicated
+    table existed. No other LessonCompletion row is consulted.
     """
-    from app.models import LessonCompletion
-    completed = {
-        row.lesson_id
-        for row in LessonCompletion.query.filter_by(user_id=user_id, completed=True).all()
-    }
+    from app import db
+    from app.models import FoundationLessonProgress, LessonCompletion, utcnow
+
+    records = FoundationLessonProgress.query.filter_by(user_id=user_id).all()
+    completed = {row.lesson_id for row in records}
+    legacy_rows = LessonCompletion.query.filter(
+        LessonCompletion.user_id == user_id,
+        LessonCompletion.completed.is_(True),
+        LessonCompletion.lesson_id.like('sf.%'),
+    ).all()
+    missing = [row for row in legacy_rows if row.lesson_id not in completed]
+    if missing:
+        for row in missing:
+            db.session.add(FoundationLessonProgress(
+                user_id=user_id, lesson_id=row.lesson_id,
+                completed_at=row.completed_at or utcnow(),
+            ))
+        db.session.commit()
+        completed.update(row.lesson_id for row in missing)
+    return completed
+
+
+def mark_foundation_lesson_complete(user_id, lesson_id):
+    """Persist a foundation lesson completion in the foundation-only table."""
+    from app import db
+    from app.models import FoundationLessonProgress, utcnow
+
+    row = FoundationLessonProgress.query.filter_by(
+        user_id=user_id, lesson_id=lesson_id,
+    ).first()
+    if row is None:
+        db.session.add(FoundationLessonProgress(
+            user_id=user_id, lesson_id=lesson_id, completed_at=utcnow(),
+        ))
+        db.session.commit()
+
+
+def foundation_lesson_is_open(user_id, lesson_id):
+    """A foundation lesson opens only when every earlier foundation lesson is complete.
+
+    No pathway lesson, module project, enrolment state, or legacy course
+    content can lock or unlock a Shared Foundations lesson.
+    """
+    completed = foundation_completed_lesson_ids(user_id)
     chain = shared_foundations_lessons()
     for earlier in chain:
         if earlier['id'] == lesson_id:
@@ -172,11 +212,7 @@ def foundation_lesson_is_open(user_id, lesson_id):
 
 
 def foundation_completion_state(user_id):
-    from app.models import LessonCompletion
-    completed = {
-        row.lesson_id
-        for row in LessonCompletion.query.filter_by(user_id=user_id, completed=True).all()
-    }
+    completed = foundation_completed_lesson_ids(user_id)
     modules = []
     for module in shared_foundations_pathway()['modules']:
         lessons = module['lessons']
