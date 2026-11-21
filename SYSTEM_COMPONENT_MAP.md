@@ -1,7 +1,7 @@
 # System Component Map
 
-**Date:** 2026-11-21  
-**Scope:** Current RUACH LMS modular monolith after M1 boundary extraction and M2 AI infrastructure.
+**Date:** 2026-11-22  
+**Scope:** Current RUACH LMS modular monolith after M1 boundary extraction, M2 AI infrastructure and M3 execution foundations.
 
 ## 1. Layer view
 
@@ -9,7 +9,7 @@
 HTTP / CLI / webhook requests
         |
         v
-app/routes/*            HTTP adapters (21 blueprints, 199 URL rules)
+app/routes/*            HTTP adapters (22 blueprints, 205 URL rules)
         |
         v
 app/services/*          Orchestration, tutor, judge, notifications, passport
@@ -18,7 +18,7 @@ app/services/*          Orchestration, tutor, judge, notifications, passport
 app/domains/*           Trusted business rules (currently learning context)
         |
         v
-app/models.py           Single SQLAlchemy model layer (63 models)
+app/models.py           Single SQLAlchemy model layer (65 models)
         |
         v
 PostgreSQL (prod) / SQLite (dev)  --  Alembic migrations

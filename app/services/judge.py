@@ -15,8 +15,12 @@ import time
 from typing import Any, Dict, List
 from uuid import uuid4
 
+from flask import current_app, has_app_context
 
-SANDBOX_IMAGE = "ruach-python-sandbox:latest"
+from app.execution.profiles import ExecutionProfile, get_profile
+
+
+SANDBOX_IMAGE = "ruach-python-sandbox:3.12-v1"
 MAX_TIMEOUT_SECONDS = 15.0
 MAX_MEMORY_MB = 512
 # Third-party modules installed in the sandbox image and permitted by the
@@ -41,7 +45,7 @@ class JudgeResult:
     """Result of a sandboxed code execution."""
 
     __slots__ = ("verdict", "tests_passed", "total_tests", "execution_time_ms",
-                 "memory_kb", "error_details", "output")
+                 "memory_kb", "error_details", "output", "execution_profile")
 
     def __init__(
         self,
@@ -52,6 +56,7 @@ class JudgeResult:
         memory_kb: int = 0,
         error_details: str = "",
         output: str = "",
+        execution_profile: str = "",
     ) -> None:
         self.verdict: str = verdict
         self.tests_passed: int = tests_passed
@@ -60,6 +65,7 @@ class JudgeResult:
         self.memory_kb: int = memory_kb
         self.error_details: str = error_details
         self.output: str = output
+        self.execution_profile: str = execution_profile
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -70,6 +76,7 @@ class JudgeResult:
             "memory_kb": self.memory_kb,
             "error_details": self.error_details,
             "output": self.output,
+            "execution_profile": self.execution_profile,
         }
 
 
@@ -77,31 +84,44 @@ def _build_docker_command(
     timeout_sec: float,
     memory_mb: int = MAX_MEMORY_MB,
     container_name: str = '',
+    *,
+    profile: ExecutionProfile = None,
+    image: str = None,
 ) -> List[str]:
     """Build a docker run command with isolation constraints.
 
     Constraints:
     - No network access (--network none)
-    - Memory limit (--memory)
-    - CPU limit (--cpus)
+    - Memory and swap limits
+    - CPU limit from the selected execution profile
     - Read-only root filesystem (--read-only)
     - No new privileges (--security-opt no-new-privileges:true)
     - Drop all capabilities (--cap-drop all)
+    - Bounded writable /tmp with noexec,nosuid
     - Ephemeral container (--rm)
     """
+    cpu_limit = profile.cpu_limit if profile else 0.5
+    tmpfs_size = profile.storage_mb if profile else 16
+    if image is None:
+        image = (
+            current_app.config.get('SANDBOX_IMAGE')
+            if has_app_context() else SANDBOX_IMAGE
+        )
     command = [
         "docker", "run", "--rm", "-i",
         "--network", "none",
         "--memory", f"{memory_mb}m",
         "--memory-swap", f"{memory_mb}m",
-        "--cpus", "0.5",
+        "--cpus", str(cpu_limit),
         "--pids-limit", "64",
+        "--ulimit", "nofile=64:64",
+        "--ulimit", f"fsize={tmpfs_size * 1024}:{tmpfs_size * 1024}",
         "--read-only",
         "--security-opt", "no-new-privileges:true",
         "--cap-drop", "all",
         "--user", "65532:65532",
-        "--tmpfs", "/tmp:rw,noexec,nosuid,size=16m",
-        SANDBOX_IMAGE,
+        "--tmpfs", f"/tmp:rw,noexec,nosuid,size={tmpfs_size}m",
+        image,
     ]
     if container_name:
         command[2:2] = ["--name", container_name]
@@ -114,41 +134,42 @@ def execute_in_sandbox(
     timeout_sec: float = 3.0,
     memory_mb: int = MAX_MEMORY_MB,
     mode: str = "judge",
+    profile: ExecutionProfile = None,
 ) -> JudgeResult:
     """Execute Python code inside an isolated container.
 
-    Args:
-        code: The Python source code to execute.
-        test_code: Trusted Python assertions, held on the server. Required
-            for judged submissions; ignored for interactive ``run`` mode.
-        timeout_sec: Maximum seconds allowed for submitted code and tests.
-        memory_mb: Maximum memory in megabytes.
-        mode: ``"judge"`` runs the submission plus private test suite and
-            returns a verdict; ``"run"`` executes code only and returns
-            captured stdout/stderr for interactive feedback.
-
-    Returns:
-        JudgeResult with verdict, test metrics, and resource usage.
+    ``profile`` is selected server-side from the exercise/project workload.
+    Callers may request fewer resources, never more than the profile allows.
     """
     if not isinstance(code, str) or not code.strip():
         raise ValueError("Submission code must be non-empty text")
     if mode != "run" and (not isinstance(test_code, str) or not test_code.strip()):
         raise ValueError("A server-side test suite is required")
-    timeout_sec = min(max(float(timeout_sec), 0.1), MAX_TIMEOUT_SECONDS)
-    memory_mb = min(max(int(memory_mb), 32), MAX_MEMORY_MB)
+    if profile is None:
+        profile = get_profile('container_python')
+    if isinstance(profile, str):
+        profile = get_profile(profile)
+    if not profile.enabled or profile.runtime != 'docker':
+        raise ValueError(f"Execution profile {profile.name} is not available")
+
+    timeout_sec = min(max(float(timeout_sec), 0.1), profile.timeout_sec)
+    memory_mb = min(max(int(memory_mb), 32), profile.memory_mb)
     payload = {
         "code": code,
         "test_code": test_code,
         "timeout": timeout_sec,
         "memory_mb": memory_mb,
-        "allowed_packages": sorted(ALLOWED_PACKAGES),
+        "allowed_packages": sorted(set(profile.libraries) & ALLOWED_PACKAGES),
         "mode": mode,
+        "execution_profile": profile.name,
     }
 
     container_name = f"ruach-judge-{uuid4().hex}"
-    docker_cmd = _build_docker_command(timeout_sec, memory_mb, container_name)
+    docker_cmd = _build_docker_command(
+        timeout_sec, memory_mb, container_name, profile=profile,
+    )
 
-    result = JudgeResult()
+    result = JudgeResult(execution_profile=profile.name)
     try:
         start_time = time.monotonic()
         result.execution_time_ms = 0

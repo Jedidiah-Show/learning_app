@@ -40,15 +40,15 @@ Database pooling is tuned in `render.yaml` (pool size 5, overflow 10, recycle 30
 ## 4. Processes actually deployed
 
 - **One web process** (Gunicorn with 2 gthread workers) is declared in `render.yaml`.
-- **No judge worker service** is declared. `app/services/judge_worker.py` and `sandbox/Dockerfile` exist in source, but `JUDGE_SUBMISSIONS_ENABLED=false` in `render.yaml`. Enabling that flag without provisioning a container-capable worker would make authoritative submissions fail rather than queue silently.
+- **No judge worker service is declared on Render.** M3 adds an independently startable worker at `python -m app.workers.judge_worker` and CLI commands `flask process-submissions` / `flask judge-worker-health`, but Render free/plan workers cannot provide the sibling Docker daemon this design requires. `JUDGE_SUBMISSIONS_ENABLED=false` stays on the web service; enabling it without a container-capable host would make authoritative submissions fail rather than queue silently. See `M3_EXECUTION_ARCHITECTURE.md` for the separate-host contract and health checks.
 - **One AI worker service is declared** (`ruach-ai-worker`, started with `python -m app.workers.ai_worker`). It consumes the same database queue as the web app; no Celery/Redis queue was introduced. Deployment health is not claimed here: the worker must be provisioned and observed after migrations are applied.
 - AI generation is available through `app/ai/gateway.py` in both web and worker processes; no separate gateway service is required.
 
 ## 5. Migrations and release flow
 
-- Migrations remain a guarded manual workflow; `render.yaml` deliberately has no `preDeployCommand` (see `MIGRATION.md`), so the additive M2 migration must be applied before the worker is started.
+- Migrations remain a guarded manual workflow; `render.yaml` deliberately has no `preDeployCommand` (see `MIGRATION.md`), so the additive M2 and M3 migrations must be applied before the AI or judge workers are started.
 - `MIGRATION.md` and `docs/RELEASE_PROCESS.md` describe the Neon pooled/direct connection split and manual migration procedure.
-- `flask db heads` reports multiple heads: untracked `1a7665109d7c`, the pre-M2 tracked head `g1a2b3c4d5e6`, and new M2 head `h2i3j4k5l6m7` on that tracked lineage. `flask db check` still detects pre-existing model/migration drift; see `M0_BASELINE_TEST_REPORT.md` and `M2_QUEUE_AND_DEPLOYMENT.md`. Heads must be reconciled before applying schema changes to a managed environment.
+- `flask db heads` reports multiple heads: untracked `1a7665109d7c`, the pre-M2 tracked head `g1a2b3c4d5e6`, M2 head `h2i3j4k5l6m7`, and M3 head `i4j5k6l7m8n9` on that tracked lineage. `flask db check` still detects pre-existing model/migration drift; see `M0_BASELINE_TEST_REPORT.md` and `M2_QUEUE_AND_DEPLOYMENT.md`. Heads must be reconciled before applying schema changes to a managed environment.
 - Release packaging uses `scripts/export_release_source.sh`, which exports committed source only, scans paths and content, writes a manifest and SHA-256 checksum, and fails closed.
 
 ## 6. Production safety checks in code

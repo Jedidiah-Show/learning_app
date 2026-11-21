@@ -55,6 +55,35 @@ class SandboxRunnerTests(unittest.TestCase):
         self.assertEqual(no_checks['verdict'], 'INTERNAL_ERROR')
         self.assertEqual(no_checks['total_tests'], 0)
 
+    def test_import_guard_rejects_non_allowlisted_modules(self):
+        process = subprocess.run(
+            [sys.executable, str(RUNNER)],
+            input=json.dumps({
+                'code': 'import definitely_not_allowed\nvalue = 1',
+                'test_code': 'assert value == 1',
+                'timeout': 1,
+                'allowed_packages': [],
+            }),
+            text=True,
+            capture_output=True,
+            check=True,
+            timeout=10,
+        )
+        result = json.loads(process.stdout)
+        self.assertEqual(result['verdict'], 'RUNTIME_ERROR')
+        self.assertEqual(result['error_details'], 'PermissionError')
+
+    def test_sandbox_filesystem_writes_are_blocked(self):
+        result = self.run_submission(
+            "f = open('/tmp/ruach-probe.txt', 'w')\n"
+            "f.write('x' * 100000)\n"
+            "f.flush()\n"
+            "f.close()",
+            'assert True',
+        )
+        self.assertEqual(result['verdict'], 'RUNTIME_ERROR')
+        self.assertEqual(result['error_details'], 'OSError')
+
     def test_enforces_wall_clock_timeout(self):
         process = subprocess.run(
             [sys.executable, str(RUNNER)],
@@ -95,6 +124,29 @@ class SandboxCommandTests(unittest.TestCase):
         self.assertEqual(command[command.index('--memory-swap') + 1], '256m')
         self.assertEqual(command[command.index('--user') + 1], '65532:65532')
         self.assertNotIn('-p', command)
+        self.assertIn('no-new-privileges:true', command)
+        self.assertIn('--tmpfs', command)
+        self.assertIn('noexec,nosuid', command[command.index('--tmpfs') + 1])
+
+    def test_profile_controls_cpu_tmpfs_and_pinned_image(self):
+        from app import create_app
+        from app.execution.profiles import get_profile
+        from app.services.judge import _build_docker_command
+
+        app = create_app()
+        profile = get_profile('container_data_science')
+        with app.app_context():
+            command = _build_docker_command(
+                timeout_sec=15,
+                memory_mb=profile.memory_mb,
+                container_name='probe',
+                profile=profile,
+            )
+            self.assertEqual(command[-1], app.config['SANDBOX_IMAGE'])
+        self.assertEqual(command[command.index('--cpus') + 1], '1.0')
+        self.assertIn('size=64m', command[command.index('--tmpfs') + 1])
+        self.assertEqual(command[command.index('--name') + 1], 'probe')
+        self.assertIn('nofile=64:64', command)
 
 
 if __name__ == '__main__':

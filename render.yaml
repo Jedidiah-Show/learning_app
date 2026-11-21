@@ -164,6 +164,16 @@ services:
       # instead of leaving them permanently queued.
       - key: JUDGE_SUBMISSIONS_ENABLED
         value: "false"
+      # M3 profile/health metadata. The web service never invokes Docker; the
+      # separate worker host supplies the actual image and runtime limits.
+      - key: SANDBOX_IMAGE
+        value: ruach-python-sandbox:3.12-v1
+      - key: SANDBOX_MAX_CONCURRENCY_PER_USER
+        value: "2"
+      - key: SANDBOX_SUBMISSION_LIMIT_PER_MINUTE
+        value: "10"
+      - key: MLFLOW_TRACKING_URI
+        sync: false
 
       # Cloudflare R2 (S3-compatible) uploads. Profile photos are written to
       # this object-storage backend only; Postgres keeps MIME metadata, plus

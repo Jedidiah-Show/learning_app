@@ -252,6 +252,9 @@ class Submission(db.Model):
     output = db.Column(db.Text)
     mode = db.Column(db.String(16), default='judge')
     problem_version = db.Column(db.String(40), nullable=True)
+    execution_profile = db.Column(
+        db.String(40), nullable=True, index=True
+    )
     submitted_at = db.Column(db.DateTime(timezone=True), default=utcnow)
     started_at = db.Column(db.DateTime(timezone=True))
     completed_at = db.Column(db.DateTime(timezone=True))
@@ -799,6 +802,14 @@ class MLProjectExperiment(db.Model):
     evaluation_metrics = db.Column(db.Text)  # JSON string
     observations = db.Column(db.Text)
     conclusion = db.Column(db.Text)
+    # M3.8: MLflow identifiers are stored on the existing experiment record so
+    # the LMS remains the source of truth and no duplicate experiment log is
+    # introduced.
+    mlflow_experiment_id = db.Column(db.String(80), nullable=True, index=True)
+    mlflow_run_id = db.Column(db.String(80), nullable=True, index=True)
+    tracking_uri = db.Column(db.String(500), nullable=True)
+    run_status = db.Column(db.String(24), nullable=True)
+    environment_json = db.Column(db.Text)  # JSON string
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
     updated_at = db.Column(
         db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
@@ -806,6 +817,59 @@ class MLProjectExperiment(db.Model):
     __table_args__ = (
         db.Index('idx_ml_experiment_user_module', 'user_id', 'module_id'),
     )
+
+
+class ProjectArtifact(db.Model):
+    """Durable output created by a learner project or execution worker.
+
+    Bytes live in the configured object-storage backend; PostgreSQL holds the
+    authoritative metadata and authorization fields. ``project_type`` keeps
+    course projects and ML specialization experiments separate without
+    forcing a shared lifecycle on them.
+    """
+
+    __tablename__ = 'project_artifact'
+    id = db.Column(db.Integer, primary_key=True)
+    owner_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    project_type = db.Column(db.String(20), nullable=False)
+    project_id = db.Column(db.Integer, nullable=True)
+    artifact_type = db.Column(db.String(40), nullable=False)
+    original_filename = db.Column(db.String(255), nullable=False)
+    storage_key = db.Column(db.String(512), nullable=False, unique=True)
+    size_bytes = db.Column(db.Integer, nullable=False)
+    content_type = db.Column(db.String(120), nullable=False)
+    checksum_sha256 = db.Column(db.String(64), nullable=False)
+    access_policy = db.Column(
+        db.String(20), nullable=False, default='private', server_default='private'
+    )
+    created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+
+    __table_args__ = (
+        db.Index(
+            'idx_artifact_project', 'project_type', 'project_id', 'created_at'
+        ),
+        db.Index('idx_artifact_owner_created', 'owner_id', 'created_at'),
+    )
+
+
+class JudgeWorkerHeartbeat(db.Model):
+    """Latest registration and health report from an execution worker."""
+
+    __tablename__ = 'judge_worker_heartbeat'
+    id = db.Column(db.String(80), primary_key=True)
+    hostname = db.Column(db.String(120), nullable=False)
+    pid = db.Column(db.Integer, nullable=False)
+    status = db.Column(
+        db.String(20), nullable=False, default='online', server_default='online'
+    )
+    execution_profiles = db.Column(db.Text)  # JSON list
+    pending_count = db.Column(db.Integer, nullable=False, default=0)
+    running_count = db.Column(db.Integer, nullable=False, default=0)
+    processed_count = db.Column(db.Integer, nullable=False, default=0)
+    started_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    last_seen_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
 
 
 class CoursePlan(db.Model):

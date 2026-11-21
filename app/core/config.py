@@ -208,6 +208,28 @@ def configure_app(app, config_override=None):
         os.environ.get('JUDGE_SUBMISSIONS_ENABLED', '').strip().lower()
         in {'1', 'true', 'yes'}
     )
+    # M3 execution controls. A pinned tag is the default; operators may supply
+    # a digest-pinned value such as ruach-python-sandbox@sha256:...
+    app.config['SANDBOX_IMAGE'] = (
+        os.environ.get('SANDBOX_IMAGE') or 'ruach-python-sandbox:3.12-v1'
+    )
+    for name, default in (
+        ('SANDBOX_MAX_CONCURRENCY_PER_USER', 2),
+        ('SANDBOX_SUBMISSION_LIMIT_PER_MINUTE', 10),
+    ):
+        try:
+            value = int(os.environ.get(name, str(default)))
+        except (TypeError, ValueError):
+            value = default
+        app.config[name] = value if value > 0 else default
+    app.config['ARTIFACT_STORAGE_DIR'] = (
+        os.environ.get('ARTIFACT_STORAGE_DIR') or os.path.join(app.instance_path, 'artifacts')
+    )
+    app.config['ARTIFACT_MAX_BYTES'] = 25 * 1024 * 1024
+    app.config['MLFLOW_TRACKING_URI'] = os.environ.get('MLFLOW_TRACKING_URI') or ''
+    app.config['MLFLOW_EXPERIMENT_PREFIX'] = (
+        os.environ.get('MLFLOW_EXPERIMENT_PREFIX') or 'ruach'
+    )
     if production and not app.config['TOKEN_ENCRYPTION_KEY']:
         # Deriving the Fernet key from SECRET_KEY would silently invalidate
         # stored OAuth refresh tokens whenever SECRET_KEY rotates.

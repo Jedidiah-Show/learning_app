@@ -87,7 +87,23 @@
 **Evidence:** A DB table for prompt text would add another migration to an already dirty graph without improving reviewability.  
 **Consequence:** Rollback is explicit and auditable in config; persistent per-tenant prompt editing is deferred until migration debt is resolved.
 
-## ADR-015 — Post-review hardening of the M2 provider and worker layer
+## ADR-015 — Server-selected execution profiles
+
+**Status:** Accepted for M3.  
+**Context:** Advanced exercises need different CPU, memory, timeout and storage budgets, but allowing learners to request limits turns the judge into a resource-exhaustion surface.  
+**Decision:** `app/execution/profiles.py` is the only registry. Workloads map to profiles on the server; the judge clamps caller-supplied timeout and memory to the profile ceiling. Advanced ML and GPU profiles are declared but disabled until their images and hosts exist.  
+**Alternatives:** request-body limits (rejected: client-controlled), per-exercise Docker files with no registry (rejected: inconsistent enforcement).  
+**Consequences:** profile selection is testable and auditable on `submission.execution_profile`; adding a tier requires a registry change and migration/backfill only where persisted selection is needed.
+
+## ADR-016 — Judge worker stays off Render
+
+**Status:** Accepted for M3.  
+**Context:** The web service runs on Render, whose current plan cannot provide the Docker daemon needed to launch sibling sandbox containers. Declaring a judge worker there would be a misleading deployment claim.  
+**Decision:** the worker is a standalone process started on a hardened, container-capable host. The web service keeps `JUDGE_SUBMISSIONS_ENABLED=false` until that host and image are verified. Health is exposed through a heartbeat table, CLI, and admin endpoint; stale leases are reclaimed.  
+**Alternatives:** run Docker from the web process (rejected: expands web trust boundary), add the worker to Render anyway (rejected: non-functional on the plan).  
+**Consequences:** live worker deployment is an explicit external prerequisite, not part of the code-verified M3 release.
+
+## ADR-017 — Post-review hardening of the M2 provider and worker layer
 
 **Decision:** Reserve per-user quota at enqueue, count provider attempts through `attempt_sink`, finalize stale cancelled jobs and reclaim stale leases periodically, leave `fallback_provider` unset by default, resolve prompt versions through `active_version()` at call sites, clip user-controlled strings to column widths, and declare M2 config on both Render services while keeping migrations manual under `MIGRATION.md`.  
 **Evidence:** Targeted gateway/job suites pass with new tests for retry counting, quota reservation and stale cancellation; `M2_TEST_REPORT.md` records the full-suite result.  

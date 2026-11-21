@@ -88,3 +88,17 @@ The baseline figures above (20 blueprints, 192 URL rules, 61 models, no `app/ai/
 | Migration graph | New additive head `h2i3j4k5l6m7` descends from tracked head `g1a2b3c4d5e6`; pre-existing multiple heads and drift are unchanged. |
 
 See `M2_ARCHITECTURE.md`, `M2_QUEUE_AND_DEPLOYMENT.md`, `M2_PROMPTS_AND_EVALUATION.md` and `M2_TEST_REPORT.md` for implementation and verification detail.
+
+## 9. M3 addendum — current state
+
+After M3, the same inventory checks report **22 blueprints, 205 URL rules, 65 mapped models**, and the registered `process-submissions` / `judge-worker-health` commands in addition to M2 commands. The new additive head is `i4j5k6l7m8n9`, descending from M2 head `h2i3j4k5l6m7`.
+
+| Observation | Current evidence |
+|---|---|
+| Web/worker separation retained | The Flask service never invokes Docker; the judge worker is a separate process. Render intentionally does not declare it because the plan cannot provide the required Docker daemon. |
+| Execution profiles are explicit | `app/execution/profiles.py` defines five profiles; advanced ML/GPU profiles are present but disabled. |
+| Sandbox hardening is code-verifiable | Pinned image, profile-derived CPU/memory/tmpfs, ulimits, import guard, bounded output and timeout have regression tests; live Docker enforcement is not claimed. |
+| Artifacts are durable | `ProjectArtifact` metadata uses the existing local/S3 storage abstraction and authenticated APIs. |
+| Experiment traceability is additive | MLflow identifiers extend `MLProjectExperiment` instead of duplicating the experiment source of truth. |
+
+See `M3_EXECUTION_ARCHITECTURE.md` and `M3_TEST_REPORT.md` for the implementation boundary and evidence.

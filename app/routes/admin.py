@@ -11,6 +11,8 @@ from app.access import json_admin_required
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
 from app.models import CalendarEvent, UserSchedule
 from app.rate_limit import enforce_rate_limit
+from app.services.experiment_tracking import get_tracking_config
+from app.services.judge_worker import get_worker_health
 from app.user_preferences import get_effective_config_for_user
 from app.request_data import get_json_object
 
@@ -44,6 +46,17 @@ def _validate_schedule(blocks):
 @json_admin_required
 def get_config():
     return jsonify(get_effective_config_for_user(current_user))
+
+
+@admin_bp.route('/execution-health', methods=['GET'])
+@json_admin_required
+def execution_health():
+    """Report judge worker registration, queue state, and profile limits."""
+    app = current_app._get_current_object()
+    return jsonify({
+        'judge': get_worker_health(app),
+        'experiment_tracking': get_tracking_config(),
+    })
 
 
 @admin_bp.route('/schedule', methods=['GET'])
