@@ -770,7 +770,9 @@ def lab_debrief(problem_id):
 
     from app.user_preferences import get_effective_config_for_user
     config = get_effective_config_for_user(current_user)
-    from app.gemini import GeminiError, generate_json
+    from app.ai.gateway import generate_json
+    from app.ai.prompts.registry import active_version
+    from app.gemini import GeminiError
     statement_excerpt = str(raw.get('statement', ''))[:2000]
     prompt = (
         'Evaluate the learner diagnosis and verification write-up for this engineering troubleshooting lab. '
@@ -793,6 +795,7 @@ def lab_debrief(problem_id):
         evaluation = generate_json(
             prompt,
             model=(config.get('ai') or {}).get('model_tier', 'flash'),
+            task_type='model_evaluation', prompt_version=active_version('model_evaluation'),
             use_cache=True,
         )
         evaluation_source = 'ai'

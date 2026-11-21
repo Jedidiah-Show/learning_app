@@ -195,11 +195,15 @@ def ai_error_response(error, message='AI generation is temporarily unavailable. 
     return response
 
 
-def _record_user_request():
-    if not has_request_context():
-        return
-    if not current_user.is_authenticated:
-        return
+def _record_user_request(user_id=None):
+    """Reserve quota for a user; workers pass an explicit id outside requests."""
+    if user_id is None:
+        if not has_request_context():
+            return
+        if not current_user.is_authenticated:
+            return
+        user_id = current_user.id
+    user_id = int(user_id)
 
     from app import db
     from app.models import GeminiUsageBucket
@@ -207,7 +211,6 @@ def _record_user_request():
     now = datetime.now(timezone.utc)
     minute_start = now.replace(second=0, microsecond=0)
     day_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
-    user_id = current_user.id
     dialect = db.session.get_bind().dialect.name
     insert = (
         postgresql_insert if dialect == 'postgresql'
@@ -287,7 +290,7 @@ def _openrouter_configured():
 
 def _generate_with_gemini(
     prompt, *, model, max_attempts=None, read_timeout=None,
-    max_output_tokens=None, deadline=None
+    max_output_tokens=None, deadline=None, usage_sink=None, attempt_sink=None
 ):
     api_key = _gemini_api_key()
     if not api_key:
@@ -303,6 +306,8 @@ def _generate_with_gemini(
             read_timeout=read_timeout,
             max_output_tokens=max_output_tokens,
             deadline=deadline,
+            usage_sink=usage_sink,
+            attempt_sink=attempt_sink,
         )
     except GeminiRateLimited:
         flash_model = _gemini_model_name('flash')
@@ -331,6 +336,8 @@ def _generate_with_gemini(
             read_timeout=read_timeout,
             max_output_tokens=max_output_tokens,
             deadline=deadline,
+            usage_sink=usage_sink,
+            attempt_sink=attempt_sink,
         )
 
 
@@ -343,6 +350,8 @@ def _generate_with_openrouter(
     max_output_tokens=None,
     gemini_error,
     deadline=None,
+    usage_sink=None,
+    attempt_sink=None,
 ):
     from app.openrouter import (
         OpenRouterError,
@@ -357,6 +366,8 @@ def _generate_with_openrouter(
             read_timeout=read_timeout,
             max_tokens=max_output_tokens,
             deadline=deadline,
+            usage_sink=usage_sink,
+            attempt_sink=attempt_sink,
         )
     except OpenRouterError as error:
         raise GeminiError(
@@ -377,6 +388,9 @@ def generate_json(
     allow_fallback=True,
     use_cache=None,
     semantic_cache_scope=None,
+    usage_sink=None,
+    cache_sink=None,
+    attempt_sink=None,
 ):
     """Generate JSON with Gemini, falling back to OpenRouter when configured."""
     if model not in {'flash', 'pro'}:
@@ -393,13 +407,19 @@ def generate_json(
         )
         cached = get_cached_response(prompt, model=model)
         if cached is not None:
+            if callable(cache_sink):
+                cache_sink(True)
             return cached
         if semantic_cache_scope:
             cached = get_semantic_cached_response(
                 prompt, scope=semantic_cache_scope, model=model,
             )
             if cached is not None:
+                if callable(cache_sink):
+                    cache_sink(True)
                 return cached
+    if callable(cache_sink):
+        cache_sink(False)
 
     started = time.monotonic()
     overall_deadline = started + request_deadline_seconds()
@@ -435,6 +455,8 @@ def generate_json(
                     read_timeout=read_timeout,
                     max_output_tokens=max_output_tokens,
                     deadline=gemini_deadline,
+                    usage_sink=usage_sink,
+                    attempt_sink=attempt_sink,
                 )
                 _clear_circuit('gemini')
                 if should_cache and isinstance(result, dict):
@@ -477,6 +499,8 @@ def generate_json(
         max_output_tokens=max_output_tokens,
         gemini_error=gemini_error,
         deadline=overall_deadline,
+        usage_sink=usage_sink,
+        attempt_sink=attempt_sink,
     )
     if should_cache and isinstance(res, dict):
         set_cached_response(
@@ -538,6 +562,31 @@ def _is_daily_quota_error(provider_message):
     )
 
 
+def _token_count(value):
+    """Return a provider token count when it is a sane integer, else None."""
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        count = int(value)
+    except (TypeError, ValueError):
+        return None
+    return count if count >= 0 else None
+
+
+def _report_usage(payload, model_name, usage_sink):
+    """Report actual provider token usage; never invent missing values."""
+    if not callable(usage_sink):
+        return
+    metadata = payload.get('usageMetadata') if isinstance(payload, dict) else None
+    metadata = metadata if isinstance(metadata, dict) else {}
+    usage_sink(
+        'gemini',
+        model_name,
+        _token_count(metadata.get('promptTokenCount')),
+        _token_count(metadata.get('candidatesTokenCount')),
+    )
+
+
 def _generate_json_for_model(
     prompt,
     api_key,
@@ -547,6 +596,8 @@ def _generate_json_for_model(
     read_timeout=None,
     max_output_tokens=None,
     deadline=None,
+    usage_sink=None,
+    attempt_sink=None,
 ):
     generation_config = {
         'responseMimeType': 'application/json',
@@ -598,6 +649,8 @@ def _generate_json_for_model(
         if remaining is not None:
             attempt_connect_timeout = max(1, min(connect_timeout, int(remaining)))
             attempt_read_timeout = max(1, min(read_timeout, int(remaining)))
+        if callable(attempt_sink):
+            attempt_sink()
         _record_user_request()
         try:
             response = _post_gemini_request(
@@ -677,6 +730,7 @@ def _generate_json_for_model(
             'Gemini returned an invalid response',
             fallback_eligible=True,
         ) from error
+    _report_usage(payload, model_name, usage_sink)
 
     try:
         parts = payload['candidates'][0]['content']['parts']

@@ -634,7 +634,9 @@ def get_module_project(module_id):
         }
         generated_by_ai = False
         if not is_capstone:
-            from app.gemini import GeminiError, generate_json
+            from app.ai.gateway import generate_json
+            from app.ai.prompts.registry import active_version
+            from app.gemini import GeminiError
             prompt = (
                 'Create a learner-ready project brief that expands, but does not replace or contradict, '
                 'the supplied fixed curriculum project. Keep the work appropriate to this module and '
@@ -649,6 +651,7 @@ def get_module_project(module_id):
             try:
                 generated = generate_json(
                     prompt, model=_config().get('ai', {}).get('model_tier', 'flash'),
+                    task_type='project_brief', prompt_version=active_version('project_brief'),
                     use_cache=True,
                 )
                 if (
@@ -796,7 +799,9 @@ def submit_module_project(module_id):
         project_payload['deliverables'] = module.get('project_deliverables') or project_payload.get('deliverables', [])
         record.project = json.dumps(project_payload, ensure_ascii=False)
     config = _config()
-    from app.gemini import GeminiError, generate_json
+    from app.ai.gateway import generate_json
+    from app.ai.prompts.registry import active_version
+    from app.gemini import GeminiError
     prompt = (
         'Evaluate the learner submission only against the supplied project brief, deliverables, '
         'and rubric. Do not claim to have opened or executed repository/demo links. Do not invent '
@@ -812,7 +817,10 @@ def submit_module_project(module_id):
         f"Demo URL: {demo_url or 'not provided'}"
     )
     try:
-        evaluation = generate_json(prompt, model=config.get('ai', {}).get('model_tier', 'flash'), use_cache=True)
+        evaluation = generate_json(
+            prompt, model=config.get('ai', {}).get('model_tier', 'flash'),
+            task_type='project_review', prompt_version=active_version('project_review'), use_cache=True,
+        )
         evaluation_source = 'ai'
     except GeminiError as error:
         current_app.logger.warning('AI project evaluation failed for %s: %s', module_id, error)

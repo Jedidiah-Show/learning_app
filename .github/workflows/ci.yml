@@ -43,7 +43,11 @@ jobs:
         run: python -m pip check
       - name: Repository hygiene check
         run: |
-          if git ls-files | grep -E '\.(env|env\.local|pem|key)$' | grep -v '\.env\.example'; then
+          # Keep tracked release source free of local environment/secret material.
+          # Patterns cover .env variants (.env.production, .env.local, etc.),
+          # bare credential extensions and private key material.
+          if git ls-files | grep -E '(^|/)\.env(\.|$)|\.(pem|key|p12|pfx)$' \
+              | grep -v -E '(^|/)\.env\.example$'; then
             echo 'Prohibited environment/secret files tracked' && exit 1
           fi
           if git ls-files | grep -E '^\.qoder/|\.qoder/settings'; then

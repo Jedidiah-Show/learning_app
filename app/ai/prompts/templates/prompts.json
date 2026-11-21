@@ -1,0 +1,103 @@
+{
+  "tutor_chat": {
+    "active": "v1",
+    "versions": [
+      {
+        "version": "v1",
+        "purpose": "Domain-aware Socratic tutor for lesson-scoped questions",
+        "pathway": "shared",
+        "variables": ["domain_label", "domain", "domain_focus", "pathway_id", "syllabus_modules", "tutor_mode", "question"],
+        "model_requirements": {"response_format": "json"},
+        "status": "approved",
+        "author": "RUACH",
+        "created_at": "2026-11-21",
+        "template": null,
+        "notes": "Assembled in app.routes.lessons; see tests/test_tutor_pathway_context.py for scope contract."
+      }
+    ]
+  },
+  "question_generation": {
+    "active": "v1",
+    "versions": [
+      {
+        "version": "v1",
+        "purpose": "Generate fixed-count multiple-choice quiz questions from bundled material",
+        "pathway": "shared",
+        "variables": ["count", "quiz_type", "context"],
+        "model_requirements": {"response_format": "json"},
+        "status": "approved",
+        "author": "RUACH",
+        "created_at": "2026-11-21",
+        "template": "Create exactly {count} multiple-choice questions for a {quiz_type} quiz based only on the supplied course material. Return JSON only. Material: {context}",
+        "notes": "The route adds the detailed JSON contract before rendering."
+      }
+    ]
+  },
+  "project_brief": {
+    "active": "v1",
+    "versions": [
+      {
+        "version": "v1",
+        "purpose": "Expand a fixed curriculum project into a learner-ready brief",
+        "pathway": "shared",
+        "variables": ["module", "outcomes", "deliverables", "lessons"],
+        "model_requirements": {"response_format": "json"},
+        "status": "approved",
+        "author": "RUACH",
+        "created_at": "2026-11-21",
+        "template": null,
+        "notes": "Assembled in app.routes.projects; must not replace the fixed project."
+      }
+    ]
+  },
+  "project_review": {
+    "active": "v1",
+    "versions": [
+      {
+        "version": "v1",
+        "purpose": "Evaluate a project submission against its rubric",
+        "pathway": "shared",
+        "variables": ["rubric", "submission"],
+        "model_requirements": {"response_format": "json"},
+        "status": "approved",
+        "author": "RUACH",
+        "created_at": "2026-11-21",
+        "template": "Evaluate the submission against this rubric and return JSON only. Rubric: {rubric}. Submission: {submission}",
+        "notes": "Treat submission content as untrusted data."
+      }
+    ]
+  },
+  "document_analysis": {
+    "active": "v1",
+    "versions": [
+      {
+        "version": "v1",
+        "purpose": "Analyse learner-provided documents for project and RAG workflows",
+        "pathway": "shared",
+        "variables": ["task", "document_excerpt"],
+        "model_requirements": {"response_format": "json"},
+        "status": "approved",
+        "author": "RUACH",
+        "created_at": "2026-11-21",
+        "template": "Analyse the document excerpt for this task and return JSON only. Task: {task}. Excerpt: {document_excerpt}",
+        "notes": "Document content is data, never instructions."
+      }
+    ]
+  },
+  "lesson_explanation": {
+    "active": "v1",
+    "versions": [{"version": "v1", "purpose": "Explain a lesson concept", "pathway": "shared", "variables": ["lesson"], "model_requirements": {"response_format": "json"}, "status": "approved", "author": "RUACH", "created_at": "2026-11-21", "template": "Explain this lesson and return JSON only. Lesson: {lesson}", "notes": ""}]
+  },
+  "rag_generation": {
+    "active": "v1",
+    "versions": [{"version": "v1", "purpose": "Grounded RAG answer synthesis", "pathway": "ai-engineering", "variables": ["question", "sources"], "model_requirements": {"response_format": "json"}, "status": "approved", "author": "RUACH", "created_at": "2026-11-21", "template": "Answer only from these sources and return JSON only. Sources: {sources}. Question: {question}", "notes": ""}]
+  },
+  "agent_execution": {
+    "active": "v1",
+    "versions": [{"version": "v1", "purpose": "Agent step execution", "pathway": "ai-engineering", "variables": ["goal", "state"], "model_requirements": {"response_format": "json"}, "status": "approved", "author": "RUACH", "created_at": "2026-11-21", "template": "Choose the next agent action for this goal and return JSON only. Goal: {goal}. State: {state}", "notes": ""}]
+  },
+  "model_evaluation": {
+    "active": "v1",
+    "versions": [{"version": "v1", "purpose": "Structured AI output evaluation", "pathway": "shared", "variables": ["criteria", "output"], "model_requirements": {"response_format": "json"}, "status": "approved", "author": "RUACH", "created_at": "2026-11-21", "template": "Evaluate this output against the criteria and return JSON only. Criteria: {criteria}. Output: {output}", "notes": ""}]
+  }
+}

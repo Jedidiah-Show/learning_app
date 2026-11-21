@@ -11,7 +11,7 @@
 # inactivity timer.
 #
 # Long-term fix: upgrade the service to a paid plan (e.g. starter) to remove the
-# sleep behaviour entirely, and optionally add a preDeployCommand for migrations.
+# sleep behaviour entirely. Migrations remain a manual, guarded step; see MIGRATION.md.
 #
 # DATABASE_URL must be Neon's *pooled* connection string (the hostname usually
 # contains "-pooler"). Use the direct, non-pooled string only for migrations;
@@ -24,7 +24,8 @@ services:
     plan: free
     branch: main
     autoDeploy: true
-    # Keep schema changes in the guarded manual migration workflow/runbook.
+    # Schema changes remain in the guarded manual migration workflow.
+    # See MIGRATION.md and M2_QUEUE_AND_DEPLOYMENT.md before rollout.
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --worker-class gthread --timeout 60
     healthCheckPath: /healthz
@@ -116,6 +117,15 @@ services:
       - key: OPENROUTER_READ_TIMEOUT
         value: "120"
 
+      # M2: task routing/cost telemetry/prompt rollback. Empty JSON values are
+      # treated as no override by app.core.config.
+      - key: AI_TASK_ROUTES
+        sync: false
+      - key: AI_MODEL_COSTS
+        sync: false
+      - key: AI_PROMPT_VERSION_OVERRIDES
+        sync: false
+
       # Google OAuth, Gmail password reset, and optional Twilio SMS.
       - key: GOOGLE_CLIENT_ID
         sync: false
@@ -171,4 +181,38 @@ services:
       - key: S3_SECRET_ACCESS_KEY
         sync: false
       - key: S3_PUBLIC_BASE_URL
+        sync: false
+
+  # M2: independent AI job worker. It claims durable ai_background_job rows
+  # with FOR UPDATE SKIP LOCKED; no Flask request context or web port is used.
+  # Run the guarded migration workflow before enabling this service so the
+  # extended job columns and ai_job_result table exist.
+  - type: worker
+    name: ruach-ai-worker
+    runtime: python
+    plan: free
+    branch: main
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.workers.ai_worker
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.5"
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        sync: false
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: OPENROUTER_API_KEY
+        sync: false
+      - key: AI_MODEL_COSTS
+        sync: false
+      - key: AI_TASK_ROUTES
+        sync: false
+      - key: AI_PROMPT_VERSION_OVERRIDES
         sync: false

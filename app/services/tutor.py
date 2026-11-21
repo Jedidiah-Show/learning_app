@@ -12,6 +12,13 @@ enrolment.
 import re
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
+from app.domains.learning.context import (
+    DOMAIN_AI_ENGINEERING,
+    DOMAIN_MACHINE_LEARNING,
+    DOMAIN_SHARED_FOUNDATIONS,
+    ContextResolutionError,
+    resolve_learning_context,
+)
 from app.models import TutorConversation
 from app.pathway_scope import destination_for
 
@@ -76,10 +83,6 @@ HINT_STAGES: Dict[int, str] = {
 # ────────────────────────────────────────────────────────────────────────────
 # Domain-aware tutoring helpers (M5.1-M5.5)
 # ────────────────────────────────────────────────────────────────────────────
-
-DOMAIN_SHARED_FOUNDATIONS = 'shared-foundations'
-DOMAIN_AI_ENGINEERING = 'ai-engineering'
-DOMAIN_MACHINE_LEARNING = 'machine-learning'
 
 DOMAIN_PROFILES = {
     DOMAIN_SHARED_FOUNDATIONS: {
@@ -234,23 +237,34 @@ def pathway_context_for_user(
     project_domain: Optional[str] = None,
     explicit_domain: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Build a domain-aware pathway/tutor context object (M5.1)."""
+    """Build a domain-aware pathway/tutor context object (M5.1).
+
+    The pathway is resolved from the requested lesson's curriculum record.
+    ``destination_for`` is passed only as a last-resort *fallback* when there
+    is no lesson, problem or project to derive context from; it is retained as
+    ``dashboard_focus`` so callers can display it without using it for scope.
+    """
     destination = destination_for(user_id) if user_id else None
-    domain = infer_learning_domain(
-        lesson_id, problem_id, destination,
-        project_domain=project_domain, explicit_domain=explicit_domain,
+    resolved = resolve_learning_context(
+        user_id,
+        lesson_id=lesson_id,
+        problem_id=problem_id,
+        project_domain=project_domain,
+        explicit_domain=explicit_domain,
+        dashboard_focus=destination,
     )
-    profile = _domain_profile(domain)
+    profile = _domain_profile(resolved.domain)
     context = {
-        'active_domain': domain,
-        'active_pathway': destination,
         'domain_label': profile['label'],
         'domain_focus': profile['focus'],
         'tutor_greeting': profile['greeting'],
         'socratic_prompts': list(profile.get('socratic_prompts') or []),
         # Legacy compatibility for older callers.
-        'ai_focus': domain == DOMAIN_AI_ENGINEERING,
+        'ai_focus': resolved.domain == DOMAIN_AI_ENGINEERING,
     }
+    # Resolver keys (active_domain, active_pathway, syllabus_modules, ...)
+    # intentionally overwrite any legacy values: they are authoritative.
+    context.update(resolved.as_dict())
     return context
 
 
@@ -515,13 +529,10 @@ def assemble_tutor_context(
         except Exception:
             recent_submissions = []
 
-    destination = destination_for(user_id) if user_id else None
     pathway_context = pathway_context_for_user(
         user_id, lesson_id=lesson_id, problem_id=problem_id,
         project_domain=project_domain, explicit_domain=explicit_domain,
     )
-    if destination is not None:
-        pathway_context['active_pathway'] = destination
 
     problem = None
     if problem_id:

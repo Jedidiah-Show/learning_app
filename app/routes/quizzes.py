@@ -45,7 +45,9 @@ def _quiz_for(quiz_id, quiz_type, lesson, module):
         'lessons': [{'title': item['title'], 'questions': item.get('questions', [])}
                     for item in module['lessons']],
     }
-    from app.gemini import GeminiError, generate_json
+    from app.ai.gateway import generate_json
+    from app.ai.prompts.registry import active_version
+    from app.gemini import GeminiError
     prompt = (
         f'Create exactly {count} multiple-choice questions for a {quiz_type} quiz based only on '
         'the course material below. Each question has four distinct options, a zero-based correct_index, '
@@ -56,6 +58,7 @@ def _quiz_for(quiz_id, quiz_type, lesson, module):
     )
     result = generate_json(
         prompt, model=config.get('ai', {}).get('model_tier', 'flash'),
+        task_type='question_generation', prompt_version=active_version('question_generation'),
         use_cache=True,
         # Quiz material is bundled public course content; keep semantic reuse
         # constrained to this stable content identity and prompt contract.

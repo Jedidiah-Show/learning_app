@@ -125,10 +125,12 @@ def generate_ai_json():
     prompt = data.get('prompt') if isinstance(data, dict) else None
     if not isinstance(prompt, str) or not 0 < len(prompt) <= 24000:
         return jsonify({'error': 'A prompt of at most 24000 characters is required'}), 400
-    from app.gemini import GeminiError, generate_json
+    from app.ai.gateway import generate_json
+    from app.gemini import GeminiError
     try:
         result = generate_json(
             prompt,
+            task_type='general',
             model='pro' if data.get('tier') == 'pro' else 'flash',
         )
     except GeminiError as error:

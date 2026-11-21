@@ -929,6 +929,23 @@ def ask_lesson_question():
         from app.practice_arena import get_arena_problem
         if get_arena_problem(problem_id) is None:
             return jsonify({'error': 'Practice problem not found'}), 404
+    # M1.5: resolve the activity's pathway from the lesson record itself. The
+    # dashboard focus is retained for display only and can never scope the
+    # tutor's syllabus. An inconsistent client-supplied context is rejected.
+    from app.domains.learning.context import (
+        ContextResolutionError, resolve_learning_context,
+    )
+    from app.pathway_scope import destination_for
+    try:
+        learning_context = resolve_learning_context(
+            current_user.id,
+            lesson_id=lesson_id,
+            problem_id=problem_id,
+            explicit_domain=explicit_domain,
+            dashboard_focus=destination_for(current_user.id),
+        )
+    except ContextResolutionError as error:
+        return jsonify({'error': str(error)}), 400
     if not isinstance(learner_code, str) or len(learner_code) > 8000:
         return jsonify({'error': 'Code context must be at most 8000 characters'}), 400
     if not isinstance(error_log, str) or len(error_log) > 2000:
@@ -1026,7 +1043,9 @@ def ask_lesson_question():
             'mode': tutor_mode,
             'mode_label': TUTOR_MODE_LABELS[tutor_mode],
         })
-    from app.gemini import GeminiError, generate_json
+    from app.ai.gateway import generate_json
+    from app.ai.prompts.registry import active_version
+    from app.gemini import GeminiError
     if lesson_kind == 'ml':
         tutor_context = {
             'title': lesson.get('title'),
@@ -1057,18 +1076,18 @@ def ask_lesson_question():
         },
         'lesson': assembled_context.lesson_context,
     }
-    # Domain-aware tutoring (M5.1-M5.5): include active pathway/domain context
-    # and keep responses scoped to the learner's syllabus without assuming the
-    # other specialisation has been completed.
-    from app.pathway_scope import course_modules, destination_for
-    destination = destination_for(current_user)
-    syllabus_modules = [module.get('title', '') for module in course_modules(destination)]
+    # Domain-aware tutoring (M1.5 / M5.1–M5.5): the syllabus is derived from
+    # the lesson's owning pathway, not from the learner's dashboard focus.
+    # This keeps dual-enrolled learners correctly scoped to the lesson they are
+    # actually studying.
+    syllabus_modules = learning_context.syllabus_module_titles
+    pathway_id = learning_context.pathway_id
     if lesson_kind == 'ml':
         module_info = {'title': lesson.get('module_title', ''), 'number': lesson.get('module_number', '')}
     else:
         module_info = lesson.get('_module') or {}
     pathway_ctx = assembled_context.pathway_context or {}
-    domain = pathway_ctx.get('active_domain', 'shared-foundations')
+    domain = pathway_ctx.get('active_domain') or learning_context.domain
     domain_focus = pathway_ctx.get('domain_focus', '')
     domain_label = pathway_ctx.get('domain_label', 'Shared Foundations')
     socratic = pathway_ctx.get('socratic_prompts') or []
@@ -1079,7 +1098,8 @@ def ask_lesson_question():
         'Use the supplied learner code, recent verdicts, execution error, lesson context, and Skill Passport as evidence. '
         'Do not assume completion of the other specialisation pathway. '
         f'Active domain: {domain_label} ({domain}). Domain focus: {domain_focus}. '
-        f'Learner pathway: {destination or "undecided"}. Module: {module_info.get("title","")} ({module_info.get("number","")}). '
+        f'Learner pathway: {pathway_id}. Module: {module_info.get("title","")} ({module_info.get("number","")}). '
+        f'Dashboard focus: {learning_context.dashboard_focus or "undecided"} (display only; not a syllabus source). '
         'The syllabus is limited to these modules: '
         f'{json.dumps(syllabus_modules, ensure_ascii=False)}. '
         'Answer only if the question is about the supplied lesson or a topic explicitly covered by this syllabus. '
@@ -1107,6 +1127,7 @@ def ask_lesson_question():
     try:
         result = generate_json(
             prompt,
+            task_type='tutor_chat', prompt_version=active_version('tutor_chat'),
             model=get_effective_model(),
             max_attempts=1,
             read_timeout=25,

@@ -252,9 +252,33 @@ def _response_text(payload, model_name):
     return text
 
 
+def _token_count(value):
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        count = int(value)
+    except (TypeError, ValueError):
+        return None
+    return count if count >= 0 else None
+
+
+def _report_usage(payload, model_name, usage_sink):
+    """Report actual OpenRouter token usage; never invent missing values."""
+    if not callable(usage_sink):
+        return
+    usage = payload.get('usage') if isinstance(payload, dict) else None
+    usage = usage if isinstance(usage, dict) else {}
+    usage_sink(
+        'openrouter',
+        model_name,
+        _token_count(usage.get('prompt_tokens')),
+        _token_count(usage.get('completion_tokens')),
+    )
+
+
 def generate_json(
     prompt, *, model='flash', max_attempts=None, read_timeout=None,
-    max_tokens=None, deadline=None
+    max_tokens=None, deadline=None, usage_sink=None, attempt_sink=None
 ):
     """Generate a JSON object through OpenRouter."""
     api_key = _api_key()
@@ -309,6 +333,8 @@ def generate_json(
         # application's per-user request limits.
         from app.gemini import _record_user_request
 
+        if callable(attempt_sink):
+            attempt_sink()
         _record_user_request()
         try:
             response = _post_openrouter_request(
@@ -381,6 +407,7 @@ def generate_json(
             'OpenRouter returned an invalid response',
             fallback_eligible=True,
         ) from error
+    _report_usage(payload, model_name, usage_sink)
 
     if isinstance(payload, dict) and payload.get('error'):
         raise OpenRouterError(

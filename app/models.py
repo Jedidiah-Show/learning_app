@@ -1182,9 +1182,16 @@ class AIBackgroundJob(db.Model):
     payload = db.Column(db.Text, nullable=False)
     status = db.Column(db.String(20), nullable=False, default='queued')
     attempts = db.Column(db.Integer, nullable=False, default=0)
+    max_attempts = db.Column(db.Integer, nullable=False, default=3)
     available_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
     locked_at = db.Column(db.DateTime(timezone=True))
     lease_token = db.Column(db.String(64))
+    started_at = db.Column(db.DateTime(timezone=True))
+    completed_at = db.Column(db.DateTime(timezone=True))
+    progress_pct = db.Column(db.Integer, nullable=False, default=0)
+    result_ref = db.Column(db.String(255))
+    correlation_id = db.Column(db.String(64))
+    cancelled_at = db.Column(db.DateTime(timezone=True))
     last_error = db.Column(db.Text)
     created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
     updated_at = db.Column(
@@ -1193,7 +1200,55 @@ class AIBackgroundJob(db.Model):
     __table_args__ = (
         db.Index('idx_ai_job_status_available', 'status', 'available_at'),
         db.Index('idx_ai_job_user', 'user_id'),
+        db.Index('idx_ai_job_correlation', 'correlation_id'),
+        db.Index('idx_ai_job_locked_at', 'locked_at'),
     )
+
+
+class AIUsageRecord(db.Model):
+    """Privacy-conscious telemetry for AI provider calls (M2.6/M2.8).
+
+    Prompt and response bodies are deliberately not stored. Missing provider
+    token counts remain ``None`` instead of being guessed.
+    """
+
+    __tablename__ = 'ai_usage_record'
+    id = db.Column(db.Integer, primary_key=True)
+    request_id = db.Column(db.String(64), unique=True, nullable=False)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True
+    )
+    task_type = db.Column(db.String(40), nullable=False)
+    provider = db.Column(db.String(20))
+    model = db.Column(db.String(120))
+    status = db.Column(db.String(20), nullable=False, default='success')
+    input_tokens = db.Column(db.Integer)
+    output_tokens = db.Column(db.Integer)
+    estimated_cost_usd = db.Column(db.Float)
+    duration_ms = db.Column(db.Integer, nullable=False, default=0)
+    retry_count = db.Column(db.Integer, nullable=False, default=0)
+    prompt_version = db.Column(db.String(40))
+    correlation_id = db.Column(db.String(64))
+    error_code = db.Column(db.String(80))
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    __table_args__ = (
+        db.Index('idx_ai_usage_created', 'created_at'),
+        db.Index('idx_ai_usage_task', 'task_type', 'created_at'),
+        db.Index('idx_ai_usage_correlation', 'correlation_id'),
+    )
+
+
+class AIJobResult(db.Model):
+    """Durable, bounded result reference for an AI background job (M2.4)."""
+
+    __tablename__ = 'ai_job_result'
+    job_id = db.Column(
+        db.Integer,
+        db.ForeignKey('ai_background_job.id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    result_json = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
 
 
 class ReviewItem(db.Model):

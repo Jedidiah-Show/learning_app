@@ -453,11 +453,14 @@ def submit_project(module_id):
         f"Audit report: {json.dumps(report, ensure_ascii=False)}\n"
         f"Learner reflection: {json.dumps(reflection.strip(), ensure_ascii=False)}"
     )
-    from app.gemini import GeminiError, generate_json
+    from app.ai.gateway import generate_json
+    from app.ai.prompts.registry import active_version
+    from app.gemini import GeminiError
     config = get_effective_config_for_user(current_user)
     try:
         evaluation = generate_json(
-            prompt, model=(config.get('ai') or {}).get('model_tier', 'flash')
+            prompt, model=(config.get('ai') or {}).get('model_tier', 'flash'),
+            task_type='project_review', prompt_version=active_version('project_review'),
         )
     except GeminiError as error:
         current_app.logger.warning('ML specialization project evaluation failed: %s', error)
