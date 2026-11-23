@@ -1,500 +1,474 @@
-# RUACH LMS — Architecture Evolution Goals
+# RUACH LMS — Architecture Evolution 1.0
+## Goals and Product Vision
 
-**Document:** `goals.md`  
-**Project:** RUACH Learning Management System  
-**Focus:** Architecture Evolution, AI Infrastructure, ML Engineering, Learning Intelligence  
-**Status:** Proposed  
-**Priority:** Strategic — Foundation for the next major development cycle
+Release Theme: From a Growing LMS to a Scalable Learning Engineering Platform
+
+Release Type: Major Architectural and Infrastructure Evolution
+
+Primary Objective:
+Transform Ruach LMS into a properly structured, modular, scalable and
+resilient learning engineering platform capable of supporting increasing
+learner traffic, independent learning pathways, computational workloads,
+and future service-level independence.
 
 ---
 
-# 1. Ultimate Goal
+# 1. ULTIMATE GOAL
 
-The ultimate goal is to evolve RUACH into a **scalable, intelligent, secure, and industry-relevant AI Engineering learning platform** capable of taking learners from foundational programming knowledge to the design, development, deployment, evaluation, and operation of real-world AI and Machine Learning systems.
+The ultimate goal of this release is to establish Ruach LMS as a
+modular, independently extensible and operationally resilient platform
+whose functional domains can evolve without creating unnecessary
+dependencies across the entire application.
 
-RUACH must go beyond being a conventional Learning Management System that presents lessons, tracks progress, and administers quizzes. It should become an integrated engineering environment where learners acquire knowledge, build practical skills, experiment with real technologies, receive intelligent guidance, solve authentic engineering problems, and demonstrate their competence through verifiable projects and assessments.
+Ruach must retain the simplicity and operational efficiency of its
+existing Flask-based application while introducing the architectural
+discipline, workload isolation, observability and deployment flexibility
+required for long-term growth.
 
-The platform must establish two clearly differentiated engineering pathways:
+The platform should be capable of evolving from a modular monolith into
+a selectively distributed service architecture without requiring a
+fundamental rewrite.
 
-- **AI Engineering:** Focused on LLMs, prompt engineering, context engineering, RAG, AI agents, orchestration, evaluation, deployment, and production AI systems.
-- **Machine Learning Engineering:** Focused on data preparation, statistical learning, supervised and unsupervised learning, deep learning, model training, experimentation, evaluation, deployment, and MLOps.
+This release is NOT an attempt to convert every component into a
+microservice.
 
-Both pathways must share only the genuinely common foundational curriculum. Beyond those shared foundations, their curricula, practical environments, projects, competencies, assessments, learning progression, and specialization credentials must be independently designed and tracked.
+It is an architectural investment that ensures Ruach can grow in
+functionality, users, computational demands and engineering complexity
+without becoming increasingly difficult to maintain.
 
-RUACH should ultimately provide:
+---
 
-1. A structured and adaptive learning experience.
-2. An intelligent AI tutor and engineering copilot.
-3. Distinct AI Engineering and ML Engineering learning ecosystems.
-4. Practical, isolated, and progressively advanced engineering environments.
-5. Real-world project development and evaluation.
-6. Competency-based progress tracking and verifiable skill credentials.
-7. Reliable background processing and scalable AI infrastructure.
-8. Secure, observable, maintainable, and cost-conscious deployment infrastructure.
+# 2. ARCHITECTURAL VISION
 
-The architectural objective is not to adopt the largest possible technology stack. It is to build the right engineering foundation for these capabilities and introduce additional technologies only when their value is justified.
+Ruach should adopt the following architectural direction:
 
-# 2. Strategic Objectives
+MODULAR MONOLITH + INDEPENDENT WORKLOAD EXECUTION
++ EVOLUTIONARY MICROSERVICES READINESS
 
-## Goal 1: Establish a Maintainable and Well-Structured Core Architecture
+The architecture must provide:
 
-Evolve the existing Flask application from a growing collection of routes, services, and models into a clearly organized modular monolith.
+1. Clearly defined functional boundaries.
+2. Explicit ownership of business logic and data.
+3. Controlled communication between modules.
+4. Independent execution of computationally intensive workloads.
+5. Fault isolation between the core LMS and external workloads.
+6. Consistent authentication and authorization.
+7. Centralized observability.
+8. Automated testing and deployment.
+9. A migration path toward independently deployable services.
 
-The platform must maintain its existing functionality while establishing explicit domain boundaries and reducing unnecessary coupling.
+The architecture must prioritize simplicity, reliability and maintainability
+over unnecessary technological sophistication.
 
-### Objectives
+---
 
-- Preserve the existing Flask application factory architecture.
-- Organize application responsibilities into identifiable domains.
-- Separate HTTP request handling from business logic.
-- Separate business logic from infrastructure integrations.
-- Reduce oversized modules and responsibilities concentrated in individual files.
-- Establish consistent configuration, logging, error handling, and response conventions.
-- Standardize database access and transaction management.
-- Establish clear interfaces between the LMS core, AI infrastructure, ML infrastructure, and execution environment.
-- Make it possible to extract independent services in the future without requiring a complete rewrite.
+# 3. PRIMARY PRODUCT AND ENGINEERING GOALS
 
-### Desired outcome
+## GOAL 1: Establish a Strict Modular Monolith
 
-A modular, testable, maintainable application where new capabilities can be developed without continually increasing the complexity of existing modules.
+Transform the existing Flask application into a properly organized
+modular monolith.
 
-## Goal 2: Preserve and Strengthen AI Engineering and ML Engineering Separation
+Requirements:
 
-The distinction between the AI Engineering and ML Engineering pathways must exist at the architectural, curriculum, assessment, practical, and learner-experience levels.
+- Establish clearly defined functional modules.
+- Separate routes, services, repositories, models and schemas.
+- Introduce explicit module interfaces.
+- Reduce unnecessary cross-module imports.
+- Prevent modules from manipulating another module's internal
+  implementation.
+- Establish clear ownership of business logic.
+- Separate infrastructure concerns from business logic.
+- Introduce consistent dependency management.
+- Ensure modules can be tested independently.
 
-### AI Engineering objectives
+Expected architectural domains:
 
-Build a specialization environment covering:
+- Identity and Access Management
+- User and Learner Management
+- Learning Management
+- Shared Foundations
+- AI Engineering
+- Machine Learning
+- Assessment and Evaluation
+- Practice Arena
+- Project Studio
+- Workspace Management
+- AI Services
+- ML Execution
+- Code Execution
+- Analytics and Reporting
+- Credentials and Skill Passport
+- Community
+- Administration
+- Notifications
 
-- LLM fundamentals and architecture.
-- Prompt engineering and prompt evaluation.
-- Context engineering.
+Not every domain must become a separate Python package or deployment.
+
+The objective is logical independence and enforceable boundaries.
+
+## GOAL 2: Preserve Independent AI and ML Pathways
+
+The AI Engineering and Machine Learning pathways must remain
+functionally independent.
+
+Shared infrastructure must not create unwanted curriculum dependencies.
+
+Shared capabilities may include:
+
+- Authentication.
+- User profiles.
+- Permissions.
+- Workspace infrastructure.
+- File storage infrastructure.
+- Learning infrastructure.
+- Notifications.
+- General progress infrastructure.
+
+However, each pathway must retain ownership of its:
+
+- Curriculum.
+- Learning modules.
+- Competency definitions.
+- Learning progression.
+- Assessments.
+- Projects.
+- Specialized tools.
+- Practical learning requirements.
+- Completion requirements.
+
+AI Engineering must not depend on ML-specific business logic.
+
+Machine Learning must not depend on AI Engineering-specific business logic.
+
+Both pathways may consume shared infrastructure through documented
+interfaces.
+
+This independence must be preserved throughout the architectural
+reorganization.
+
+## GOAL 3: Separate Computational Workloads
+
+Move resource-intensive and potentially unsafe operations away from
+the main Flask request lifecycle.
+
+Establish independently executable workers for:
+
+### AI Processing
+
+- AI Tutor requests.
 - Retrieval-Augmented Generation.
-- Embeddings and vector search.
-- AI application development.
-- Tool calling and function execution.
-- AI agent design and orchestration.
-- Multi-agent systems.
-- Agent memory and state management.
-- LLM evaluation and observability.
-- AI application security and guardrails.
-- AI application deployment and production operations.
+- Embedding generation.
+- Agent execution.
+- AI evaluation.
+- Context preparation.
+- Long-running AI operations.
 
-### ML Engineering objectives
+### Machine Learning Processing
 
-Build a specialization environment covering:
-
-- Mathematics and statistics for ML.
-- Data acquisition and preparation.
-- Exploratory data analysis.
-- Feature engineering.
-- Supervised learning.
-- Unsupervised learning.
-- Model selection and optimization.
-- Deep learning.
-- Neural networks.
-- Computer vision and natural language processing.
-- Model evaluation and interpretability.
-- Model serving and deployment.
-- Experiment tracking and reproducibility.
-- MLOps and model lifecycle management.
-
-### Shared foundation objectives
-
-Both pathways may share foundational modules such as:
-
-- Programming fundamentals.
-- Python.
-- Git and version control.
-- Linux and command-line fundamentals.
-- Data structures and algorithms.
-- Software engineering principles.
-- APIs and HTTP.
-- SQL and database fundamentals.
-- Mathematics and statistics where genuinely common.
-- Cloud and deployment fundamentals where appropriate.
-
-The shared curriculum must not become a mechanism for forcing specialization-specific content into a common pathway.
-
-### Architectural requirements
-
-- Independent pathway enrollment and progression.
-- Independent curriculum definitions.
-- Independent project and assessment structures.
-- Independent specialization competencies.
-- Independent AI and ML project records.
-- Independent specialization completion criteria.
-- Explicit pathway context in tutor sessions, assessments, and project evaluations.
-- Shared foundational content referenced rather than unnecessarily duplicated.
-
-### Desired outcome
-
-A learner pursuing AI Engineering should experience an AI Engineering programme, not a generic AI/ML programme with a different dashboard label. The same must be true for ML Engineering.
-
-## Goal 3: Build a Dedicated AI Infrastructure Layer
-
-Transform the current provider integration approach into a well-managed AI infrastructure layer.
-
-The existing Gemini and OpenRouter integrations are valuable and should be retained, but provider communication must become part of a broader, consistent AI execution architecture.
-
-### Objectives
-
-- Centralize model-provider access.
-- Support multiple model providers through consistent interfaces.
-- Introduce model selection and task-based routing.
-- Implement reliable retry, timeout, and circuit-breaker policies.
-- Track token consumption, request volume, latency, and estimated cost.
-- Establish prompt versioning and management.
-- Introduce structured AI evaluation.
-- Support asynchronous AI workloads.
-- Establish consistent AI response validation.
-- Improve AI failure handling and fallback mechanisms.
-- Provide appropriate logging and observability without exposing sensitive learner data.
-
-### AI workload categories
-
-The architecture should distinguish:
-
-**Short interactive operations**
-- Chat responses.
-- Small tutor explanations.
-- Simple content assistance.
-- Lightweight question generation.
-
-These may continue to execute synchronously when their latency is predictable.
-
-**Long-running operations**
-- Document ingestion.
-- RAG indexing.
-- Dataset analysis.
-- Large project reviews.
-- Model evaluation.
-- Bulk assessment generation.
-- Complex agent workflows.
-- Report generation.
-
-These should execute through background workers.
-
-### Desired outcome
-
-AI functionality becomes a reusable platform capability rather than a collection of provider calls embedded in individual route handlers.
-
-## Goal 4: Implement Reliable Background Processing
-
-Establish a dependable mechanism for executing tasks that should not occupy normal web requests.
-
-The existing `AIBackgroundJob` model provides a possible foundation, but its existence alone does not constitute an operational queue.
-
-### Objectives
-
-- Implement an actual job producer and worker.
-- Establish persistent job states.
-- Support retries with controlled backoff.
-- Support job timeouts and failure handling.
-- Prevent duplicate execution where appropriate.
-- Implement job leasing or equivalent concurrency protection.
-- Support progress updates.
-- Support cancellation where technically safe.
-- Track execution duration and failure reasons.
-- Provide administrative visibility into job activity.
-- Ensure workers can restart without losing queued work.
-
-### Initial workloads
-
-- AI document processing.
-- AI project reviews.
-- RAG ingestion and indexing.
-- Bulk AI content generation.
-- Large evaluations.
 - Dataset processing.
-- Long-running learning reports.
-
-### Desired outcome
-
-The web application remains responsive while resource-intensive tasks execute independently and reliably.
-
-## Goal 5: Evolve RUACH into a Serious Practical Engineering Environment
-
-Practical engineering must become one of RUACH's strongest differentiators.
-
-The current Practice Arena, CodeMirror editor, Pyodide execution, Docker judge, submission records, and separate judge worker provide a useful foundation.
-
-The next stage should extend these capabilities rather than replace them.
-
-### Execution tiers
-
-**Tier 1 — Browser-based execution**
-
-For:
-- Basic Python exercises.
-- Short programming challenges.
-- Immediate formative feedback.
-- Lightweight interactive experiments.
-
-Technology: Pyodide.
-
-**Tier 2 — Isolated container execution**
-
-For:
-- Backend programming.
-- API exercises.
-- Algorithms.
-- Controlled data science exercises.
-- Lightweight ML workloads.
-- Automated project testing.
-
-Technology: Docker-based isolated workers.
-
-**Tier 3 — Dedicated engineering compute**
-
-For:
-- Deep learning.
-- PyTorch training.
-- Larger datasets.
-- GPU workloads.
-- Fine-tuning.
-- Advanced model experimentation.
-
-Technology: Dedicated compute workers, job scheduling, resource quotas, and managed GPU infrastructure when justified.
-
-### Objectives
-
-- Make execution capabilities explicit.
-- Route workloads to appropriate execution environments.
-- Isolate learner workloads.
-- Apply CPU, memory, time, storage, and concurrency limits.
-- Track execution costs.
-- Support persistent project files and artifacts.
-- Provide meaningful execution feedback.
-- Prevent one learner's workload from affecting other learners.
-- Separate the web application from compute-intensive execution.
-
-### Desired outcome
-
-Learners can progress from simple coding exercises to realistic engineering experiments without RUACH compromising application stability or infrastructure security.
-
-## Goal 6: Build an Integrated AI Engineering and ML Project Studio
-
-Create a practical project environment that allows learners to move from learning concepts to building demonstrable engineering solutions.
-
-### AI Engineering Project Studio
-
-Support:
-- LLM application development.
-- Prompt and context experimentation.
-- RAG pipelines.
-- Vector search.
-- Agent development.
-- Tool integration.
-- Evaluation datasets.
-- Prompt version comparisons.
-- AI application testing.
-- Deployment-oriented project workflows.
-
-### ML Engineering Project Studio
-
-Support:
-- Dataset uploads and management.
-- Exploratory data analysis.
-- Data preprocessing.
-- Feature engineering.
 - Model training.
-- Experiment comparisons.
-- Evaluation metrics.
-- Model artifact management.
-- Model versioning.
-- Model deployment workflows.
+- Model evaluation.
+- Experiment execution.
+- Model artifact generation.
+- Resource-intensive ML operations.
 
-### Shared project capabilities
+### Code Execution
 
-- Project creation and management.
-- Project milestones.
-- Version history.
-- File and artifact management.
-- Project documentation.
-- Automated testing.
-- Evaluation reports.
-- Submission and review.
-- Mentor feedback.
-- Project portfolios.
+- Learner-submitted code execution.
+- Automated test evaluation.
+- Resource monitoring.
+- Execution timeouts.
+- Sandbox lifecycle management.
 
-### Desired outcome
+Workers must communicate with the core application through controlled
+interfaces and asynchronous job processing where appropriate.
 
-Learners graduate with evidence of actual engineering capability, not merely completed lessons and quiz scores.
+## GOAL 4: Introduce Reliable Background Processing
 
-## Goal 7: Upgrade the AI Tutor into an Intelligent Learning and Engineering Assistant
+Establish a dependable background processing architecture.
 
-The AI Tutor should evolve from a conversational learning aid into a context-aware learning assistant.
+Requirements:
 
-### Objectives
+- Redis-backed job queues.
+- Independent worker processes.
+- Job lifecycle management.
+- Retry policies.
+- Failure handling.
+- Task timeouts.
+- Job status tracking.
+- Idempotency where required.
+- Dead-letter or failed-job handling.
+- Graceful worker shutdown.
+- Queue monitoring.
 
-- Understand the learner's active pathway.
-- Understand the current course, module, lesson, and learning objectives.
-- Consider previous learning progress.
-- Identify knowledge gaps.
-- Explain concepts at an appropriate difficulty level.
-- Generate practice questions.
-- Provide guided debugging assistance.
-- Review project work.
-- Recommend relevant learning resources.
-- Support Socratic learning and productive struggle.
-- Avoid giving away complete solutions when guided learning is more appropriate.
-- Maintain relevant conversation context.
-- Support retrieval from approved learning materials.
-- Distinguish AI Engineering knowledge from ML Engineering knowledge.
+Long-running operations must not unnecessarily block ordinary
+learner-facing requests.
 
-### Important requirement
+The architecture must distinguish between synchronous operations
+and asynchronous operations.
 
-Tutor context must be derived from the actual lesson, course, or project being discussed—not merely from the learner's active dashboard focus.
+Not every application action should become a background job.
 
-A learner must not receive AI Engineering syllabus context while studying an ML lesson, or vice versa.
+## GOAL 5: Introduce Fault Isolation and Resilience
 
-### Desired outcome
+Prevent failures in computational workloads from unnecessarily
+affecting the core learning platform.
 
-The tutor becomes a personalized learning companion that understands what the learner is studying, what the learner knows, and what the learner needs to master next.
+Examples:
 
-## Goal 8: Establish Evaluation, Observability, and AI Quality Assurance
+- An unavailable AI provider must not prevent learners from accessing
+  their courses.
+- An ML training failure must not interrupt authentication.
+- A failed code execution must not crash the LMS.
+- A Redis outage must not make unrelated read-only learning features
+  unavailable unnecessarily.
+- A failed background job must not silently corrupt learner progress.
 
-AI features must be evaluated systematically rather than judged only by whether they return a response.
+Implement:
 
-### Objectives
+- Service and worker health checks.
+- Timeouts.
+- Retry limits.
+- Circuit-breaking where appropriate.
+- Graceful degradation.
+- Controlled failure responses.
+- Resource limits.
+- Recovery mechanisms.
 
-- Create evaluation datasets for important AI features.
-- Evaluate tutor accuracy and relevance.
-- Evaluate RAG retrieval quality.
-- Evaluate generated assessment quality.
-- Evaluate AI project reviews.
-- Track latency and reliability.
-- Track token consumption and estimated costs.
-- Record prompt and model versions.
-- Support regression evaluation after prompt or model changes.
-- Identify hallucinations and unsupported responses.
-- Provide feedback mechanisms for learners and administrators.
+## GOAL 6: Establish Clear Data Ownership
 
-### Desired outcome
+Define ownership of data within each architectural domain.
 
-RUACH can measure whether its AI capabilities are improving, becoming more expensive, or producing unreliable results.
+Requirements:
 
-## Goal 9: Strengthen Security and Release Engineering
+- Each module owns its business data.
+- Cross-module access must use documented interfaces.
+- Avoid arbitrary direct database manipulation across modules.
+- Avoid circular relationships between domain models.
+- Preserve transactional integrity where necessary.
+- Establish a strategy for future service-level data separation.
 
-Security and release hygiene must be treated as essential engineering requirements.
+The existing PostgreSQL database may remain shared during this release.
 
-### Objectives
+A shared database does not mean unrestricted shared ownership.
 
-- Prevent secrets from entering source archives.
-- Improve `.gitignore` and export scripts.
-- Exclude local environments, credentials, databases, uploads, and generated artifacts from release archives unless explicitly required.
-- Use environment-based secret management.
-- Introduce automated secret scanning.
-- Validate authorization at domain boundaries.
-- Enforce secure file upload and download handling.
-- Strengthen sandbox isolation.
-- Apply database migration discipline.
-- Introduce backup and recovery procedures.
-- Maintain dependency security checks.
-- Establish repeatable release packaging.
+Do not introduce separate databases for every module merely to
+simulate microservices.
 
-### Desired outcome
+## GOAL 7: Introduce Centralized Observability
 
-RUACH can be shared, deployed, audited, and maintained without exposing credentials or unintentionally distributing sensitive development data.
+Establish the visibility required to operate a growing platform.
 
-## Goal 10: Build a Production-Ready Deployment and Operations Foundation
+Implement:
 
-Establish a deployment architecture that supports the LMS, background workers, judge workers, and future AI/ML compute workers.
+- Structured logging.
+- Request correlation IDs.
+- Background job correlation IDs.
+- Error tracking.
+- Performance monitoring.
+- Worker health monitoring.
+- Queue monitoring.
+- Database performance monitoring.
+- Execution metrics.
+- Operational dashboards.
 
-### Objectives
+The engineering team must be able to trace an operation from the
+learner's request through the core application, background worker
+and final result.
 
-- Define a canonical deployment environment.
-- Separate web, background, and execution processes.
-- Establish reliable database connectivity.
-- Establish shared caching and queue infrastructure.
-- Support object storage for learner artifacts.
-- Introduce structured application logs.
-- Monitor errors, latency, queue health, and resource consumption.
-- Establish database backup and recovery procedures.
-- Support controlled deployments and rollback.
-- Prepare for independent scaling of compute-heavy workloads.
+## GOAL 8: Strengthen Security and Execution Isolation
 
-### Desired outcome
+Improve the security boundaries between application components.
 
-The system can scale individual workloads without unnecessarily scaling every component together.
+Requirements:
 
-# 3. Non-Goals and Architectural Guardrails
+- Consistent authentication and authorization.
+- Secure internal worker communication.
+- Protected service endpoints.
+- Environment-based secrets management.
+- Restricted worker permissions.
+- Resource limits for computational workloads.
+- Safe file handling.
+- Secure Docker execution.
+- Input validation.
+- Protection against unauthorized task execution.
 
-The next development cycle must avoid unnecessary complexity.
+Learner-submitted code must never execute directly inside the main
+Flask application process.
 
-The following are explicitly not immediate objectives:
+Workers must receive only the permissions and resources required
+for their assigned responsibilities.
 
-1. Rewriting the existing LMS from Flask to FastAPI.
-2. Migrating the entire frontend from Jinja2 to Next.js.
-3. Splitting the application into numerous microservices.
-4. Introducing Kubernetes before workload complexity justifies it.
-5. Running GPU workloads inside the main Flask web process.
-6. Replacing working Gemini and OpenRouter integrations without measurable justification.
-7. Introducing LangChain or LangGraph into every AI feature.
-8. Building an independent LLM or model-training infrastructure from scratch.
-9. Replacing PostgreSQL with a separate database for every domain.
-10. Introducing multiple overlapping queue systems.
+## GOAL 9: Establish Deployment Independence
 
-The preferred strategy is to retain the current modular monolith, strengthen its domain boundaries, and extract independent services only when there is a clear operational or scaling benefit.
+Prepare Ruach for independently managed application processes.
 
-# 4. Technology Direction
+The deployment architecture should support:
 
-| Layer | Preferred direction |
-|---|---|
-| Core backend | Flask |
-| Application architecture | Modular monolith |
-| ORM and migrations | Flask-SQLAlchemy, Alembic |
-| Primary database | PostgreSQL |
-| Frontend | Jinja2, Tailwind, JavaScript/TypeScript |
-| Code editor | CodeMirror |
-| Browser execution | Pyodide |
-| Isolated execution | Docker workers |
-| Cache | Redis |
-| Background processing | One selected queue/worker architecture |
-| AI providers | Gemini, OpenRouter, extensible provider interface |
-| AI orchestration | Native Python initially; LangGraph selectively |
-| RAG | PostgreSQL with pgvector or another justified vector store |
-| ML framework | PyTorch, scikit-learn, Hugging Face |
-| Experiment tracking | MLflow |
-| Object storage | Cloudflare R2 or compatible S3 storage |
-| Observability | Structured logging, metrics, error tracking |
-| Deployment | Existing hosting initially; independently deployed workers |
-| Infrastructure automation | Introduce infrastructure as code when deployment complexity warrants it |
+- Main Flask web application.
+- AI processing workers.
+- ML processing workers.
+- Code execution workers.
+- Scheduled background tasks.
+- Shared infrastructure services.
 
-# 5. Global Success Criteria
+Each process must have:
 
-The architecture evolution will be considered successful when:
+- Defined startup commands.
+- Health checks.
+- Configuration requirements.
+- Logging.
+- Restart policies.
+- Resource requirements.
 
-- The core application has clearly defined domain boundaries.
-- Existing LMS functionality remains operational.
-- AI Engineering and ML Engineering are independently structured and tested.
-- Tutor context always matches the actual learning activity.
-- Long-running AI workloads execute outside ordinary web requests.
-- Background jobs survive worker restarts and handle failures predictably.
-- Practice Arena execution is operational through the intended worker architecture.
-- The three execution tiers have clear workload boundaries.
-- AI and ML project environments support progressively realistic engineering work.
-- AI outputs can be evaluated and monitored.
-- Security-sensitive files are excluded from release archives.
-- The deployment model clearly separates web and compute responsibilities.
-- The application can grow without requiring an immediate framework rewrite.
+The release must preserve compatibility with the existing deployment
+environment.
 
-# 6. Guiding Engineering Principle
+Do not introduce Kubernetes or a complex orchestration platform
+without a demonstrated operational requirement.
 
-**Build for the platform RUACH is becoming, without breaking the platform RUACH already is.**
+## GOAL 10: Establish Microservices Readiness
 
-Every architectural decision should improve at least one of the following:
+Create the architectural conditions for selective future migration.
 
-- Learning quality.
-- Engineering capability.
-- Security.
-- Reliability.
-- Maintainability.
-- Scalability.
-- Operational visibility.
-- Cost efficiency.
+Requirements:
 
-New technology must solve an identified problem. Complexity must be justified. Existing functionality must be protected by tests and incremental delivery.
+- Documented module interfaces.
+- Explicit domain ownership.
+- Versionable internal API contracts.
+- Controlled cross-module communication.
+- Defined data ownership.
+- Independent worker deployment.
+- Service authentication strategy.
+- Observability across processes.
+- Automated integration testing.
 
-The final measure of success is not the number of technologies RUACH uses. It is the quality of engineering education and real-world capability that RUACH enables.
+The architecture should allow a domain such as AI Processing or
+ML Execution to become a standalone service in the future without
+rewriting the entire LMS.
+
+Actual microservice extraction is conditional on measurable needs.
+
+---
+
+# 4. NON-NEGOTIABLE ARCHITECTURAL PRINCIPLES
+
+1. Modular monolith first.
+2. No unnecessary framework migration.
+3. No premature microservices.
+4. No premature Kubernetes adoption.
+5. No unnecessary database fragmentation.
+6. No direct cross-module manipulation of internal business logic.
+7. Shared infrastructure must not become shared curriculum dependency.
+8. AI Engineering and ML must remain independent pathways.
+9. Computational workloads must be isolated from the main web process.
+10. Security must be enforced at architectural boundaries.
+11. Existing learner data must be preserved.
+12. Every architectural change must be testable.
+13. Every new process must be observable.
+14. Complexity must be justified by measurable value.
+
+---
+
+# 5. TECHNOLOGY DIRECTION
+
+Preserve the existing stack wherever practical.
+
+Primary application:
+- Python
+- Flask 3.x
+- SQLAlchemy
+- PostgreSQL
+- Alembic
+- Jinja2
+- Existing frontend technologies
+
+Infrastructure:
+- Redis
+- Existing object storage
+- Docker
+- Gunicorn
+- Existing hosting and deployment infrastructure
+
+Background processing:
+- Evaluate Celery or RQ against the current Redis infrastructure.
+- Select one primary job-processing approach.
+- Avoid maintaining multiple competing task systems.
+
+AI and ML:
+- Preserve existing AI and ML integrations.
+- Establish separate execution interfaces.
+- Allow specialized dependencies to remain outside the core
+  application where appropriate.
+
+Observability:
+- Structured application logging.
+- Error tracking.
+- Metrics.
+- Distributed tracing when justified.
+
+Technology changes must be justified through a documented technical
+decision record.
+
+---
+
+# 6. SUCCESS CRITERIA
+
+This release is successful when:
+
+1. Ruach has clearly defined architectural modules.
+2. Module boundaries are documented and enforced.
+3. AI Engineering and ML remain independently maintainable.
+4. The core application does not directly execute resource-intensive
+   AI, ML or untrusted code workloads.
+5. Background workers can run independently of Flask web processes.
+6. Failed worker tasks do not unnecessarily interrupt the LMS.
+7. Long-running jobs have reliable lifecycle management.
+8. Operational logs provide end-to-end traceability.
+9. Existing learner accounts and records remain intact.
+10. Existing functionality continues working after migration.
+11. Deployment supports independently running workers.
+12. Automated tests validate architectural boundaries.
+13. The team has a documented service extraction strategy.
+14. The application remains deployable without Kubernetes.
+
+---
+
+# 7. OUT OF SCOPE
+
+The following are not objectives of this release:
+
+- Rewriting Flask using FastAPI.
+- Replacing the frontend framework.
+- Rewriting the LMS as multiple microservices.
+- Introducing Kubernetes.
+- Introducing service meshes.
+- Splitting every module into its own database.
+- Rebuilding existing learner-facing features unnecessarily.
+- Changing the learning curriculum.
+- Introducing distributed infrastructure without a clear need.
+
+This release is primarily an architectural and engineering
+infrastructure investment.
+
+Existing product functionality must be preserved and improved
+where architectural changes expose genuine deficiencies.
+
+---
+
+# FINAL VISION
+
+Ruach should not become a platform whose growth makes it increasingly
+difficult to engineer.
+
+Its architecture should allow new learning pathways, intelligent
+learning capabilities, practical environments, collaboration systems
+and computational workloads to evolve independently while maintaining
+a coherent learner experience.
+
+We are building the engineering foundation for a platform that can
+grow substantially beyond its current implementation.
+
+Architecture must enable Ruach's ambition, not become a limitation
+to it.
