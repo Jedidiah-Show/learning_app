@@ -102,3 +102,17 @@ After M3, the same inventory checks report **22 blueprints, 205 URL rules, 65 ma
 | Experiment traceability is additive | MLflow identifiers extend `MLProjectExperiment` instead of duplicating the experiment source of truth. |
 
 See `M3_EXECUTION_ARCHITECTURE.md` and `M3_TEST_REPORT.md` for the implementation boundary and evidence.
+
+## 10. M4 addendum — current state
+
+After M4, the same inventory checks report **22 blueprints, 209 URL rules, 66 mapped models**. No new blueprint was registered; the four new evaluation/portfolio APIs were added to the existing `projects` blueprint. The new additive head is `j5k6l7m8n9o0`, descending from M3 head `i4j5k6l7m8n9`.
+
+| Observation | Current evidence |
+|---|---|
+| Modular monolith retained | One app, one lifecycle engine, one artifact service and one evaluation service. AI/ML specializations keep independent records and evidence mappers. |
+| Evidence is traceable | `ProjectEvaluation` stores automated checks, criterion-level rubric feedback, evidence references and human review separately, with append-only versions. |
+| Approval requires two keys | Competencies are linked only after a privileged human review and an approved/published lifecycle stage. Lesson completion never sets verified mastery. |
+| Artifacts cover both studios | `project_type='ai'` uses the M3 artifact infrastructure; ML artifacts remain experiment-scoped. |
+| Portfolio reuses verified evidence | Verified project evaluations feed the existing portfolio and public-showcase whitelist. |
+
+See `M4_PROJECT_STUDIO_EVIDENCE.md` and `M4_TEST_REPORT.md` for implementation and verification detail.

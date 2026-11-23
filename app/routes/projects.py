@@ -210,6 +210,11 @@ def _public_project_payload(item):
         'checks_verified': bool(item.get('checks_verified')),
         'completed': True,
         'verification_status': item.get('verification_status'),
+        'evidence_status': (
+            (item.get('evaluation') or {}).get('status')
+            if isinstance(item.get('evaluation'), dict) else None
+        ),
+        'competencies': list(item.get('competencies') or []),
     }
 
 
@@ -1007,6 +1012,21 @@ def _build_portfolio_data(user, domain_filter=None):
                     'Submitted · review in progress'
                 ),
             })
+    # M4: add only specialization projects with a verified evaluation and an
+    # approved/published lifecycle. Legacy course projects above keep their
+    # existing portfolio behavior; this never duplicates them.
+    from app.services.project_portfolio import entries as evidence_entries
+
+    known = {
+        (item.get('domain'), (item.get('module') or {}).get('id'))
+        for item in projects
+    }
+    for entry in evidence_entries(user.id):
+        identity = (entry.get('domain'), (entry.get('module') or {}).get('id'))
+        if identity not in known:
+            projects.append(entry)
+            known.add(identity)
+
     if domain_filter in {'ai-engineering', 'machine-learning'}:
         projects = [item for item in projects if item.get('domain') == domain_filter]
     return projects
@@ -1126,6 +1146,145 @@ def github_webhook():
         return jsonify({'status': 'verified', 'projects_updated': matched}), 200
 
     return jsonify({'status': 'no_matching_pending_project'}), 200
+
+
+def _evaluation_error_response(error):
+    from app.services.project_evaluation import EvaluationError
+
+    if not isinstance(error, EvaluationError):
+        raise error
+    message = str(error)
+    if 'not authorized' in message:
+        return jsonify({'error': message}), 403
+    conflict = (
+        'submitted before evaluation' in message
+        or 'Cannot approve' in message
+        or 'Cannot request revision' in message
+        or 'already been reviewed' in message
+    )
+    return jsonify({'error': message}), 409 if conflict else 400
+
+
+@projects_bp.route('/api/projects/evaluations', methods=['POST'])
+@login_required
+def create_project_evaluation():
+    """Create one traceable evaluation version for a submitted project.
+
+    By default evidence is derived from the owning specialization's records.
+    Callers may supply all three evidence sections explicitly; a single
+    generated score is never accepted as evaluation evidence.
+    """
+    from app.services.project_evaluation import (
+        EvaluationError, build_domain_evidence, create_evaluation,
+    )
+
+    data = get_json_object()
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Request body must be a JSON object'}), 400
+    domain = data.get('domain')
+    project_key = data.get('project_key')
+    if not isinstance(domain, str) or not isinstance(project_key, str):
+        return jsonify({'error': 'domain and project_key are required strings'}), 400
+
+    evidence_fields = ('automated_checks', 'rubric_feedback', 'evidence_refs')
+    supplied = [field for field in evidence_fields if field in data]
+    if supplied and len(supplied) != len(evidence_fields):
+        return jsonify({
+            'error': 'Supply all of automated_checks, rubric_feedback and evidence_refs together',
+        }), 400
+    try:
+        if supplied:
+            evidence = {field: data[field] for field in evidence_fields}
+        else:
+            evidence = build_domain_evidence(current_user.id, domain, project_key)
+        payload = create_evaluation(
+            current_user.id, domain, project_key,
+            evidence['automated_checks'],
+            evidence['rubric_feedback'],
+            evidence['evidence_refs'],
+            created_by=current_user,
+        )
+    except EvaluationError as error:
+        return _evaluation_error_response(error)
+    return jsonify({'evaluation': payload}), 201
+
+
+@projects_bp.route(
+    '/api/projects/evaluations/<domain>/<project_key>', methods=['GET']
+)
+@login_required
+def list_project_evaluations(domain, project_key):
+    """Read evaluation versions. Owner or privileged reviewer only."""
+    from app.services.authorization import can_view_verification_history
+    from app.services.project_evaluation import DOMAINS, evaluations_for, to_dict
+
+    if domain not in DOMAINS:
+        return jsonify({'error': f'Unknown domain {domain!r}; expected one of {DOMAINS}'}), 400
+    owner_id = current_user.id
+    raw = request.args.get('user_id')
+    if raw is not None:
+        try:
+            owner_id = int(raw)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'user_id must be an integer'}), 400
+    if not can_view_verification_history(current_user, owner_id):
+        return jsonify({'error': 'You are not authorized to view this evidence'}), 403
+    return jsonify({
+        'domain': domain,
+        'project_key': project_key,
+        'user_id': owner_id,
+        'evaluations': [
+            to_dict(row) for row in evaluations_for(owner_id, domain, project_key)
+        ],
+    }), 200
+
+
+@projects_bp.route('/api/projects/evaluations/<int:evaluation_id>/review', methods=['POST'])
+@login_required
+def review_project_evaluation(evaluation_id):
+    """Privileged human review; reviewers never assess their own evidence."""
+    from app.services.project_evaluation import (
+        EvaluationError, record_human_review,
+    )
+
+    data = get_json_object()
+    if not isinstance(data, dict):
+        return jsonify({'error': 'Request body must be a JSON object'}), 400
+    decision = data.get('decision')
+    if decision not in ('approved', 'revision_requested'):
+        return jsonify({
+            'error': 'decision must be approved or revision_requested',
+        }), 400
+    try:
+        payload = record_human_review(
+            evaluation_id, current_user, decision, data.get('note') or '',
+        )
+    except EvaluationError as error:
+        return _evaluation_error_response(error)
+    return jsonify({'evaluation': payload}), 200
+
+
+@projects_bp.route('/api/projects/portfolio/evidence', methods=['GET'])
+@login_required
+def portfolio_evidence():
+    """Evidence-backed portfolio entries for the owner or a reviewed learner."""
+    from app.services.authorization import can_view_verification_history
+    from app.services.project_portfolio import entries
+
+    owner_id = current_user.id
+    raw = request.args.get('user_id')
+    if raw is not None:
+        try:
+            owner_id = int(raw)
+        except (TypeError, ValueError):
+            return jsonify({'error': 'user_id must be an integer'}), 400
+    if not can_view_verification_history(current_user, owner_id):
+        return jsonify({'error': 'You are not authorized to view this portfolio'}), 403
+    domain = request.args.get('domain')
+    return jsonify({
+        'user_id': owner_id,
+        'projects': entries(owner_id, domain=domain),
+    }), 200
 
 
 @projects_bp.route('/api/projects/lifecycle/<domain>/<project_key>', methods=['GET'])

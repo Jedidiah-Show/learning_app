@@ -39,7 +39,7 @@ app/models.py -> 61 SQLAlchemy models
 migrations/versions/*.py -> 62 revisions
 ```
 
-These are baseline figures. After M2, the same checks report **21 blueprints, 199 URL rules, 63 mapped models and 63 migration revision files**. The new head is `h2i3j4k5l6m7`; see `M2_TEST_REPORT.md`. After M3 they report **22 blueprints, 205 URL rules, 65 mapped models** with new head `i4j5k6l7m8n9`; see `M3_TEST_REPORT.md`.
+These are baseline figures. After M2, the same checks report **21 blueprints, 199 URL rules, 63 mapped models and 63 migration revision files**. The new head is `h2i3j4k5l6m7`; see `M2_TEST_REPORT.md`. After M3 they report **22 blueprints, 205 URL rules, 65 mapped models** with new head `i4j5k6l7m8n9`; see `M3_TEST_REPORT.md`. After M4 they report **22 blueprints, 209 URL rules, 66 mapped models** with new head `j5k6l7m8n9o0`; see `M4_TEST_REPORT.md`.
 
 ## 3. Migration checks
 

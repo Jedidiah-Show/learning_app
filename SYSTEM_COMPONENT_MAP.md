@@ -1,7 +1,7 @@
 # System Component Map
 
 **Date:** 2026-11-22  
-**Scope:** Current RUACH LMS modular monolith after M1 boundary extraction, M2 AI infrastructure and M3 execution foundations.
+**Scope:** Current RUACH LMS modular monolith after M1 boundary extraction, M2 AI infrastructure, M3 execution foundations and M4 project evidence.
 
 ## 1. Layer view
 
@@ -9,16 +9,16 @@
 HTTP / CLI / webhook requests
         |
         v
-app/routes/*            HTTP adapters (22 blueprints, 205 URL rules)
+app/routes/*            HTTP adapters (22 blueprints, 209 URL rules)
         |
         v
-app/services/*          Orchestration, tutor, judge, notifications, passport
+app/services/*          Orchestration, tutor, judge, notifications, passport, project evaluation
         |
         v
-app/domains/*           Trusted business rules (currently learning context)
+app/domains/*           Trusted business rules (learning context, AI/ML evaluation evidence)
         |
         v
-app/models.py           Single SQLAlchemy model layer (65 models)
+app/models.py           Single SQLAlchemy model layer (66 models)
         |
         v
 PostgreSQL (prod) / SQLite (dev)  --  Alembic migrations
@@ -71,7 +71,7 @@ app/ml_pathway.py       ML pathway authoring
 | `lessons.py` | `curriculum`, `curriculum_registry`, `ml_pathway`, `gemini`, `services/tutor`, resolver |
 | `quizzes.py` / `progress.py` | `services/skill_passport`, `ReviewItem`, quiz models |
 | `practice_arena.py` / `practice_workspace.py` | `practice`, `practice_arena`, `services/judge`, `services/judge_worker` |
-| `projects.py` | `project_verification`, `storage`, GitHub verification, project models |
+| `projects.py` | `project_verification`, `storage`, GitHub verification, project lifecycle, evaluation evidence and portfolio |
 | `credentials.py` | Ed25519/HMAC credential services |
 | `calendar.py` / `integrations.py` | `google_calendar`, encrypted token storage |
 | `ai_specialization.py` / `ml_specialization.py` / `pathway_practice.py` | `curriculum_registry`, `ml_pathway`, `pathway_scope` |
@@ -80,8 +80,8 @@ app/ml_pathway.py       ML pathway authoring
 
 | Component | Actual state |
 |---|---|
-| SQLAlchemy models | One `app/models.py` module; 63 mapped classes after M2 added `AIUsageRecord` and `AIJobResult`. |
-| Alembic | 63 revision files; multiple heads remain (one untracked, plus the new M2 head on the tracked lineage). See `M0_BASELINE_TEST_REPORT.md` and `M2_QUEUE_AND_DEPLOYMENT.md`. |
+| SQLAlchemy models | One `app/models.py` module; 66 mapped classes after M4 added `ProjectEvaluation`. |
+| Alembic | 64 tracked revision files after M4, plus one pre-existing untracked migration; multiple heads remain. The tracked head is `j5k6l7m8n9o0`, descending from `i4j5k6l7m8n9`. See `M0_BASELINE_TEST_REPORT.md` and `M4_TEST_REPORT.md`. |
 | AI providers | `gemini.py`, `openrouter.py` retain wire logic; `app/ai/` exposes one provider-neutral gateway, task routing and metadata-only telemetry. |
 | AI background jobs | `AIBackgroundJob` extended with lease/retry fields; producer in `app/services/ai_jobs.py`, worker in `app/workers/`, HTTP API at `/api/ai/jobs`, and a declared `ruach-ai-worker` Render service. |
 | Judge | `services/judge.py`, `services/judge_worker.py`, `sandbox/Dockerfile`; worker not deployed; judge submissions disabled in production config. |

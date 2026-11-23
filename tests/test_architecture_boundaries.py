@@ -91,7 +91,12 @@ class TestCoreBoundary:
 
 
 class TestDomainBoundary:
-    DOMAIN_MODULES = ('app.domains.learning.context',)
+    DOMAIN_MODULES = (
+        'app.domains.learning.context',
+        'app.domains.ai_engineering.evaluation',
+        'app.domains.machine_learning.evaluation',
+        'app.domains.machine_learning.report',
+    )
     FORBIDDEN_PREFIXES = (
         'app.routes', 'app.services', 'flask', 'flask_login',
     )

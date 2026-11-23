@@ -5,7 +5,7 @@ from io import BytesIO
 from flask import Blueprint, current_app, jsonify, request, send_file
 from flask_login import current_user, login_required
 
-from app.models import CourseProject, MLProjectExperiment
+from app.models import AISpecializationProject, CourseProject, MLProjectExperiment
 from app.services.artifacts import (
     ArtifactError,
     can_access,
@@ -28,6 +28,10 @@ def _error(message, status=400):
 def _project_is_owned(project_type, project_id):
     if project_type == 'course':
         return CourseProject.query.filter_by(
+            id=project_id, user_id=current_user.id
+        ).first() is not None
+    if project_type == 'ai':
+        return AISpecializationProject.query.filter_by(
             id=project_id, user_id=current_user.id
         ).first() is not None
     if project_type == 'ml':

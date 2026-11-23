@@ -4,7 +4,6 @@ import csv
 import hashlib
 import hmac
 import json
-import math
 import secrets
 from io import BytesIO
 from pathlib import Path
@@ -26,7 +25,8 @@ from sqlalchemy.exc import IntegrityError
 from app.project_verification import VerificationError, verify_checks
 from app.request_data import get_json_object
 from app.user_preferences import get_effective_config_for_user
-from app.services.ml_project import FAILURE_STAGES
+from app.domains.machine_learning.report import report_matches as _report_matches
+from app.services.ml_project import FAILURE_STAGES, example_report_skeleton
 
 
 ml_specialization_bp = Blueprint('ml_specialization', __name__)
@@ -165,67 +165,6 @@ def _dataset_sha256(module_number):
     return hashlib.sha256(train + evaluation).hexdigest()
 
 
-def _report_matches(module_id, report):
-    """Validate a learner report against the module's published contract.
-
-    The contract is authored with the curriculum (see
-    ``docs/ml_curriculum/module_specs``) and embedded in the pathway manifest,
-    so every module — not just the six original pilot modules — has a
-    server-owned, deterministic definition of a complete report.
-    """
-    module = _module(module_id)
-    contract = (module or {}).get('report_contract') or []
-    if not contract or not isinstance(report, dict):
-        return False
-    keys = {entry['key'] for entry in contract}
-    if set(report) != keys:
-        return False
-    for entry in contract:
-        key = entry['key']
-        value = report[key]
-        kind = entry.get('type')
-        if kind in ('int', 'float'):
-            if isinstance(value, bool) or not isinstance(value, (int, float)):
-                return False
-            if not math.isfinite(value):
-                return False
-            if kind == 'int' and not isinstance(value, int):
-                return False
-            if 'equals' in entry:
-                expected = entry['equals']
-                tolerance = entry.get('tolerance', 1e-9)
-                if abs(value - expected) > tolerance:
-                    return False
-            if 'min' in entry and value < entry['min']:
-                return False
-            if 'max' in entry and value > entry['max']:
-                return False
-        elif kind == 'bool':
-            if not isinstance(value, bool) or value != entry.get('equals', value):
-                return False
-        elif kind in ('str', 'string'):
-            if not isinstance(value, str):
-                return False
-            if 'equals' in entry and value != entry['equals']:
-                return False
-            if 'allowed' in entry and value not in entry['allowed']:
-                return False
-            if 'length' in entry and len(value) != entry['length']:
-                return False
-            if 'min_length' in entry and len(value) < entry['min_length']:
-                return False
-        elif kind == 'list':
-            if not isinstance(value, list):
-                return False
-            if 'equals' in entry and value != entry['equals']:
-                return False
-            if 'length' in entry and len(value) != entry['length']:
-                return False
-        else:
-            return False
-    return True
-
-
 def _evaluation_valid(evaluation, rubric):
     if not isinstance(evaluation, dict):
         return False
@@ -318,7 +257,6 @@ def project(module_id):
         evaluation = json.loads(record.evaluation) if record.evaluation else None
     except (TypeError, ValueError):
         evaluation = None
-    from app.services.ml_project import example_report_skeleton
     return render_template(
         'specializations/machine_learning_project.html',
         module=module, record=record, submission=submission,

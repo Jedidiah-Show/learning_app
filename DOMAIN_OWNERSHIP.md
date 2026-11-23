@@ -1,7 +1,7 @@
 # Domain Ownership — M1 Foundation
 
 **Date:** 2026-11-21  
-**Status:** Incremental. `app/domains/` currently contains the extracted learning-context rule set; other responsibilities remain in their existing modules until later milestones move them.
+**Status:** Incremental. `app/domains/` contains the learning-context rule set and M4 AI/ML evaluation evidence rules; other responsibilities remain in their existing modules until later milestones move them.
 
 ## 1. Ownership table
 
@@ -10,6 +10,9 @@
 | Cross-cutting infrastructure | `app/core/*` | Config, extensions, logging, security hooks, errors, response conventions | Business rules, route handlers |
 | Application composition | `app/__init__.py` | Initialise core, register blueprints/hooks, expose compatibility helpers | Business decisions |
 | Learning context | `app/domains/learning/context.py` | Resolve authoritative pathway/domain from lesson/problem/project records | HTTP parsing, AI providers, persistence writes |
+| AI evaluation evidence | `app/domains/ai_engineering/evaluation.py` | Collect AI-only automated checks, rubric feedback and evidence refs | ML records, HTTP parsing, final verdicts |
+| ML evaluation evidence | `app/domains/machine_learning/evaluation.py`, `app/domains/machine_learning/report.py` | Collect ML-only evidence and validate deterministic report contracts | AI records, HTTP parsing, final verdicts |
+| Project evaluation | `app/services/project_evaluation.py`, `app/services/project_portfolio.py` | Validate evidence, apply human review, link competencies, present portfolio evidence | Domain-specific record interpretation |
 | Pathway scope | `app/pathway_scope.py` | Active enrolments, catalog assembly, foundation evidence, dashboard focus | Tutor syllabus selection when a lesson exists |
 | Tutor | `app/services/tutor.py` | Domain-aware prompts/hints, context assembly, guardrails | Defining curriculum ownership (uses resolver) |
 | Lesson HTTP flow | `app/routes/lessons.py` | Authorise lesson, validate request, call resolver/services, return JSON | Defining domain truth independently |
@@ -49,4 +52,4 @@ Later milestones should move logic into `app/domains/<name>/` only when:
 3. A static boundary test records the allowed import direction.
 4. Existing user journeys remain covered by the regression suite.
 
-No speculative domain packages are created in this release.
+M4 followed this path for the two evaluation mappers and the deterministic ML report validator; each has a static boundary test in `tests/test_architecture_boundaries.py`.

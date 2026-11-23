@@ -1603,6 +1603,76 @@ class ProjectMilestone(db.Model):
     )
 
 
+class ProjectEvaluation(db.Model):
+    """Traceable project evaluation evidence (M4).
+
+    One row is one evaluation version for a learner's specialization project.
+    Evidence is deliberately stored as three separate sources — automated
+    checks, rubric feedback and optional human review — so no single generated
+    score can stand in for project quality. Versions are append-only: a new
+    submission writes a new row rather than overwriting an earlier decision.
+    The row never decides mastery on its own; competency linkage additionally
+    requires an approved/published lifecycle stage.
+    """
+
+    __tablename__ = 'project_evaluation'
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    domain = db.Column(db.String(40), nullable=False)
+    project_key = db.Column(db.String(100), nullable=False)
+    version = db.Column(db.Integer, nullable=False)
+    lifecycle_stage = db.Column(db.String(32), nullable=False)
+    automated_checks_json = db.Column(db.Text, nullable=False)
+    rubric_feedback_json = db.Column(db.Text, nullable=False)
+    evidence_refs_json = db.Column(
+        db.Text, nullable=False, default='[]', server_default='[]'
+    )
+    human_review_json = db.Column(db.Text, nullable=True)
+    status = db.Column(
+        db.String(24), nullable=False, default='AWAITING_HUMAN_REVIEW',
+        server_default='AWAITING_HUMAN_REVIEW',
+    )
+    rubric_score = db.Column(db.Integer, nullable=True)
+    created_by_user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True
+    )
+    reviewed_by_user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='SET NULL'), nullable=True
+    )
+    reviewed_at = db.Column(db.DateTime(timezone=True), nullable=True)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+
+    __table_args__ = (
+        db.UniqueConstraint(
+            'user_id', 'domain', 'project_key', 'version',
+            name='uq_project_evaluation_version',
+        ),
+        db.Index(
+            'idx_project_evaluation_owner_key', 'user_id', 'domain',
+            'project_key', 'id',
+        ),
+        db.Index('idx_project_evaluation_status', 'status', 'domain'),
+    )
+
+    def get_automated_checks(self):
+        return json.loads(self.automated_checks_json or '{}')
+
+    def get_rubric_feedback(self):
+        return json.loads(self.rubric_feedback_json or '{}')
+
+    def get_evidence_refs(self):
+        return json.loads(self.evidence_refs_json or '[]')
+
+    def get_human_review(self):
+        return json.loads(self.human_review_json) if self.human_review_json else None
+
+
 class ArenaRecommendationDismissal(db.Model):
     """A learner's dismissal of an Arena recommendation (M3.5).
 

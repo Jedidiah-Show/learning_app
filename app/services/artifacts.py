@@ -20,7 +20,7 @@ from app.models import ProjectArtifact, utcnow
 from app.storage import LocalStorage, StorageError, get_storage
 
 
-PROJECT_TYPES = frozenset({'course', 'ml', 'execution'})
+PROJECT_TYPES = frozenset({'course', 'ai', 'ml', 'execution'})
 ARTIFACT_TYPES = frozenset({
     'source', 'dataset', 'plot', 'model', 'report', 'notebook', 'output',
 })
