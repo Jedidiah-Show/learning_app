@@ -631,3 +631,22 @@ records untouched.
 - Local `data/learning_app.db` is a legacy sandbox artifact (4 tables,
   no learner data); production databases are Neon Postgres — drills against
   Neon require the manual `db-migrate.yml` workflow.
+
+## Appendix (2026-11-23): pre-push head and drift reconciliation
+
+- Current single head: **`m7n8o9p1q2r3`**, descending from M5 head
+  `k6l7m8n9o0p1`. Run `flask db heads` with the direct Neon URL and require
+  exactly this revision before `flask db upgrade` and `flask db check`.
+- The untracked draft `1a7665109d7c` was archived, unapplied, at
+  `migrations/archive/1a7665109d7c_drop_pathway_destination_column.py.disabled`;
+  `course_plan.pathway_destination` is intentionally retained.
+- `m7n8o9p1q2r3` adds only model-declared objects: the Shared Foundations
+  progress table, missing indexes, the app-config index names and the skill
+  verification foreign key. It also corrects the legacy M5 heartbeat index
+  name where necessary.
+- Fresh throwaway SQLite `upgrade head`, `flask db check` (“No new upgrade
+  operations detected.”), downgrade to `k6l7m8n9o0p1` and re-upgrade all exited
+  0. Evidence: `/tmp/opencode/migration_drift_reconciliation.txt`.
+- Earlier appendices record the heads and drift of their own releases. This
+  appendix is authoritative for the current deployment gate; see
+  `docs/MIGRATION_HEAD_RECONCILIATION.md`.

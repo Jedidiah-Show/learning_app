@@ -81,7 +81,7 @@ app/ml_pathway.py       ML pathway authoring
 | Component | Actual state |
 |---|---|
 | SQLAlchemy models | One `app/models.py` module; 67 mapped classes after M5 added `ServiceHeartbeat`. |
-| Alembic | 65 tracked revision files after M5, plus one pre-existing untracked migration; multiple heads remain. The tracked head is `k6l7m8n9o0p1`, descending from M4 head `j5k6l7m8n9o0`. See `M0_BASELINE_TEST_REPORT.md` and `M5_TEST_REPORT.md`. |
+| Alembic | 66 tracked revision files after the pre-push reconciliation. One head: `m7n8o9p1q2r3`, descending from M5 head `k6l7m8n9o0p1`; `flask db check` reports no pending operations. The conflicting `1a7665109d7c` draft is archived, unapplied, in `migrations/archive/`. See `docs/MIGRATION_HEAD_RECONCILIATION.md`. |
 | Operational telemetry | `app/core/observability.py` provides JSON logs, request correlation and bounded metrics; `app/services/operations.py` builds the admin-only operations snapshot; `ServiceHeartbeat` records non-web process availability. |
 | Backup/recovery | `scripts/backup_database.py` and `scripts/restore_database.py` use the existing database URL with explicit dry-run and confirmation gates; runbooks live in `docs/`. |
 | AI providers | `gemini.py`, `openrouter.py` retain wire logic; `app/ai/` exposes one provider-neutral gateway, task routing and metadata-only telemetry. |

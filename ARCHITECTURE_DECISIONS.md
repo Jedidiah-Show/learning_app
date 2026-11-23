@@ -51,11 +51,11 @@
 **Evidence:** Documentation alone does not prevent core → route or domain → HTTP regressions.  
 **Consequence:** Boundary violations fail CI in seconds rather than during manual review.
 
-## ADR-009 — Record migration drift rather than hide it
+## ADR-009 — Archive conflicting migrations and reconcile drift explicitly
 
-**Decision:** Leave the untracked `1a7665109d7c_drop_pathway_destination_column.py` migration untouched and document the two-head/drift finding.  
-**Evidence:** It is existing user work that conflicts with the still-declared `CoursePlan.pathway_destination` column used for display/fallback. Silently applying or deleting it would be unsafe.  
-**Consequence:** Migration reconciliation is an explicit follow-up with recorded evidence.
+**Decision:** Archive the untracked, unapplied `1a7665109d7c_drop_pathway_destination_column.py` draft outside `migrations/versions/` and add one additive reconciliation head `m7n8o9p1q2r3` for model/migration drift.
+**Evidence:** The draft would drop `CoursePlan.pathway_destination`, which is still declared in the model, read by `destination_for()`/templates and checked by `REQUIRED_COLUMNS`. Applying it would lose data and break readiness; hiding it as a live Alembic head blocked `upgrade head`.
+**Consequence:** `flask db heads` reports a single head and `flask db check` reports no pending operations. The draft content is preserved verbatim with a `.disabled` suffix. This supersedes the earlier decision to leave the draft untouched, which was appropriate only while reconciliation was unauthorized. See `docs/MIGRATION_HEAD_RECONCILIATION.md`.
 
 ## ADR-010 — Wrap existing providers instead of rewriting them
 

@@ -87,3 +87,16 @@ Result: **2 passed in 1.2m**. Evidence: `/tmp/opencode/m5_browser_final.txt`.
 ## 7. Repository hygiene
 
 Only assistant-created or assistant-updated implementation, test and evidence files are committed. The user-owned `goals.md`, `implementation_plan.md`, `milestones.md`, and the pre-existing untracked `migrations/versions/1a7665109d7c_drop_pathway_destination_column.py` were left untouched.
+
+## 8. Post-M5 reconciliation addendum
+
+The statements above describe the M5 commit `ce934ab` and remain historical evidence. A subsequent, explicitly authorized pre-push change resolves the recorded debt:
+
+- the untracked `1a7665109d7c` draft was **archived, not applied**, at `migrations/archive/1a7665109d7c_drop_pathway_destination_column.py.disabled`;
+- the heartbeat migration index name was corrected to `ix_service_heartbeat_last_seen_at`, and `/tmp/opencode/m5_migration_up_down.txt` was regenerated for the final file;
+- the new head is **`m7n8o9p1q2r3`**, descending from `k6l7m8n9o0p1`;
+- `flask db check` now reports **“No new upgrade operations detected.”**;
+- fresh upgrade, downgrade to `k6l7m8n9o0p1` and re-upgrade all exited 0. Evidence: `/tmp/opencode/migration_drift_reconciliation.txt`;
+- `tests/test_migration_graph.py` guards the single head and archived draft.
+
+Re-verification for the follow-up: targeted **24 passed in 50.80s** (`/tmp/opencode/reconciliation_targeted.txt`), full Python suite **761 passed, 2 warnings in 2425.98s** (`/tmp/opencode/reconciliation_full_final.txt`), browser **2 passed in 1.3m** (`/tmp/opencode/reconciliation_browser_final.txt`). No push or production deployment is claimed by this addendum.

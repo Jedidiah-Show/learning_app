@@ -67,4 +67,4 @@ The automated regression suite performs the same round trip against a temporary 
 
 ## 5. Relationship to migration workflow
 
-`MIGRATION.md` remains authoritative for schema changes. Backups are a prerequisite, not a replacement for the guarded migration workflow. Multiple Alembic heads caused by the pre-existing untracked `1a7665109d7c` migration are recorded debt; resolve them in a separate, explicitly authorized change.
+`MIGRATION.md` remains authoritative for schema changes. Backups are a prerequisite, not a replacement for the guarded migration workflow. The Alembic graph now has one head, `m7n8o9p1q2r3`, and `flask db check` reports no pending operations; the conflicting `1a7665109d7c` draft is archived and unapplied. See `docs/MIGRATION_HEAD_RECONCILIATION.md` for the pre-deploy gate.

@@ -33,10 +33,10 @@ def upgrade():
         sa.PrimaryKeyConstraint('service'),
     )
     op.create_index(
-        'idx_service_heartbeat_last_seen', 'service_heartbeat', ['last_seen_at']
+        'ix_service_heartbeat_last_seen_at', 'service_heartbeat', ['last_seen_at']
     )
 
 
 def downgrade():
-    op.drop_index('idx_service_heartbeat_last_seen', table_name='service_heartbeat')
+    op.drop_index('ix_service_heartbeat_last_seen_at', table_name='service_heartbeat')
     op.drop_table('service_heartbeat')

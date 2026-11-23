@@ -386,6 +386,7 @@ class UserSkillProgress(db.Model):
         ),
         db.Index('idx_skillprogress_user', 'user_id'),
         db.Index('idx_skillprogress_skill', 'skill_id'),
+        db.Index('idx_skillprogress_verification', 'verification_status'),
     )
 
 
@@ -968,7 +969,8 @@ class LearnerPathwayEnrollment(db.Model):
         db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
     )
     pathway_id = db.Column(
-        db.String(80), db.ForeignKey('learning_pathway.id'), nullable=False
+        db.String(80), db.ForeignKey('learning_pathway.id', ondelete='CASCADE'),
+        nullable=False,
     )
     status = db.Column(
         db.String(20), nullable=False, server_default='ENROLLED')

@@ -119,7 +119,7 @@ See `M4_PROJECT_STUDIO_EVIDENCE.md` and `M4_TEST_REPORT.md` for implementation a
 
 ## 11. M5 addendum — current state
 
-After M5, the same inventory checks report **22 blueprints, 210 URL rules, 67 mapped models** and the registered `run-scheduled-jobs` command. The new additive head is `k6l7m8n9o0p1`, descending from M4 head `j5k6l7m8n9o0`.
+After M5, the same inventory checks report **22 blueprints, 210 URL rules, 67 mapped models** and the registered `run-scheduled-jobs` command. The M5 additive head was `k6l7m8n9o0p1`, descending from M4 head `j5k6l7m8n9o0`; the current reconciled head is **`m7n8o9p1q2r3`**.
 
 | Observation | Current evidence |
 |---|---|
@@ -128,5 +128,7 @@ After M5, the same inventory checks report **22 blueprints, 210 URL rules, 67 ma
 | Reliability reuses existing recovery | AI queue leases/retries and judge stale-submission reclaim are unchanged; backup/restore scripts add a tested data-recovery path. |
 | Deployment automation is explicit | `render.yaml` declares web, AI worker and scheduler; judge submissions remain disabled and no judge-worker service is declared. Dependabot monitors pip/npm/actions weekly. |
 | Operational governance documented | Release checklist, incident response, scaling/cost review and doc ownership live in `docs/OPERATIONS_RUNBOOK.md`; restore drill in `docs/BACKUP_AND_RECOVERY.md`. |
+
+A pre-push reconciliation follow-up archives the conflicting unapplied `1a7665109d7c` draft and adds `m7n8o9p1q2r3` to reconcile recorded model/migration drift. The current graph has one head and `flask db check` reports no pending operations. See `docs/MIGRATION_HEAD_RECONCILIATION.md`; the milestone reports remain historical evidence.
 
 See `M5_PRODUCTION_READINESS.md` and `M5_TEST_REPORT.md` for implementation and verification detail.

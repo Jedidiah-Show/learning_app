@@ -48,7 +48,7 @@ Database pooling is tuned in `render.yaml` (pool size 5, overflow 10, recycle 30
 
 - Migrations remain a guarded manual workflow; `render.yaml` deliberately has no `preDeployCommand` (see `MIGRATION.md`), so the additive M2 and M3 migrations must be applied before the AI or judge workers are started.
 - `MIGRATION.md` and `docs/RELEASE_PROCESS.md` describe the Neon pooled/direct connection split and manual migration procedure.
-- `flask db heads` reports multiple heads: untracked `1a7665109d7c`, the pre-M2 tracked head `g1a2b3c4d5e6`, M2 head `h2i3j4k5l6m7`, and M3 head `i4j5k6l7m8n9` on that tracked lineage. `flask db check` still detects pre-existing model/migration drift; see `M0_BASELINE_TEST_REPORT.md` and `M2_QUEUE_AND_DEPLOYMENT.md`. Heads must be reconciled before applying schema changes to a managed environment.
+- `flask db heads` reports one head: **`m7n8o9p1q2r3`**, descending from the M5 head `k6l7m8n9o0p1`. The conflicting untracked `1a7665109d7c` draft was archived without being applied, and `flask db check` reports no pending operations. Historical multi-head/drift findings remain in the milestone reports; see `docs/MIGRATION_HEAD_RECONCILIATION.md` for the current state and pre-deploy gate.
 - Release packaging uses `scripts/export_release_source.sh`, which exports committed source only, scans paths and content, writes a manifest and SHA-256 checksum, and fails closed.
 
 ## 6. Production safety checks in code

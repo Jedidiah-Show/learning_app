@@ -1,0 +1,34 @@
+"""Drop the deprecated pathway_destination column from course_plan.
+
+The single-destination pathway_destination column on CoursePlan has been
+replaced by LearnerPathwayEnrollment rows, which support multiple concurrent
+pathway enrolments per learner (AI Engineering, Machine Learning, Shared
+Foundations, or any combination).  All application logic now reads enrolments
+via destination_for() / active_pathway_enrolments() instead of falling back
+to this column.
+
+Revision ID: 1a7665109d7c
+Revises: 8a5428b85d34
+Create Date: 2026-11-16
+"""
+
+from alembic import op
+
+
+# revision identifiers, used by Alembic.
+revision = '1a7665109d7c'
+down_revision = '8a5428b85d34'
+branch_labels = None
+depends_on = None
+
+
+def upgrade():
+    op.drop_column('course_plan', 'pathway_destination')
+
+
+def downgrade():
+    import sqlalchemy as sa
+    op.add_column(
+        'course_plan',
+        sa.Column('pathway_destination', sa.String(length=16), nullable=True),
+    )

@@ -90,4 +90,4 @@ Scale only the component whose signal is saturated. Do not enable GPU profiles o
 - Live Docker, GPU scheduling, MLflow server connectivity and judge-worker deployment are not verified in this environment.
 - In-process request metrics are per web process and bounded; they are not a cluster-wide aggregate.
 - Alert delivery is not configured; administrator polling of `/api/admin/operations` is the supported view.
-- The pre-existing untracked `1a7665109d7c` migration still creates multiple Alembic heads. It is recorded debt and must not be staged by milestone commits.
+- The reconciled Alembic head is `m7n8o9p1q2r3`; the conflicting `1a7665109d7c` draft is archived and unapplied. Verify `flask db current`, `flask db heads` and `flask db check` with the direct Neon URL before deploying. See `docs/MIGRATION_HEAD_RECONCILIATION.md`.

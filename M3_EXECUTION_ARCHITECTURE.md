@@ -122,7 +122,7 @@ New additive head `i4j5k6l7m8n9` descends from the committed M2 head `h2i3j4k5l6
 - MLflow tracking columns and indexes on `ml_project_experiment`;
 - `project_artifact` and `judge_worker_heartbeat` tables.
 
-The pre-existing untracked migration `1a7665109d7c` remains a separate local head. Apply migrations manually with the guarded workflow in `MIGRATION.md`; do not add an automatic deployment command on Render.
+The conflicting `1a7665109d7c` draft is now archived, unapplied, in `migrations/archive/`; the reconciled head is `m7n8o9p1q2r3`. Apply migrations manually with the guarded workflow in `MIGRATION.md`; do not add an automatic deployment command on Render.
 
 ## 8. M3 completion status
 
