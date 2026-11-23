@@ -352,6 +352,22 @@ def configure_app(app, config_override=None):
         'AI_PROMPT_VERSION_OVERRIDES'
     )
 
+    # M5: operational thresholds. Defaults are conservative and can be tuned
+    # per deployment without a code change; no external monitoring is assumed.
+    app.config['LOG_FORMAT'] = os.environ.get('LOG_FORMAT', '').strip().lower()
+    for name, default in (
+        ('HEARTBEAT_STALE_SECONDS', 300),
+        ('AI_STALE_LEASE_SECONDS', 600),
+        ('AI_QUEUE_ALERT_DEPTH', 50),
+        ('AI_QUEUE_ALERT_AGE_SECONDS', 600),
+        ('SCHEDULER_INTERVAL_SECONDS', 300),
+    ):
+        try:
+            value = int(os.environ.get(name, str(default)))
+        except (TypeError, ValueError):
+            value = default
+        app.config[name] = value if value > 0 else default
+
     app.config['APP_CONFIG'] = load_config()
     if config_override is not None:
         if not isinstance(config_override, dict):

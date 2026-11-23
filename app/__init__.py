@@ -18,6 +18,9 @@ from app.core.config import (
 from app.core.errors import register_error_handlers
 from app.core.extensions import db, login_manager, migrate
 from app.core.logging import configure_logging
+from app.core.observability import (
+    register_database_observability, register_observability_hooks,
+)
 from app.core.responses import register_response_hooks
 from app.core.security import (
     is_api_path as _is_api_path,
@@ -213,6 +216,8 @@ def _register_blueprints(app):
     register_ai_job_cli(app)
     from app.services.judge_worker import register_judge_worker_cli
     register_judge_worker_cli(app)
+    from app.workers.scheduler import register_scheduler_cli
+    register_scheduler_cli(app)
     app.register_blueprint(integrations_bp, url_prefix='/api/integrations')
     app.register_blueprint(credentials_bp)
     app.register_blueprint(ml_specialization_bp)
@@ -254,6 +259,8 @@ def create_app(config_override=None):
     register_security_hooks(app)
     register_error_handlers(app)
     register_response_hooks(app)
+    register_observability_hooks(app)
+    register_database_observability(app)
 
     app.jinja_env.filters['hours_range'] = hours_range
     from app.videos import format_duration

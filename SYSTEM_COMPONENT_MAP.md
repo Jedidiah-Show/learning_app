@@ -80,8 +80,10 @@ app/ml_pathway.py       ML pathway authoring
 
 | Component | Actual state |
 |---|---|
-| SQLAlchemy models | One `app/models.py` module; 66 mapped classes after M4 added `ProjectEvaluation`. |
-| Alembic | 64 tracked revision files after M4, plus one pre-existing untracked migration; multiple heads remain. The tracked head is `j5k6l7m8n9o0`, descending from `i4j5k6l7m8n9`. See `M0_BASELINE_TEST_REPORT.md` and `M4_TEST_REPORT.md`. |
+| SQLAlchemy models | One `app/models.py` module; 67 mapped classes after M5 added `ServiceHeartbeat`. |
+| Alembic | 65 tracked revision files after M5, plus one pre-existing untracked migration; multiple heads remain. The tracked head is `k6l7m8n9o0p1`, descending from M4 head `j5k6l7m8n9o0`. See `M0_BASELINE_TEST_REPORT.md` and `M5_TEST_REPORT.md`. |
+| Operational telemetry | `app/core/observability.py` provides JSON logs, request correlation and bounded metrics; `app/services/operations.py` builds the admin-only operations snapshot; `ServiceHeartbeat` records non-web process availability. |
+| Backup/recovery | `scripts/backup_database.py` and `scripts/restore_database.py` use the existing database URL with explicit dry-run and confirmation gates; runbooks live in `docs/`. |
 | AI providers | `gemini.py`, `openrouter.py` retain wire logic; `app/ai/` exposes one provider-neutral gateway, task routing and metadata-only telemetry. |
 | AI background jobs | `AIBackgroundJob` extended with lease/retry fields; producer in `app/services/ai_jobs.py`, worker in `app/workers/`, HTTP API at `/api/ai/jobs`, and a declared `ruach-ai-worker` Render service. |
 | Judge | `services/judge.py`, `services/judge_worker.py`, `sandbox/Dockerfile`; worker not deployed; judge submissions disabled in production config. |

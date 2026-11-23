@@ -13,6 +13,7 @@
 | AI evaluation evidence | `app/domains/ai_engineering/evaluation.py` | Collect AI-only automated checks, rubric feedback and evidence refs | ML records, HTTP parsing, final verdicts |
 | ML evaluation evidence | `app/domains/machine_learning/evaluation.py`, `app/domains/machine_learning/report.py` | Collect ML-only evidence and validate deterministic report contracts | AI records, HTTP parsing, final verdicts |
 | Project evaluation | `app/services/project_evaluation.py`, `app/services/project_portfolio.py` | Validate evidence, apply human review, link competencies, present portfolio evidence | Domain-specific record interpretation |
+| Operational telemetry | `app/core/observability.py`, `app/services/operations.py`, `app/workers/scheduler.py` | Request correlation, bounded metrics, worker heartbeats, alert conditions and maintenance scheduling | External alert delivery, new queues, GPU scheduling |
 | Pathway scope | `app/pathway_scope.py` | Active enrolments, catalog assembly, foundation evidence, dashboard focus | Tutor syllabus selection when a lesson exists |
 | Tutor | `app/services/tutor.py` | Domain-aware prompts/hints, context assembly, guardrails | Defining curriculum ownership (uses resolver) |
 | Lesson HTTP flow | `app/routes/lessons.py` | Authorise lesson, validate request, call resolver/services, return JSON | Defining domain truth independently |
@@ -52,4 +53,4 @@ Later milestones should move logic into `app/domains/<name>/` only when:
 3. A static boundary test records the allowed import direction.
 4. Existing user journeys remain covered by the regression suite.
 
-M4 followed this path for the two evaluation mappers and the deterministic ML report validator; each has a static boundary test in `tests/test_architecture_boundaries.py`.
+M4 followed this path for the two evaluation mappers and the deterministic ML report validator; each has a static boundary test in `tests/test_architecture_boundaries.py`. M5 kept operational telemetry in `app.core` / `app.services` and added `app.core.observability` to the same static boundary guard.

@@ -872,6 +872,31 @@ class JudgeWorkerHeartbeat(db.Model):
     last_seen_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
 
 
+class ServiceHeartbeat(db.Model):
+    """Latest availability report from a non-web operational process (M5).
+
+    The judge worker keeps its own specialised heartbeat; this generic row
+    covers the AI worker, scheduler and any future compute worker without
+    introducing a second queue or an external broker. ``detail_json`` holds
+    metadata only — no learner content or credentials.
+    """
+
+    __tablename__ = 'service_heartbeat'
+    service = db.Column(db.String(40), primary_key=True)
+    instance_id = db.Column(db.String(120), nullable=False)
+    status = db.Column(
+        db.String(20), nullable=False, default='online', server_default='online'
+    )
+    detail_json = db.Column(db.Text)
+    started_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    last_seen_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utcnow, index=True
+    )
+
+    def get_detail(self):
+        return json.loads(self.detail_json or '{}')
+
+
 class CoursePlan(db.Model):
     """Learner-selected required capstone and independent portfolio project."""
     __tablename__ = 'course_plan'

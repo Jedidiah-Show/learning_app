@@ -59,6 +59,15 @@ def execution_health():
     })
 
 
+@admin_bp.route('/operations', methods=['GET'])
+@json_admin_required
+def operations_snapshot():
+    """Report M5 queue depth, worker availability and derived alert conditions."""
+    from app.services.operations import operations_snapshot as build_snapshot
+
+    return jsonify(build_snapshot(current_app._get_current_object()))
+
+
 @admin_bp.route('/schedule', methods=['GET'])
 @login_required
 def get_schedule():

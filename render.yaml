@@ -63,6 +63,19 @@ services:
       - key: DB_APPLICATION_NAME
         value: ruach-learning-app
 
+      # M5 operational telemetry. JSON logs keep request/correlation fields
+      # machine-readable; thresholds tune the in-process alert evaluation.
+      - key: LOG_FORMAT
+        value: json
+      - key: SLOW_QUERY_MS
+        value: "500"
+      - key: HEARTBEAT_STALE_SECONDS
+        value: "300"
+      - key: AI_QUEUE_ALERT_DEPTH
+        value: "50"
+      - key: AI_QUEUE_ALERT_AGE_SECONDS
+        value: "600"
+
       # AI providers.
       - key: GEMINI_API_KEY
         sync: false
@@ -225,4 +238,49 @@ services:
       - key: AI_TASK_ROUTES
         sync: false
       - key: AI_PROMPT_VERSION_OVERRIDES
+        sync: false
+      - key: LOG_FORMAT
+        value: json
+      - key: HEARTBEAT_STALE_SECONDS
+        value: "300"
+      - key: AI_STALE_LEASE_SECONDS
+        value: "600"
+      - key: SLOW_QUERY_MS
+        value: "500"
+      - key: WORKER_INSTANCE_ID
+        sync: false
+
+  # M5: scheduled maintenance process. It reuses the existing durable queue
+  # and leaderboard CLI; it is not a second job system. Judge submissions stay
+  # disabled in the web service and no judge-worker service is declared here.
+  - type: worker
+    name: ruach-scheduler
+    runtime: python
+    plan: free
+    branch: main
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.workers.scheduler
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.5"
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        sync: false
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: LOG_FORMAT
+        value: json
+      - key: HEARTBEAT_STALE_SECONDS
+        value: "300"
+      - key: SCHEDULER_INTERVAL_SECONDS
+        value: "300"
+      - key: SCHEDULED_TASKS
+        value: ai-queue-reclaim
+      - key: DB_APPLICATION_NAME
+        value: ruach-scheduler
+      - key: WORKER_INSTANCE_ID
         sync: false

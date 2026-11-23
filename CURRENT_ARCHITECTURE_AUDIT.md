@@ -116,3 +116,17 @@ After M4, the same inventory checks report **22 blueprints, 209 URL rules, 66 ma
 | Portfolio reuses verified evidence | Verified project evaluations feed the existing portfolio and public-showcase whitelist. |
 
 See `M4_PROJECT_STUDIO_EVIDENCE.md` and `M4_TEST_REPORT.md` for implementation and verification detail.
+
+## 11. M5 addendum — current state
+
+After M5, the same inventory checks report **22 blueprints, 210 URL rules, 67 mapped models** and the registered `run-scheduled-jobs` command. The new additive head is `k6l7m8n9o0p1`, descending from M4 head `j5k6l7m8n9o0`.
+
+| Observation | Current evidence |
+|---|---|
+| Modular monolith retained | One web app, one AI worker, one scheduler and the existing external judge-worker design. No broker or second queue was added. |
+| Observability is code-verifiable | JSON logs, `X-Request-ID` correlation, bounded latency/query metrics, generic worker heartbeats and an admin-only `/api/admin/operations` snapshot with derived alerts. |
+| Reliability reuses existing recovery | AI queue leases/retries and judge stale-submission reclaim are unchanged; backup/restore scripts add a tested data-recovery path. |
+| Deployment automation is explicit | `render.yaml` declares web, AI worker and scheduler; judge submissions remain disabled and no judge-worker service is declared. Dependabot monitors pip/npm/actions weekly. |
+| Operational governance documented | Release checklist, incident response, scaling/cost review and doc ownership live in `docs/OPERATIONS_RUNBOOK.md`; restore drill in `docs/BACKUP_AND_RECOVERY.md`. |
+
+See `M5_PRODUCTION_READINESS.md` and `M5_TEST_REPORT.md` for implementation and verification detail.

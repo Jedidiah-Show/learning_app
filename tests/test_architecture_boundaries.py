@@ -52,6 +52,7 @@ class TestCoreBoundary:
         'app.core.config',
         'app.core.extensions',
         'app.core.logging',
+        'app.core.observability',
         'app.core.security',
         'app.core.errors',
         'app.core.responses',
@@ -158,3 +159,4 @@ class TestTutorResolverOwnership:
         assert 'process-ai-jobs' in app.cli.commands
         assert 'process-submissions' in app.cli.commands
         assert 'judge-worker-health' in app.cli.commands
+        assert 'run-scheduled-jobs' in app.cli.commands

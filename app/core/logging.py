@@ -20,9 +20,13 @@ def configure_logging(app):
     app.logger.setLevel(level)
     if getattr(app.logger, '_ruach_logging_configured', False):
         return
-    formatter = logging.Formatter(
-        '%(asctime)s %(levelname)s ruach app=%(name)s %(message)s'
-    )
+    if os.environ.get('LOG_FORMAT', '').strip().lower() == 'json':
+        from app.core.observability import JsonFormatter
+        formatter = JsonFormatter()
+    else:
+        formatter = logging.Formatter(
+            '%(asctime)s %(levelname)s ruach app=%(name)s %(message)s'
+        )
     if app.logger.handlers:
         # Flask installs a default handler; restyle it rather than emitting
         # every message twice.

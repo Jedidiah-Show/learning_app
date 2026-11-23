@@ -22,8 +22,10 @@ logger = logging.getLogger(__name__)
 STALE_LEASE_SECONDS = 600
 LEASE_RENEWAL_SECONDS = 30
 RECLAIM_INTERVAL_SECONDS = 30
+HEARTBEAT_INTERVAL_SECONDS = 60
 RETRY_BACKOFF_SECONDS = 15
 MAX_RETRY_BACKOFF_SECONDS = 300
+_LAST_HEARTBEAT: dict[int, float] = {}
 
 ACTIVE_STATUSES = frozenset({'queued', 'running'})
 TERMINAL_STATUSES = frozenset({'succeeded', 'failed', 'dead_letter', 'cancelled'})
@@ -223,19 +225,45 @@ def process_one_job(app) -> bool:
     return True
 
 
+def _record_worker_heartbeat(app, status: str = 'online', processed: int = 0) -> None:
+    """Publish AI worker availability; telemetry must never stop the worker."""
+    now = time.monotonic()
+    key = id(app)
+    if (
+        status == 'online'
+        and now - _LAST_HEARTBEAT.get(key, 0.0) < HEARTBEAT_INTERVAL_SECONDS
+    ):
+        return
+    try:
+        from app.services.operations import record_heartbeat
+        record_heartbeat(
+            'ai-worker', status=status,
+            detail={'processed_this_pass': int(processed)},
+        )
+        _LAST_HEARTBEAT[key] = now
+    except Exception as error:
+        logger.warning('Could not record AI worker heartbeat: %s', error)
+
+
 def run_worker(app, poll_seconds: float = 1.0, once: bool = False) -> bool:
     """Run the worker loop; ``once`` processes at most one job."""
     reclaim_stale_jobs(app)
+    _record_worker_heartbeat(app, status='starting')
     if once:
-        return process_one_job(app)
+        processed = process_one_job(app)
+        _record_worker_heartbeat(app, processed=int(processed))
+        return processed
     last_reclaim = time.monotonic()
     while True:
         try:
             if time.monotonic() - last_reclaim >= RECLAIM_INTERVAL_SECONDS:
                 reclaim_stale_jobs(app)
                 last_reclaim = time.monotonic()
-            if not process_one_job(app):
+            processed = process_one_job(app)
+            _record_worker_heartbeat(app, processed=int(processed))
+            if not processed:
                 time.sleep(max(0.1, poll_seconds))
         except Exception:
             logger.exception('AI worker iteration failed')
+            _record_worker_heartbeat(app, status='degraded')
             time.sleep(max(0.1, poll_seconds))
