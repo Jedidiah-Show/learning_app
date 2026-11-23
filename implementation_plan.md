@@ -1,1444 +1,1647 @@
-# RUACH LMS — Learning Intelligence & Engineering Excellence
-## Technical Implementation Plan
+# RUACH LMS — Architecture Evolution Implementation Plan
 
-**Release:** 1.1
-**Status:** Proposed
-**Baseline:** Parallel Pathways 1.0.0 and subsequent source changes through `68b3125`
-
----
-
-# 1. Implementation Strategy
-
-The implementation must prioritize architectural integrity before feature expansion.
-
-The team should not build Learning Intelligence on top of inconsistent curriculum, progress or assessment data.
-
-The implementation sequence is:
-
-1. Secure the application and release process.
-2. Consolidate the curriculum architecture.
-3. Correct project and assessment contracts.
-4. Strengthen competency verification.
-5. Improve AI tutoring.
-6. Introduce concept-level learning intelligence.
-7. Complete performance, accessibility and release validation.
-
-Existing working features must be preserved.
-
-Do not rewrite functioning subsystems simply to achieve architectural uniformity. Refactor only where there is a measurable correctness, maintainability, security or performance benefit.
+**Document:** `implementation_plan.md`  
+**Project:** RUACH LMS  
+**Status:** Proposed  
+**Implementation strategy:** Incremental refactoring, domain-driven organization, background processing, and progressive engineering capability development.
 
 ---
 
-# 2. Technical Baseline and Existing Components
+# 1. Implementation Philosophy
 
-The team should first inventory the existing implementation.
+The implementation must begin with the actual codebase, not an idealized replacement architecture.
 
-Important existing components include:
+RUACH already has substantial functionality:
 
-| Component | Existing responsibility |
+- Flask application factory.
+- PostgreSQL and SQLAlchemy.
+- Existing authentication and authorization.
+- AI and ML pathway separation.
+- Gemini and OpenRouter integrations.
+- AI Tutor.
+- Practice Arena.
+- CodeMirror and Pyodide.
+- Docker-based judge implementation.
+- Separate judge worker code.
+- Project and skill-tracking models.
+- Credentials and learner progress.
+- Existing automated tests.
+
+These components must be evaluated and reused where appropriate.
+
+The implementation must follow five principles:
+
+1. **Inspect before changing:** Understand existing implementations before introducing replacements.
+2. **Refactor incrementally:** Avoid large rewrites that create unnecessary regression risks.
+3. **Separate responsibilities:** Keep routes, business logic, infrastructure, and execution responsibilities distinct.
+4. **Build reusable infrastructure:** Avoid implementing separate AI gateways, queues, storage services, or project systems for each feature.
+5. **Prove functionality:** Every important implementation must have tests and demonstrable acceptance criteria.
+
+# 2. Initial Technical Decisions
+
+The team must agree on these decisions before substantial implementation begins.
+
+| Area | Decision |
 |---|---|
-| `app/models.py` | Database models |
-| `app/pathway_scope.py` | Pathway enrolment and destination resolution |
-| `app/curriculum.py` | Legacy curriculum access |
-| `app/ai_pathway.py` | AI pathway definitions |
-| `app/ml_pathway.py` | ML pathway definitions |
-| `app/routes/passport.py` | Skill Passport |
-| `app/routes/practice_arena.py` | Practice Arena |
-| `app/routes/ml_specialization.py` | ML lessons and projects |
-| `app/services/tutor.py` | AI Tutor |
-| `app/routes/projects.py` | Project and portfolio flows |
-| `app/data/engineering_labs.json` | Engineering lab definitions |
+| Main backend | Retain Flask |
+| Architecture | Modular monolith |
+| Frontend | Retain Jinja2 and Tailwind |
+| Primary database | PostgreSQL |
+| ORM | Flask-SQLAlchemy |
+| Migrations | Alembic / Flask-Migrate |
+| Cache | Redis |
+| AI providers | Retain Gemini and OpenRouter |
+| AI gateway | Build a common internal provider interface |
+| Background processing | Select one persistent queue architecture |
+| Lightweight Python execution | Pyodide |
+| Authoritative code execution | Isolated Docker worker |
+| Advanced ML execution | Dedicated compute workers |
+| Experiment tracking | MLflow |
+| AI orchestration | Native Python initially; LangGraph selectively |
+| Vector search | Evaluate pgvector first |
+| Artifact storage | Existing R2/S3-compatible storage |
+| Frontend rewrite | Not required |
+| Kubernetes | Deferred |
 
-Existing curriculum files:
+## 2.1 Background queue decision
 
-- `shared_foundations_curriculum.json`
-- `ai_engineering_curriculum.json`
-- `machine_learning_curriculum.json`
-- `app/data/dynamoai_curriculum.json`
+The existing `AIBackgroundJob` model must be investigated before a queue is selected.
 
-The legacy curriculum must be inventoried before replacement.
+Two viable options:
 
-The team must not assume that the newer manifests already drive every learner-facing route.
+**Option A — Database-backed queue**
+
+Use PostgreSQL as the durable job store.
+
+Advantages:
+- Reuses existing infrastructure.
+- No additional broker dependency.
+- Easier initial integration.
+- Suitable for moderate workloads.
+
+Requirements:
+- Atomic job claiming.
+- Row locking or equivalent concurrency protection.
+- Lease expiration.
+- Retry handling.
+- Idempotency.
+- Worker polling.
+- Dead-letter or permanently failed state.
+
+**Option B — Redis-backed Celery**
+
+Use Redis as the broker and Celery workers for background execution.
+
+Advantages:
+- Mature worker ecosystem.
+- Task routing.
+- Retry support.
+- Scheduling integration.
+- Established operational patterns.
+
+Requirements:
+- Broker configuration.
+- Worker deployment.
+- Task serialization.
+- Retry policy.
+- Monitoring.
+- Durable result and job-status persistence where required.
+
+**Recommendation:** Start with the existing database-backed job model if it can meet the required reliability and concurrency guarantees. Choose Celery if the existing implementation is unsuitable or workload volume and task complexity justify it.
+
+Do not implement a custom database queue and Celery simultaneously.
+
+# 3. Phase 0 — Repository Baseline and Security Hygiene
+
+**Priority:** P0  
+**Purpose:** Establish a safe, reproducible foundation.
+
+## Task 0.1 — Reproduce the development environment
+
+1. Review `requirements.txt` or the existing dependency-management files.
+2. Verify Python versions supported by development and CI.
+3. Create a clean virtual environment.
+4. Install the project dependencies.
+5. Configure test environment variables.
+6. Provision or configure a test database.
+7. Run application startup checks.
+8. Run the complete pytest suite.
+9. Run Playwright tests.
+10. Record all failures.
+
+The earlier source inspection could not execute pytest because Flask was unavailable in the inspection runtime. This must not be interpreted as a confirmed project test failure. The team needs a properly provisioned test environment to establish the actual baseline.
+
+## Task 0.2 — Establish regression coverage
+
+Identify and test these critical workflows:
+
+- User registration.
+- Login and logout.
+- Google OAuth.
+- Course and lesson navigation.
+- AI pathway enrollment.
+- ML pathway enrollment.
+- Pathway switching.
+- Lesson completion.
+- Quiz submission.
+- Practice Arena submission.
+- Project creation.
+- Project submission.
+- Tutor interaction.
+- Credential issuance.
+- Administrative operations.
+
+Record existing behaviour before refactoring.
+
+## Task 0.3 — Repair release packaging
+
+Review:
+
+- `.gitignore`
+- `scripts/clean_export.sh`
+- GitHub Actions workflows.
+- Release packaging process.
+
+Update the export exclusions to cover:
+
+```text
+.venv/
+venv/
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+node_modules/
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*secret*.json
+client_secret*.json
+credentials*.json
+token.json
+*.db
+*.sqlite
+*.sqlite3
+uploads/
+instance/
+coverage/
+playwright-report/
+test-results/
+```
+
+The exact exclusions must be adjusted to avoid removing legitimate tracked assets or required fixtures.
+
+Add a validation step that inspects the contents of the generated archive before release.
+
+Do not assume `.gitignore` protects files from a separate ZIP or export script.
+
+## Task 0.4 — Secret scanning
+
+Introduce an automated secret-scanning workflow.
+
+It should:
+- Scan tracked files.
+- Scan release archives.
+- Detect common API key and private-key patterns.
+- Detect OAuth credential files.
+- Fail the release process when prohibited files are present.
+- Provide a documented process for handling detected secrets.
+
+Review Git history for previously committed credentials. Rotate credentials if they were exposed to untrusted parties.
+
+## Task 0.5 — Deployment reality check
+
+Inspect the current deployment configuration.
+
+Specifically:
+- Verify the Render web service configuration.
+- Verify the Vercel configuration and intended role.
+- Confirm the production database.
+- Confirm Redis connectivity.
+- Confirm R2/S3 connectivity.
+- Determine whether the judge worker is deployed.
+- Verify whether Docker execution is available to the judge worker.
+- Confirm whether `JUDGE_SUBMISSIONS_ENABLED=false` is still the intended production setting.
+
+Do not advertise Docker judging as operational until an actual worker deployment has been validated.
+
+## Phase 0 completion gate
+
+The team must have:
+- A reproducible local setup.
+- A test baseline.
+- A documented deployment configuration.
+- A safe release export.
+- Secret scanning.
+- A list of known architectural risks.
 
 ---
 
-# 3. Phase 0 — Security and Release Preparation
+# 4. Phase 1 — Core Architecture Consolidation
 
-**Milestone:** M0
-**Priority:** Critical
+**Priority:** P0  
+**Purpose:** Establish clear application boundaries without rewriting the application.
 
-## 3.1 Source Archive Generation
+## Task 1.1 — Refine application initialization
+
+Inspect `app/__init__.py`.
+
+Its current responsibilities should be distributed where appropriate.
+
+The application factory should primarily:
+
+1. Load configuration.
+2. Initialize extensions.
+3. Register blueprints.
+4. Register error handlers.
+5. Configure application-level hooks.
+6. Initialize required infrastructure.
+
+Move unrelated business logic and large configuration blocks into dedicated modules.
+
+Suggested target:
+
+```text
+app/
+├── __init__.py
+├── core/
+│   ├── config.py
+│   ├── extensions.py
+│   ├── logging.py
+│   ├── security.py
+│   ├── errors.py
+│   └── responses.py
+```
+
+Do not duplicate existing extension instances. Ensure there is one consistent initialization path.
+
+## Task 1.2 — Establish domain ownership
+
+Map existing models, routes, and services into domain ownership.
+
+Suggested organization:
+
+```text
+app/
+├── domains/
+│   ├── identity/
+│   │   ├── routes.py
+│   │   ├── services.py
+│   │   └── policies.py
+│   ├── learning/
+│   │   ├── routes.py
+│   │   ├── services.py
+│   │   └── policies.py
+│   ├── curriculum/
+│   ├── assessment/
+│   ├── projects/
+│   ├── credentials/
+│   ├── ai_engineering/
+│   ├── machine_learning/
+│   └── community/
+```
+
+The team may retain the existing route structure during migration. The important requirement is to establish ownership and move responsibilities progressively.
+
+## Task 1.3 — Separate routes from business logic
+
+Routes should primarily handle:
+
+- Request parsing.
+- Authentication and authorization checks.
+- Input validation.
+- Calling domain services.
+- Formatting responses.
+- HTTP status codes.
+
+Services should handle:
+
+- Business rules.
+- Domain workflows.
+- Database operations through appropriate repositories or query services.
+- External integrations through defined interfaces.
+
+Avoid moving every function into a generic `services.py`. Organize services by responsibility.
+
+## Task 1.4 — Refactor large modules
+
+Refactor in controlled batches.
+
+Recommended order:
+
+1. `app/__init__.py`
+2. `app/models.py`
+3. `app/routes/lessons.py`
+4. `app/routes/projects.py`
+5. `app/routes/practice_arena.py`
+6. `app/routes/admin_portal.py`
+7. `app/routes/auth.py`
+8. `app/routes/main.py`
+9. AI tutor service modules.
+
+For `app/models.py`, do not immediately split the SQLAlchemy model registry if that risks circular imports or migration problems.
+
+First establish model ownership, then split models into domain modules using a consistent import and registration strategy.
+
+Maintain existing table names and relationships unless a migration is explicitly required.
+
+## Task 1.5 — Formalize pathway boundaries
+
+Create explicit pathway definitions.
+
+Suggested conceptual structure:
+
+```text
+app/
+├── domains/
+│   ├── curriculum/
+│   │   ├── shared_foundations/
+│   │   └── pathway_catalog.py
+│   ├── ai_engineering/
+│   │   ├── curriculum.py
+│   │   ├── projects.py
+│   │   ├── assessments.py
+│   │   └── competencies.py
+│   └── machine_learning/
+│       ├── curriculum.py
+│       ├── projects.py
+│       ├── assessments.py
+│       └── competencies.py
+```
+
+The shared foundation should be referenced by both pathways. Specialization-specific curriculum must remain independent.
+
+Define a clear pathway context object or equivalent service output.
+
+It should identify:
+- Pathway ID.
+- Pathway type.
+- Course.
+- Module.
+- Lesson.
+- Learning objectives.
+- Relevant competencies.
+
+Use this context consistently in tutor, assessment, and project workflows.
+
+## Task 1.6 — Fix AI Tutor pathway-context bug
+
+Inspect the tutor flow in `app/routes/lessons.py`.
+
+The existing implementation appears to derive syllabus modules using `destination_for(current_user)`, while the actual lesson context is constructed separately.
+
+This creates a potential mismatch when a learner has multiple pathway enrollments or switches active focus.
+
+Implement the following:
+
+1. Resolve the actual lesson being requested.
+2. Determine its owning pathway.
+3. Load the corresponding curriculum.
+4. Build the tutor context from that curriculum.
+5. Verify the lesson belongs to the resolved pathway.
+6. Reject invalid or inconsistent context.
+7. Pass the resolved context to the tutor service.
+
+Add regression tests for all pathway/focus combinations.
+
+Do not rely on frontend-supplied pathway values as the authoritative source. Resolve the pathway from trusted server-side curriculum records.
+
+## Task 1.7 — Add architecture dependency rules
+
+Establish rules such as:
+
+- Routes may call domain services.
+- Domain services may call infrastructure interfaces.
+- AI services may use provider interfaces.
+- Infrastructure modules must not import route handlers.
+- Shared foundation modules must not depend on specialization modules.
+- AI Engineering modules must not depend on ML specialization internals.
+- ML Engineering modules must not depend on AI specialization internals.
+
+Use dependency tests or import-boundary checks where practical.
+
+## Phase 1 completion gate
+
+- Existing functionality remains operational.
+- Core initialization is cleaner.
+- Domain ownership is documented.
+- Routes delegate business logic appropriately.
+- Pathway boundaries are enforced.
+- Tutor context is correct.
+- Database migrations remain safe.
+
+---
+
+# 5. Phase 2 — AI Infrastructure and Background Processing
+
+**Priority:** P0  
+**Purpose:** Build reusable AI infrastructure and separate long-running tasks from normal requests.
+
+## Task 2.1 — Implement the AI provider interface
 
 Create:
 
-` scripts/export_release_source.sh `
-
-The script must:
-
-1. Verify the repository is in an approved state.
-2. Export committed source rather than arbitrary working-directory contents.
-3. Exclude local environments.
-4. Exclude user uploads.
-5. Exclude local databases.
-6. Exclude private configuration.
-7. Exclude caches and temporary files.
-8. Run a sensitive-file scan.
-9. Generate an archive manifest.
-10. Calculate the archive checksum.
-
-Use a clean Git export as the foundation.
-
-The script must fail if prohibited file patterns are detected.
-
-## 3.2 Credential Remediation
-
-Audit the supplied development archive and determine which credentials are real, active or placeholders.
-
-Rotate exposed credentials where required.
-
-Review:
-
-- Flask secret.
-- AI provider credentials.
-- Database credentials.
-- Google OAuth secrets.
-- Administrative API tokens.
-- Vercel credentials.
-- Credential signing keys.
-- GitHub webhook secret.
-- Storage access credentials.
-
-Do not print secret values in CI or remediation logs.
-
-## 3.3 Authorization Review
-
-Review the Skill Passport assessment route first.
-
-The existing route:
-
-`POST /api/passport/skills/<skill_id>/assess`
-
-must not allow a learner to approve their own competency evidence.
-
-Introduce a reusable authorization policy.
-
-Suggested service interface:
-
-```python
-def can_assess_competency(user, evidence):
-    return (
-        user.is_authenticated
-        and user.has_role("reviewer")
-        and evidence.user_id != user.id
-    )
+```text
+app/ai/
+├── providers/
+│   ├── base.py
+│   ├── gemini.py
+│   ├── openrouter.py
+│   ├── registry.py
+│   └── exceptions.py
+├── gateway.py
+├── routing.py
+└── schemas.py
 ```
 
-This is illustrative. Use the project's existing role and permission model rather than introducing an incompatible parallel role system.
+The interface should expose consistent operations.
 
-Review all sensitive routes, including credential issuance, project review, publication, labs and administrative actions.
+Conceptual example:
 
-## 3.4 Release Metadata
+```python
+class AIProvider:
+    def generate(self, request):
+        raise NotImplementedError
+```
 
-Introduce a release metadata service.
+The actual interface must support the capabilities required by existing integrations, including structured output and streaming where applicable.
+
+Keep provider-specific details inside their adapters.
+
+The gateway should handle:
+- Provider selection.
+- Model selection.
+- Request normalization.
+- Retry and timeout policies.
+- Error normalization.
+- Usage collection.
+- Fallback rules.
+
+Do not force providers into unsupported capabilities. Provider capability differences must be represented explicitly.
+
+## Task 2.2 — Introduce task-based model routing
+
+Create a central model configuration.
+
+Example task categories:
+
+```text
+tutor_chat
+lesson_explanation
+question_generation
+project_review
+document_analysis
+rag_generation
+agent_execution
+model_evaluation
+```
+
+Each category should have:
+- Preferred provider.
+- Preferred model.
+- Fallback provider/model.
+- Timeout.
+- Maximum output tokens.
+- Cost or usage policy.
+- Supported response format.
+
+Avoid hardcoding model names throughout route handlers and services.
+
+## Task 2.3 — Standardize AI requests and responses
+
+Define request and response schemas.
+
+Capture appropriate metadata:
+
+```text
+request_id
+task_type
+provider
+model
+prompt_version
+response_status
+input_tokens
+output_tokens
+estimated_cost
+duration_ms
+error_code
+```
+
+Do not assume every provider returns identical usage information.
+
+When usage is unavailable, record it as unavailable rather than inventing an estimate.
+
+## Task 2.4 — Implement persistent background processing
+
+First inspect `AIBackgroundJob` and its existing migration.
+
+Determine:
+- Which job states already exist.
+- Whether job claiming is concurrency-safe.
+- Whether retry information is persisted.
+- Whether stale jobs can be recovered.
+- Whether existing records can be migrated safely.
+
+Extend the model only where necessary.
+
+Suggested job lifecycle:
+
+```text
+PENDING
+   |
+   v
+QUEUED
+   |
+   v
+RUNNING
+   |---------> SUCCEEDED
+   |
+   |---------> RETRYING
+   |               |
+   |               v
+   |             QUEUED
+   |
+   |---------> FAILED
+   |
+   |---------> CANCELLED
+```
+
+Use a consistent state machine. Do not introduce multiple competing definitions of job status.
+
+Persist:
+- Job type.
+- Payload reference.
+- Owner.
+- Status.
+- Attempt count.
+- Maximum attempts.
+- Scheduled execution time.
+- Lease or lock information.
+- Started and completed timestamps.
+- Error information.
+- Progress metadata.
+- Correlation ID.
+
+Avoid storing large document contents or model artifacts directly inside job payloads. Store references to durable records or object-storage objects.
+
+## Task 2.5 — Implement worker execution
 
 Suggested structure:
 
-```python
-{
-    "version": "1.1.0",
-    "commit": "<full-git-sha>",
-    "build_timestamp": "<iso-8601>",
-    "migration_revision": "<revision>",
-    "environment": "production"
-}
+```text
+app/
+├── workers/
+│   ├── base.py
+│   ├── ai_worker.py
+│   ├── job_registry.py
+│   └── handlers/
+│       ├── document_ingestion.py
+│       ├── project_review.py
+│       ├── dataset_analysis.py
+│       └── bulk_generation.py
 ```
 
-Do not expose secret configuration or internal infrastructure details.
+Workers must:
 
-Implement safe health and readiness semantics:
+- Initialize application configuration.
+- Establish database connections.
+- Claim eligible jobs.
+- Validate payloads.
+- Execute registered handlers.
+- Update job state.
+- Record failures.
+- Retry eligible failures.
+- Release resources.
+- Emit structured logs.
 
-- `/healthz`: application process liveness.
-- `/readyz`: database and required service readiness.
-- Release metadata endpoint: version and deployment identity.
+Workers must not depend on Flask request context.
 
-## 3.5 Tests
+## Task 2.6 — Move long-running tasks
 
-Add:
+Move these operations first:
 
-- Source archive exclusion tests.
-- Secret scanning tests.
-- Authorization tests.
-- Cross-user access tests.
-- Release metadata tests.
-- Health and readiness tests.
+1. Document ingestion.
+2. RAG indexing.
+3. Large AI project reviews.
+4. Dataset analysis.
+5. Bulk question generation.
+6. Complex evaluation tasks.
 
-**Phase completion:** M0 exit criteria satisfied.
+For each operation:
+- Create the job.
+- Return a job identifier.
+- Expose status.
+- Provide progress where possible.
+- Expose results when complete.
+- Handle failure and retry.
+- Enforce ownership and authorization.
+
+Keep short tutor conversations synchronous until measurements show that they need asynchronous handling.
+
+## Task 2.7 — Prompt versioning
+
+Create a prompt-management service.
+
+Suggested structure:
+
+```text
+app/ai/prompts/
+├── registry.py
+├── schemas.py
+├── versions.py
+└── templates/
+    ├── tutor/
+    ├── assessment/
+    ├── project_review/
+    ├── rag/
+    └── agents/
+```
+
+Store prompt metadata and version history in the database where appropriate.
+
+Each prompt version should identify:
+- Prompt key.
+- Version.
+- Purpose.
+- Pathway applicability.
+- Variables.
+- Model requirements.
+- Status.
+- Author.
+- Creation timestamp.
+- Evaluation results.
+
+Support rollback to a previously approved version.
+
+Do not store sensitive API keys or secrets in prompt records.
+
+## Task 2.8 — AI observability
+
+Track:
+- Requests by provider and model.
+- Success/failure rates.
+- Latency.
+- Retry rates.
+- Token consumption.
+- Estimated cost.
+- Task category.
+- Prompt version.
+
+Provide administrative summaries.
+
+Implement privacy-conscious logging. Avoid recording full learner conversations or sensitive uploaded documents unnecessarily.
+
+## Task 2.9 — AI evaluation framework
+
+Build an initial evaluation framework for:
+
+- Tutor answer relevance.
+- Tutor factual accuracy.
+- Lesson alignment.
+- RAG retrieval quality.
+- Generated question validity.
+- Project review quality.
+- Structured output correctness.
+
+Create a baseline dataset and automated evaluation workflow.
+
+A model or prompt update should be evaluated against the existing baseline before production rollout.
+
+## Phase 2 completion gate
+
+- Existing provider integrations operate through the gateway.
+- Model selection is centrally configurable.
+- Long-running operations execute through workers.
+- Job state is durable.
+- Retry and failure handling work.
+- Prompt versions are traceable.
+- AI usage is measurable.
+- Evaluation tests exist.
 
 ---
 
-# 4. Phase 1 — Canonical Curriculum Architecture
+# 6. Phase 3 — Execution Infrastructure and Engineering Labs
 
-**Milestone:** M1
-**Priority:** Critical
+**Priority:** P1  
+**Purpose:** Make the practical engineering environment reliable, secure, and progressively more capable.
 
-This is the most important architectural phase.
+## Task 3.1 — Document execution profiles
 
-## 4.1 Create a Curriculum Registry
-
-Suggested file:
-
-`app/curriculum_registry.py`
-
-The registry should resolve canonical curriculum manifests.
-
-Suggested interface:
-
-```python
-class CurriculumRegistry:
-
-    def get_domain(self, domain_id):
-        ...
-
-    def get_module(self, domain_id, module_id):
-        ...
-
-    def get_lesson(self, domain_id, lesson_id):
-        ...
-
-    def get_competency(self, domain_id, competency_id):
-        ...
-
-    def validate_prerequisites(self, domain_id):
-        ...
-
-    def get_curriculum_version(self, domain_id):
-        ...
-```
-
-The registry should not contain curriculum content itself.
-
-It should load, normalize and validate the authoritative manifests.
-
-## 4.2 Establish Domain Contracts
-
-Every curriculum module should have a consistent structure.
-
-Illustrative schema:
-
-```json
-{
-  "id": "mle.module-04",
-  "domain": "machine-learning",
-  "title": "Classical Machine Learning",
-  "description": "Build and evaluate classical ML models.",
-  "learning_objectives": [],
-  "competencies": [],
-  "prerequisites": [],
-  "lessons": [],
-  "projects": [],
-  "assessments": [],
-  "version": "1.0.0",
-  "status": "published"
-}
-```
-
-The final schema must remain compatible with the existing curriculum structures or use a documented migration process.
-
-Do not create a second curriculum format without a compelling reason.
-
-## 4.3 Migrate Legacy Curriculum Access
-
-Inventory every caller of:
-
-- `all_modules()`
-- `get_lesson()`
-- `course_modules()`
-- `lesson_href()`
-- `destination_for()`
-
-Identify where legacy content is still used.
-
-Replace direct curriculum access with registry-based resolution.
-
-Create an explicit legacy ID mapping.
-
-Do not silently redirect unknown IDs to AI Engineering.
-
-An unresolved lesson should return a controlled not-found or migration response.
-
-## 4.4 Implement Shared Foundations Routing
-
-Create dedicated resolution for:
-
-`sf.*`
-
-Shared Foundations lessons must not depend on the legacy AI course loader.
-
-Implement:
-
-- Foundation catalogue.
-- Foundation detail page.
-- Foundation completion.
-- Foundation assessment.
-- Foundation progress.
-- Prerequisite display.
-- Pathway transition links.
-
-Use the six existing foundation modules as the initial content boundary.
-
-Validate that every module and lesson is actually ready before publishing it.
-
-## 4.5 Enrolment and Progression Consistency
-
-Review:
-
-- Onboarding.
-- Dashboard.
-- Pathway switch endpoint.
-- Lesson catalogue.
-- Progress.
-- Practice Arena.
-- AI Tutor.
-- Project Studio.
-
-The application must distinguish:
-
-- Enrolment.
-- Active learning focus.
-- Paused status.
-- Completion.
-- Prerequisite eligibility.
-
-Do not treat these as interchangeable concepts.
-
-A learner's active focus should control presentation preferences, not access to independently enrolled pathways.
-
-## 4.6 Shared Foundation Evidence
-
-Create an explicit mapping between foundation competencies and specialisation requirements.
+Create a formal execution profile registry.
 
 Example:
 
 ```text
-Shared Foundations: Python fundamentals
-    ├── AI Engineering: Python application development
-    └── ML: Python data processing
+browser_python
+container_python
+container_data_science
+container_ml
+gpu_training
 ```
 
-Reuse evidence only where the competency equivalence is valid.
+Each profile must define:
+- Runtime.
+- Available libraries.
+- CPU limit.
+- Memory limit.
+- Execution timeout.
+- Storage limit.
+- Network policy.
+- Maximum concurrency.
+- Supported workload.
+- Whether persistent artifacts are allowed.
 
-A general Python competency should not automatically prove mastery of every specialised Python application.
+The profile must be selected server-side based on the exercise or project requirements.
 
-## 4.7 Curriculum Tests
+Do not let learners freely request unrestricted resource limits.
+
+## Task 3.2 — Preserve Pyodide for lightweight execution
+
+Continue using Pyodide for:
+- Introductory Python.
+- Simple algorithms.
+- Lightweight exercises.
+- Immediate feedback.
+
+Do not move every exercise to Docker simply because Docker is more powerful.
+
+The browser environment should remain fast and convenient.
+
+## Task 3.3 — Deploy the judge worker independently
+
+Inspect `judge_worker.py` and the current deployment configuration.
+
+Create an independently deployable worker service.
+
+Implementation steps:
+
+1. Identify the current submission queue mechanism.
+2. Confirm how submissions are claimed.
+3. Configure the worker's environment.
+4. Provide Docker access only to the isolated execution host.
+5. Configure the worker's database and queue connections.
+6. Add worker health checks.
+7. Add restart behaviour.
+8. Add resource monitoring.
+9. Test the complete submission lifecycle.
+10. Verify SSE or equivalent progress delivery.
+
+The Flask web process must not become the Docker execution host.
+
+If the current Render deployment cannot support the required Docker execution, deploy the judge worker on a suitable separate host.
+
+## Task 3.4 — Strengthen sandbox security
+
+Retain the existing protections and verify them in actual execution.
+
+Required controls:
+
+- Network disabled by default.
+- CPU limits.
+- Memory and swap limits.
+- Process limits.
+- Execution timeout.
+- Read-only root filesystem.
+- Non-root user.
+- No-new-privileges.
+- Dropped capabilities.
+- Restricted temporary filesystem.
+- Container cleanup.
 
 Add:
+- Disk usage limits.
+- Image pinning.
+- Per-user concurrency quotas.
+- Per-user submission limits.
+- Worker-level resource monitoring.
+- Abuse detection.
+- Security regression tests.
 
-- Registry tests.
-- Manifest schema tests.
-- Lesson route tests.
-- Prerequisite tests.
-- Domain isolation tests.
-- Enrolment tests.
-- Progress migration tests.
-- Foundation evidence reuse tests.
+The sandbox must not receive production credentials or unrestricted host filesystem access.
 
-**Phase completion:** All three domains are resolved consistently throughout the application.
+Do not assume Docker isolation alone makes arbitrary code execution completely safe. The execution host itself must be hardened.
 
----
+## Task 3.5 — Introduce durable project artifacts
 
-# 5. Phase 2 — Project Studio Corrections and Expansion
+Create a shared artifact service for project and execution outputs.
 
-**Milestone:** M2
-**Priority:** High
+Support:
+- Source files.
+- Uploaded datasets.
+- Generated plots.
+- Model files.
+- Evaluation reports.
+- Notebook files.
+- Experiment outputs.
 
-## 5.1 Replace Hardcoded ML Project Templates
+Use object storage for durable artifacts.
 
-Inspect:
+Persist metadata in PostgreSQL:
+- Artifact ID.
+- Owner.
+- Project ID.
+- Artifact type.
+- Storage key.
+- Size.
+- Content type.
+- Checksum.
+- Creation timestamp.
+- Access policy.
 
-`templates/specializations/machine_learning_project.html`
+Implement authorization and safe file handling.
 
-Remove the hardcoded module-number conditions.
+## Task 3.6 — Expand controlled data science execution
 
-The template must render module-specific project configuration.
+Extend the container environment progressively.
 
-Suggested service:
+Initial package support:
+- NumPy.
+- Pandas.
+- Matplotlib.
+- SciPy.
+- scikit-learn.
+- SymPy.
+- NetworkX.
 
-`app/services/project_definition.py`
+Test:
+- Package compatibility.
+- Container startup.
+- Execution time.
+- Memory consumption.
+- Output handling.
 
-Interface:
+Avoid installing every package into one oversized image. Define a small number of versioned runtime images based on workload.
 
-```python
-def get_project_definition(domain_id, module_id):
-    ...
+## Task 3.7 — Introduce advanced ML execution
 
-def validate_project_report(domain_id, module_id, report):
-    ...
+Create a separate compute-worker architecture for heavier workloads.
 
-def get_project_rubric(domain_id, module_id):
-    ...
-```
+Initial capabilities:
+- PyTorch.
+- Hugging Face libraries.
+- Dataset access.
+- Model training.
+- Model evaluation.
+- Artifact persistence.
 
-Each ML project must supply its own:
+Do not place these workloads inside the normal judge worker if they require substantially different resource profiles.
 
-- Title.
-- Description.
-- Tasks.
-- Report schema.
-- Starter-kit reference.
-- Acceptance criteria.
-- Evaluation rubric.
+Introduce GPU execution only when appropriate infrastructure and budget are available.
 
-The report contract used by the template must be exactly the contract used by the backend validator.
+## Task 3.8 — Integrate MLflow
 
-## 5.2 Add Project Contract Validation
+Introduce MLflow for experiment tracking.
 
-Before rendering or accepting a project:
+Capture:
+- Experiment.
+- Run ID.
+- Dataset version.
+- Parameters.
+- Metrics.
+- Model artifacts.
+- Environment information.
+- Execution status.
 
-- Validate its module reference.
-- Validate its domain.
-- Validate its report schema.
-- Validate its rubric.
-- Validate starter-kit availability.
-- Validate required deliverables.
+Connect MLflow records to the relevant learner project and experiment records.
 
-Return actionable validation messages.
+Evaluate whether existing `MLProjectExperiment` records can be extended or mapped to MLflow without duplicating the source of truth.
 
-Do not allow incomplete project definitions to be published.
+## Phase 3 completion gate
 
-## 5.3 Build AI Engineering Workbench
-
-Create a dedicated AI Engineering project workspace.
-
-Suggested structure:
-
-```text
-AI Engineering Workbench
-├── Project Overview
-├── Architecture
-├── Prompt Laboratory
-├── Model Configuration
-├── Retrieval Laboratory
-├── Agent Traces
-├── Evaluation
-├── API Contracts
-├── Deployment Evidence
-└── Project Review
-```
-
-AI-specific functionality:
-
-- Versioned prompt experiments.
-- Model configuration records.
-- Retrieval configuration.
-- Agent execution traces.
-- Evaluation datasets.
-- Evaluation results.
-- API testing evidence.
-- Deployment documentation.
-
-This must not be implemented as a superficial copy of the ML experiment log.
-
-## 5.4 Build Shared Project Lifecycle
-
-Create reusable lifecycle services.
-
-Suggested states:
-
-```text
-DRAFT
-PLANNED
-IN_PROGRESS
-SUBMITTED
-UNDER_REVIEW
-REVISION_REQUESTED
-APPROVED
-PUBLISHED
-ARCHIVED
-```
-
-Validate transitions server-side.
-
-Record all significant transitions.
-
-## 5.5 Add Project Competency Mapping
-
-Projects should identify the competencies they assess.
-
-A project may contribute evidence towards multiple competencies, but the mapping must be explicit.
-
-Do not automatically mark a competency verified because a project is completed.
-
-## 5.6 Tests
-
-- Every ML module renders correctly.
-- Every ML report matches its validator.
-- AI workbench does not load ML-only fields.
-- Project lifecycle transitions are valid.
-- Project ownership is enforced.
-- Reviewer permissions are enforced.
-- Portfolio visibility is enforced.
-- Project evidence survives reassessment.
-
-**Phase completion:** Both pathways have distinct project workspaces supported by a shared lifecycle engine.
+- Execution profiles are explicit.
+- Judge worker is independently deployed.
+- Container execution is operational.
+- Sandbox restrictions are verified.
+- Project artifacts persist.
+- Controlled ML workloads work.
+- Experiment records can be traced to learner projects.
 
 ---
 
-# 6. Phase 3 — Practice Arena 2.1
+# 7. Phase 4 — AI and ML Project Studio
 
-**Milestone:** M3
-**Priority:** High
+**Priority:** P1  
+**Purpose:** Turn practical learning into structured engineering project development.
 
-## 6.1 Expand ML Challenge Taxonomy
+## Task 4.1 — Define the shared project lifecycle
 
-The existing ML catalogue has more than 100 problems but remains concentrated in introductory topic categories.
-
-Expand the taxonomy without discarding existing challenge IDs.
-
-Suggested topic identifiers:
-
-```text
-ml-python
-ml-statistics
-ml-data-analysis
-ml-feature-engineering
-ml-regression
-ml-classification
-ml-unsupervised
-ml-evaluation
-ml-deep-learning
-ml-pytorch
-ml-computer-vision
-ml-reproducibility
-ml-production
-ml-mlops
-```
-
-Every challenge must reference an explicit topic and curriculum competency.
-
-## 6.2 Challenge Definition Contract
-
-Every challenge should define:
-
-```json
-{
-  "id": "ml-example-001",
-  "track": "machine-learning",
-  "topic": "ml-regression",
-  "difficulty": "intermediate",
-  "title": "Evaluate a regression model",
-  "description": "...",
-  "starter_code": "...",
-  "public_tests": [],
-  "hidden_tests": [],
-  "hints": [],
-  "editorial": "...",
-  "prerequisites": [],
-  "competencies": [],
-  "time_limit": 5,
-  "memory_limit": 256
-}
-```
-
-This is an illustrative contract. Preserve compatibility with existing problem loaders through an explicit normalization layer.
-
-## 6.3 Judge Worker Architecture
-
-The current deployment blueprint disables authoritative submissions.
-
-Keep that protection until a separate judge worker is operational.
-
-Recommended architecture:
-
-```text
-Learner Browser
-      |
-      v
-Flask Submission API
-      |
-      v
-Durable Submission Queue
-      |
-      v
-Isolated Judge Worker
-      |
-      v
-Result Store
-      |
-      v
-Notification Service
-      |
-      v
-Learner Browser
-```
-
-The worker must:
-
-- Execute in an isolated environment.
-- Apply CPU limits.
-- Apply memory limits.
-- Apply execution timeouts.
-- Restrict filesystem access.
-- Restrict network access.
-- Limit output size.
-- Clean up execution environments.
-- Persist execution results.
-- Handle retries safely.
-
-Do not execute untrusted code inside the Flask process.
-
-## 6.4 Submission State Machine
-
-Suggested states:
+Create a common project lifecycle:
 
 ```text
 CREATED
-QUEUED
-RUNNING
-PASSED
-FAILED
-TIMEOUT
-MEMORY_LIMIT
-SYSTEM_ERROR
-CANCELLED
+   |
+   v
+PLANNING
+   |
+   v
+IN_PROGRESS
+   |
+   v
+TESTING
+   |
+   v
+SUBMITTED
+   |
+   v
+REVIEWED
+   |
+   v
+COMPLETED
 ```
 
-A system error must never be represented as a learner failure or success.
+Define permitted state transitions and ownership rules.
 
-Use idempotent submission identifiers.
+A shared lifecycle does not mean both specializations must share the same project models or evaluation criteria.
 
-## 6.5 Browser Submission Experience
+## Task 4.2 — Build shared project capabilities
 
-When the judge is unavailable:
+Implement reusable services for:
 
-- Disable Submit.
-- Explain why.
-- Preserve local Run functionality.
-- Preserve learner code.
-- Avoid showing a misleading assessment result.
+- Project creation.
+- Project metadata.
+- Milestones.
+- Project files.
+- Artifact management.
+- Version history.
+- Documentation.
+- Submission.
+- Feedback.
+- Review status.
+- Portfolio presentation.
 
-When available:
+Reuse existing project-related models where appropriate.
 
-- Show queue state.
-- Show execution state.
-- Show result.
-- Show permitted diagnostics.
-- Preserve submission history.
+Avoid creating a second project-management system if the existing project infrastructure can be extended safely.
 
-## 6.6 Diagnostic Engine
+## Task 4.3 — Implement AI Engineering Studio
 
-Use deterministic execution evidence first.
-
-Add AI-generated explanations only after the execution result has been classified.
-
-The AI must not receive private hidden test contents.
-
-## 6.7 Adaptive Practice
-
-Introduce recommendation rules based on:
-
-- Topic.
-- Difficulty.
-- Previous attempts.
-- Assessment outcomes.
-- Prerequisites.
-- Learner mastery.
-
-Start with deterministic recommendations before introducing an opaque ML recommendation model.
-
-**Phase completion:** Practice Arena has trustworthy assessment behaviour and curriculum-aligned challenges.
-
----
-
-# 7. Phase 4 — Skill Passport 2.1
-
-**Milestone:** M4
-**Priority:** Critical
-
-## 7.1 Authorization Service
-
-Create a centralized verification authorization policy.
-
-Do not implement different ad hoc permission checks in individual routes.
-
-The assessment endpoint must:
-
-1. Authenticate the user.
-2. Load the evidence.
-3. Verify learner ownership rules.
-4. Verify reviewer permission.
-5. Prevent self-assessment.
-6. Validate the requested transition.
-7. Record the reviewer.
-8. Record the decision.
-9. Record the timestamp.
-10. Persist the audit event.
-
-## 7.2 Verification Event Model
-
-Introduce an append-only verification event model if the existing model cannot provide reliable history.
-
-Suggested fields:
+Suggested modules:
 
 ```text
-id
-evidence_id
-learner_id
-reviewer_id
-previous_status
-new_status
-decision_reason
-review_notes
-created_at
+app/domains/ai_engineering/
+├── projects/
+├── prompts/
+├── rag/
+├── agents/
+├── tools/
+├── evaluations/
+└── deployment/
 ```
 
-Do not overwrite historical verification events.
+Initial project capabilities:
 
-## 7.3 Domain Integrity
+1. LLM application builder.
+2. Prompt experimentation.
+3. Prompt version comparison.
+4. Context engineering.
+5. RAG pipeline development.
+6. Embedding and retrieval testing.
+7. Tool integration.
+8. Agent execution.
+9. Agent evaluation.
+10. Project documentation and submission.
 
-Every competency must have an authoritative domain.
+Where possible, connect project activities to the existing AI gateway and background job infrastructure.
 
-Validate:
+## Task 4.4 — Implement ML Engineering Studio
 
-- Shared Foundations.
-- AI Engineering.
-- Machine Learning.
+Suggested modules:
 
-Remove legacy classification assumptions.
+```text
+app/domains/machine_learning/
+├── datasets/
+├── preprocessing/
+├── experiments/
+├── training/
+├── evaluation/
+├── model_registry/
+└── deployment/
+```
 
-## 7.4 Reassessment
+Initial project capabilities:
 
-Allow learners to request reassessment.
+1. Dataset upload and management.
+2. Exploratory data analysis.
+3. Data cleaning.
+4. Feature engineering.
+5. Model training.
+6. Model comparison.
+7. Evaluation metrics.
+8. Model artifact storage.
+9. Experiment tracking.
+10. Project documentation and submission.
 
-The original evidence and verification history must remain accessible to authorized reviewers.
+Use dedicated compute workers for tasks that exceed normal container execution limits.
 
-## 7.5 Credential Eligibility
+## Task 4.5 — Build project evaluation
 
-Keep these concepts separate:
+Develop evaluation workflows appropriate to each pathway.
 
-- Pathway progress.
-- Project completion.
-- Competency verification.
-- Credential eligibility.
-- Credential issuance.
+AI Engineering evaluation should consider:
+- Correctness.
+- Prompt quality.
+- Retrieval relevance.
+- Tool-use correctness.
+- Agent behaviour.
+- Evaluation methodology.
+- Reliability.
+- Security.
+- Documentation.
 
-A completed pathway must not automatically imply that every competency is verified.
+ML Engineering evaluation should consider:
+- Data quality.
+- Preprocessing.
+- Feature selection.
+- Model choice.
+- Evaluation methodology.
+- Metrics.
+- Reproducibility.
+- Model performance.
+- Deployment considerations.
+- Documentation.
 
-**Phase completion:** Skill Passport evidence is trustworthy, domain-scoped and auditable.
+Do not use a single generic AI-generated score as the only evidence of project quality.
+
+Combine automated checks, rubric-based assessment, and human review where appropriate.
+
+## Phase 4 completion gate
+
+- Both studios are usable.
+- Their specialization workflows are distinct.
+- Shared project infrastructure is reusable.
+- Projects preserve files and artifacts.
+- Evaluation produces traceable evidence.
+- Project completion can contribute to competency verification.
 
 ---
 
-# 8. Phase 5 — AI Tutor 3.0
+# 8. Phase 5 — AI Tutor 2.0 and Learning Intelligence
 
-**Milestone:** M5
-**Priority:** High
+**Priority:** P1  
+**Purpose:** Deliver context-aware, personalized learning assistance.
 
-## 8.1 Context Resolver
+## Task 5.1 — Build a unified learning context resolver
 
-Introduce a single context-resolution service.
+Create a service that resolves the learner's current learning context.
 
-Suggested interface:
+Conceptual output:
 
 ```python
-def resolve_tutor_context(
-    learner_id,
-    lesson_id=None,
-    project_id=None,
-    challenge_id=None,
-    selected_domain=None,
-):
-    ...
+LearningContext(
+    learner_id=...,
+    pathway=...,
+    course=...,
+    module=...,
+    lesson=...,
+    objectives=...,
+    competencies=...,
+    progress=...,
+)
 ```
 
-Context precedence:
+The actual implementation should follow the project's existing conventions.
 
-1. Current lesson.
-2. Current challenge.
-3. Current project.
-4. Explicit selected domain.
-5. Active pathway focus.
-6. Shared default.
+The resolver must obtain trusted pathway and curriculum information from the database.
 
-The actual resolver must reject conflicting or unauthorized context references.
+## Task 5.2 — Improve tutor context assembly
 
-## 8.2 Domain Instruction Profiles
+Create separate context components:
 
-Create separate instructional profiles.
+- Pathway context.
+- Curriculum context.
+- Lesson context.
+- Learner progress context.
+- Relevant learning material.
+- Conversation context.
+- Project context when applicable.
 
-Suggested configuration:
+Assemble only relevant context for the current request.
 
-```text
-app/tutor_profiles/
-    shared_foundations.json
-    ai_engineering.json
-    machine_learning.json
-```
+Avoid sending the entire learner history or entire syllabus to every model call.
 
-Each profile should define:
+## Task 5.3 — Introduce retrieval-augmented learning
 
-- Teaching objectives.
-- Domain vocabulary.
-- Expected learner knowledge.
-- Hint progression.
-- Assessment guidance.
-- Common misconceptions.
-- Disallowed shortcuts.
-- Evaluation criteria.
+Evaluate pgvector as the initial vector-search option.
 
-Do not duplicate the entire tutor service for each domain.
+Implement:
+- Document ingestion.
+- Text extraction.
+- Chunking.
+- Embedding generation.
+- Vector storage.
+- Metadata filtering.
+- Retrieval.
+- Context assembly.
+- Citation or source attribution.
 
-## 8.3 Instructional Modes
+Enforce pathway, course, and content access boundaries during retrieval.
 
-Implement a common mode interface:
+Do not allow an AI tutor to retrieve restricted administrative material or unrelated learners' content.
 
-```text
-EXPLAIN
-SOCRATIC
-DEBUG
-REVIEW
-PRACTICE
-PROJECT_MENTOR
-ASSESSMENT_PREP
-```
+## Task 5.4 — Improve Socratic learning behaviour
 
-Each mode should have explicit behavioural expectations.
+Provide configurable tutor behaviours:
 
-## 8.4 Learning Context
+- Explain.
+- Guide.
+- Ask a question.
+- Debug.
+- Challenge.
+- Review.
+- Summarize.
+- Assess.
 
-Introduce a controlled learner learning-context record.
+The tutor should consider learner level and task type.
 
-Possible fields:
+For practical programming problems, prefer guided reasoning and progressive hints where appropriate rather than immediately returning complete solutions.
 
-- Domain.
-- Concept.
-- Evidence source.
-- Demonstrated understanding.
-- Known misconception.
-- Last observed.
-- Confidence.
-- Recommended next action.
+## Task 5.5 — Add competency-aware recommendations
 
-Conversation history alone must not become authoritative competency evidence.
+Use existing skill models where suitable.
 
-## 8.5 Tutor Evaluation
+Develop:
+- Competency prerequisites.
+- Evidence requirements.
+- Mastery estimates.
+- Learning gaps.
+- Recommended lessons.
+- Recommended practice.
+- Recommended projects.
 
-Use the existing domain evaluation datasets as the starting point.
+Separate demonstrated mastery from simple activity completion.
 
-Add tests for:
+## Task 5.6 — Evaluate tutor quality
 
-- Incorrect explanations.
-- Hallucinated APIs.
-- AI/ML domain confusion.
-- Premature solution disclosure.
-- Misleading feedback.
-- Poor prerequisite handling.
-- Unsafe code suggestions.
-- Context leakage.
+Create test datasets covering:
+- Correct pathway context.
+- Correct lesson context.
+- Appropriate difficulty.
+- Factual accuracy.
+- Hallucination resistance.
+- Learning objective alignment.
+- Quality of hints.
+- Relevance of recommendations.
 
-Run model-backed evaluations against actual provider responses.
+Track regressions after prompt, model, or retrieval changes.
 
-Record model version, prompt version, latency and token cost.
+## Phase 5 completion gate
 
-**Phase completion:** Tutor behaviour is context-aware, domain-specific and measured.
+- Tutor context is accurate.
+- Retrieval respects access boundaries.
+- Learners receive relevant guidance.
+- Competency recommendations have traceable evidence.
+- Tutor quality is evaluated systematically.
 
 ---
 
-# 9. Phase 6 — Learning Intelligence Engine
+# 9. Phase 6 — Production Readiness and Operational Scaling
 
-**Milestone:** M6
-**Priority:** Strategic
+**Priority:** P2  
+**Purpose:** Consolidate the architecture for dependable production operation.
 
-This phase should begin only after curriculum and assessment evidence is reliable.
+## Task 6.1 — Define the deployment topology
 
-## 9.1 Knowledge Graph
-
-Suggested entities:
+The target deployment should distinguish:
 
 ```text
-LearningDomain
-Module
-Lesson
-Concept
-Competency
-Assessment
-Challenge
-Project
-Prerequisite
+RUACH PLATFORM
+│
+├── Web Application
+│   └── Flask
+│
+├── AI Processing
+│   ├── AI Worker
+│   └── Scheduled Tasks
+│
+├── Code Execution
+│   └── Judge Worker
+│
+├── Advanced Compute
+│   └── ML/GPU Workers
+│
+└── Shared Infrastructure
+    ├── PostgreSQL
+    ├── Redis
+    ├── Object Storage
+    └── Monitoring
 ```
 
-Suggested relationships:
+These are deployment boundaries, not necessarily separate repositories or microservices.
 
-```text
-Module CONTAINS Lesson
-Lesson TEACHES Concept
-Concept CONTRIBUTES_TO Competency
-Assessment MEASURES Concept
-Challenge PRACTISES Concept
-Project DEMONSTRATES Competency
-Concept REQUIRES Concept
-```
+## Task 6.2 — Implement monitoring
 
-Use explicit relationships.
+Monitor:
 
-Avoid building an unnecessarily complex graph database before the relational model demonstrates a need for one.
+**Application**
+- Availability.
+- Error rates.
+- Request latency.
+- Database latency.
 
-A relational implementation can be sufficient for the initial release.
+**Workers**
+- Worker availability.
+- Queue depth.
+- Job age.
+- Retry rates.
+- Failed jobs.
+- Processing time.
 
-## 9.2 Mastery Evidence Model
+**AI**
+- Provider availability.
+- Model latency.
+- Token usage.
+- Estimated cost.
+- Error rates.
 
-Create concept-level mastery records.
+**Execution**
+- Submission volume.
+- Execution time.
+- Resource consumption.
+- Sandbox failures.
+- Worker saturation.
 
-Suggested fields:
+**Storage**
+- Capacity.
+- Upload failures.
+- Artifact access errors.
 
-```text
-learner_id
-domain_id
-concept_id
-mastery_state
-evidence_count
-successful_assessments
-failed_assessments
-last_assessed_at
-confidence
-next_review_at
-updated_at
-```
+## Task 6.3 — Implement operational resilience
 
-Keep raw assessment evidence separate from derived mastery state.
+- Health checks.
+- Worker restart policies.
+- Database backup automation.
+- Recovery tests.
+- Deployment rollback.
+- Queue recovery.
+- Alerting.
+- Dependency monitoring.
+- Incident procedures.
 
-The mastery calculation must be versioned so that future scoring changes can be audited.
+## Task 6.4 — Introduce infrastructure as code
 
-## 9.3 Mastery Calculation
+When deployment complexity warrants it, define infrastructure in version-controlled configuration.
 
-Start with transparent rules.
+Provision:
+- Application environments.
+- Databases.
+- Redis.
+- Object storage.
+- Workers.
+- Secrets.
+- Networking.
+- Monitoring.
+- Backups.
 
-For example:
+Do not introduce Kubernetes simply to satisfy an abstract cloud-native objective.
 
-- Lesson viewed: introduced.
-- Practice attempted: practising.
-- Multiple successful assessments: developing or proficient.
-- Consistent success across different problem variants: candidate for mastery.
-- Independent project demonstration: additional evidence.
-- Declining performance after review: needs review.
+## Task 6.5 — Establish cost governance
 
-Exact thresholds must be calibrated using pilot learner data.
+Introduce:
+- Per-user execution quotas.
+- AI usage limits where appropriate.
+- Model selection based on task requirements.
+- GPU job limits.
+- Storage limits.
+- Worker concurrency limits.
+- Usage dashboards.
+- Cost alerts.
 
-Do not claim statistical confidence from arbitrary scores.
+## Phase 6 completion gate
 
-## 9.4 Misconception Detection
-
-Use a combination of:
-
-- Structured incorrect-answer patterns.
-- Repeated code failure categories.
-- Assessment responses.
-- Tutor observations.
-- Instructor feedback.
-
-AI-generated misconception labels should be marked as inferred until supported by assessment evidence.
-
-## 9.5 Recommendation Engine
-
-Suggested service:
-
-`app/services/learning_recommendations.py`
-
-Inputs:
-
-- Learner mastery state.
-- Current pathway.
-- Prerequisite graph.
-- Available content.
-- Assessment evidence.
-- Learning goals.
-
-Outputs:
-
-- Recommended lesson.
-- Recommended challenge.
-- Recommended review.
-- Recommended tutor intervention.
-- Reason for recommendation.
-
-Every recommendation must be explainable.
-
-## 9.6 Spaced Repetition
-
-Start with configurable review intervals.
-
-Record:
-
-- Concept.
-- Previous review.
-- Performance.
-- Next review.
-- Review outcome.
-
-Allow reassessment to update the schedule.
-
-## 9.7 Learning Intelligence UI
-
-Create a learner-facing page showing:
-
-- Overall learning map.
-- Domain mastery.
-- Strong concepts.
-- Weak concepts.
-- Concepts needing review.
-- Recommended activities.
-- Evidence supporting each mastery state.
-
-Do not make the dashboard a decorative chart collection.
-
-Every displayed metric should lead to a useful learning action.
-
-**Phase completion:** RUACH can identify learning gaps, explain its recommendations and measure improvement.
+- Web and worker processes are independently deployable.
+- Critical infrastructure is monitored.
+- Backups and recovery are tested.
+- Resource consumption is visible.
+- Cost-control mechanisms exist.
+- Production deployment is documented and repeatable.
 
 ---
 
-# 10. Phase 7 — Reliability and Release Engineering
+# 10. Database and Migration Guidelines
 
-**Milestone:** M7
-**Priority:** Critical
+The project already has a substantial SQLAlchemy model layer. The team must avoid introducing duplicate models for capabilities that already exist.
 
-## 10.1 Database Connection Management
+Before creating or changing a model:
 
-Review the current Render and SQLAlchemy pool settings.
+1. Search `app/models.py` and existing domain modules.
+2. Inspect existing migrations.
+3. Identify related models and relationships.
+4. Determine whether an existing model can be extended.
+5. Document the reason for any new table.
+6. Plan migration and rollback.
+7. Add tests for data integrity.
 
-The previous configuration could allow up to 30 application connections across two workers.
+Models that deserve specific architectural review include:
 
-The team's initial optimization target should be a conservative pool configuration, for example:
+- `AIBackgroundJob`
+- `AISpecializationProject`
+- `AIPromptVersion`
+- `AIRetrievalConfiguration`
+- `AIAgentExecutionRecord`
+- `AIEvaluationRecord`
+- `MLProjectExperiment`
+- `SkillNode`
+- `UserSkillProgress`
+- `SkillVerification`
+- `PracticeWorkspace`
+- `Submission`
+- `Credential`
+- `TutorConversation`
 
-```text
-Workers: 2
-Threads: 4
-Pool size: 2
-Max overflow: 2
-```
+These models provide useful foundations, but their suitability must be confirmed against actual relationships and usage.
 
-This gives a potential application maximum of eight connections across two workers.
+## Migration rules
 
-Validate against:
-
-- Neon connection limits.
-- Other deployed instances.
-- Background workers.
-- Administrative connections.
-- Migration processes.
-
-Do not blindly copy the suggested values into production.
-
-## 10.2 SSE and Judge Notification
-
-The current polling loop uses blocking sleep.
-
-Evaluate:
-
-- Short-lived polling.
-- Redis Streams.
-- A dedicated asynchronous notification gateway.
-- Other supported event-delivery mechanisms.
-
-The judge worker and web notification service must be independently scalable.
-
-## 10.3 Cache Observability
-
-Track:
-
-- Cache hits.
-- Cache misses.
-- Evictions.
-- Redis errors.
-- Cache latency.
-- Memory usage.
-
-Distinguish shared Redis cache from process-local fallback.
-
-## 10.4 Database Query Observability
-
-Establish query-count regression tests for:
-
-- Dashboard.
-- Lessons catalogue.
-- Progress.
-- Skill Passport.
-- Arena.
-- ML workspace.
-- Projects.
-
-Identify and eliminate N+1 query patterns.
-
-## 10.5 AI Cost Monitoring
-
-Track:
-
-- Tutor requests.
-- Input tokens.
-- Output tokens.
-- Model.
-- Latency.
-- Cache hits.
-- Provider failures.
-- Cost estimate.
-
-Introduce sensible usage limits and per-feature budgets.
-
-## 10.6 Migration Portability
-
-The existing status report identifies a SQLite migration issue involving `sa.text('now()')`.
-
-Review the affected migration.
-
-Use portable SQLAlchemy defaults where appropriate.
-
-Test:
-
-- Fresh SQLite upgrade.
-- Existing SQLite upgrade.
-- PostgreSQL upgrade.
-- Migration head consistency.
-- Downgrade on a disposable database.
-
-Do not run destructive production downgrades as part of ordinary CI.
-
-## 10.7 Accessibility and Responsive Testing
-
-Test all release-critical pages at:
-
-- Small mobile viewport.
-- Large mobile viewport.
-- Tablet.
-- Desktop.
-
-Include:
-
-- Keyboard navigation.
-- Focus order.
-- Form validation.
-- Screen-reader labels.
-- Contrast.
-- Modal behaviour.
-- Editor accessibility.
-
-## 10.8 Browser E2E
-
-Use Playwright for complete learner journeys.
-
-Important scenarios:
-
-1. New learner onboarding.
-2. Shared Foundations enrolment.
-3. AI-only enrolment.
-4. ML-only enrolment.
-5. Dual enrolment.
-6. Pathway switching.
-7. Pausing and resuming.
-8. Lesson completion.
-9. Practice save and restore.
-10. Judge submission.
-11. AI Tutor interaction.
-12. ML project submission.
-13. AI project submission.
-14. Skill Passport evidence submission.
-15. Reviewer verification.
-16. Credential eligibility.
-17. Portfolio publication.
-18. Privacy enforcement.
-
-Use designated test accounts and isolated test data.
-
-Never use destructive automated tests against real learner accounts.
+- Never silently drop learner data.
+- Avoid destructive changes in routine releases.
+- Use explicit data migrations.
+- Test against a copy of representative data.
+- Ensure deployment order is compatible with application code.
+- Document rollback limitations.
+- Preserve existing identifiers where possible.
 
 ---
 
 # 11. Testing Strategy
 
-Testing must be organized into layers.
+Testing must be part of implementation, not a final activity.
 
-## Layer 1 — Unit Tests
-
-Test:
-
-- Curriculum registry.
-- Prerequisites.
-- Pathway resolution.
-- Project contracts.
-- Assessment scoring.
-- Authorization.
-- Mastery calculations.
-- Recommendation rules.
-
-## Layer 2 — Integration Tests
+## Unit tests
 
 Test:
+- Domain services.
+- Provider adapters.
+- Model routing.
+- Job state transitions.
+- Retry logic.
+- Learning context resolution.
+- Project evaluation.
+- Authorization policies.
 
-- Database persistence.
-- Enrolment transitions.
-- Progress preservation.
-- Project lifecycle.
-- Judge queue.
-- Verification history.
-- Tutor context.
-- Credential eligibility.
-
-## Layer 3 — Browser Tests
-
-Test real learner workflows through Playwright.
-
-## Layer 4 — Security Tests
+## Integration tests
 
 Test:
+- PostgreSQL operations.
+- Redis integration.
+- Object storage.
+- AI provider adapters with mocked external calls.
+- Worker job processing.
+- Docker judge lifecycle.
+- Artifact persistence.
 
-- Unauthorized access.
-- Cross-learner data access.
-- Self-verification.
-- CSRF.
-- Injection.
-- File upload handling.
-- Arbitrary code execution isolation.
-- Credential exposure.
+## End-to-end tests
 
-## Layer 5 — Performance Tests
+Test:
+- Learner enrollment.
+- Pathway switching.
+- Lesson navigation.
+- Tutor interaction.
+- Project creation.
+- Project submission.
+- Practice Arena execution.
+- Credential issuance.
+- Administrative job monitoring.
 
-Measure:
+## Security tests
 
-- Request latency.
-- Query count.
-- Concurrent users.
-- Judge throughput.
-- AI response latency.
-- Redis performance.
-- Database connection utilization.
+Test:
+- Cross-user access.
+- Cross-pathway data leakage.
+- Unauthorized project access.
+- File upload restrictions.
+- Sandbox restrictions.
+- Secret leakage.
+- Job ownership.
+- Retrieval access boundaries.
 
-Do not treat a local simulation as production capacity proof.
+## AI evaluation tests
 
-## Layer 6 — Curriculum Integrity Tests
+Test:
+- Tutor relevance.
+- Pathway accuracy.
+- Retrieval quality.
+- Structured output validity.
+- Generated question quality.
+- Project review quality.
 
-Validate all published:
-
-- Modules.
-- Lessons.
-- Prerequisites.
-- Assessments.
-- Projects.
-- Challenges.
-- Competencies.
-
----
-
-# 12. CI/CD Implementation
-
-Update the existing CI pipeline.
-
-Recommended checks:
-
-```bash
-python -m pip check
-
-python -m compileall -q \
-  app tests migrations index.py wsgi.py
-
-python -m pytest -q
-
-npm ci
-
-npm run build:css
-
-npm run build:js
-
-git diff --exit-code \
-  static/css/tailwind.css \
-  static/js/practice.bundle.js
-
-npx playwright install chromium
-
-npm run test:browser
-```
-
-Add:
-
-- Curriculum validation.
-- Project contract validation.
-- Secret scanning.
-- Archive hygiene.
-- Migration portability tests.
-- Security tests.
-- Accessibility checks.
-- Release metadata validation.
-
-All critical checks must pass before promotion.
+AI evaluation should use repeatable datasets and recorded model/prompt versions. Where model output is nondeterministic, use appropriate evaluation thresholds rather than relying on exact text equality.
 
 ---
 
-# 13. Database and Migration Rules
+# 12. CI/CD Requirements
 
-1. Every schema change requires a migration.
-2. Migrations must be reviewed before production.
-3. Production backups must precede migrations.
-4. Migrations must be tested on disposable databases.
-5. Existing learner progress must be preserved.
-6. Migration scripts must be idempotent where appropriate.
-7. Multiple Alembic heads must be resolved intentionally.
-8. Production rollback must follow an approved recovery procedure.
-9. Destructive data operations require explicit approval.
-10. Migration status must be recorded in release metadata.
+Update GitHub Actions progressively.
 
----
+The pipeline should include:
 
-# 14. Implementation Order and Workstream Ownership
+1. Dependency installation.
+2. Formatting and linting.
+3. Static analysis where appropriate.
+4. Unit tests.
+5. Integration tests.
+6. Migration checks.
+7. Security and secret scanning.
+8. Archive hygiene validation.
+9. Frontend build checks.
+10. Playwright tests for critical workflows.
+11. Build artifact validation.
 
-Suggested ownership:
+Do not make deployment dependent on tests that require unavailable production credentials. Use mocks and dedicated test services where necessary.
 
-| Workstream | Responsible role |
-|---|---|
-| Security and release hygiene | Backend/security engineer |
-| Curriculum architecture | Backend engineer + curriculum lead |
-| Shared Foundations | Curriculum/frontend engineer |
-| AI/ML pathway separation | Backend engineer |
-| Project Studio | Backend + frontend engineers |
-| Practice Arena | Backend/sandbox engineer |
-| Skill Passport | Backend/security engineer |
-| AI Tutor | AI engineer |
-| Learning Intelligence | AI/data engineer |
-| Accessibility and UI | Frontend engineer |
-| CI/CD and scalability | Platform engineer |
-| Verification and release | QA/release owner |
-
-One person may own multiple workstreams, but every workstream must have an accountable owner.
+Workers should have independent startup and health checks.
 
 ---
 
-# 15. Release Gates
+# 13. Recommended Implementation Batches
 
-## Gate 1 — Security Ready
+To avoid an excessively large release, divide the work into small, reviewable batches.
 
-- M0 complete.
-- No unresolved critical security defect.
-- Archive scanning passes.
-- Credential remediation documented.
+| Batch | Work | Expected result |
+|---|---|---|
+| B0.1 | Test baseline and repository audit | Reproducible baseline |
+| B0.2 | Release hygiene and secret scanning | Safe archives |
+| B1.1 | Core initialization refactor | Cleaner application factory |
+| B1.2 | Domain ownership and boundaries | Modular organization |
+| B1.3 | Pathway context correction | Reliable AI/ML separation |
+| B2.1 | AI provider interface | Unified AI access |
+| B2.2 | Model routing and usage tracking | Central AI configuration |
+| B2.3 | Persistent background processing | Reliable asynchronous work |
+| B2.4 | Prompt versioning and evaluation | Measurable AI quality |
+| B3.1 | Judge worker deployment | Operational code judging |
+| B3.2 | Execution profiles and sandbox hardening | Safer execution |
+| B3.3 | Artifact persistence | Durable project outputs |
+| B3.4 | ML compute and experiment tracking | Practical ML environment |
+| B4.1 | Shared project infrastructure | Common project lifecycle |
+| B4.2 | AI Engineering Studio | AI-specific project workflow |
+| B4.3 | ML Engineering Studio | ML-specific project workflow |
+| B5.1 | Learning context and retrieval | Tutor context intelligence |
+| B5.2 | AI Tutor 2.0 | Personalized learning assistance |
+| B5.3 | Competency recommendations | Evidence-based progression |
+| B6.1 | Monitoring and reliability | Operational visibility |
+| B6.2 | Backup, recovery, and scaling | Production readiness |
 
-## Gate 2 — Architecture Ready
-
-- M1 complete.
-- Three canonical domains resolve correctly.
-- Shared Foundations works independently.
-- Existing learner progress is preserved.
-
-## Gate 3 — Learning Features Ready
-
-- M2, M3 and M4 complete.
-- Projects are accurate.
-- Practice assessment is trustworthy.
-- Competency verification is secure.
-
-## Gate 4 — Intelligence Ready
-
-- M5 complete.
-- Tutor domain context verified.
-- Model-backed evaluation recorded.
-- M6 recommendations explainable and evidence-driven.
-
-## Gate 5 — Production Ready
-
-- M7 complete.
-- Full test suite passes.
-- Browser tests pass.
-- Migrations validated.
-- Security review passes.
-- Accessibility review passes.
-- Performance evidence recorded.
-- Release metadata verified.
-- Rollback procedure approved.
+Each batch should have its own issue or pull request, test evidence, and review.
 
 ---
 
-# 16. Documentation Structure
+# 14. Rules for Technology Adoption
 
-Maintain the following documentation:
+The team must justify new infrastructure before introducing it.
 
-```text
-docs/
-├── architecture/
-│   ├── CURRICULUM_ARCHITECTURE.md
-│   ├── PATHWAY_ENROLMENT.md
-│   ├── PROJECT_STUDIO_ARCHITECTURE.md
-│   ├── PRACTICE_ARENA_ARCHITECTURE.md
-│   ├── SKILL_PASSPORT_ARCHITECTURE.md
-│   ├── TUTOR_ARCHITECTURE.md
-│   └── LEARNING_INTELLIGENCE_ARCHITECTURE.md
-│
-├── security/
-│   ├── SECURITY_REMEDIATION_REPORT.md
-│   ├── AUTHORIZATION_MATRIX.md
-│   └── DATA_PROTECTION.md
-│
-├── curriculum/
-│   ├── CURRICULUM_ID_MIGRATION.md
-│   └── CURRICULUM_VALIDATION.md
-│
-├── testing/
-│   ├── TEST_STRATEGY.md
-│   ├── ACCESSIBILITY_REPORT.md
-│   └── PERFORMANCE_BASELINE.md
-│
-├── releases/
-│   ├── RELEASE_STATUS.md
-│   ├── RELEASE_NOTES.md
-│   └── RELEASE_CHECKLIST.md
-│
-└── incidents/
-    └── RELEASE_INCIDENTS.md
-```
+## FastAPI
 
-Keep `goals.md`, `milestones.md` and `implementation_plan.md` as the three primary planning documents.
+Do not replace Flask.
 
-Use `progress.md` as the chronological implementation record.
+Consider FastAPI only when an independently deployed AI or ML service needs:
+- An independent API lifecycle.
+- High-concurrency async I/O.
+- Independent scaling.
+- A separately managed deployment boundary.
 
-Use `docs/releases/RELEASE_STATUS.md` as the authoritative milestone completion record.
+## Next.js
 
-Do not maintain conflicting completion states in several documents.
+Do not replace Jinja2 immediately.
+
+Consider a richer frontend architecture only when the product genuinely needs:
+- Extensive client-side state.
+- Complex interactive workspaces.
+- A separately deployed frontend.
+- Rich real-time collaboration.
+
+## LangGraph
+
+Do not introduce it as a universal AI framework.
+
+Use it selectively for workflows requiring:
+- Persistent agent state.
+- Multi-step orchestration.
+- Conditional execution.
+- Human approval.
+- Checkpointing.
+- Recovery.
+
+Simple provider calls and ordinary tutor responses do not need LangGraph.
+
+## pgvector
+
+Evaluate it first because PostgreSQL already exists.
+
+Use a separate vector database only if measured requirements justify the added infrastructure.
+
+## MLflow
+
+Introduce it for reproducible ML experiments and model lifecycle tracking. Avoid maintaining a parallel experiment tracking system without a clear reason.
+
+## JupyterHub
+
+Consider it when learners need persistent, interactive notebook environments that cannot be adequately supported by the existing editor and execution model.
+
+## Kubernetes
+
+Defer it until:
+- Worker count and complexity justify orchestration.
+- Independent scaling is operationally difficult.
+- Deployment and scheduling requirements exceed simpler hosting options.
 
 ---
 
-# 17. Definition of Done
+# 15. Risk Register
 
-A task is done when:
+| Risk | Impact | Mitigation |
+|---|---|---|
+| Refactoring breaks existing LMS features | High | Regression tests and incremental changes |
+| Pathway context leakage | High | Server-side context resolution and tests |
+| Duplicate background job execution | High | Atomic claiming, leases, idempotency |
+| AI provider outages | Medium/High | Timeouts, retries, fallbacks |
+| AI cost escalation | High | Usage tracking, quotas, model routing |
+| Sandbox escape or abuse | Critical | Hardened execution hosts and isolation |
+| Worker overload | High | Concurrency and resource limits |
+| Large dataset storage growth | High | Artifact lifecycle and storage quotas |
+| Database migration failure | High | Tested migrations and backups |
+| Secret leakage in exports | Critical | Archive scanning and secret management |
+| Premature microservices | Medium/High | Modular monolith first |
+| GPU infrastructure costs | High | Dedicated quotas and controlled rollout |
+| Poor AI evaluation quality | Medium/High | Evaluation datasets and human review |
 
-- Implementation is complete.
-- Unit tests exist.
-- Integration tests exist where needed.
-- Authorization is verified.
-- Domain boundaries are enforced.
-- UI is integrated.
-- Error states are handled.
-- Documentation is updated.
-- Migration requirements are satisfied.
-- Acceptance criteria are demonstrated.
+---
 
-A route existing does not mean the feature is complete.
+# 16. Definition of Done
 
-A model existing does not mean the feature is complete.
+A feature or architectural change is complete only when:
 
-A curriculum JSON existing does not mean the curriculum is available to learners.
+- The implementation meets its documented requirements.
+- Existing functionality remains intact.
+- Unit tests are added or updated.
+- Integration tests are added where appropriate.
+- Security and authorization have been considered.
+- Database migrations are included where necessary.
+- Error and failure behaviour is defined.
+- Logging and observability are appropriate.
+- Configuration is documented.
+- The feature has been tested in its intended environment.
+- Relevant documentation is updated.
+- The implementation has been reviewed.
 
-A passing unit test does not prove the complete learner workflow works.
+A feature that works only on a developer's machine is not production-ready.
+
+---
+
+# 17. Immediate Team Instructions
+
+The first implementation cycle should not attempt to build all six milestones at once.
+
+Begin with the following:
+
+**First: Establish the baseline**
+- Set up the project correctly.
+- Run tests.
+- Document existing functionality.
+- Fix archive and secret-handling issues.
+- Confirm the actual deployment topology.
+
+**Second: Correct architectural risks**
+- Fix the AI Tutor pathway-context issue.
+- Establish pathway ownership boundaries.
+- Refactor the application factory.
+- Begin moving business logic out of oversized route modules.
+
+**Third: Build the AI infrastructure foundation**
+- Implement the provider gateway.
+- Centralize model routing.
+- Decide on the background queue.
+- Implement a real worker.
+- Move long-running AI tasks out of web requests.
+
+**Fourth: Operationalize execution**
+- Deploy the judge worker independently.
+- Verify sandbox security.
+- Establish persistent artifact storage.
+- Define execution profiles.
+
+Only after these foundations are stable should the team invest heavily in Project Studio expansion, AI Tutor 2.0, and advanced ML compute.
 
 ---
 
 # 18. Final Engineering Directive
 
-The next release must consolidate RUACH's foundations before expanding its intelligence.
+RUACH must evolve as one coherent engineering platform.
 
-The team should resist implementing advanced adaptive learning on top of inconsistent curriculum, unreliable assessment or unverified competency data.
+Do not create:
+- A separate AI gateway for every feature.
+- A separate queue for every domain.
+- A second project-management system.
+- Duplicate curriculum and competency records.
+- Multiple competing artifact-storage implementations.
+- A new framework merely because it is popular.
 
-The strategic objective is to establish a platform where:
+Build shared infrastructure where the underlying capability is genuinely shared. Preserve separate domain logic where AI Engineering and ML Engineering have different needs.
 
-- Learners study the correct pathway.
-- Shared Foundations genuinely support both specialisations.
-- AI Engineering and ML remain independent disciplines.
-- Practical assessments are trustworthy.
-- Projects demonstrate actual engineering ability.
-- Competencies are verified by authorized reviewers.
-- The AI Tutor teaches rather than simply answers.
-- Learning Intelligence recommends the next best learning action using real evidence.
+**The implementation target is a maintainable modular monolith with independently deployable workers and progressively specialized engineering environments.**
 
-**RUACH must progress from tracking what learners do to understanding what learners know, what they can build and what they are ready to learn next.**
+The platform should become more capable with every release, but not more fragile.
+
+Every major release must leave RUACH in a better architectural state than it found it.

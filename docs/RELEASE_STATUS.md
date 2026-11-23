@@ -22,14 +22,14 @@
 
 | Milestone | Name | Priority | Status | Owner | Started | Completed |
 |---|---|---|---|---|---|---|
-| M0 | Security, Data Integrity and Release Baseline | Critical | COMPLETE (pending owner countersign at release) | Engineering | 2026-11-18 | 2026-11-19 |
-| M1 | Canonical Curriculum and Pathway Integrity | Critical | COMPLETE (pending owner countersign at release; foundations content 100% authored & validated) | Engineering | 2026-11-18 | 2026-11-19 |
-| M2 | Project Studio and ML Project Corrections | High | EXIT REVIEW (owner sign-off on AI brief content pending) | Engineering | 2026-11-19 | — |
-| M3 | Practice Arena 2.1 and Assessment Integrity | High | COMPLETE (judge honestly disabled-by-default; Docker not verifiable in dev) | Engineering | 2026-11-19 | 2026-11-19 |
-| M4 | Skill Passport and Competency Verification | Critical | EXIT REVIEW (owner review of role-management UI recommended) | Engineering | 2026-11-19 | — |
-| M5 | AI Tutor 3.0 | High | EXIT REVIEW (live eval blocked on provider credits; owner action required) | Engineering | 2026-11-19 | — |
-| M6 | Learning Intelligence and Adaptive Practice | Strategic | EXIT REVIEW | Engineering | 2026-11-19 | — |
-| M7 | Reliability, Accessibility and Release Verification | Critical | EXIT REVIEW (gate; suite re-run + owner actions pending) | Engineering | 2026-11-19 | — |
+| M0 | Security, Data Integrity and Release Baseline | Critical | COMPLETE | Engineering | 2026-11-18 | 2026-11-19 |
+| M1 | Canonical Curriculum and Pathway Integrity | Critical | COMPLETE | Engineering | 2026-11-18 | 2026-11-19 |
+| M2 | Project Studio and ML Project Corrections | High | COMPLETE | Engineering | 2026-11-19 | 2026-11-21 |
+| M3 | Practice Arena 2.1 and Assessment Integrity | High | COMPLETE | Engineering | 2026-11-19 | 2026-11-22 |
+| M4 | Skill Passport and Competency Verification | Critical | COMPLETE | Engineering | 2026-11-19 | 2026-11-23 |
+| M5 | AI Tutor 3.0 / AI Infrastructure | High | COMPLETE | Engineering | 2026-11-19 | 2026-11-23 |
+| M6 | Learning Intelligence and Adaptive Practice | Strategic | COMPLETE | Engineering | 2026-11-19 | 2026-11-23 |
+| M7 | Reliability, Accessibility and Release Verification | Critical | COMPLETE | Engineering | 2026-11-19 | 2026-11-23 |
 
 ## M0 — Security, Data Integrity and Release Baseline
 

@@ -1,899 +1,788 @@
-# RUACH LMS — Learning Intelligence & Engineering Excellence
-## Milestones, Dependencies and Exit Criteria
+# RUACH LMS — Architecture Evolution Milestones
 
-**Release:** 1.1
-**Status:** Proposed
-**Baseline:** Parallel Pathways 1.0.0 and subsequent development through `68b3125`
-
----
-
-# 1. Milestone Overview
-
-This release is divided into eight milestones.
-
-| Milestone | Name | Priority | Effort |
-|---|---|---|---|
-| M0 | Security, Data Integrity and Release Baseline | Critical | Medium |
-| M1 | Canonical Curriculum and Pathway Integrity | Critical | High |
-| M2 | Project Studio and ML Project Corrections | High | Medium–High |
-| M3 | Practice Arena 2.1 and Assessment Integrity | High | High |
-| M4 | Skill Passport and Competency Verification | Critical | Medium |
-| M5 | AI Tutor 3.0 | High | High |
-| M6 | Learning Intelligence and Adaptive Practice | Strategic | Very High |
-| M7 | Reliability, Accessibility and Release Verification | Critical | High |
-
-Milestones must not be considered complete based solely on implementation progress.
-
-Each milestone requires documented verification and an explicit exit decision.
+**Document:** `milestones.md`  
+**Project:** RUACH LMS  
+**Status:** Proposed  
+**Approach:** Incremental delivery with protected existing functionality
 
 ---
 
-# 2. M0 — Security, Data Integrity and Release Baseline
+# Milestone Overview
 
-**Priority:** Critical
-**Dependencies:** None
-**Purpose:** Establish a secure baseline before expanding the product.
+The architecture evolution is divided into six milestones. Each milestone has a defined outcome and completion criteria. The team should not treat these as six unrelated feature releases; they form a dependency-driven programme.
 
-## M0.1 — Source Distribution Hygiene
+| Milestone | Focus | Priority |
+|---|---|---|
+| M0 | Architecture baseline and release hygiene | P0 |
+| M1 | Core architecture consolidation | P0 |
+| M2 | AI infrastructure and background processing | P0 |
+| M3 | Execution infrastructure and engineering labs | P1 |
+| M4 | AI/ML Project Studio and learning intelligence | P1 |
+| M5 | Production readiness and operational scaling | P2 |
 
-Tasks:
-
-- Create a dedicated source export process.
-- Exclude `.env` and `.env.local`.
-- Exclude OAuth client-secret files.
-- Exclude databases.
-- Exclude profile photos and user uploads.
-- Exclude virtual environments.
-- Exclude node_modules.
-- Exclude editor state and temporary files.
-- Exclude test caches and generated artifacts unless explicitly required.
-
-Deliverable:
-- `scripts/export_release_source.sh`
-- `docs/RELEASE_ARTIFACT_POLICY.md`
-
-Acceptance:
-- The generated archive contains only approved files.
-- Archive scanning rejects sensitive files.
-- Archive size is controlled and documented.
-
-## M0.2 — Credential Audit and Rotation
-
-Tasks:
-
-- Inspect the supplied archive for actual non-placeholder credentials.
-- Identify credentials that may have been exposed.
-- Rotate affected credentials.
-- Verify environment-variable usage.
-- Remove hardcoded secrets.
-- Review Vercel and Render secret configuration.
-- Review Google OAuth configuration.
-- Review database and AI provider credentials.
-- Review signing keys and administrative tokens.
-
-Deliverable:
-- `docs/SECURITY_REMEDIATION_REPORT.md`
-
-Acceptance:
-- Every identified exposed credential has a recorded remediation decision.
-- No active exposed credential remains.
-- Rotation is verified without printing secrets into logs.
-
-## M0.3 — Authorization Audit
-
-Review:
-
-- Authentication.
-- Learner ownership.
-- Reviewer authorization.
-- Admin authorization.
-- API permissions.
-- CSRF protection.
-- Credential issuance.
-- Project verification.
-- Portfolio publication.
-- Lab completion and reset.
-- Practice submission.
-
-Acceptance:
-- Every protected action has an explicit authorization policy.
-- Learners cannot modify other learners' records.
-- Learners cannot approve their own verified credentials.
-- Unauthorized actions return appropriate HTTP status codes.
-
-## M0.4 — Release Metadata
-
-Implement:
-
-- Application version.
-- Git commit SHA.
-- Build timestamp.
-- Alembic migration revision.
-- Deployment environment.
-- Readiness status.
-
-Acceptance:
-- `/healthz` remains a liveness endpoint.
-- `/readyz` reports application/database readiness.
-- Release metadata is accessible through a safe diagnostic endpoint.
-- Secrets and internal connection strings are never exposed.
-
-## M0 Exit Criteria
-
-- Source archive security scan passes.
-- Credential remediation is documented.
-- Authorization regression tests pass.
-- Release metadata is implemented.
-- Backup and recovery procedure is documented.
-- No critical security finding remains unresolved.
+**Dependency principle:** M0 must be completed before major structural changes. M1 should establish stable boundaries before M2 and M3 expand the platform. M4 depends on reliable AI and execution infrastructure. M5 consolidates and prepares the system for broader production use.
 
 ---
 
-# 3. M1 — Canonical Curriculum and Pathway Integrity
+# M0 — Architecture Baseline and Release Hygiene
 
-**Priority:** Critical
-**Dependencies:** M0
-**Purpose:** Make the three-domain curriculum authoritative throughout RUACH.
+**Priority:** P0  
+**Objective:** Establish a reliable understanding of the current system, protect existing functionality, and eliminate preventable release and security risks.
 
-## M1.1 — Curriculum Registry
+## Scope
 
-Create a canonical curriculum registry.
+### 0.1 Architecture inventory
 
-Required domains:
+- Document the current application factory and blueprint registration.
+- Map existing routes to their corresponding services and models.
+- Identify responsibilities currently concentrated in large files.
+- Document AI provider integrations.
+- Document cache and fallback behaviour.
+- Document current database models and migrations.
+- Document Practice Arena execution flow.
+- Document the judge worker and deployment assumptions.
+- Document the current Render and Vercel configuration.
+- Identify inactive, duplicated, or incomplete architectural components.
 
-- `shared-foundations`
-- `ai-engineering`
-- `machine-learning`
+### 0.2 Establish a regression baseline
 
-The registry must resolve each domain to its canonical manifest.
+- Run the existing test suite in a properly provisioned environment.
+- Resolve dependency installation issues in the test environment.
+- Record current passing and failing tests.
+- Run database migration checks.
+- Run existing Playwright tests.
+- Record critical user journeys and expected behaviour.
+- Establish a baseline for application startup and deployment.
 
-It must provide:
+### 0.3 Release and security hygiene
 
-- Module lookup.
-- Lesson lookup.
-- Competency lookup.
-- Prerequisite resolution.
-- Curriculum version.
-- Domain validation.
-- Learning objective resolution.
+- Review `.gitignore`.
+- Repair `scripts/clean_export.sh`.
+- Exclude `.env`, `.env.local`, secret files, OAuth credentials, token files, private keys, local databases, `.venv`, `node_modules`, uploads, caches, and test artifacts from release exports.
+- Allow only safe placeholder configuration files such as `.env.example`.
+- Add archive-content validation.
+- Add automated secret scanning.
+- Review Git history for accidentally committed credentials.
+- Rotate credentials if they were exposed to untrusted parties.
+- Establish a documented release packaging procedure.
 
-Deliverable:
-- `app/curriculum_registry.py`
-- `app/services/curriculum.py`
+### 0.4 Deployment baseline
 
-Acceptance:
-- All three manifests load successfully.
-- Duplicate IDs are rejected.
-- Invalid domains are rejected.
-- Cross-specialisation prerequisites are rejected.
-- Every published lesson resolves through the registry.
+- Identify the canonical deployment environment.
+- Document the web service's actual capabilities.
+- Document whether the judge worker is deployed independently.
+- Verify whether Docker execution is enabled in the intended production environment.
+- Document Redis, PostgreSQL, and object storage dependencies.
 
-## M1.2 — Legacy Curriculum Migration
+## Deliverables
 
-Tasks:
+- `CURRENT_ARCHITECTURE_AUDIT.md`
+- `SYSTEM_COMPONENT_MAP.md`
+- `DEPLOYMENT_ARCHITECTURE.md`
+- `SECURITY_AND_RELEASE_AUDIT.md`
+- Updated `.gitignore`
+- Updated `scripts/clean_export.sh`
+- Automated archive hygiene checks
+- Baseline test report
 
-- Inventory legacy module and lesson IDs.
-- Map legacy records to canonical IDs.
-- Identify duplicated foundation lessons.
-- Define migration behaviour for existing completion records.
-- Preserve historical evidence.
-- Avoid generating duplicate completion records.
-- Document unresolved mappings.
+## Acceptance criteria
 
-Deliverables:
-- `docs/CURRICULUM_ID_MIGRATION.md`
-- `app/data/curriculum_legacy_mapping.json`
-
-Acceptance:
-- Every existing learner record has a deterministic mapping or an explicitly documented exception.
-- No progress is silently discarded.
-- Migration is idempotent.
-- Duplicate completion records are prevented.
-
-## M1.3 — Shared Foundations Lesson Experience
-
-Tasks:
-
-- Wire the six-module foundation manifest into the lesson catalogue.
-- Implement dedicated lesson-detail resolution.
-- Implement foundation-specific progress.
-- Implement foundation assessment handling.
-- Add prerequisite state.
-- Add pathway transition links.
-- Remove reliance on legacy AI modules for foundation navigation.
-
-Acceptance:
-- All published foundation lessons open.
-- All published foundation lessons have valid content.
-- Completion is persisted.
-- Assessment state is correct.
-- Foundation progress is displayed independently.
-- AI and ML pathways can reuse eligible foundation evidence.
-
-## M1.4 — Independent Pathway Navigation
-
-Tasks:
-
-- Ensure multiple enrolments are supported.
-- Distinguish enrolment from active focus.
-- Distinguish paused from completed.
-- Preserve pathway-specific progress.
-- Ensure the dashboard resolves the correct enrolment state.
-- Ensure navigation reflects available pathways.
-- Remove legacy permanent-destination assumptions.
-
-Acceptance:
-- AI-only enrolment works.
-- ML-only enrolment works.
-- Dual enrolment works.
-- Pausing one pathway does not affect the other.
-- Switching focus does not modify enrolment or completion.
-- No route relies on a single pathway destination as the learner's complete identity.
-
-## M1.5 — Curriculum Contract Tests
-
-Add automated checks for:
-
-- Module counts.
-- Lesson counts.
-- Unique IDs.
-- Prerequisites.
-- Domain ownership.
-- Learning objectives.
-- Competency mappings.
-- Lesson route resolution.
-- Progress mapping.
-- Project references.
-- Practice references.
-
-## M1 Exit Criteria
-
-- Three canonical curricula resolve independently.
-- Shared Foundations works as a standalone curriculum.
-- AI and ML remain independent.
-- Existing progress is preserved.
-- Dashboard and lesson catalogue agree on enrolment state.
-- All curriculum validation tests pass.
+- The team has an accurate picture of the existing architecture.
+- The application can be installed and tested using documented steps.
+- Critical existing functionality has a recorded regression baseline.
+- Release archives do not contain local secrets or development environments.
+- The production deployment arrangement is documented accurately.
+- No framework migration has been introduced as part of this milestone.
 
 ---
 
-# 4. M2 — Project Studio and ML Project Corrections
+# M1 — Core Architecture Consolidation
 
-**Priority:** High
-**Dependencies:** M0, M1
-**Purpose:** Make projects accurate, domain-aware and assessable.
+**Priority:** P0  
+**Objective:** Organize the existing Flask application into maintainable domain boundaries while preserving the modular monolith.
 
-## M2.1 — Manifest-Driven ML Project Templates
+## Scope
 
-Remove hardcoded module-number presentation logic.
+### 1.1 Establish core infrastructure boundaries
 
-Each ML module must define:
+Create or refine:
 
-- Project title.
-- Problem statement.
-- Project objectives.
-- Dataset.
-- Required tasks.
-- Starter kit.
-- Report schema.
-- Evaluation criteria.
-- Submission requirements.
-- Rubric.
+- Configuration management.
+- Extension initialization.
+- Database initialization.
+- Authentication and authorization.
+- Logging and error handling.
+- Shared response utilities.
+- Storage interfaces.
+- Cache interfaces.
+- Background job interfaces.
 
-Acceptance:
-- No generic fallback is used for modules 4–12.
-- All published ML projects display their own instructions.
-- Report fields match backend validation.
-- Invalid reports return actionable errors.
-- Every module has a render and validation test.
+The application factory should initialize infrastructure and register application components, not contain domain business logic.
 
-## M2.2 — AI Engineering Project Workspace
+### 1.2 Organize domain modules
 
-Implement a dedicated AI Engineering workspace.
+Establish logical domain boundaries for:
 
-It must not be a renamed ML workspace.
-
-Required project artefacts:
-
-- Problem definition.
-- Architecture.
-- Prompt versions.
-- Model configuration.
-- Retrieval configuration.
-- API contracts.
-- Evaluation datasets.
-- Agent traces.
-- Deployment evidence.
-- Technical reflection.
-
-Acceptance:
-- AI projects use AI-specific schemas.
-- ML project evidence cannot be accidentally displayed as AI project evidence.
-- Domain context is enforced at both service and database levels.
-
-## M2.3 — Shared Project Lifecycle
-
-Implement a common lifecycle engine.
-
-Stages:
-
-1. Draft.
-2. Planned.
-3. In progress.
-4. Submitted.
-5. Under review.
-6. Revision requested.
-7. Approved.
-8. Published.
-9. Archived.
-
-Acceptance:
-- Transitions are validated.
-- Learner ownership is enforced.
-- Reviewer actions are audited.
-- Project history is preserved.
-- Reassessment is supported.
-
-## M2.4 — Project Milestones and Evidence
-
-Implement:
-
-- Milestone definitions.
-- Milestone completion.
-- Evidence attachments.
-- Technical reflection.
-- Assessment feedback.
-- Competency mapping.
-
-Acceptance:
-- Project milestones persist.
-- Evidence is accessible to authorized users only.
-- Published portfolio entries expose only approved information.
-
-## M2 Exit Criteria
-
-- All 12 ML project pages are accurate.
-- AI Engineering has a distinct project workspace.
-- Both domains use a shared lifecycle engine without sharing domain-specific assessment rules.
-- Project evidence is auditable.
-- Project tests pass.
-
----
-
-# 5. M3 — Practice Arena 2.1 and Assessment Integrity
-
-**Priority:** High
-**Dependencies:** M0, M1
-**Purpose:** Turn the existing challenge catalogue into a trustworthy assessment environment.
-
-## M3.1 — ML Challenge Taxonomy
-
-Expand the existing 100+ ML problems across:
-
-- Python for ML.
-- Statistics.
-- Data analysis.
-- Feature engineering.
-- Regression.
-- Classification.
-- Unsupervised learning.
-- Model evaluation.
-- Deep learning.
-- PyTorch.
-- Computer vision.
-- Reproducible training.
-- Production ML.
-- MLOps.
-
-Acceptance:
-- Each published challenge maps to a curriculum topic.
-- Topic coverage is measurable.
-- Difficulty distribution is preserved.
-- No duplicate challenge IDs exist.
-- Challenge schemas validate.
-
-## M3.2 — Isolated Judge Integration
-
-The authoritative judge must be deployed separately from the Flask application.
-
-Required components:
-
-- Submission API.
-- Durable queue.
-- Isolated worker.
-- Resource limits.
-- Execution timeout.
-- Output limits.
-- Submission state.
-- Result storage.
-- Failure handling.
-
-Acceptance:
-- Application server never executes arbitrary learner code directly.
-- Disabled judge means Submit is disabled.
-- Worker failure does not create false passes.
-- Duplicate submissions are handled idempotently.
-- Results can be recovered after worker restart.
-- Private tests are never sent to the learner browser.
-
-## M3.3 — Submission History
-
-Store:
-
-- Challenge ID.
-- Learner ID.
-- Submission ID.
-- Code version or source hash.
-- Timestamp.
-- Execution status.
-- Passed/failed tests.
-- Runtime.
-- Memory usage where available.
-- Evaluation result.
-
-Acceptance:
-- Learners can inspect previous submissions.
-- A submission can be associated with a specific challenge version.
-- Results cannot be modified by the learner.
-
-## M3.4 — Diagnostic Feedback
-
-Introduce diagnostic categories:
-
-- Syntax error.
-- Runtime error.
-- Incorrect algorithm.
-- Boundary-condition failure.
-- Data structure misuse.
-- Complexity issue.
-- Incorrect assumption.
-- Incomplete implementation.
-
-Feedback must be grounded in available execution evidence.
-
-Do not claim to know the cause of a failure when the system only knows that a hidden test failed.
-
-## M3.5 — Adaptive Challenge Recommendations
-
-Recommendations may consider:
-
-- Current module.
-- Unmastered concepts.
-- Previous challenge attempts.
-- Difficulty performance.
-- Repeated failure patterns.
-- Prerequisite completion.
-
-Acceptance:
-- Every recommendation includes a reason.
-- Learners can dismiss recommendations.
-- Recommendations do not override pathway enrolment or prerequisite rules.
-
-## M3 Exit Criteria
-
-- Judge is safely operational or Submit is honestly disabled.
-- ML topic coverage matches the curriculum.
-- All challenge records validate.
-- Submission history is reliable.
-- Diagnostic feedback does not invent hidden-test details.
-- Arena regression tests pass.
-
----
-
-# 6. M4 — Skill Passport and Competency Verification
-
-**Priority:** Critical
-**Dependencies:** M0, M1
-**Purpose:** Protect the integrity of competency records.
-
-## M4.1 — Role-Based Verification
-
-Define roles:
-
-- Learner.
-- Reviewer.
-- Instructor.
-- Administrator.
-
-Implement explicit permissions.
-
-Learners may submit and request reassessment.
-
-Reviewers may assess evidence.
-
-Administrators may manage reviewer access and exceptional verification policies.
-
-Acceptance:
-- Learners cannot verify their own evidence.
-- Unauthorized assessment calls are rejected.
-- Reviewer identity is recorded.
-
-## M4.2 — Verification History
-
-Record:
-
-- Previous status.
-- New status.
-- Assessor.
-- Timestamp.
-- Evidence reference.
-- Reason.
-- Review notes.
-
-Use append-only history.
-
-## M4.3 — Reassessment and Invalidation
-
-Support:
-
-- Revision requested.
-- Reassessment.
-- Rejection.
-- Verification revocation.
-- Historical status inspection.
-
-A revocation must not erase the original verification event.
-
-## M4.4 — Domain Classification
-
-Correctly classify:
-
-- Shared Foundations competencies.
-- AI Engineering competencies.
-- ML competencies.
-
-Legacy foundation modules must not automatically be classified as AI Engineering.
-
-## M4.5 — Learner Interface
-
-Display:
-
-- Competency.
-- Domain.
-- Evidence.
-- Verification status.
-- Reviewer feedback.
-- Assessment history.
-- Reassessment action.
-
-## M4 Exit Criteria
-
-- Verification permissions are enforced.
-- All status transitions are audited.
-- Domain classifications are correct.
-- Learners can understand the status of every submitted competency.
-- Security and regression tests pass.
-
----
-
-# 7. M5 — AI Tutor 3.0
-
-**Priority:** High
-**Dependencies:** M1, M3
-**Purpose:** Make the tutor a domain-aware engineering mentor.
-
-## M5.1 — Domain Context Resolver
-
-Resolve context in this order:
-
-1. Explicit lesson or challenge domain.
-2. Explicit project domain.
-3. Explicit user-selected learning context.
-4. Active pathway preference.
-5. Shared fallback only when no stronger context exists.
-
-Acceptance:
-- Shared lessons always receive Shared Foundations context.
-- AI lessons receive AI Engineering context.
-- ML lessons receive ML context.
-
-## M5.2 — Instructional Modes
-
-Implement:
-
-- Explain.
-- Socratic guide.
-- Debug.
-- Review.
-- Practice.
-- Project mentor.
-- Assessment preparation.
-
-The learner should be able to understand which mode is active.
-
-## M5.3 — Persistent Learning Context
-
-Store only useful, permission-controlled learning information:
-
-- Concepts studied.
-- Demonstrated strengths.
-- Repeated misconceptions.
-- Unresolved learning gaps.
-- Relevant project context.
-- Recent instructional progress.
-
-Avoid treating every conversation as verified learning evidence.
-
-## M5.4 — Evaluation Framework
-
-Use domain-specific evaluation datasets.
-
-Evaluate:
-
-- Factual correctness.
-- Curriculum alignment.
-- Instructional clarity.
-- Socratic quality.
-- Hint progression.
-- Solution leakage.
-- Domain confusion.
-- Safety.
-- Latency.
-- Token cost.
-
-Acceptance:
-- Evaluation runs are reproducible.
-- Model/version metadata is stored.
-- Failed evaluations block tutor prompt releases where applicable.
-- Model-backed evaluation is distinguished from structural dataset validation.
-
-## M5 Exit Criteria
-
-- All instructional surfaces use the correct domain.
-- Tutor modes are functional.
-- Persistent context is permission-controlled.
-- Evaluation reports are reproducible.
-- Latency and cost baselines are recorded.
-
----
-
-# 8. M6 — Learning Intelligence and Adaptive Practice
-
-**Priority:** Strategic
-**Dependencies:** M1, M3, M4, M5
-**Purpose:** Establish concept-level mastery and personalized learning recommendations.
-
-## M6.1 — Competency and Concept Graph
-
-Connect:
-
-- Domains.
-- Modules.
-- Lessons.
-- Concepts.
-- Competencies.
-- Assessments.
-- Challenges.
+- Identity and access.
+- Learning and curriculum.
+- Learner progress.
+- Assessment.
 - Projects.
-- Prerequisites.
+- AI Engineering.
+- ML Engineering.
+- Credentials.
+- Community and collaboration.
+- Integrations.
 
-Acceptance:
-- Every relationship is explicit.
-- Invalid cross-specialisation dependencies are rejected.
-- Graph traversal supports prerequisite and recommendation queries.
+Suggested target structure:
 
-## M6.2 — Mastery Model
-
-Establish states:
-
-- Not introduced.
-- Introduced.
-- Practising.
-- Developing.
-- Proficient.
-- Mastered.
-- Needs review.
-
-Mastery must be evidence-driven.
-
-Lesson completion alone cannot establish mastery.
-
-## M6.3 — Learning Diagnosis
-
-Identify:
-
-- Weak concepts.
-- Repeated errors.
-- Prerequisite gaps.
-- Assessment inconsistencies.
-- Forgotten concepts.
-
-Acceptance:
-- Diagnosis includes supporting evidence.
-- Inference confidence is recorded where applicable.
-- Insufficient evidence produces an unknown state, not an invented diagnosis.
-
-## M6.4 — Adaptive Recommendation Engine
-
-Recommend:
-
-- Lessons.
-- Practice challenges.
-- Tutor interventions.
-- Mini assessments.
-- Projects.
-- Review sessions.
-
-Recommendations must respect the learner's active domain and prerequisites.
-
-## M6.5 — Spaced Repetition
-
-Implement review scheduling for suitable concepts.
-
-Use learner performance and elapsed time.
-
-Do not apply the same review schedule indiscriminately to every project or competency.
-
-## M6.6 — Mastery Dashboard
-
-Show:
-
-- Domain mastery.
-- Concept-level strengths.
-- Weak areas.
-- Recommended actions.
-- Evidence behind mastery.
-- Recent changes.
-
-## M6 Exit Criteria
-
-- Concept graph is operational.
-- Mastery updates from assessment evidence.
-- Recommendations are explainable.
-- Review scheduling works.
-- Mastery is not confused with verified credentials.
-
----
-
-# 9. M7 — Reliability, Accessibility and Release Verification
-
-**Priority:** Critical
-**Dependencies:** M0–M6
-**Purpose:** Prove that the product is reliable and release-ready.
-
-## M7.1 — Database and Migration Reliability
-
-- Fix fresh-SQLite migration portability.
-- Use portable server defaults.
-- Test Alembic upgrades.
-- Test downgrade on disposable databases.
-- Verify a single intended migration head.
-- Verify production-like migration behaviour.
-- Document recovery procedures.
-
-## M7.2 — Performance
-
-- Measure dashboard query counts.
-- Measure lesson catalogue query counts.
-- Measure Passport query counts.
-- Measure Arena catalogue latency.
-- Measure tutor response latency.
-- Measure project submission latency.
-- Benchmark Redis cache behaviour.
-- Tune database pools.
-- Remove blocking request-thread behaviour from long-lived judge polling.
-
-## M7.3 — Accessibility
-
-Test:
-
-- Keyboard navigation.
-- Focus visibility.
-- Semantic landmarks.
-- Form labels.
-- Error announcements.
-- Colour contrast.
-- Screen-reader labels.
-- Responsive navigation.
-- Editor accessibility.
-
-## M7.4 — Browser E2E
-
-Cover:
-
-- Registration and login.
-- Onboarding.
-- Dual enrolment.
-- Pathway switching.
-- Shared lesson completion.
-- AI lesson completion.
-- ML lesson completion.
-- Practice save and restore.
-- Judge submission.
-- Tutor interaction.
-- Project submission.
-- Passport verification.
-- Credential display.
-- Portfolio privacy.
-- Mobile navigation.
-
-## M7.5 — Release Operations
-
-- Reconcile documentation.
-- Update release notes.
-- Generate release metadata.
-- Run security scans.
-- Run full tests.
-- Run browser tests.
-- Verify migrations.
-- Deploy to staging.
-- Perform authenticated smoke tests.
-- Verify production readiness.
-- Record rollback identifier.
-- Tag the release.
-
-## M7 Exit Criteria
-
-- All critical acceptance criteria pass.
-- No unresolved P0/P1 defect remains.
-- Full automated suite passes.
-- Browser E2E suite passes.
-- Migration evidence exists.
-- Security and accessibility checks pass.
-- Performance baselines are recorded.
-- Deployment commit is confirmed.
-- Release documentation is consistent.
-
----
-
-# 10. Milestone Dependencies
-
-```mermaid
-flowchart TD
-    M0[M0 Security and Baseline]
-    M1[M1 Curriculum Integrity]
-    M2[M2 Project Studio]
-    M3[M3 Practice Arena]
-    M4[M4 Skill Passport]
-    M5[M5 AI Tutor]
-    M6[M6 Learning Intelligence]
-    M7[M7 Release Verification]
-
-    M0 --> M1
-    M0 --> M2
-    M1 --> M2
-    M0 --> M3
-    M1 --> M3
-    M0 --> M4
-    M1 --> M4
-    M1 --> M5
-    M3 --> M5
-    M1 --> M6
-    M3 --> M6
-    M4 --> M6
-    M5 --> M6
-    M0 --> M7
-    M1 --> M7
-    M2 --> M7
-    M3 --> M7
-    M4 --> M7
-    M5 --> M7
-    M6 --> M7
+```text
+app/
+├── __init__.py
+├── core/
+│   ├── config.py
+│   ├── extensions.py
+│   ├── logging.py
+│   ├── security.py
+│   └── errors.py
+├── domains/
+│   ├── identity/
+│   ├── learning/
+│   ├── curriculum/
+│   ├── assessment/
+│   ├── projects/
+│   ├── credentials/
+│   ├── ai_engineering/
+│   ├── machine_learning/
+│   └── community/
+├── ai/
+│   ├── providers/
+│   ├── tutor/
+│   ├── agents/
+│   ├── retrieval/
+│   ├── prompts/
+│   ├── evaluation/
+│   └── observability/
+├── infrastructure/
+│   ├── database/
+│   ├── cache/
+│   ├── storage/
+│   ├── queue/
+│   └── sandbox/
+├── routes/
+├── services/
+└── models.py
 ```
 
-# 11. Release Governance
+This is a logical target, not a requirement to move every existing file immediately. The team should migrate responsibilities incrementally.
 
-Maintain one authoritative milestone-status document.
+### 1.3 Refactor oversized modules
 
-Recommended:
+Prioritize modules with concentrated responsibilities, including:
 
-`docs/RELEASE_STATUS.md`
+- `app/__init__.py`
+- `app/models.py`
+- `app/routes/main.py`
+- `app/routes/admin_portal.py`
+- `app/routes/auth.py`
+- `app/routes/lessons.py`
+- `app/routes/projects.py`
+- `app/routes/practice_arena.py`
+- AI tutor service modules.
 
-Every milestone must record:
+Split by responsibility, not simply by line count.
 
-- Status.
-- Owner.
-- Start date.
-- Completion date.
-- Related commit(s).
-- Migration(s).
-- Tests.
-- Evidence.
-- Outstanding issues.
-- Approval.
+### 1.4 Strengthen pathway boundaries
 
-Do not duplicate milestone progress across multiple documents.
+- Define shared foundation modules explicitly.
+- Keep AI specialization modules independent.
+- Keep ML specialization modules independent.
+- Define pathway-specific curriculum services.
+- Define pathway-specific project services.
+- Define pathway-specific assessment rules.
+- Ensure learner enrollment and active pathway selection cannot accidentally determine the context of an unrelated lesson.
 
-The existing `goals.md`, `milestones.md` and `implementation_plan.md` should define intended work. `progress.md` should record implementation history. `docs/RELEASE_STATUS.md` should be authoritative for completion status.
+### 1.5 Resolve tutor context correctness
 
-**A milestone is complete only when its exit criteria are demonstrated.**
+Investigate and correct the tutor-context issue identified in `app/routes/lessons.py`.
+
+The tutor's syllabus context must be derived from the actual lesson's pathway. It must not be derived solely from `destination_for(current_user)` or the currently active dashboard focus.
+
+Add regression tests for:
+- AI lesson with AI active focus.
+- ML lesson with ML active focus.
+- AI lesson with ML active focus.
+- ML lesson with AI active focus.
+- Learners enrolled in both pathways.
+- Learners switching active pathways.
+
+## Deliverables
+
+- Refactored core initialization.
+- Domain boundary documentation.
+- Incrementally reorganized domain modules.
+- Consistent service interfaces.
+- Pathway-context regression tests.
+- `RUACH_2_ARCHITECTURE.md`
+- `ARCHITECTURE_DECISIONS.md`
+
+## Acceptance criteria
+
+- Existing user journeys continue to work.
+- Routes are thinner and delegate business logic to services.
+- Domain responsibilities are identifiable.
+- AI and ML pathway contexts are correct.
+- Database migrations remain backward compatible.
+- The team can add new features without introducing unnecessary cross-domain dependencies.
+
+---
+
+# M2 — AI Infrastructure and Background Processing
+
+**Priority:** P0  
+**Objective:** Establish a reusable AI execution architecture and reliable asynchronous processing.
+
+## Scope
+
+### 2.1 Central AI provider gateway
+
+Build a common provider interface around the existing Gemini and OpenRouter integrations.
+
+Responsibilities:
+
+- Provider selection.
+- Model selection.
+- Task-based routing.
+- Timeouts.
+- Retries.
+- Circuit breakers.
+- Error normalization.
+- Response normalization.
+- Token usage collection.
+- Cost estimation.
+- Provider fallback.
+
+Avoid rewriting working provider integrations unless the new interface requires it.
+
+### 2.2 Model and task routing
+
+Introduce a central model configuration mechanism.
+
+Examples of task categories:
+
+- Tutor conversation.
+- Lesson explanation.
+- Question generation.
+- Project review.
+- RAG synthesis.
+- Document analysis.
+- Agent execution.
+- Evaluation.
+
+Model selection should be configurable by task and provider. It should not be scattered across individual routes.
+
+### 2.3 Background job infrastructure
+
+Review the existing `AIBackgroundJob` model and determine whether it can be safely extended.
+
+Implement one background processing architecture.
+
+The initial implementation may use a database-backed job queue if that is the simplest reliable option. Alternatively, use Redis-backed Celery if the team chooses a mature broker-and-worker approach.
+
+Do not introduce both without a clear need.
+
+Required capabilities:
+
+- Job creation.
+- Job claiming.
+- Job leasing or equivalent concurrency protection.
+- Job status transitions.
+- Retry policy.
+- Exponential backoff.
+- Failure handling.
+- Timeout handling.
+- Idempotency.
+- Worker health monitoring.
+- Progress reporting.
+- Job cancellation where safe.
+
+### 2.4 Move long-running operations to workers
+
+Prioritize:
+
+- Document ingestion.
+- RAG indexing.
+- Large project reviews.
+- Dataset analysis.
+- Bulk content generation.
+- Large evaluation tasks.
+- Complex agent execution.
+
+Keep short, predictable interactive tutor responses synchronous initially.
+
+### 2.5 Prompt management
+
+Implement:
+
+- Versioned prompts.
+- Prompt ownership and purpose.
+- Prompt metadata.
+- Model compatibility metadata.
+- Prompt revision history.
+- Prompt rollback.
+- Evaluation status.
+- Development and production prompt separation.
+
+### 2.6 AI observability
+
+Capture:
+
+- Provider.
+- Model.
+- Task type.
+- Prompt version.
+- Request duration.
+- Token usage.
+- Estimated cost.
+- Success or failure.
+- Retry count.
+- Correlation ID.
+
+Avoid storing unnecessary sensitive user content in logs.
+
+### 2.7 AI evaluation foundation
+
+Create evaluation datasets and test suites for:
+
+- Tutor answer relevance.
+- Tutor factual correctness.
+- RAG retrieval quality.
+- Generated question quality.
+- Project review usefulness.
+- Structured output validity.
+
+## Deliverables
+
+- AI provider gateway.
+- Task-based model routing.
+- Background job infrastructure.
+- Worker process.
+- Job status and monitoring interface.
+- Prompt version management.
+- AI usage and cost tracking.
+- Initial AI evaluation framework.
+
+## Acceptance criteria
+
+- AI provider calls use a common interface.
+- Long-running AI tasks do not block normal web requests.
+- Jobs survive worker restarts.
+- Failed jobs follow a predictable retry policy.
+- Duplicate job execution is controlled.
+- Administrators can inspect job status.
+- AI usage and estimated cost are measurable.
+- Existing tutor and provider functionality remains operational.
+
+---
+
+# M3 — Execution Infrastructure and Engineering Labs
+
+**Priority:** P1  
+**Objective:** Build a reliable execution foundation for progressively advanced AI and ML engineering practice.
+
+## Scope
+
+### 3.1 Formalize execution tiers
+
+Implement explicit execution profiles.
+
+**Tier 1: Browser execution**
+- Pyodide.
+- Lightweight Python.
+- Immediate formative feedback.
+- Restricted browser capabilities.
+
+**Tier 2: Container execution**
+- Docker-based isolated worker.
+- Python and selected data science libraries.
+- Algorithms and backend exercises.
+- Controlled ML workloads.
+- Automated tests and grading.
+
+**Tier 3: Dedicated compute**
+- Separate worker infrastructure.
+- GPU-capable workloads when available.
+- Training and fine-tuning jobs.
+- Larger datasets.
+- Resource quotas and scheduling.
+
+### 3.2 Judge worker deployment
+
+- Deploy the judge worker independently of the Flask web service.
+- Confirm the worker runs on infrastructure that supports Docker execution.
+- Establish worker registration and health checks.
+- Configure queue polling or job consumption.
+- Ensure the web service never attempts to run privileged Docker operations directly.
+- Validate submission lifecycle and SSE updates.
+- Define a failure recovery process.
+
+### 3.3 Strengthen sandbox security
+
+Retain and verify existing controls:
+
+- No network access by default.
+- Memory and CPU limits.
+- Process limits.
+- Read-only root filesystem.
+- Non-root execution.
+- Dropped Linux capabilities.
+- No-new-privileges.
+- Restricted writable temporary storage.
+- Execution timeouts.
+
+Add:
+- Image version pinning.
+- Sandbox cleanup.
+- Disk quotas.
+- Per-user concurrency limits.
+- Abuse detection.
+- Worker-level resource monitoring.
+- Security regression tests.
+
+### 3.4 Persistent project environments
+
+Develop the ability to preserve:
+
+- Project files.
+- Code.
+- Datasets.
+- Experiment configuration.
+- Execution history.
+- Results.
+- Generated artifacts.
+
+Use object storage for appropriate persistent artifacts. Do not rely on ephemeral worker filesystems.
+
+### 3.5 ML development environment
+
+Introduce the ML environment progressively.
+
+Initial capabilities:
+- NumPy.
+- Pandas.
+- Matplotlib.
+- SciPy.
+- scikit-learn.
+
+Advanced capabilities:
+- PyTorch.
+- Hugging Face libraries.
+- Larger datasets.
+- Model artifacts.
+- GPU workloads.
+
+### 3.6 Experiment tracking
+
+Introduce MLflow for experiment tracking when the ML project workflow is ready.
+
+Track:
+- Experiment name.
+- Dataset version.
+- Parameters.
+- Metrics.
+- Model artifacts.
+- Environment information.
+- Run status.
+
+## Deliverables
+
+- Execution tier specification.
+- Independently deployed judge worker.
+- Hardened container execution.
+- Persistent project artifact storage.
+- ML execution environment.
+- Initial experiment tracking integration.
+- Execution monitoring and resource quotas.
+
+## Acceptance criteria
+
+- The web service and execution worker are operationally separate.
+- Practice Arena submissions complete through the intended worker.
+- Sandbox limits are enforced.
+- Learner files and results persist appropriately.
+- ML exercises can execute within documented resource limits.
+- Heavy workloads are rejected or routed appropriately rather than exhausting the web application.
+
+---
+
+# M4 — AI/ML Project Studio and Learning Intelligence
+
+**Priority:** P1  
+**Objective:** Turn RUACH into a practical engineering learning environment with intelligent, competency-driven progression.
+
+## Scope
+
+### 4.1 AI Engineering Project Studio
+
+Support:
+- LLM application projects.
+- Prompt experiments.
+- RAG development.
+- Embedding and retrieval workflows.
+- Agent development.
+- Tool integrations.
+- Agent testing.
+- Evaluation datasets.
+- Project documentation.
+- Project submissions and reviews.
+
+### 4.2 ML Engineering Project Studio
+
+Support:
+- Dataset management.
+- Data cleaning and preprocessing.
+- Exploratory analysis.
+- Feature engineering.
+- Model training.
+- Experiment comparisons.
+- Model evaluation.
+- Model artifact storage.
+- Model versioning.
+- Deployment preparation.
+
+### 4.3 Shared project infrastructure
+
+Build reusable services for:
+- Project lifecycle.
+- Milestones.
+- Files and artifacts.
+- Version history.
+- Documentation.
+- Automated tests.
+- Reviews.
+- Feedback.
+- Portfolio presentation.
+
+Keep specialization-specific project models and workflows independent.
+
+### 4.4 AI Tutor 2.0
+
+Improve the tutor with:
+
+- Lesson-aware context.
+- Pathway-aware context.
+- Learner progress context.
+- Knowledge-gap detection.
+- Guided debugging.
+- Socratic assistance.
+- Project-aware assistance.
+- Approved-material retrieval.
+- Personalized practice recommendations.
+- Tutor evaluation.
+
+### 4.5 Competency-based learning intelligence
+
+Use the existing skill and competency models where suitable.
+
+Develop:
+- Skill dependency graphs.
+- Competency evidence.
+- Mastery estimates.
+- Knowledge-gap identification.
+- Learning recommendations.
+- Project-based skill verification.
+- Assessment-driven progression.
+
+Do not equate lesson completion with actual mastery.
+
+### 4.6 Credentials and portfolio integration
+
+Connect completed work to:
+- Demonstrated competencies.
+- Project evidence.
+- Assessment results.
+- Pathway completion.
+- Verifiable credentials.
+
+## Deliverables
+
+- AI Engineering Project Studio.
+- ML Engineering Project Studio.
+- Shared project infrastructure.
+- AI Tutor 2.0.
+- Competency-based recommendations.
+- Project evidence integration.
+- Portfolio and credential improvements.
+
+## Acceptance criteria
+
+- AI and ML projects follow separate specialization workflows.
+- Shared project capabilities are reused without merging specialization logic.
+- Learners can produce and preserve meaningful project artifacts.
+- Tutor assistance reflects the learner's actual learning context.
+- Recommendations are linked to identifiable learning gaps.
+- Competency claims are supported by assessment or project evidence.
+
+---
+
+# M5 — Production Readiness and Operational Scaling
+
+**Priority:** P2  
+**Objective:** Prepare RUACH to support increased users, workloads, and operational complexity.
+
+## Scope
+
+### 5.1 Deployment architecture
+
+Establish independently deployable processes for:
+
+- Main web application.
+- AI background workers.
+- Judge workers.
+- Scheduled jobs.
+- Advanced ML compute workers.
+
+Keep these components in the same repository initially unless independent deployment requirements justify extraction.
+
+### 5.2 Observability
+
+Introduce structured monitoring for:
+
+- Application errors.
+- API latency.
+- Database performance.
+- Cache performance.
+- Queue depth.
+- Worker availability.
+- Sandbox execution.
+- AI provider reliability.
+- AI usage and cost.
+- Storage consumption.
+
+### 5.3 Reliability
+
+Implement:
+- Database backup automation.
+- Recovery testing.
+- Worker restart policies.
+- Queue recovery.
+- Deployment rollback.
+- Health checks.
+- Dependency monitoring.
+- Alerting for critical failures.
+
+### 5.4 Infrastructure automation
+
+Introduce infrastructure as code for repeatable provisioning and deployment when the environment and team workflow justify it.
+
+Document:
+- Environment configuration.
+- Secrets.
+- Database provisioning.
+- Redis.
+- Object storage.
+- Worker deployment.
+- Networking and access.
+- Backup policies.
+
+### 5.5 Scaling strategy
+
+Scale independently based on actual workload:
+
+- Web requests scale with learner activity.
+- AI workers scale with AI job volume.
+- Judge workers scale with submission volume.
+- ML workers scale with training and experimentation demand.
+
+Introduce GPU scheduling and Kubernetes only when operational demand warrants them.
+
+### 5.6 Operational governance
+
+Establish:
+- Release checklists.
+- Migration procedures.
+- Incident handling.
+- Cost reviews.
+- Security reviews.
+- Dependency updates.
+- Technical documentation ownership.
+
+## Deliverables
+
+- Production deployment architecture.
+- Independent worker deployment.
+- Monitoring and alerting.
+- Backup and recovery procedures.
+- Infrastructure documentation.
+- Scaling and cost-control policies.
+- Operational runbooks.
+
+## Acceptance criteria
+
+- Critical components can be deployed and restarted independently.
+- Failures are observable.
+- Data recovery procedures have been tested.
+- Resource consumption and AI costs are measurable.
+- Deployments are repeatable.
+- Scaling decisions are based on observed workload rather than speculation.
+
+---
+
+# Cross-Milestone Requirements
+
+These requirements apply throughout the programme.
+
+## A. Backward compatibility
+
+- Preserve existing learner data.
+- Avoid destructive database changes.
+- Provide migration and rollback strategies.
+- Maintain existing URLs and workflows unless a change is necessary.
+- Document breaking changes.
+
+## B. Testing
+
+Every milestone must include:
+- Unit tests.
+- Integration tests.
+- Database migration tests where applicable.
+- Authorization tests.
+- Regression tests.
+- End-to-end tests for affected user journeys.
+
+Security-sensitive changes must include explicit security tests.
+
+## C. Documentation
+
+Every significant architectural change must include:
+- Purpose.
+- Design decision.
+- Dependencies.
+- Configuration.
+- Operational behaviour.
+- Failure scenarios.
+- Testing instructions.
+
+## D. Delivery discipline
+
+Each milestone should be delivered in smaller pull requests or controlled implementation batches.
+
+A milestone is not complete merely because code has been written. Its acceptance criteria must be demonstrated.
+
+# Recommended Execution Order
+
+1. Complete M0 before large-scale refactoring.
+2. Complete the critical pathway and architecture corrections in M1.
+3. Implement the AI gateway and background processing in M2.
+4. Deploy and validate the judge worker as an early M3 priority.
+5. Expand execution tiers and persistent project environments.
+6. Build the Project Studios and learning intelligence in M4.
+7. Complete production operations and scaling in M5.
+
+**Important:** M2 and M3 may have limited parallel work after their shared interfaces and infrastructure requirements have been agreed. Do not allow parallel development to create competing job queues, duplicate execution systems, or inconsistent project artifact models.
+
+# Final Milestone Principle
+
+RUACH should not move to the next stage simply because the calendar says it is time.
+
+Each stage should establish a reliable foundation for the next. The aim is a coherent engineering platform, not a collection of impressive but disconnected features.
