@@ -298,9 +298,10 @@ automatic trigger. To use it:
 4. Run **Actions → Database migration (manual) → Run workflow** and enter
    `BACKUP_TAKEN` in the confirmation input.
 
-The workflow runs `flask db current`, `flask db upgrade`, and
-`flask db current`, then prints the resulting revision. It does not create a
-backup and will refuse to run without the confirmation word.
+The workflow runs `flask db current`, `flask db heads`, `flask db upgrade`,
+`flask db check` and a final `flask db current`, then prints the resulting
+revision. It does not create a backup and will refuse to run without the
+confirmation word. A non-zero `db check` stops the run before the deploy.
 
 ### 4.3 Post-migration verification
 

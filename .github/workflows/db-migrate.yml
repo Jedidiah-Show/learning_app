@@ -57,8 +57,14 @@ jobs:
       - name: Check current revision
         run: flask --app wsgi db current
 
+      - name: Check Alembic heads
+        run: flask --app wsgi db heads
+
       - name: Apply migrations
         run: flask --app wsgi db upgrade
+
+      - name: Verify no pending operations
+        run: flask --app wsgi db check
 
       # Idempotent: recomputes per-user leaderboard tallies from the source
       # tables. Safe to run on every migration; required after the
