@@ -13,6 +13,40 @@ and future service-level independence.
 
 ---
 
+# WHAT THE LEAD ARCHITECT WANTS THE TEAM TO GET RIGHT
+
+There are three things to pay especially close attention to during code review:
+
+### 1. Don't mistake modularity for microservices.
+A team can create 30 folders, 50 services and 100 interfaces and still produce tightly coupled software. The boundaries must be meaningful and enforced.
+
+### 2. Don't let the workers become another monolith.
+Separating AI, ML and code execution is only useful if their responsibilities, dependencies and execution environments are genuinely isolated.
+
+### 3. Don't compromise the learner experience.
+The architectural changes should be invisible to learners except for improvements in reliability, responsiveness, progress tracking and availability.
+
+---
+
+# PROPOSED RELEASE COMPLETION STANDARD
+
+### RUACH Architecture Evolution 1.0
+**One platform. Clear boundaries. Independent workloads.**
+
+The release should leave Ruach with:
+- One well-organized Flask core.
+- Independent AI Engineering and ML domains.
+- Separately executable AI, ML and Judge workloads.
+- Reliable background processing.
+- Clear data and business-logic ownership.
+- Centralized operational visibility.
+- A documented route to selective microservices.
+
+**Release philosophy:**
+*Build for the scale Ruach is growing toward, without paying the complexity cost of a scale it has not yet reached.*
+
+---
+
 # 1. ULTIMATE GOAL
 
 The ultimate goal of this release is to establish Ruach LMS as a

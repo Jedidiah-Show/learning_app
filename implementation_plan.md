@@ -16,6 +16,40 @@ Audit → Design → Refactor → Isolate → Integrate → Harden → Deploy.
 
 ---
 
+# WHAT THE LEAD ARCHITECT WANTS THE TEAM TO GET RIGHT
+
+There are three things to pay especially close attention to during code review:
+
+### 1. Don't mistake modularity for microservices.
+A team can create 30 folders, 50 services and 100 interfaces and still produce tightly coupled software. The boundaries must be meaningful and enforced.
+
+### 2. Don't let the workers become another monolith.
+Separating AI, ML and code execution is only useful if their responsibilities, dependencies and execution environments are genuinely isolated.
+
+### 3. Don't compromise the learner experience.
+The architectural changes should be invisible to learners except for improvements in reliability, responsiveness, progress tracking and availability.
+
+---
+
+# PROPOSED RELEASE COMPLETION STANDARD
+
+### RUACH Architecture Evolution 1.0
+**One platform. Clear boundaries. Independent workloads.**
+
+The release should leave Ruach with:
+- **One well-organized Flask core.**
+- **Independent AI Engineering and ML domains.**
+- **Separately executable AI, ML and Judge workloads.**
+- **Reliable background processing.**
+- **Clear data and business-logic ownership.**
+- **Centralized operational visibility.**
+- **A documented route to selective microservices.**
+
+**Release philosophy:**
+*Build for the scale Ruach is growing toward, without paying the complexity cost of a scale it has not yet reached.*
+
+---
+
 # 1. IMPLEMENTATION STRATEGY
 
 This release must be implemented incrementally.
@@ -1282,16 +1316,19 @@ that remains the most effective architecture.
 
 A task is complete only when:
 
-- Implementation is finished.
-- Code follows established module boundaries.
-- Relevant tests pass.
-- Security implications are reviewed.
-- Error handling is implemented.
-- Logging is available.
-- Documentation is updated.
-- No unrelated functionality is broken.
-- Changes are reviewed.
-- Deployment requirements are documented.
+- Implementation is finished and meets the 3 Lead Architect Code Review Invariants:
+  1. **Meaningful & Enforced Modularity:** Real boundaries verified by static architecture tests, zero circular imports, decoupled domain services.
+  2. **Isolated Workloads:** AI, ML, and Code Execution (Judge) run in isolated processes/runtimes without becoming another monolith.
+  3. **Preserved Learner Experience:** Zero disruptions to progress, auth, quizzes, workspaces, or core responsiveness.
+- Code follows established module boundaries and uses `app/core/exceptions.py`.
+- Relevant unit, integration, and boundary tests pass.
+- Security implications and sandboxing limits are reviewed.
+- Decoupled error handling and HTTP status mapping are implemented.
+- Structured logging and correlation IDs (`X-Request-ID`) are available.
+- Documentation and architecture decision records are updated.
+- No unrelated functionality or existing learner data is broken.
+- Changes pass code review against the three review focus pillars.
+- Deployment and environment configuration requirements are documented.
 
 A milestone is complete only when its deliverables and exit
 criteria have been satisfied.

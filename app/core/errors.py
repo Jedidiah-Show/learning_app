@@ -3,6 +3,14 @@
 from flask import current_app, flash, redirect, render_template, request, url_for
 from werkzeug.exceptions import RequestEntityTooLarge
 
+from app.core.exceptions import (
+    AuthorizationError,
+    ConflictError,
+    EntityNotFoundError,
+    RuachDomainError,
+    ValidationError,
+    WorkloadExecutionError,
+)
 from app.core.responses import json_error
 from app.core.security import is_api_path
 
@@ -44,6 +52,61 @@ def register_error_handlers(app):
             secondary_url=secondary_url,
             secondary_label=secondary_label,
         ), status
+
+    @app.errorhandler(EntityNotFoundError)
+    def handle_entity_not_found(error):
+        if is_api_path(request.path):
+            return json_error(error.message, 404)
+        return error_page(
+            404, 'We could not find that item', error.message,
+            url_for('main.index'), 'Go to your dashboard',
+            url_for('main.lessons'), 'Browse all lessons',
+        )
+
+    @app.errorhandler(AuthorizationError)
+    def handle_authorization_error(error):
+        if is_api_path(request.path):
+            return json_error(error.message, 403)
+        return error_page(
+            403, 'Action not permitted', error.message,
+            url_for('main.index'), 'Back to your dashboard',
+            url_for('main.support'), 'Ask for help',
+        )
+
+    @app.errorhandler(ValidationError)
+    def handle_validation_error(error):
+        if is_api_path(request.path):
+            return json_error(error.message, 400)
+        flash(error.message, 'error')
+        return redirect(request.referrer or url_for('main.index'))
+
+    @app.errorhandler(ConflictError)
+    def handle_conflict_error(error):
+        if is_api_path(request.path):
+            return json_error(error.message, 409)
+        flash(error.message, 'error')
+        return redirect(request.referrer or url_for('main.index'))
+
+    @app.errorhandler(WorkloadExecutionError)
+    def handle_workload_execution_error(error):
+        current_app.logger.warning('Workload execution error on %s: %s (profile: %s)',
+                                   request.path, error.message, error.profile)
+        if is_api_path(request.path):
+            return json_error(error.message, 503)
+        return error_page(
+            500, 'Workload execution failed',
+            error.message or 'The requested computational workload could not be completed. Please try again shortly.',
+            url_for('main.index'), 'Back to your dashboard',
+            url_for('main.support'), 'Tell support',
+        )
+
+    @app.errorhandler(RuachDomainError)
+    def handle_generic_domain_error(error):
+        current_app.logger.warning('Domain error on %s: %s', request.path, error.message)
+        if is_api_path(request.path):
+            return json_error(error.message, 400)
+        flash(error.message, 'error')
+        return redirect(request.referrer or url_for('main.index'))
 
     @app.errorhandler(403)
     def forbidden(error):

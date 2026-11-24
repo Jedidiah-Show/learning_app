@@ -56,6 +56,7 @@ class TestCoreBoundary:
         'app.core.security',
         'app.core.errors',
         'app.core.responses',
+        'app.core.exceptions',
     )
     # Provider integrations, the shared User table, and read-only curriculum
     # lookups for error-page copy are allowed: they back infrastructure hooks,
@@ -93,10 +94,17 @@ class TestCoreBoundary:
 
 class TestDomainBoundary:
     DOMAIN_MODULES = (
+        'app.domains.identity.service',
+        'app.domains.learning.service',
         'app.domains.learning.context',
+        'app.domains.ai_engineering.service',
         'app.domains.ai_engineering.evaluation',
+        'app.domains.machine_learning.service',
+        'app.domains.machine_learning.competencies',
         'app.domains.machine_learning.evaluation',
         'app.domains.machine_learning.report',
+        'app.domains.assessment.service',
+        'app.domains.workspace.service',
     )
     FORBIDDEN_PREFIXES = (
         'app.routes', 'app.services', 'flask', 'flask_login',
@@ -114,6 +122,38 @@ class TestDomainBoundary:
                 assert imported not in self.FORBIDDEN_IMPORTS, (
                     f'{module} imports {imported}'
                 )
+
+    def test_ai_domain_never_imports_ml_domain(self):
+        ai_modules = (
+            'app.domains.ai_engineering.service',
+            'app.domains.ai_engineering.evaluation',
+        )
+        prohibited = ('app.domains.machine_learning', 'app.ml_pathway')
+        for module in ai_modules:
+            for imported in _imports(module):
+                assert not imported.startswith(prohibited), (
+                    f'{module} imports prohibited ML module {imported}'
+                )
+
+    def test_ml_domain_never_imports_ai_domain(self):
+        ml_modules = (
+            'app.domains.machine_learning.service',
+            'app.domains.machine_learning.competencies',
+            'app.domains.machine_learning.evaluation',
+            'app.domains.machine_learning.report',
+        )
+        prohibited = ('app.domains.ai_engineering', 'app.ai_pathway')
+        for module in ml_modules:
+            for imported in _imports(module):
+                assert not imported.startswith(prohibited), (
+                    f'{module} imports prohibited AI module {imported}'
+                )
+
+    def test_core_exceptions_is_decoupled(self):
+        for imported in _imports('app.core.exceptions'):
+            assert not imported.startswith(('flask', 'werkzeug', 'app.routes', 'app.services')), (
+                f'app.core.exceptions imports framework module {imported}'
+            )
 
     def test_learning_context_has_no_route_handler_symbols(self):
         source = _module_path('app.domains.learning.context').read_text(

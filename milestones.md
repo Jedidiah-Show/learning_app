@@ -7,23 +7,57 @@ improved resilience, observability and microservices readiness.
 
 ---
 
+# WHAT THE LEAD ARCHITECT WANTS THE TEAM TO GET RIGHT
+
+There are three things to pay especially close attention to during code review:
+
+### 1. Don't mistake modularity for microservices.
+A team can create 30 folders, 50 services and 100 interfaces and still produce tightly coupled software. The boundaries must be meaningful and enforced.
+
+### 2. Don't let the workers become another monolith.
+Separating AI, ML and code execution is only useful if their responsibilities, dependencies and execution environments are genuinely isolated.
+
+### 3. Don't compromise the learner experience.
+The architectural changes should be invisible to learners except for improvements in reliability, responsiveness, progress tracking and availability.
+
+---
+
+# PROPOSED RELEASE COMPLETION STANDARD
+
+### RUACH Architecture Evolution 1.0
+**One platform. Clear boundaries. Independent workloads.**
+
+The release should leave Ruach with:
+- **One well-organized Flask core.**
+- **Independent AI Engineering and ML domains.**
+- **Separately executable AI, ML and Judge workloads.**
+- **Reliable background processing.**
+- **Clear data and business-logic ownership.**
+- **Centralized operational visibility.**
+- **A documented route to selective microservices.**
+
+**Release philosophy:**
+*Build for the scale Ruach is growing toward, without paying the complexity cost of a scale it has not yet reached.*
+
+---
+
 # MILESTONE OVERVIEW
 
-| ID | Milestone | Priority |
-|----|-----------|----------|
-| M0 | Architecture Audit and Baseline | Critical |
-| M1 | Modular Architecture Foundation | Critical |
-| M2 | Domain Boundaries and Data Ownership | Critical |
-| M3 | Independent AI and ML Domain Architecture | Critical |
-| M4 | Background Processing Infrastructure | Critical |
-| M5 | AI and ML Workload Isolation | Critical |
-| M6 | Code Execution and Sandbox Hardening | Critical |
-| M7 | Resilience and Fault Isolation | High |
-| M8 | Observability and Operational Intelligence | High |
-| M9 | Deployment and Infrastructure Evolution | High |
-| M10 | Security and Performance Hardening | Critical |
-| M11 | Integration, Migration and Regression Testing | Critical |
-| M12 | Documentation and Release Readiness | High |
+| ID | Milestone | Priority | Primary Review Focus | Release Completion Alignment |
+|----|-----------|----------|----------------------|-------------------------------|
+| M0 | Architecture Audit and Baseline | Critical | Modularity & Evidence-first | Empirical baseline & zero untested changes |
+| M1 | Modular Architecture Foundation | Critical | Pillar 1: Enforced Modularity | Well-organized Flask core (`app/core/`) |
+| M2 | Domain Boundaries and Data Ownership | Critical | Pillar 1: Meaningful Boundaries | Clear data & business-logic ownership |
+| M3 | Independent AI and ML Domain Architecture | Critical | Pillar 1 & 2: Domain Isolation | Independent AI Engineering & ML domains |
+| M4 | Background Processing Infrastructure | Critical | Pillar 2: Isolated Workers | Reliable background processing (atomic leases) |
+| M5 | AI and ML Workload Isolation | Critical | Pillar 2: Prevent Worker Monolith | Separately executable AI and ML workloads |
+| M6 | Code Execution and Sandbox Hardening | Critical | Pillar 2 & 3: Isolated Sandboxes | Separately executable Judge workload |
+| M7 | Resilience and Fault Isolation | High | Pillar 3: Learner Experience | Fault isolation & graceful degradation |
+| M8 | Observability and Operational Intelligence | High | Pillar 1, 2, 3: Traceability | Centralized operational visibility |
+| M9 | Deployment and Infrastructure Evolution | High | Pillar 2: Independent Runtimes | Independent web, AI, and worker processes |
+| M10 | Security and Performance Hardening | Critical | Pillar 1, 2, 3: Boundary Safety | Hardened internal interfaces & zero leaks |
+| M11 | Integration, Migration and Regression Testing | Critical | Pillar 3: Zero Learner Disruption | 100% regression pass & migration verification |
+| M12 | Documentation and Release Readiness | High | Pillar 1: Operational Governance | Documented route to selective microservices |
 
 ---
 
