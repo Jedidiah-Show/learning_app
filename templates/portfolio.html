@@ -27,7 +27,7 @@
   {% endif %}
 </header>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', () => {
   const btn = document.getElementById('save-showcase-visibility');
   const select = document.getElementById('showcase-visibility');

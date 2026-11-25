@@ -14,7 +14,7 @@
       </div>
       <p class="text-2xl font-bold text-emerald-700">{{ ((foundation.completed_lessons / (foundation.total_lessons if foundation.total_lessons else 1) * 100)|round(0))|int }}%</p>
     </div>
-    <div class="mt-3 h-2 overflow-hidden rounded-full bg-emerald-100"><div class="h-full rounded-full bg-emerald-500" style="width:{{ (foundation.completed_lessons / (foundation.total_lessons if foundation.total_lessons else 1) * 100)|round(1) }}%"></div></div>
+    <div class="mt-3 h-2 overflow-hidden rounded-full bg-emerald-100"><div class="h-full rounded-full bg-emerald-500" data-style-width-pct="{{ (foundation.completed_lessons / (foundation.total_lessons if foundation.total_lessons else 1) * 100)|round(1) }}"></div></div>
     {% if foundation.complete %}
     <p class="mt-3 text-sm font-semibold text-emerald-800">✓ All Shared Foundations lessons complete.</p>
     {% endif %}
@@ -29,7 +29,7 @@
       <p class="text-xs font-semibold uppercase text-slate-500">{{ module.badge }}</p>
       <h4 class="mt-1 text-lg font-bold text-slate-900">{{ module.number }}. {{ module.title }}</h4>
       <p class="mt-2 text-sm text-slate-600">{{ (module.outcomes or [module.description])[0] }}</p>
-      <div class="mt-3 h-1.5 rounded-full bg-slate-100"><div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" style="width:{{ (module._completed_lessons / (module._total_lessons if module._total_lessons else 1) * 100)|round }}%"></div></div>
+      <div class="mt-3 h-1.5 rounded-full bg-slate-100"><div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" data-style-width-pct="{{ (module._completed_lessons / (module._total_lessons if module._total_lessons else 1) * 100)|round }}"></div></div>
       <p class="mt-2 text-xs text-slate-500">{{ module._completed_lessons }} / {{ module._total_lessons }} lessons complete · {{ module.estimated_hours }} estimated hours</p>
       <div class="mt-3 flex flex-wrap gap-2">
         {% if module._canonical_next %}

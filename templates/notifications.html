@@ -14,18 +14,18 @@
     <span class="notif-page-icon" aria-hidden="true">{{ item.icon }}</span>
     <span>
       <span class="notif-item-title">{{ item.title }}</span>
-      <span class="notif-item-body" style="font-size:12px">{{ item.body }}</span>
+      <span class="notif-item-body text-xs">{{ item.body }}</span>
     </span>
     <span class="ml-auto self-center text-slate-400" aria-hidden="true">→</span>
   </a>
   {% endfor %}
 </div>
 {% else %}
-<div class="notif-empty" style="padding:56px 16px;border:1px dashed var(--app-border);border-radius:17px">
-  <span style="font-size:34px" aria-hidden="true">✓</span>
+<div class="notif-empty px-4 py-14 border border-dashed border-[var(--app-border)] rounded-[17px]">
+  <span class="text-[34px]" aria-hidden="true">✓</span>
   <strong>You’re all caught up</strong>
   <span>Nothing needs your attention right now. Keep going — the next lesson or review will put something here.</span>
-  <a class="rounded-lg bg-brand-900 px-4 py-2 font-semibold text-white" href="{{ url_for('main.lessons') }}" style="margin-top:8px">Continue learning →</a>
+  <a class="mt-2 rounded-lg bg-brand-900 px-4 py-2 font-semibold text-white" href="{{ url_for('main.lessons') }}">Continue learning →</a>
 </div>
 {% endif %}
 {% endblock %}

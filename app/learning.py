@@ -149,7 +149,6 @@ def lesson_is_available(user, lesson_id, completed=None, completed_projects=None
     """
     from app.curriculum import get_lesson
     from app.ml_pathway import get_machine_learning_lesson
-    from app.pathway_scope import foundation_course_modules
 
     uq = _user_id(user)
     destination = _scope(uq, None)
@@ -204,7 +203,7 @@ def lesson_is_available(user, lesson_id, completed=None, completed_projects=None
     # pathway within its own order.  Pointer equality within each sequence is
     # the gate, so completed lessons always stay revisitable.
     from app.pathway_scope import (
-        ai_specialization_modules, foundation_course_modules, ml_course_modules,
+        ai_specialization_modules, ml_course_modules,
     )
     if is_foundation_lesson:
         if str(lesson_id).startswith('sf.'):
@@ -304,7 +303,7 @@ def course_progress(user, completed=None, completed_projects=None,
     this shape pass ``destination`` explicitly.
     """
     from app.pathway_scope import (
-        course_modules, is_ml, journey_modules, module_entry,
+        course_modules, journey_modules, module_entry,
     )
 
     uq = _user_id(user)

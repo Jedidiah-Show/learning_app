@@ -1,9 +1,8 @@
 """ML-only job API (M5). Enqueues work for the independent ML worker."""
 
-from flask import Blueprint, current_app, jsonify
+from flask import Blueprint, jsonify
 from flask_login import current_user, login_required
 
-from app import db
 from app.access import json_admin_required
 from app.models import MLBackgroundJob
 from app.request_data import get_json_object
@@ -37,7 +36,7 @@ def submit_job():
 @ml_jobs_bp.route('/jobs/<int:job_id>', methods=['GET'])
 @login_required
 def get_job(job_id):
-    job = MLBackgroundJob.query.filter_by(id=job_id, user_id=current_user.id).first_or_404()
+    MLBackgroundJob.query.filter_by(id=job_id, user_id=current_user.id).first_or_404()
     return jsonify(job_status(job_id, current_user.id)), 200
 
 

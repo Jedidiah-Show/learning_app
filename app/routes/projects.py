@@ -24,190 +24,23 @@ from app.models import CoursePlan, CourseProject, MLSpecializationProject
 from app.ml_pathway import PATHWAY_ID
 from app.project_verification import VerificationError, verify_checks
 from app.request_data import get_json_object
+from app.services.project_completion import project_passes_completion_gate as _project_passes_completion_gate
 
 projects_bp = Blueprint('projects', __name__)
 
 
-def _project_passes_completion_gate(evaluation, evaluation_source, checks_verified):
-    """The single gate that may mark a shared course project completed.
-
-    Both the review submission endpoint and the GitHub webhook use this exact
-    rule: CI must be verified, the score must come from AI review (never a local
-    fallback), the total must be at least 70, and *every* rubric criterion must
-    reach 50.  The webhook previously used score >= 70 alone and could complete
-    a project whose rubric had gaps or whose evaluation had been unavailable.
-    """
-    # Legacy evaluations were stored before the source field existed; a
-    # missing source means an AI review from that era.  An explicit non-AI
-    # source (local/outage fallback) can never satisfy the gate.
-    if (
-        not checks_verified
-        or evaluation_source not in ('ai', None)
-        or not isinstance(evaluation, dict)
-    ):
-        return False
-    score = evaluation.get('score')
-    if (
-        not isinstance(score, int) or isinstance(score, bool)
-        or not 70 <= score <= 100
-    ):
-        return False
-    criteria = evaluation.get('criterion_feedback') or []
-    if not isinstance(criteria, list):
-        return False
-    return all(
-        isinstance(item, dict)
-        and isinstance(item.get('score'), int)
-        and not isinstance(item.get('score'), bool)
-        and 50 <= item['score'] <= 100
-        for item in criteria
-    )
-
-
-# Module 0 delivers a glossary plus an architecture sketch, so it gets the docs
-# kit; every later module gets a code kit shaped by its project brief.
-STARTER_KITS = {
-    '00': 'docs',
-    '01': 'python-cli',
-    '02': 'fastapi-service',
-    '03': 'rag',
-    '04': 'agent',
-    '05': 'mcp',
-    '06': 'evaluation-harness',
-    '07': 'deploy',
-    '08': 'mcp',
-    '09': 'deploy',
-    '10': 'deploy',
-    '11': 'capstone',
-    '12': 'capstone',
-}
-DEFAULT_STARTER_KIT = 'python-cli'
-
-
-def _module_starter_kit(module_id):
-    module = get_module(module_id)
-    key = module_id if module_id in STARTER_KITS else (
-        f"{module.get('number'):02d}" if module else ''
-    )
-    return STARTER_KITS.get(key, DEFAULT_STARTER_KIT)
-
-
-def _starter_files(module_id):
-    module = get_module(module_id) or {}
-    number = module.get('number') or 0
-    title = module.get('title') or 'Module project'
-    project = module.get('project') or module.get('description') or ''
-    deliverables = module.get('project_deliverables') or []
-    kit_id = _module_starter_kit(module_id)
-    slug = ''.join(
-        char.lower() if char.isalnum() else '-' for char in module_id
-    ).strip('-')
-    root = f'ruach-module-{slug}'
-
-    setup_lines = [
-        '# Module project setup',
-        '',
-        '## Start',
-        '',
-        '1. Install Python 3.11 or newer.',
-        '2. Create and activate a virtual environment.',
-        '3. Install the development dependency with `python -m pip install -e .`.',
-        '4. Run `pytest`.',
-        '5. Replace the starter code with your project, then add tests for each requirement.',
-        '',
-        '## Publish',
-        '',
-        '1. `git init` (skip if the folder is already a repository).',
-        '2. `git add -A && git commit -m "module project"`.',
-        '3. `gh repo create <your-github-user>/<repo-name> --public --source . --remote origin --push`.',
-        '4. Enable GitHub Actions for the new repository.',
-        '5. Copy your automated-checks run URL into the course submission.',
-        '',
-        '## Verify',
-        '',
-        'Run the repository checks locally before publishing. The course submission requires a public repository and a public automated-checks page showing a successful build.',
-    ]
-    setup_md = '\n'.join(setup_lines) + '\n'
-
-    readme_lines = [
-        f'# Module {number}: {title}',
-        '',
-        '## Project brief',
-        '',
-        project,
-        '',
-        '## Start locally',
-        '',
-        '1. Install Python 3.11 or newer.',
-        '2. Create and activate a virtual environment.',
-        '3. Install the development dependency with `python -m pip install -e .`.',
-        '4. Run `pytest`.',
-        '5. Replace the starter with your project, then add tests for each requirement.',
-        '',
-    ]
-    for index, deliverable in enumerate(deliverables, start=1):
-        readme_lines.append(f'{index}. Deliverable: {deliverable}')
-    readme_lines += [
-        '',
-        'Keep credentials out of this repository. Add a README section describing setup, decisions, limitations, and evidence. The course submission still asks for a public repository, passing automated checks, and the project evaluation.',
-    ]
-    readme = '\n'.join(readme_lines) + '\n'
-
-    pyproject = '[build-system]\nrequires = ["setuptools>=68"]\nbuild-backend = "setuptools.build_meta"\n\n[project]\nname = "ruach-module-starter"\nversion = "0.1.0"\nrequires-python = ">=3.11"\ndependencies = []\n\n[project.optional-dependencies]\ndev = ["pytest>=8"]\n\n[tool.pytest.ini_options]\npythonpath = ["src"]\n'
-    gitignore = '.venv/\n__pycache__/\n.pytest_cache/\n*.py[cod]\n.env\n'
-    ci = 'name: tests\non:\n  push:\n  pull_request:\njobs:\n  pytest:\n    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n      - uses: actions/setup-python@v5\n        with:\n          python-version: "3.11"\n      - run: python -m pip install -e ".[dev]"\n      - run: pytest\n'
-    src_main = '"""Start here: replace this starter with the module project."""\n\n\ndef main() -> str:\n    return "Implement the project described in README.md"\n\n\nif __name__ == "__main__":\n    print(main())\n'
-    test_main = 'from main import main\n\n\ndef test_main_returns_a_string():\n    assert isinstance(main(), str)\n'
-
-    files = {}
-    if kit_id == 'docs':
-        files[f'{root}/README.md'] = readme
-        files[f'{root}/SETUP.md'] = setup_md
-        files[f'{root}/pyproject.toml'] = pyproject
-        files[f'{root}/.gitignore'] = gitignore
-        files[f'{root}/.github/workflows/docs.yml'] = (
-            'name: docs\non:\n  push:\n  pull_request:\njobs:\n  docs:\n'
-            '    runs-on: ubuntu-latest\n    steps:\n      - uses: actions/checkout@v4\n'
-            '      - uses: actions/setup-python@v5\n        with:\n          python-version: "3.11"\n'
-            '      - run: python -m pytest tests/test_docs.py\n'
-        )
-        files[f'{root}/tests/test_docs.py'] = (
-            '"""Starter kit checks for the module documentation deliverable."""\n\n'
-            'from pathlib import Path\n\n'
-            'def test_glossary_is_present():\n    glossary = (  # noqa: SIM108\n        Path(__file__).parent.parent / "docs" / "glossary.md"\n    ).read_text()\n    assert glossary.strip()\n\n\n'
-            'def test_architecture_sketch_is_present():\n    sketch = (\n        Path(__file__).parent.parent / "docs" / "architecture-sketch.md"\n    ).read_text()\n    assert sketch.strip()\n'
-        )
-        files[f'{root}/docs/glossary.md'] = (
-            f'# Module {number} glossary\n\n## Key terms\n\n- {title}: the subject of this module.\n'
-        )
-        files[f'{root}/docs/architecture-sketch.md'] = (
-            f'# Module {number} architecture sketch\n\n'
-            '## System sketch\n\nDescribe the request, data, tool, application, and operations boundaries for the module project.\n'
-        )
-    else:
-        files[f'{root}/README.md'] = readme
-        files[f'{root}/SETUP.md'] = setup_md
-        files[f'{root}/pyproject.toml'] = pyproject
-        files[f'{root}/.gitignore'] = gitignore
-        files[f'{root}/.github/workflows/tests.yml'] = ci
-        files[f'{root}/src/main.py'] = src_main
-        files[f'{root}/tests/test_main.py'] = test_main
-    return files
-
+# Starter kit generation lives in app.services.project_starter_kits.
 
 @projects_bp.route('/projects/starter/<module_id>')
 @login_required
 def download_project_starter(module_id):
-    """Download the starter kit for a module project.
+    """Download the starter kit for a module project."""
+    from app.services.project_starter_kits import starter_files
 
-    Module 0 gets the docs kit (glossary plus architecture sketch); later modules
-    get the code kit named for their project shape, each shipping tests, CI,
-    ``.gitignore``, ``pyproject.toml``, and a ``SETUP.md``.
-    """
     module = get_module(module_id)
     if module is None:
         return jsonify({'error': 'Unknown module'}), 404
-    files = _starter_files(module_id)
+    files = starter_files(module_id)
     archive = BytesIO()
     with ZipFile(archive, 'w', ZIP_DEFLATED) as bundle:
         for path, content in files.items():
@@ -876,63 +709,21 @@ def submit_module_project(module_id):
             'evaluation_source': 'local',
         }
         evaluation_source = 'local'
-    def _valid_text_list(value):
-        return (
-            isinstance(value, list)
-            and len(value) <= 20
-            and all(
-                isinstance(item, str) and item.strip() and len(item) <= 2000
-                for item in value
-            )
-        )
-
     rubric = (
         module.get('project_rubric')
         if module_id != all_modules()[-1]['id']
         else (record.get_project() or {}).get('rubric')
     ) or []
-    criterion_feedback = evaluation.get('criterion_feedback') if isinstance(evaluation, dict) else None
-    criteria_ok = evaluation_source == 'local' or (
-        isinstance(criterion_feedback, list)
-        and len(criterion_feedback) == len(rubric)
-        and all(
-            isinstance(item, dict)
-            and item.get('criterion') == criterion.get('criterion')
-            and isinstance(item.get('score'), int)
-            and not isinstance(item.get('score'), bool)
-            and 0 <= item['score'] <= 100
-            and isinstance(item.get('evidence'), str)
-            and bool(item['evidence'].strip())
-            and len(item['evidence']) <= 2000
-            and isinstance(item.get('gap'), str)
-            and len(item['gap']) <= 2000
-            for item, criterion in zip(criterion_feedback, rubric)
-        )
+    from app.services.project_review_contract import validate_project_review_evaluation
+    ok, evaluation_or_error = validate_project_review_evaluation(
+        evaluation, evaluation_source, rubric
     )
-    if (
-        not isinstance(evaluation, dict)
-        or not isinstance(evaluation.get('summary'), str)
-        or not evaluation['summary'].strip()
-        or len(evaluation['summary']) > 6000
-        or (
-            evaluation.get('score') is not None
-            and (
-                not isinstance(evaluation.get('score'), int)
-                or isinstance(evaluation.get('score'), bool)
-                or not 0 <= evaluation['score'] <= 100
-            )
-        )
-        or any(
-            not _valid_text_list(evaluation.get(field, []))
-            for field in ('strengths', 'gaps', 'next_steps')
-        )
-        or not criteria_ok
-    ):
+    if not ok:
         return jsonify({
-            'error': 'Project evaluation returned an invalid result. Please retry.',
+            'error': evaluation_or_error,
             'draft_saved': True,
         }), 503
-    evaluation['evaluation_source'] = evaluation_source
+    evaluation = evaluation_or_error
     evaluation['checks'] = verification
     record.checks_verified = bool(verification.get('verified'))
     record.evaluation = json.dumps(evaluation, ensure_ascii=False)
@@ -1147,8 +938,16 @@ def github_webhook():
     # A push event proves code moved; it does not prove CI passed, so it can
     # never verify a project. Only completed check runs and workflow runs do.
     if event_type not in ('check_run', 'workflow_run'):
+        current_app.logger.info(
+            'github webhook ignored',
+            extra={'event': 'github_webhook', 'status_code': 200},
+        )
         return jsonify({'status': 'ignored', 'reason': 'event cannot verify CI'}), 200
     if not repo_url or not commit_sha or not parsed.get('verified'):
+        current_app.logger.info(
+            'github webhook ignored: unverified or incomplete event',
+            extra={'event': 'github_webhook', 'status_code': 200},
+        )
         return jsonify({'status': 'ignored', 'reason': 'unsupported or unverified event'}), 200
 
     repo_clean = repo_url.rstrip('/').lower().removesuffix('.git')
@@ -1184,8 +983,16 @@ def github_webhook():
         for user_id in affected_user_ids:
             refresh_leaderboard_score(user_id, commit=False)
         db.session.commit()
+        current_app.logger.info(
+            'github webhook verified projects',
+            extra={'event': 'github_webhook', 'status_code': 200},
+        )
         return jsonify({'status': 'verified', 'projects_updated': matched}), 200
 
+    current_app.logger.info(
+        'github webhook no matching pending project',
+        extra={'event': 'github_webhook', 'status_code': 200},
+    )
     return jsonify({'status': 'no_matching_pending_project'}), 200
 
 

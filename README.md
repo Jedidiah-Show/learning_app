@@ -6,6 +6,8 @@
 
 A Flask learning app for the RUACH engineering course. Every learner starts on the **Shared Foundations** (modules 0–2: Engineering Foundations, Python for Engineers, and Backend Engineering — 50 lessons). From there they choose a specialization — **AI Engineering** (modules 3–12: LLM applications, RAG, agents, MCP, production AI, system design, and a capstone) or **Machine Learning** (the 12-module ML pathway) — and may switch specializations at any time. Learners can choose a 12-month steady, 10-month standard, or five-month accelerated pace; experience level is guided separately through beginner and experienced routes. Learners choose one of four project briefs and can justify omitting optional architecture components; the plan is a guide, not a completion guarantee. The app also tracks a separate portfolio project, module work, quizzes, progress, study schedules, and optional Google Calendar sync. Historical subject-based progress and weekly projects remain stored as legacy records and are not mixed into the new course.
 
+> **Documentation:** See [`docs/README.md`](docs/README.md) for the documentation index, architecture, operations, contracts, and archived historical reports.
+
 ## Shared foundations, then a switchable AI/ML specialization
 
 Every learner starts on the **Shared Foundations** (modules 0–2) as its own pathway — it has its own catalog (`/foundations`), counts toward both specializations, and gates the AI Engineering specialization. From there the learner specialises in one of two independent tracks:

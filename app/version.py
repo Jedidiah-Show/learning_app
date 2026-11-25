@@ -6,7 +6,6 @@ metadata is safe to surface through the public diagnostics endpoint.
 
 import os
 import subprocess
-from datetime import datetime, timezone
 
 APP_VERSION = "1.1.0"
 

@@ -14,3 +14,8 @@ httpx
 # Coverage support for CI / opt-in local runs. Deliberately not enabled in
 # pytest.ini addopts so ordinary local test runs stay fast.
 pytest-cov
+
+# Lint/type guardrails (review remediation). Keep versions pinned for CI.
+ruff==0.15.5
+mypy==1.19.1
+pre-commit==4.5.1

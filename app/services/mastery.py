@@ -21,7 +21,6 @@ Lesson completion alone can never reach ``proficient`` or ``mastered``: those
 require evidence_type in {PROBLEM, LAB, PROJECT}.
 """
 
-from app import db
 from app.models import SkillNode, SkillVerification, UserSkillProgress
 
 MASTERY_STATES = (

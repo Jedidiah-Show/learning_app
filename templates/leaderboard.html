@@ -55,7 +55,7 @@
     </div>
     {% else %}
     <div class="lb-empty">
-      <span style="font-size:34px" aria-hidden="true">👑</span>
+      <span class="text-[34px]" aria-hidden="true">👑</span>
       <strong>The board is quiet… for now</strong>
       <p>Be the first to put lessons on the board — every completion counts from the moment you join.</p>
     </div>
@@ -70,11 +70,11 @@
       {% if board.ml_lesson_points %}<li><span class="lb-how-icon">✓</span><span><strong>{{ board.ml_lesson_points }}</strong> per ML lesson · <strong>{{ board.ml_project_points }}</strong> per ML project</span></li>{% endif %}
     </ul>
     <p class="lb-aside-note">Rankings order on points, then projects passed, then lessons. The board refreshes the moment you complete anything.</p>
-    <a class="gate-link" href="{{ url_for('main.lessons') }}" style="margin-top:4px">Rack up some points →</a>
+    <a class="gate-link mt-1" href="{{ url_for('main.lessons') }}">Rack up some points →</a>
   </aside>
 </div>
 
-<script>
+<script nonce="{{ csp_nonce }}">
   const toggle = document.querySelector('[data-leaderboard-toggle]');
   if (toggle) toggle.addEventListener('click', async () => {
     const optIn = toggle.dataset.optIn === 'true';

@@ -55,38 +55,51 @@ class CredentialScopeTests(unittest.TestCase):
 
     def test_credential_page_uses_the_learner_course_scope(self):
         self.register('creduser')
+        with self.app.app_context():
+            from app.learning import course_progress
+            user = User.query.filter_by(username='creduser').one()
+            ai = course_progress(user, destination='ai-engineering', include_journey=True)
         response = self.client.get('/credential')
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
-        # AI course scope: all authored lessons and modules.
-        self.assertIn('0 / 213', html)
-        self.assertIn('0 / 13', html)
+        # AI Engineering credential eligibility is pinned to the full AI journey.
+        self.assertIn(f"0 / {ai['total_lessons']}", html)
+        self.assertIn(f"0 / {ai['total_projects']}", html)
 
-    def test_ml_learner_credential_page_does_not_show_ai_course_counts(self):
+    def test_ml_learner_credential_page_shows_ai_eligibility_and_own_progress(self):
         self.register('mlcred')
         self.set_destination('mlcred', 'ml')
         with self.app.app_context():
             from app.learning import course_progress
             user = User.query.filter_by(username='mlcred').one()
-            scoped = course_progress(user, destination='ai-engineering')
+            ai_eligibility = course_progress(
+                user, destination='ai-engineering', include_journey=False
+            )
             ml = course_progress(user, destination='machine-learning')
         response = self.client.get('/credential')
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
-        # ML destination scope: shared foundation plus the ML pathway modules,
-        # not the AI course's full authored catalogue.
+        # AI credential eligibility is always shown (pinned to AI Engineering).
+        self.assertIn('AI Engineering credential · Eligibility', html)
+        self.assertIn(f"0 / {ai_eligibility['total_lessons']}", html)
+        self.assertIn(f"0 / {ai_eligibility['total_projects']}", html)
+        # Learner's own pathway progress is shown separately.
+        self.assertIn('Your pathway progress', html)
         self.assertIn(f"0 / {ml['total_lessons']}", html)
         self.assertIn(f"0 / {ml['total_projects']}", html)
-        self.assertNotIn(f"0 / {scoped['total_lessons']}", html)
-        self.assertNotIn(f"0 / {scoped['total_projects']}", html)
-        self.assertLess(ml['total_lessons'], scoped['total_lessons'])
+        self.assertNotEqual(ml['total_lessons'], ai_eligibility['total_lessons'])
 
     def test_credential_issue_is_still_gated_on_the_ai_course(self):
         self.register('creduser')
+        with self.app.app_context():
+            from app.learning import course_progress
+            user = User.query.filter_by(username='creduser').one()
+            ai = course_progress(user, destination='ai-engineering', include_journey=True)
         response = self.client.post('/api/credentials/issue')
         self.assertEqual(response.status_code, 409)
-        self.assertEqual(response.get_json()['total_lessons'], 213)
-        self.assertEqual(response.get_json()['total_projects'], 13)
+        body = response.get_json()
+        self.assertEqual(body['total_lessons'], ai['total_lessons'])
+        self.assertEqual(body['total_projects'], ai['total_projects'])
 
 
 if __name__ == '__main__':

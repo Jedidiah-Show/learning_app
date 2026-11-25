@@ -6,7 +6,6 @@ configuration, logging, errors, security and response handling live in
 ``app.core``; domain rules live in ``app.domains`` / ``app.services``.
 """
 
-from datetime import timedelta
 import secrets
 
 from flask import Flask, current_app, g, session
@@ -29,7 +28,8 @@ from app.core.security import (
 )
 from app.version import APP_VERSION
 
-# Historical imports: existing modules import these helpers from :mod:`app`.
+# Historical imports/exports: compatibility shim for older modules.
+# New code should import from owning modules; keep this surface stable.
 __all__ = [
     'APP_VERSION', 'db', 'login_manager', 'migrate',
     'create_app', 'validate_app_config', 'merge_config', 'load_config',
@@ -281,6 +281,7 @@ def create_app(config_override=None):
         return {
             'config': app.config.get('APP_CONFIG', {}),
             'csrf_token': token,
+            'csp_nonce': getattr(g, 'csp_nonce', ''),
             # Templates branch on enrolments, with legacy plan destinations
             # folded in so old accounts stay scoped.
             'pathway_enrolments': _pathway_enrolments_for_templates(),

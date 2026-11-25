@@ -6,7 +6,6 @@ and competency evidence validation decoupled from HTTP/Flask request state.
 
 from __future__ import annotations
 
-from app.core.exceptions import ValidationError
 
 
 def calculate_rubric_score(criteria_feedback: list[dict]) -> int:

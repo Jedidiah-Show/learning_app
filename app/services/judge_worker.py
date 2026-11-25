@@ -13,7 +13,12 @@ import logging
 import os
 import re
 import socket
-import time
+from typing import TYPE_CHECKING
+
+from app.services.judge import JudgeResult
+
+if TYPE_CHECKING:
+    from app.workers.lifecycle import WorkerStop
 from datetime import timedelta
 
 import click

@@ -1460,3 +1460,21 @@ html[data-theme="dark"] .problem-diff.is-intermediate { color:#ffc01e; }
 .mf-icon-btn svg { width:15px;height:15px;stroke:currentColor; }
 
 .arena-ide-page { max-width: 96rem; }
+
+/* Accessibility baseline: visible keyboard focus, reduced-motion respect. */
+:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, [tabindex]:focus-visible {
+  outline: 3px solid #2563eb;
+  outline-offset: 2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

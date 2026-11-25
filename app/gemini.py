@@ -46,7 +46,11 @@ def _post_gemini_request(url, **kwargs):
 
 
 class GeminiError(RuntimeError):
-    """Shared AI generation error for the primary and fallback providers."""
+    """Shared AI generation error for the primary and fallback providers.
+
+    Compatibility name kept for stable imports; represents generic AI provider
+    failures across the gateway (not Gemini-only).
+    """
 
     def __init__(
         self, message, *, status=None, fallback_eligible=False, retry_after=None
@@ -478,6 +482,12 @@ def generate_json(
                 current_app.logger.warning(
                     'Gemini generation failed (%s); trying the OpenRouter fallback',
                     error,
+                    extra={
+                        'event': 'ai_provider_fallback',
+                        'primary_provider': 'gemini',
+                        'fallback_provider': 'openrouter',
+                        'status_code': getattr(error, 'status', None),
+                    },
                 )
     else:
         gemini_error = GeminiNotConfigured('GEMINI_API_KEY is not set')

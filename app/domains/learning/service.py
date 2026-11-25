@@ -9,7 +9,7 @@ from __future__ import annotations
 from app.core.exceptions import EntityNotFoundError, ValidationError
 from app.core.extensions import db
 from app.domains.learning.context import resolve_learning_context
-from app.models import FoundationLessonProgress, Lesson, LessonCompletion, User
+from app.models import FoundationLessonProgress, LessonCompletion, User
 
 
 def get_lesson_completion(user_id: int, lesson_id: str) -> LessonCompletion | None:

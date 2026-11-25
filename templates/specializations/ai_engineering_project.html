@@ -77,7 +77,7 @@
     </div>
   </section>
 </div>
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   const box = document.querySelector('[data-milestones-domain]');
   if (!box) return;
@@ -128,7 +128,7 @@
   load().catch(error => { status.textContent = error.message; });
 })();
 </script>
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
   // Every value below comes from stored API records, so escape it before it

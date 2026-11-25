@@ -9,7 +9,6 @@ down, matching the tolerance of the pathway and review-badge reads.
 from datetime import date, datetime, timezone
 
 from flask import url_for
-from flask_login import current_user
 
 
 def _module_title_map():

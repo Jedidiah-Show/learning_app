@@ -383,6 +383,7 @@ def _recover_existing_event(service, operation):
             'Could not read the existing Google Calendar event %s',
             operation['event_id'],
             exc_info=True,
+            extra={'event': 'calendar_sync'},
         )
         return False
     event = operation['event']
@@ -521,6 +522,7 @@ def _run_sync(user, events, config):
             'Google Calendar needs to be reconnected for user %s: %s',
             user.id,
             error,
+            extra={'event': 'calendar_sync', 'reason': 'reauthorize'},
         )
         return None, None, {
             'status': 'error',
@@ -531,7 +533,8 @@ def _run_sync(user, events, config):
     except gcal.GoogleCalendarError as error:
         db.session.rollback()
         current_app.logger.exception(
-            'Google Calendar sync failed for user %s: %s', user.id, error
+            'Google Calendar sync failed for user %s: %s', user.id, error,
+            extra={'event': 'calendar_sync', 'reason': 'calendar_error'},
         )
         return None, None, {
             'status': 'error',

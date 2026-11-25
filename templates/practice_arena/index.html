@@ -43,9 +43,9 @@
       <h2 class="mt-2 text-2xl font-bold text-slate-900 dark:text-white">{{ track.name }}</h2>
       <p class="mt-2 flex-1 text-slate-700 dark:text-slate-300">{{ track.tagline }}</p>
       <dl class="mt-4 grid grid-cols-3 gap-2 text-center text-sm">
-        <div class="rounded-lg bg-white p-2 dark:bg-slate-800"><dt class="problem-diff is-beginner" style="text-align:center">Beginner</dt><dd class="font-bold text-slate-900 dark:text-white">{{ track.beginner }}</dd></div>
-        <div class="rounded-lg bg-white p-2 dark:bg-slate-800"><dt class="problem-diff is-intermediate" style="text-align:center">Intermediate</dt><dd class="font-bold text-slate-900 dark:text-white">{{ track.intermediate }}</dd></div>
-        <div class="rounded-lg bg-white p-2 dark:bg-slate-800"><dt class="problem-diff is-advanced" style="text-align:center">Advanced</dt><dd class="font-bold text-slate-900 dark:text-white">{{ track.advanced }}</dd></div>
+        <div class="rounded-lg bg-white p-2 dark:bg-slate-800"><dt class="problem-diff is-beginner text-center">Beginner</dt><dd class="font-bold text-slate-900 dark:text-white">{{ track.beginner }}</dd></div>
+        <div class="rounded-lg bg-white p-2 dark:bg-slate-800"><dt class="problem-diff is-intermediate text-center">Intermediate</dt><dd class="font-bold text-slate-900 dark:text-white">{{ track.intermediate }}</dd></div>
+        <div class="rounded-lg bg-white p-2 dark:bg-slate-800"><dt class="problem-diff is-advanced text-center">Advanced</dt><dd class="font-bold text-slate-900 dark:text-white">{{ track.advanced }}</dd></div>
       </dl>
       <div class="mt-5 flex flex-wrap gap-2">
         {%- set track_url = url_for('practice_arena.ai_engineering') if track.id == 'ai-engineering' else url_for('practice_arena.machine_learning') if track.id == 'machine-learning' else url_for('practice_arena.algorithms') -%}
@@ -73,7 +73,7 @@
     <p class="mt-1">Browser checks are immediate formative feedback. A problem you have attempted is marked <strong>Practised</strong>. Nothing is marked <strong>Solved</strong> until Secure Submit returns an accepted result from the isolated server-side judge.</p>
   </aside>
 </section>
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   var section = document.getElementById('arena-recommendations');
   var list = document.getElementById('recs-list');

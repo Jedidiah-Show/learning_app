@@ -30,7 +30,7 @@
     </div>
     <div class="problem-set">
       <div class="problem-set-head" aria-hidden="true">
-        <span>Status</span><span>Problem</span><span>Difficulty</span><span style="text-align:right">Est. time</span>
+        <span>Status</span><span>Problem</span><span>Difficulty</span><span class="text-right">Est. time</span>
       </div>
       {% for problem in group.problems %}
       <a class="problem-row" href="{{ url_for('practice_arena.problem_detail', problem_id=problem.id) }}" aria-label="{{ problem.title }}, {{ problem.difficulty }}, {{ problem.status_label }}">

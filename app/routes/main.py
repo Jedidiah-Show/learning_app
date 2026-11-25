@@ -1,7 +1,6 @@
 """Course pages and learner preferences."""
 
 import json
-import os
 from datetime import datetime, timezone
 from functools import lru_cache
 from urllib.parse import urlsplit
@@ -11,7 +10,7 @@ from flask import (Blueprint, Response, abort, current_app, flash, g, jsonify,
 from flask_login import current_user, login_required
 from sqlalchemy.exc import SQLAlchemyError
 from app import db
-from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
+from app.curriculum import all_lessons, curriculum, get_lesson
 from app.ml_pathway import PATHWAY_ID, machine_learning_pathway
 from app.ml_pathway import get_machine_learning_lesson, machine_learning_lessons
 from app.ml_pathway import machine_learning_lesson_is_open, ml_pathway_overview
@@ -170,9 +169,53 @@ def healthz():
 
 @main_bp.route('/readyz')
 def readyz():
-    """Readiness check: verifies the database schema is usable."""
+    """Readiness check: verifies the database schema and reports safe ops status."""
     database = database_status()
     from app.version import APP_VERSION
+    ops = {}
+    try:
+        from datetime import timedelta
+        from app.models import (
+            AIBackgroundJob, JudgeWorkerHeartbeat, ServiceHeartbeat, utcnow,
+        )
+        now = utcnow()
+        stale_before = now - timedelta(minutes=5)
+        ops = {
+            'ai_jobs': {
+                'queued': AIBackgroundJob.query.filter_by(status='queued').count(),
+                'running': AIBackgroundJob.query.filter_by(status='running').count(),
+                'failed': AIBackgroundJob.query.filter_by(status='failed').count(),
+            },
+            'judge_workers': {
+                'total': JudgeWorkerHeartbeat.query.count(),
+                'stale': JudgeWorkerHeartbeat.query.filter(
+                    JudgeWorkerHeartbeat.last_seen_at < stale_before
+                ).count(),
+            },
+            'service_heartbeats': {
+                'total': ServiceHeartbeat.query.count(),
+                'stale': ServiceHeartbeat.query.filter(
+                    ServiceHeartbeat.last_seen_at < stale_before
+                ).count(),
+            },
+        }
+        alerts = []
+        if ops['ai_jobs']['failed'] > 0:
+            alerts.append('ai_jobs_failed')
+        if ops['judge_workers']['stale'] > 0:
+            alerts.append('judge_workers_stale')
+        if ops['service_heartbeats']['stale'] > 0:
+            alerts.append('service_heartbeats_stale')
+        ops['alerts'] = alerts
+        if alerts:
+            try:
+                from app.core.alerting import send_ops_alert
+                for alert_type in alerts:
+                    send_ops_alert({'type': alert_type, 'source': 'readyz', 'ops': ops})
+            except Exception:
+                pass
+    except Exception:
+        ops = {'error': 'unavailable'}
     response = jsonify({
         'status': 'ok' if database['ok'] else 'degraded',
         'commit': _deployment_commit(),
@@ -185,6 +228,7 @@ def readyz():
             'missing_tables': database['missing_tables'],
             'missing_columns': database.get('missing_columns', []),
         },
+        'ops': ops,
     })
     response.headers['Cache-Control'] = 'no-store'
     response.headers['X-Health-Status'] = 'ok' if database['ok'] else 'degraded'
@@ -279,7 +323,7 @@ def search():
         # A bookmarked-only filter with no query lists the saved lessons.
         if bookmarked_only:
             results = []
-            for lesson, text, searchable in index:
+            for lesson, _text, _searchable in index:
                 if module_filter and lesson.get('module_id') != module_filter:
                     continue
                 results.append({
@@ -342,7 +386,7 @@ def search_api():
     if is_ml(destination):
         index.extend(_pathway_search_index())
     results = []
-    for lesson, text, searchable in index:
+    for lesson, _text, searchable in index:
         if query in searchable:
             module = lesson.get('_module') or {}
             source = lesson.get('source')
@@ -671,7 +715,6 @@ def machine_learning_specialization():
 @main_bp.route('/specializations/machine-learning/lessons/<lesson_id>', methods=['GET', 'POST'])
 @login_required
 def machine_learning_lesson(lesson_id):
-    pathway = machine_learning_pathway()
     lesson = get_machine_learning_lesson(lesson_id)
     if not lesson or lesson.get('status') != 'ready':
         abort(404)
@@ -714,7 +757,6 @@ def machine_learning_lesson(lesson_id):
             return redirect(url_for('main.machine_learning_specialization'))
 
     existing = lesson_id in completed
-    from app.models import LessonBookmark, LessonNote
     bookmark = LessonBookmark.query.filter_by(
         user_id=current_user.id, lesson_id=lesson_id
     ).first()
@@ -1059,9 +1101,9 @@ def lesson_detail(lesson_id):
     from app.learning import completed_lesson_ids, completed_project_modules
     from app.practice import practice_exercises_for_lesson
     from app.pathway_scope import (
-        destination_for, is_ml, lesson_by_id, pathway_lessons,
+        destination_for, is_ml, pathway_lessons,
     )
-    from app.models import VideoProgress, LessonBookmark, LessonNote
+    from app.models import VideoProgress
     completed = completed_lesson_ids(current_user)
     completed_projects = completed_project_modules(current_user)
     if not lesson_is_available(
@@ -1256,7 +1298,7 @@ def foundations():
     destination = destination_for(current_user)
     modules = pathway_modules('shared-foundations', user_id=current_user.id)
     from app.foundations_pathway import (
-        foundation_completed_lesson_ids, foundation_lesson_is_open,
+        foundation_lesson_is_open,
     )
     completed = foundation_completed_lesson_ids(current_user.id)
     for module in modules:

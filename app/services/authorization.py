@@ -7,7 +7,6 @@ Preserved for backward compatibility across existing services and routes.
 from app.domains.identity.service import (
     ROLES,
     _REVIEWER_ROLES,
-    _actor_int_id,
     can_assess_competency,
     can_invalidate_verification,
     can_manage_reviewer_access,

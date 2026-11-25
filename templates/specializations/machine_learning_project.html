@@ -98,7 +98,7 @@
   </section>
   {% endif %}
 </article>
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   const box = document.querySelector('[data-milestones-domain]');
   if (!box) return;
@@ -149,7 +149,7 @@
   load().catch(error => { status.textContent = error.message; });
 })();
 </script>
-<script>
+<script nonce="{{ csp_nonce }}">
 (() => {
   const form = document.getElementById('ml-project-form');
   const result = document.getElementById('ml-project-result');

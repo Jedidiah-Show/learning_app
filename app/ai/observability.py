@@ -7,7 +7,7 @@ unavailable.
 """
 
 import uuid
-from typing import Any, Optional
+from typing import Optional
 
 from flask import current_app, has_app_context, has_request_context
 from flask_login import current_user

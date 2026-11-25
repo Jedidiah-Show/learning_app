@@ -49,12 +49,20 @@ Read `docs/architecture/current_architecture.md`, `dependency_map.md` and
 6. Production schema changes require a new Alembic revision and a single head;
    the production workflow is manual with a verified backup (`BACKUP_TAKEN`).
 
-## 5. Tests
+## 5. Quality checks
 
 ```bash
 pytest -q                     # full suite (chunk it locally if RAM is tight)
 pytest tests/test_architecture_boundaries.py -q
 npm run test:browser          # Node >= 20 + chromium install
+
+# Lint/type (scoped baseline; expand gradually)
+python -m ruff check .
+python -m mypy --config-file pyproject.toml
+
+# Optional: install git hooks
+pre-commit install
+pre-commit run --all-files
 ```
 
 Migration check: `flask db heads` must output one revision. Release export:

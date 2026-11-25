@@ -81,7 +81,7 @@
     {% endfor %}
   {% endif %}
 </section>
-<script>
+<script nonce="{{ csp_nonce }}">
 (function () {
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content;
   const escapeHtml = (value) => String(value || '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));

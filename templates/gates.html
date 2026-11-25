@@ -34,7 +34,7 @@
       </div>
       <h2 class="gate-title">{{ module.title }}</h2>
       {% if module.outcome %}<p class="gate-outcome">{{ module.outcome }}</p>{% endif %}
-      <div class="gate-progress" aria-hidden="true"><span style="width:{{ (100 * module.completed_lessons / module.total_lessons)|round if module.total_lessons else 0 }}%"></span></div>
+      <div class="gate-progress" aria-hidden="true"><span data-style-width-pct="{{ (100 * module.completed_lessons / module.total_lessons)|round if module.total_lessons else 0 }}"></span></div>
       <div class="gate-meta">
         <span>{{ module.completed_lessons }} / {{ module.total_lessons }} lessons</span>
         <span>·</span>

@@ -7,7 +7,6 @@ SIGTERM/SIGINT stop cooperatively through ``WorkerStop``.
 """
 
 import logging
-import time
 
 import click
 from flask import current_app

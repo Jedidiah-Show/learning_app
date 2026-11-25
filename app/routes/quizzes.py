@@ -213,7 +213,6 @@ def submit_quiz():
             question,
             question.get('id', f'{quiz.quiz_id}_{index}'),
         ))
-    missed_questions_added = len(missed_questions)
     missed_by_question_id = {}
     if missed_questions:
         missed_question_ids = [question_id for _, question_id in missed_questions]

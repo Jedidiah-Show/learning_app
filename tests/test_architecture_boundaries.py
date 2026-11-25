@@ -200,3 +200,45 @@ class TestTutorResolverOwnership:
         assert 'process-submissions' in app.cli.commands
         assert 'judge-worker-health' in app.cli.commands
         assert 'run-scheduled-jobs' in app.cli.commands
+
+
+class TestRouteBoundaryGuardrails:
+    """Prevent route hotspots from regrowing domain logic unchecked."""
+
+    # Large route modules are allowed only while decomposition is in progress.
+    # Reduce this allowlist as logic moves into app/services or app/domains.
+    LARGE_ROUTE_ALLOWLIST = {
+        'app/routes/main.py': 1600,
+        'app/routes/projects.py': 1500,
+        'app/routes/admin_portal.py': 1400,
+        'app/routes/auth.py': 1300,
+        'app/routes/lessons.py': 1300,
+        'app/routes/calendar.py': 1200,
+        'app/routes/practice_arena.py': 1100,
+        'app/routes/ml_specialization.py': 900,
+    }
+
+    def test_large_routes_have_explicit_size_budgets(self):
+        routes_dir = ROOT / 'app' / 'routes'
+        for path in sorted(routes_dir.glob('*.py')):
+            if path.name.startswith('_'):
+                continue
+            rel = f'app/routes/{path.name}'
+            line_count = len(path.read_text(encoding='utf-8').splitlines())
+            if rel in self.LARGE_ROUTE_ALLOWLIST:
+                assert line_count <= self.LARGE_ROUTE_ALLOWLIST[rel], (
+                    f'{rel} grew to {line_count} lines; decompose before raising its budget'
+                )
+            else:
+                assert line_count <= 700, (
+                    f'{rel} is {line_count} lines; extract domain logic into services'
+                )
+
+    def test_project_completion_gate_lives_in_service(self):
+        route_source = _module_path('app.routes.projects').read_text(encoding='utf-8')
+        service_source = _module_path('app.services.project_completion').read_text(
+            encoding='utf-8'
+        )
+        assert 'def _project_passes_completion_gate(' not in route_source
+        assert 'project_passes_completion_gate' in service_source
+        assert 'from app.services.project_completion import' in route_source

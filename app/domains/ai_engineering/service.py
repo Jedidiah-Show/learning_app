@@ -6,9 +6,8 @@ and evidence collection without any cross-domain coupling to ML logic.
 
 from __future__ import annotations
 
-import json
 from app.ai_pathway import PATHWAY_ID, ai_engineering_pathway
-from app.core.exceptions import EntityNotFoundError, ValidationError
+from app.core.exceptions import EntityNotFoundError
 from app.core.extensions import db
 from app.domains.ai_engineering.evaluation import build_evidence
 from app.models import AISpecializationProject

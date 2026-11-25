@@ -78,6 +78,10 @@ class IntegrationDiagnosticsTests(unittest.TestCase):
         self.assertEqual(payload['commit'], 'd9fcbe9')
         self.assertTrue(payload['database']['ok'])
         self.assertEqual(payload['database']['missing_tables'], [])
+        self.assertIn('ops', payload)
+        if 'error' not in payload['ops']:
+            self.assertIn('ai_jobs', payload['ops'])
+            self.assertIn('judge_workers', payload['ops'])
 
     def test_healthz_is_lightweight_and_does_not_touch_the_database(self):
         with patch(

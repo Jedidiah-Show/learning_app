@@ -9,7 +9,7 @@ from flask_login import current_user, login_required
 from app import db, validate_app_config
 from app.access import json_admin_required
 from app.google_calendar import GoogleAuthorizationError, GoogleCalendarError
-from app.models import CalendarEvent, UserSchedule
+from app.models import UserSchedule
 from app.rate_limit import enforce_rate_limit
 from app.services.experiment_tracking import get_tracking_config
 from app.services.judge_worker import get_worker_health

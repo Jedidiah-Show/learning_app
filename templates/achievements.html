@@ -8,8 +8,8 @@
 </header>
 
 <div class="achv-summary">
-  <div><b>{{ earned }}<span style="color:var(--app-muted)"> / {{ total }}</span></b><br><span>badges unlocked</span></div>
-  <div style="flex:1;min-width:180px"><div class="achv-progress" style="height:10px"><span style="width:{{ (100 * earned / total)|round if total else 0 }}%"></span></div><p class="achv-progress-label" style="margin-top:6px">{{ total - earned }} to unlock</p></div>
+  <div><b>{{ earned }}<span class="text-[var(--app-muted)]"> / {{ total }}</span></b><br><span>badges unlocked</span></div>
+  <div class="flex-1 min-w-[180px]"><div class="achv-progress h-[10px]"><span data-style-width-pct="{{ (100 * earned / total)|round if total else 0 }}"></span></div><p class="achv-progress-label mt-1.5">{{ total - earned }} to unlock</p></div>
 </div>
 
 <div class="achv-grid">
@@ -21,7 +21,7 @@
     {% if badge.earned %}
     <span class="achv-state">✓ Unlocked</span>
     {% else %}
-    <span class="achv-progress"><span style="width:{{ badge.progress_pct or 0 }}%"></span></span>
+    <span class="achv-progress"><span data-style-width-pct="{{ badge.progress_pct or 0 }}"></span></span>
     <span class="achv-progress-label">{{ badge.progress_current or 0 }} / {{ badge.progress_target or 1 }}</span>
     <span class="achv-state">Locked</span>
     {% endif %}

@@ -94,7 +94,7 @@
         {% set height = ((row.count / max_completion) * 100)|round|int if max_completion else 0 %}
         <div class="flex h-full min-w-7 flex-1 flex-col items-center justify-end" title="{{ row.date }}: {{ row.count }} completion{{ '' if row.count == 1 else 's' }}">
             <span class="mb-1 text-[10px] font-semibold text-slate-500">{{ row.count }}</span>
-            <div class="w-full rounded-t bg-indigo-500" style="height: {{ height if height > 2 else 2 }}%"></div>
+            <div class="w-full rounded-t bg-indigo-500" data-style-height-pct="{{ height if height > 2 else 2 }}"></div>
             <span class="mt-2 origin-left rotate-45 whitespace-nowrap text-[10px] text-slate-400">{{ row.date }}</span>
         </div>
         {% endfor %}
@@ -113,7 +113,7 @@
         {% set height = ((row.count / max_signup) * 100)|round|int if max_signup else 0 %}
         <div class="flex h-full min-w-7 flex-1 flex-col items-center justify-end" title="{{ row.date }}: {{ row.count }} new account{{ '' if row.count == 1 else 's' }}">
             <span class="mb-1 text-[10px] font-semibold text-slate-500">{{ row.count }}</span>
-            <div class="w-full rounded-t bg-emerald-500" style="height: {{ height if height > 2 else 2 }}%"></div>
+            <div class="w-full rounded-t bg-emerald-500" data-style-height-pct="{{ height if height > 2 else 2 }}"></div>
             <span class="mt-2 origin-left rotate-45 whitespace-nowrap text-[10px] text-slate-400">{{ row.date }}</span>
         </div>
         {% endfor %}

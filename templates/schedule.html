@@ -8,7 +8,7 @@
 <section class="mt-7 rounded-2xl border bg-white p-6"><div class="flex flex-wrap items-center justify-between gap-2"><div><h3 class="font-bold">Upcoming study blocks</h3><p class="mt-1 text-sm text-slate-600">Your saved sessions, including their Calendar sync state.</p></div><button id="refresh-events" type="button" class="rounded-lg border px-3 py-2 text-sm font-semibold">Refresh</button></div>{% if upcoming_events %}<ol class="mt-4 divide-y">{% for item in scheduled_events %}{% set event = item.event %}<li class="flex flex-wrap items-center justify-between gap-3 py-3"><div><p class="font-semibold">{{ event.title }}</p><p class="text-sm text-slate-500">{{ item.start_local.strftime('%a, %b %-d · %H:%M') }}–{{ item.end_local.strftime('%H:%M') }}{% if event.time_zone %} ({{ event.time_zone }}){% endif %}</p></div><span class="rounded-full px-3 py-1 text-xs font-semibold {{ 'bg-emerald-50 text-emerald-700' if event.synced_to_google and not event.sync_pending else 'bg-amber-50 text-amber-800' }}">{{ 'Synced to Google' if event.synced_to_google and not event.sync_pending else ('Removal pending' if event.delete_pending else 'Saved · sync pending') }}</span></li>{% endfor %}</ol>{% else %}<p id="empty-events" class="mt-4 text-sm text-slate-600">No upcoming study blocks yet. Schedule your next lesson above to create one.</p>{% endif %}<p id="events-status" class="mt-2 text-sm text-slate-500" role="status"></p></section>
 <section class="mt-7 rounded-2xl border bg-white p-6"><h3 class="font-bold">Calendar connection</h3><p class="mt-2 text-sm text-slate-600">Manage Google Calendar access and your study block times in <a class="font-semibold text-indigo-700" href="{{ url_for('main.settings') }}">Settings</a>.</p></section>
 {% endblock %}
-{% block extra_scripts %}{% if next_lesson %}<script>
+{% block extra_scripts %}{% if next_lesson %}<script nonce="{{ csp_nonce }}">
 document.getElementById('schedule-next').addEventListener('click', async (event) => {
     const button = event.currentTarget;
     const result = document.getElementById('calendar-result');
@@ -36,7 +36,7 @@ document.getElementById('schedule-next').addEventListener('click', async (event)
         button.disabled = false;
     }
 });
-</script>{% endif %}<script>
+</script>{% endif %}<script nonce="{{ csp_nonce }}">
 const refreshEvents = document.getElementById('refresh-events');
 if (refreshEvents) refreshEvents.addEventListener('click', async () => {
   const status = document.getElementById('events-status');

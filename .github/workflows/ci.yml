@@ -41,6 +41,10 @@ jobs:
         run: python -m compileall -q app tests migrations index.py wsgi.py
       - name: Check dependency consistency
         run: python -m pip check
+      - name: Lint (ruff)
+        run: python -m ruff check .
+      - name: Type check (mypy - scoped)
+        run: python -m mypy --config-file pyproject.toml
       - name: Repository hygiene check
         run: |
           # Keep tracked release source free of local environment/secret material.

@@ -57,7 +57,7 @@
   <p class="mt-3 text-xs text-slate-500">Deterministic learning scenario. Evidence is saved to your account for traceable progress; use reset guidance above to restore a clean baseline before retrying.</p>
 </section>
 
-<script>
+<script nonce="{{ csp_nonce }}">
 document.addEventListener('DOMContentLoaded', () => {
   const csrf = document.querySelector('meta[name="csrf-token"]')?.content || '';
   const notes = document.getElementById('lab-evidence-notes');

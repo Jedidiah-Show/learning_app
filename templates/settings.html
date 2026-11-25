@@ -17,7 +17,7 @@
 </section>
 <p class="mt-5 text-sm text-slate-500">Your previous subject-based progress remains preserved as historical data.</p>
 {% endblock %}
-{% block extra_scripts %}<script>
+{% block extra_scripts %}<script nonce="{{ csp_nonce }}">
 (() => {
     const statusBox = document.getElementById('integration-status');
     const probeBox = document.getElementById('integration-probe');

@@ -12,7 +12,10 @@ import secrets
 import threading
 import time
 from datetime import timedelta
-from typing import Optional
+from typing import Optional, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.workers.lifecycle import WorkerStop
 
 from app import db
 from app.core.logging import configure_worker_logging

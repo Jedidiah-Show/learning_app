@@ -11,7 +11,7 @@ endpoint uses consistent limits and window sizes.  Per-endpoint overrides
 are supported via the config dict.
 """
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import hashlib
 
 from flask import current_app, jsonify, request

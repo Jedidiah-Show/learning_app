@@ -42,4 +42,4 @@
   {% if practice_exercises %}<div id="practice-anchor" class="mt-5">{% set practice_url_prefix = '/api/pathways/practice' %}{% include "lessons/_practice_workspace.html" %}</div>{% endif %}
 </article>
 {% endblock %}
-{% block extra_scripts %}{% if practice_exercises %}<script type="module" src="{{ url_for('static', filename='js/practice.bundle.js') }}"></script>{% endif %}{% endblock %}
+{% block extra_scripts %}{% if practice_exercises %}<script nonce="{{ csp_nonce }}" type="module" src="{{ url_for('static', filename='js/practice.bundle.js') }}"></script>{% endif %}{% endblock %}

@@ -61,7 +61,7 @@
   <p class="mt-2 text-xs text-brand-200">Module {{ current_module.number }}: {{ current_module.total_lessons - current_module.completed_lessons }} lesson{{ 's' if current_module.total_lessons - current_module.completed_lessons != 1 }} left to unlock the Module {{ current_module.number }} project.</p>
   {% endif %}
   {% endif %}
-  <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/15"><div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-gold-400" style="width:{% if ml_hero %}{{ (ml_overview.completed_lessons / (ml_overview.total_lessons if ml_overview.total_lessons > 0 else 1) * 100)|round(1) }}{% else %}{{ (progress.completed_lessons / (progress.total_lessons if progress.total_lessons > 0 else 1) * 100)|round(1) }}{% endif %}%"></div></div>
+  <div class="mt-4 h-2 overflow-hidden rounded-full bg-white/15"><div class="h-full rounded-full bg-gradient-to-r from-emerald-400 to-gold-400" data-style-width-pct="{% if ml_hero %}{{ (ml_overview.completed_lessons / (ml_overview.total_lessons if ml_overview.total_lessons > 0 else 1) * 100)|round(1) }}{% else %}{{ (progress.completed_lessons / (progress.total_lessons if progress.total_lessons > 0 else 1) * 100)|round(1) }}{% endif %}"></div></div>
 </section>
 {% if ml_leads and ml_card %}{{ ml_card }}{% endif %}
 {# Foundations-first: until the learner picks a specialisation, invite the
@@ -137,14 +137,14 @@
     <div class="p-3 rounded-xl border {% if pathway_destination == 'ai-engineering' %}border-indigo-400 ring-1 ring-indigo-300{% else %}border-indigo-200{% endif %} bg-indigo-50">
       <p class="font-semibold text-indigo-600">AI Engineering{% if pathway_destination == 'ai-engineering' %} · active{% endif %}</p>
       <p class="mt-1 text-lg font-bold" id="ai-lessons-completed">{{ pathway_comparison.ai.completed }}</p>
-      <div class="mt-2 h-2 rounded-full bg-indigo-100"><div class="h-full rounded-full bg-indigo-600" style="width:{{ (pathway_comparison.ai.completed / pathway_comparison.ai.total * 100)|round(1) }}%"></div></div>
+      <div class="mt-2 h-2 rounded-full bg-indigo-100"><div class="h-full rounded-full bg-indigo-600" data-style-width-pct="{{ (pathway_comparison.ai.completed / pathway_comparison.ai.total * 100)|round(1) }}"></div></div>
       <p class="text-xs text-indigo-500">{{ pathway_comparison.ai.completed }} of {{ pathway_comparison.ai.total }} lessons · {{ (pathway_comparison.ai.completed / pathway_comparison.ai.total * 100)|round(1) }}% complete</p>
       {% if pathway_destination != 'ai-engineering' %}<form method="POST" action="{{ url_for('auth.switch_pathway_route') }}" class="mt-2"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="pathway_id" value="ai-engineering"><input type="hidden" name="next" value="{{ url_for('main.index') }}"><button type="submit" class="text-xs font-semibold text-indigo-700 underline hover:text-indigo-900">Make AI active →</button></form>{% endif %}
     </div>
     <div class="p-3 rounded-xl border {% if pathway_destination == 'machine-learning' %}border-violet-400 ring-1 ring-violet-300{% else %}border-violet-200{% endif %} bg-violet-50">
       <p class="font-semibold text-violet-600">ML Engineering{% if pathway_destination == 'machine-learning' %} · active{% endif %}</p>
       <p class="mt-1 text-lg font-bold" id="ml-lessons-completed">{{ pathway_comparison.ml.completed }}</p>
-      <div class="mt-2 h-2 rounded-full bg-violet-100"><div class="h-full rounded-full bg-violet-600" style="width:{{ (pathway_comparison.ml.completed / pathway_comparison.ml.total * 100)|round(1) }}%"></div></div>
+      <div class="mt-2 h-2 rounded-full bg-violet-100"><div class="h-full rounded-full bg-violet-600" data-style-width-pct="{{ (pathway_comparison.ml.completed / pathway_comparison.ml.total * 100)|round(1) }}"></div></div>
       <p class="text-xs text-violet-500">{{ pathway_comparison.ml.completed }} of {{ pathway_comparison.ml.total }} lessons · {{ (pathway_comparison.ml.completed / pathway_comparison.ml.total * 100)|round(1) }}% complete</p>
       {% if pathway_destination != 'machine-learning' %}<form method="POST" action="{{ url_for('auth.switch_pathway_route') }}" class="mt-2"><input type="hidden" name="csrf_token" value="{{ csrf_token }}"><input type="hidden" name="pathway_id" value="machine-learning"><input type="hidden" name="next" value="{{ url_for('main.index') }}"><button type="submit" class="text-xs font-semibold text-violet-700 underline hover:text-violet-900">Make ML active →</button></form>{% endif %}
     </div>
@@ -153,7 +153,7 @@
 </div>
 {% endif %}
 <section class="dashboard-curriculum mt-8"><div class="mb-4 flex flex-wrap items-end justify-between gap-3"><div><p class="text-xs font-bold uppercase tracking-wider text-gold-700">Your curriculum</p><h3 class="text-2xl font-bold text-slate-900">{{ progress.total_projects }} modules · {{ progress.total_lessons }} lessons</h3></div><div class="flex gap-4"><a href="{{ url_for('projects.project_page') }}" class="font-semibold text-brand-700">View learning plan →</a><a href="{{ url_for('main.progress') }}" class="font-semibold text-brand-700">View detailed progress →</a></div></div>
-<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{% for module in progress.modules %}<article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md hover:-translate-y-0.5"><p class="text-xs font-semibold uppercase text-slate-500">{{ module.badge | default('Module ' ~ module.number) }}</p><h4 class="mt-2 font-bold text-slate-900">{{ module.title }}</h4><p class="mt-2 text-sm text-slate-600">{{ module.completed_lessons }} / {{ module.total_lessons }} lessons</p><div class="mt-3 h-1.5 rounded-full bg-slate-100"><div class="h-full rounded-full bg-gradient-to-r from-brand-600 to-emerald-500" style="width:{{ (module.completed_lessons / module.total_lessons * 100)|round }}%"></div></div></article>{% endfor %}</div></section>
+<div class="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{% for module in progress.modules %}<article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md hover:-translate-y-0.5"><p class="text-xs font-semibold uppercase text-slate-500">{{ module.badge | default('Module ' ~ module.number) }}</p><h4 class="mt-2 font-bold text-slate-900">{{ module.title }}</h4><p class="mt-2 text-sm text-slate-600">{{ module.completed_lessons }} / {{ module.total_lessons }} lessons</p><div class="mt-3 h-1.5 rounded-full bg-slate-100"><div class="h-full rounded-full bg-gradient-to-r from-brand-600 to-emerald-500" data-style-width-pct="{{ (module.completed_lessons / module.total_lessons * 100)|round }}"></div></div></article>{% endfor %}</div></section>
 </div>
 {% endif %}
 {% endblock %}

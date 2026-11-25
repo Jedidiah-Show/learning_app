@@ -6,7 +6,6 @@ and workspace quota verification decoupled from HTTP/Flask request state.
 
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 from app.core.exceptions import AuthorizationError, EntityNotFoundError, ValidationError

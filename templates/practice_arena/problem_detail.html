@@ -93,7 +93,7 @@
 
           {# ---- Hints panel ---- #}
           <section class="ide-tab-panel" role="tabpanel" id="panel-hints" data-ide-panel="hints" aria-labelledby="tab-hints" tabindex="0" hidden>
-            <h2 class="ide-problem-title" style="font-size:18px">Progressive tutor hints</h2>
+            <h2 class="ide-problem-title text-[18px]">Progressive tutor hints</h2>
             <p class="ide-problem-summary">Reveal one stage at a time — understand, decompose, approach, pseudocode, then the editorial. The worked solution unlocks only after you save an attempt.</p>
             <div class="ide-hint-grid">
               {% for stage in range(1, 6) %}
@@ -106,7 +106,7 @@
           {# ---- Editorial panel ---- #}
           <section class="ide-tab-panel" role="tabpanel" id="panel-editorial" data-ide-panel="editorial" aria-labelledby="tab-editorial" tabindex="0" hidden>
             <div id="arena-editorial" class="ide-editorial" aria-live="polite">
-              <p class="ide-problem-summary" style="margin:0;color:#fcd34d;font-weight:700">Worked solution and explanation</p>
+              <p class="ide-problem-summary m-0 font-bold text-amber-300">Worked solution and explanation</p>
               <pre id="arena-editorial-code" class="ide-editorial-code">Save an attempt, then choose “Reveal worked solution” in the editor toolbar.</pre>
               <p id="arena-editorial-prose" class="ide-editorial-prose"></p>
             </div>
@@ -116,7 +116,7 @@
           {% if problem.is_lab %}
           <section class="ide-tab-panel" role="tabpanel" id="panel-lab" data-ide-panel="lab" aria-labelledby="tab-lab" tabindex="0" hidden>
             <div class="ide-lab" data-lab-debrief data-debrief-url="{{ url_for('practice_arena.lab_debrief', problem_id=problem.id) }}">
-              <h2 class="ide-problem-title" style="font-size:18px">Lab debrief</h2>
+              <h2 class="ide-problem-title text-[18px]">Lab debrief</h2>
               <p class="ide-problem-summary">Diagnose the failure, then describe how you verified the fix. The judge decides whether the code is correct; this rubric scores your reasoning. Passing the debrief records <strong>LAB evidence</strong> in your Skill Passport. Requires a judged ACCEPTED solution first.</p>
               <form class="mt-3" data-lab-debrief-form>
                 <label for="lab-diagnosis">Diagnosis — what actually broke and why?
@@ -129,7 +129,7 @@
                 <p class="ide-lab-status" aria-live="polite" data-lab-debrief-status></p>
                 <div class="ide-lab-result hidden" data-lab-debrief-result>
                   <p class="font-bold text-slate-100" data-lab-debrief-verdict></p>
-                  <p style="margin-top:4px;color:#a3a3a3" data-lab-debrief-summary></p>
+                  <p class="mt-1 text-neutral-400" data-lab-debrief-summary></p>
                 </div>
               </form>
             </div>
@@ -246,5 +246,5 @@
 {% endblock %}
 
 {% block extra_scripts %}
-<script type="module" src="{{ url_for('static', filename='js/arena.bundle.js') }}"></script>
+<script nonce="{{ csp_nonce }}" type="module" src="{{ url_for('static', filename='js/arena.bundle.js') }}"></script>
 {% endblock %}

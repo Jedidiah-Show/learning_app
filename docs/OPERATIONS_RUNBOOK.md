@@ -81,13 +81,27 @@ Scale only the component whose signal is saturated. Do not enable GPU profiles o
 |---|---|---|
 | Python/npm/action dependency PRs | Dependabot (`.github/dependabot.yml`) | Weekly |
 | Dependency review and merge | Backend maintainer | Each PR |
+| Runtime dependency freshness review | Backend maintainer | Monthly / before release |
 | Architecture docs (`CURRENT_ARCHITECTURE_AUDIT.md`, `SYSTEM_COMPONENT_MAP.md`) | Architecture owner | Each milestone |
 | Operational docs (this file, backup/recovery, release status) | Operations owner | Each release |
 | Security notes | Security owner | Each security-sensitive change |
 
-## 7. Known limits
+## 7. Alert signals and thresholds
+
+`/readyz` includes safe `ops` counts and `ops.alerts` signals. These are readiness/ops signals, not a full external alerting system.
+
+| Signal | Source | Suggested threshold | Action |
+|--------|--------|---------------------|--------|
+| `ai_jobs_failed` | `/readyz.ops.ai_jobs.failed > 0` | any sustained increase | Inspect AI job logs, provider errors, quotas/cooldowns |
+| `judge_workers_stale` | stale judge heartbeat | any stale worker > 5 min | Check judge worker process/host, leases, sandbox |
+| `service_heartbeats_stale` | stale service heartbeat | any stale worker > 5 min | Check AI/scheduler worker process and logs |
+| webhook failures | app logs `event=github_webhook` | repeated 401/503/ignored anomalies | Verify secret, signature, payload/event contract |
+
+Set `OPS_ALERT_WEBHOOK_URL` to receive best-effort JSON alert POSTs from `/readyz` when alerts are present (rate-limited by `OPS_ALERT_COOLDOWN_SECONDS`, default 300s). External paging can also poll `/readyz` and logs.
+
+## 8. Known limits
 
 - Live Docker, GPU scheduling, MLflow server connectivity and judge-worker deployment are not verified in this environment.
 - In-process request metrics are per web process and bounded; they are not a cluster-wide aggregate.
-- Alert delivery is not configured; administrator polling of `/api/admin/operations` is the supported view.
+- `/readyz` exposes ops alert signals and can POST to `OPS_ALERT_WEBHOOK_URL`; external paging/escalation policy remains deployment-specific.
 - The reconciled Alembic head is `m7n8o9p1q2r3`; the conflicting `1a7665109d7c` draft is archived and unapplied. Verify `flask db current`, `flask db heads` and `flask db check` with the direct Neon URL before deploying. See `docs/MIGRATION_HEAD_RECONCILIATION.md`.

@@ -97,7 +97,7 @@
     <a class="lesson-video-link" href="{{ lesson.video.url }}" target="_blank" rel="noopener noreferrer">Open on YouTube ↗</a>
   </div>
   <div class="lesson-video-frame">
-    <button type="button" class="video-facade" data-video-play aria-label="Play video: {{ lesson.video.title }}" style="background-image:url('{{ lesson.video.thumbnail_url }}')">
+    <button type="button" class="video-facade" data-video-play aria-label="Play video: {{ lesson.video.title }}" data-style-bg-image="{{ lesson.video.thumbnail_url }}">
       <span class="video-facade-shade"></span>
       <span class="video-play-button" aria-hidden="true">▶</span>
       <span class="video-facade-caption">{{ lesson.video.title }}</span>
@@ -386,7 +386,7 @@
 </nav>
 {% if practice_exercises %}<div id="practice-anchor">{% include "lessons/_practice_workspace.html" %}</div>{% endif %}
 {% endblock %}
-{% block extra_scripts %}<script>
+{% block extra_scripts %}<script nonce="{{ csp_nonce }}">
 const lessonId = {{ lesson.id|tojson }};
 const nextLessonId = {{ (next_lesson.id if next_lesson else none)|tojson }};
 const projectsUrl = {{ projects_url|tojson }};
@@ -760,4 +760,4 @@ if (completeButton) completeButton.addEventListener('click', async () => {
     completeButton.disabled = completed;
   }
 });
-</script>{% if practice_exercises %}<script type="module" src="{{ url_for('static', filename='js/practice.bundle.js') }}"></script>{% endif %}{% endblock %}
+</script>{% if practice_exercises %}<script nonce="{{ csp_nonce }}" type="module" src="{{ url_for('static', filename='js/practice.bundle.js') }}"></script>{% endif %}{% endblock %}

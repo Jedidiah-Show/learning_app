@@ -643,7 +643,7 @@ def lesson_note(lesson_id):
 @lessons_bp.route('/complete', methods=['POST'])
 @login_required
 def complete_lesson():
-    from datetime import date, timedelta
+    from datetime import timedelta
     data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'error': 'Request body must be a JSON object'}), 400

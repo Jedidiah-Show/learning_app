@@ -787,28 +787,6 @@ def verify_credential(public_id):
     })
 
 
-def _verify_credential_public(public_id=None):
-    """Public endpoint to verify an ML specialization credential.
-
-    Returns the credential metadata so anyone with the verification ID can
-    confirm it is valid and not revoked.
-    """
-    from app.models import MLSpecializationCredential
-
-    credential = MLSpecializationCredential.query.filter_by(
-        public_id=public_id, revoked_at=None
-    ).first_or_404(description='Credential not found or revoked.')
-
-    return jsonify({
-        'valid': True,
-        'public_id': credential.public_id,
-        'recipient_name': credential.recipient_name,
-        'pathway': credential.pathway_id,
-        'issued_at': credential.issued_at.isoformat() if credential.issued_at else None,
-        'revoked_at': credential.revoked_at.isoformat() if credential.revoked_at else None,
-    })
-
-
 @auth_bp.route('/account/verify-phone/resend', methods=['POST'])
 @login_required
 def resend_phone_verification():
@@ -1108,7 +1086,6 @@ def _calendar_cleanup_required_response(action, force_local):
 @login_required
 def delete_account():
     user = current_user
-    user_id = user.id
     data = _account_action_payload()
     current_password = data.get('current_password')
     force_local = _force_local_requested(data)

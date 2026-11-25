@@ -304,7 +304,7 @@ def ml_pathway_pacing(user_id, weekly_hours=None):
     weeks = math.ceil(total_hours / weekly_hours) if total_hours else 0
     months = max(1, math.ceil(weeks / 4.345)) if weeks else 0
     seen_complete = True
-    for index, item in enumerate(modules):
+    for item in modules:
         if item['complete']:
             item['status'] = 'Complete'
         elif seen_complete:

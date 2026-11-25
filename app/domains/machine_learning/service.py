@@ -6,11 +6,11 @@ and evidence collection without any cross-domain coupling to AI logic.
 
 from __future__ import annotations
 
-from app.core.exceptions import EntityNotFoundError, ValidationError
+from app.core.exceptions import EntityNotFoundError
 from app.core.extensions import db
 from app.domains.machine_learning.competencies import ML_COMPETENCIES, ML_PROJECT_COMPETENCIES
 from app.domains.machine_learning.evaluation import build_evidence
-from app.domains.machine_learning.report import module_by_id, report_matches
+from app.domains.machine_learning.report import report_matches
 from app.ml_pathway import PATHWAY_ID, machine_learning_pathway
 from app.models import MLSpecializationLessonCompletion, MLSpecializationProject
 

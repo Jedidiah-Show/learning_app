@@ -211,7 +211,6 @@ def resolve_learning_context(
     project = normalise_pathway(project_domain)
 
     pathway_id = None
-    domain_source = None
     lesson = {}
     lesson_kind = None
     source = 'shared-default'

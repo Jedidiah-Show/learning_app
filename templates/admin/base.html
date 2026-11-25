@@ -13,7 +13,7 @@
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <script>
+    <script nonce="{{ csp_nonce }}">
         try {
             const savedTheme = localStorage.getItem('ruachai-theme');
             document.documentElement.dataset.theme = savedTheme
@@ -104,7 +104,7 @@
 {% endif %}
 
 {% block extra_scripts %}{% endblock %}
-<script>
+<script nonce="{{ csp_nonce }}">
     document.addEventListener('click', (event) => {
         const themeButton = event.target.closest('[data-theme-toggle]');
         if (!themeButton) return;

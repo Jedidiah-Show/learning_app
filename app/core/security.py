@@ -7,8 +7,9 @@ because older infrastructure modules import the historical private name.
 
 import hmac
 import os
+import secrets
 
-from flask import redirect, request, session, url_for
+from flask import g, redirect, request, session, url_for
 
 from app.core.responses import json_error
 
@@ -109,6 +110,12 @@ def register_security_hooks(app):
     """Install onboarding, CSRF and security-header request hooks."""
 
     @app.before_request
+    def ensure_csp_nonce():
+        if not getattr(g, 'csp_nonce', None):
+            g.csp_nonce = secrets.token_urlsafe(16)
+        return None
+
+    @app.before_request
     def gate_post_setup():
         # First-run onboarding: every new learner sees the setup questions
         # and the pathway fit check once before they start learning. Account,
@@ -177,22 +184,26 @@ def register_security_hooks(app):
             response.headers.setdefault('Cache-Control', 'public, max-age=86400')
         elif request.path.startswith('/static/'):
             response.headers.setdefault('Cache-Control', 'public, max-age=86400')
-        # Report-only until inline scripts/styles are migrated to nonces/hashes.
-        response.headers.setdefault(
-            'Content-Security-Policy-Report-Only',
+        # Enforced CSP: per-request nonce for scripts and styles.
+        # Inline style attributes have been migrated to data-* + JS initializer.
+        nonce = getattr(g, 'csp_nonce', '')
+        script_src = f"'self' 'nonce-{nonce}'" if nonce else "'self'"
+        style_src = f"'self' 'nonce-{nonce}'" if nonce else "'self'"
+        csp = (
             "default-src 'self'; "
             "base-uri 'self'; "
             "object-src 'none'; "
             "frame-ancestors 'self'; "
             "form-action 'self'; "
-            "script-src 'self' 'unsafe-inline' "
+            f"script-src {script_src} "
             "https://www.youtube.com https://www.youtube-nocookie.com "
             "https://www.gstatic.com; "
-            "style-src 'self' 'unsafe-inline'; "
+            f"style-src {style_src}; "
             "img-src 'self' data: https://i.ytimg.com https://*.ytimg.com; "
             "font-src 'self' data:; "
             "frame-src 'self' https://www.youtube.com "
             "https://www.youtube-nocookie.com; "
-            "connect-src 'self';",
+            "connect-src 'self';"
         )
+        response.headers.setdefault('Content-Security-Policy', csp)
         return response

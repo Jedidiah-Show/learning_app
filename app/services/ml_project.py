@@ -1,6 +1,5 @@
 """Shared ML project submission labels and workflow rules."""
 
-from app.domains.machine_learning.report import report_matches
 
 FAILURE_STAGES = {
     'report_contract': 'Report does not match the fixed dataset contract',

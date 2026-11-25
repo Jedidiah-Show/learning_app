@@ -655,3 +655,44 @@ window.showAchievementToasts = (badges) => {
         // Storage unavailable or malformed payload; badges live on the page.
     }
 })();
+
+// Generic handlers for CSP-friendly template attributes (no inline handlers).
+document.addEventListener('submit', (event) => {
+    const form = event.target.closest('form[data-confirm]');
+    if (!form) return;
+    const message = form.getAttribute('data-confirm') || 'Are you sure?';
+    if (!window.confirm(message)) event.preventDefault();
+});
+
+document.addEventListener('change', (event) => {
+    const el = event.target.closest('[data-auto-submit="change"]');
+    if (el && el.form) el.form.submit();
+});
+
+// Apply CSP-safe dynamic styles from data attributes (replaces inline style="...").
+// Setting element.style via JS is permitted by CSP; style attributes in HTML are not
+// when style-src omits 'unsafe-inline'.
+function applyDataStyles(root) {
+    const scope = root || document;
+    scope.querySelectorAll('[data-style-width-pct]').forEach((el) => {
+        const v = parseFloat(el.getAttribute('data-style-width-pct'));
+        if (Number.isFinite(v)) el.style.width = Math.max(0, Math.min(100, v)) + '%';
+    });
+    scope.querySelectorAll('[data-style-height-pct]').forEach((el) => {
+        const v = parseFloat(el.getAttribute('data-style-height-pct'));
+        if (Number.isFinite(v)) el.style.height = Math.max(0, Math.min(100, v)) + '%';
+    });
+    scope.querySelectorAll('[data-style-grid-column]').forEach((el) => {
+        const v = el.getAttribute('data-style-grid-column');
+        if (v) el.style.gridColumn = v;
+    });
+    scope.querySelectorAll('[data-style-bg-image]').forEach((el) => {
+        const url = el.getAttribute('data-style-bg-image');
+        if (url) el.style.backgroundImage = `url("${url.replace(/["\\]/g, '')}")`;
+    });
+}
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => applyDataStyles(document));
+} else {
+    applyDataStyles(document);
+}

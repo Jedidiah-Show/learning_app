@@ -16,7 +16,6 @@ from app.domains.learning.context import (
     DOMAIN_AI_ENGINEERING,
     DOMAIN_MACHINE_LEARNING,
     DOMAIN_SHARED_FOUNDATIONS,
-    ContextResolutionError,
     resolve_learning_context,
 )
 from app.models import TutorConversation
@@ -480,7 +479,6 @@ class SocraticGuardrail:
         # (contains questions, guidance, no direct answers)
         if response == original:
             # Check if response contains any direct answer patterns
-            answer_patterns = [r"^the answer is\s", r"^the solution is\s"]
             if re.search(r"answer is|solution is", response, re.IGNORECASE):
                 raise ValueError(
                     "Response contains direct answer that cannot be sanitized"

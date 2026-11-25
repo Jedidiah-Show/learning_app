@@ -16,8 +16,6 @@ pausing one does not affect the other.
 
 from app.curriculum import all_modules
 from flask import g
-import json
-from pathlib import Path
 from app.models import (
     CoursePlan,
     LessonCompletion,
@@ -565,7 +563,6 @@ def foundation_evidence(user_id):
     domain-specific completion status for AI Engineering and Machine Learning
     pathways.
     """
-    from app.models import CourseProject
 
     uid = _user_id(user_id)
     completed_lessons = _completed_lesson_ids(uid)
@@ -856,7 +853,6 @@ def _ai_completions(user_id):
 
 
 def _ai_project_modules(user_id):
-    from app.models import CourseProject
 
     return {
         module_id for (module_id,) in CourseProject.query.with_entities(

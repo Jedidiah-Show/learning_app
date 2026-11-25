@@ -1,0 +1,4 @@
+# Pinned transitive/direct dependency constraints for reproducible installs.
+# Usage: pip install -r requirements.txt -c constraints.txt
+# Update by: review Dependabot PRs, run targeted tests, then refresh pins.
+-c requirements.txt

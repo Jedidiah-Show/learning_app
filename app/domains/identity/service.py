@@ -6,7 +6,7 @@ and access policy checks decoupled from HTTP/Flask request state.
 
 from __future__ import annotations
 
-from app.core.exceptions import AuthorizationError, EntityNotFoundError, ValidationError
+from app.core.exceptions import EntityNotFoundError, ValidationError
 from app.models import User
 
 ROLES = ('learner', 'reviewer', 'instructor', 'administrator')
