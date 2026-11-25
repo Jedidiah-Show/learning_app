@@ -17,7 +17,8 @@ def _script():
 
 def test_repository_has_one_migration_head():
     script = _script()
-    assert script.get_heads() == ['m7n8o9p1q2r3']
+    heads = script.get_heads()
+    assert len(heads) == 1, f'multiple migration heads: {heads}'
 
 
 def test_reconciliation_migration_descends_from_m5_head():
@@ -32,6 +33,8 @@ def test_revision_ids_are_unique():
     identifiers = [revision.revision for revision in revisions]
     assert len(identifiers) == len(set(identifiers))
     assert 'm7n8o9p1q2r3' in identifiers
+    assert 'h1a2b3c4d5e6' in identifiers
+    assert 'h4i5j6k7l8m9' in identifiers
 
 
 def test_conflicting_draft_is_archived_not_discoverable():
