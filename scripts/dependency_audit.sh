@@ -3,7 +3,7 @@
 # Generates an auditable report without breaking the build on advisories that
 # require a triage decision. CI uploads the report as an artifact.
 set -u
-OUT="dependency-audit.txt"
+OUT="${RUNNER_TEMP:-/tmp}/dependency-audit.txt"
 {
   echo "# Dependency audit — $(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "commit: $(git rev-parse HEAD 2>/dev/null || echo unknown)"
