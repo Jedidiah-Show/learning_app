@@ -146,3 +146,21 @@ until GPU workloads require dedicated images.
 migration must precede deployment of the new service; live deployment
 verification remains an owner task. ADR-020 is retained as history for the
 period when no ML workload existed.
+
+## ADR-022 — Content Security Policy remains report-only for this release
+
+**Status:** Accepted residual risk for Architecture Evolution 1.0 (M10).  
+**Context:** `SECURITY_AND_RELEASE_AUDIT.md` notes that a strict CSP is not
+enforced. Learner pages rely on inline scripts for theme selection, navigation,
+the arena/tutor bundles and several progressive-enhancement forms; a strict
+`script-src` without nonces would break normal journeys.  
+**Options:** (1) ship a report-only CSP and fix violations with per-page nonces
+(chosen), (2) strict CSP now (rejected: breaks learner journeys without a
+frontend refactor), (3) no CSP policy (rejected: no telemetry).  
+**Decision:** keep CSP in report-only mode with structured logging of
+violations; require static nonce/hash work in the frontend refactor backlog
+before enforcement. Existing XSS defences remain in force: Jinja autoescaping,
+CSRF tokens on all state-changing forms/JSON APIs, strict URL validation and
+`X-Content-Type-Options: nosniff`.  
+**Consequences:** no false claim of CSP enforcement; new frontend work must not
+add further inline scripts; the residual risk is reviewed at M10 exit.
