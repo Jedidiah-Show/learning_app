@@ -60,6 +60,18 @@ jobs:
             echo 'Potential secrets found' && exit 1
           fi
           echo 'Secret pattern scan OK'
+      - name: Dependency security review
+        continue-on-error: true
+        run: |
+          python -m pip install -q pip-audit
+          bash scripts/dependency_audit.sh
+      - name: Upload dependency audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-audit
+          path: dependency-audit.txt
+          if-no-files-found: ignore
       - name: Release source export verification
         run: bash scripts/export_release_source.sh "$RUNNER_TEMP/release-export"
       - name: Run tests

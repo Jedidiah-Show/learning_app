@@ -289,6 +289,15 @@ def dashboard():
     )
 
 
+@admin_portal_bp.route('/operations')
+@admin_required
+def operations_dashboard():
+    """Operator-facing view over the secret-free operations snapshot (M8)."""
+    from app.services.operations import operations_snapshot as build_snapshot
+    snapshot = build_snapshot(current_app._get_current_object())
+    return render_template('admin/operations.html', snapshot=snapshot)
+
+
 @admin_portal_bp.route('/users')
 @admin_required
 def users():

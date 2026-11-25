@@ -31,6 +31,8 @@
      request.endpoint == 'admin_portal.dashboard'),
     ('admin_portal.users', 'Users', '👥',
      request.endpoint in ['admin_portal.users', 'admin_portal.user_detail', 'admin_portal.create_user']),
+    ('admin_portal.operations_dashboard', 'Operations', '🛰️',
+     request.endpoint == 'admin_portal.operations_dashboard'),
     ('admin_portal.analytics', 'Analytics', '📈',
      request.endpoint == 'admin_portal.analytics'),
     ('admin_portal.support_requests', 'Support inbox', '🛠️',

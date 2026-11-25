@@ -252,6 +252,7 @@ class AdminPortalTests(unittest.TestCase):
             f'/admin/users/{self.learner_id}',
             '/admin/analytics',
             '/admin/audit',
+            '/admin/operations',
         )
         for path in paths:
             response = self.client.get(path)
