@@ -23,15 +23,15 @@
 | ID | Milestone | Priority | Status | Started | Completed |
 |----|-----------|----------|--------|---------|-----------|
 | M0 | Architecture Audit and Baseline | Critical | COMPLETE | 2026-11-21 | 2026-11-24 |
-| M1 | Modular Architecture Foundation | Critical | PARTIAL | 2026-11-21 | — |
-| M2 | Domain Boundaries and Data Ownership | Critical | PARTIAL | 2026-11-24 | — |
-| M3 | Independent AI and ML Domain Architecture | Critical | PARTIAL | 2026-11-21 | — |
-| M4 | Background Processing Infrastructure | Critical | PARTIAL | 2026-11-22 | — |
+| M1 | Modular Architecture Foundation | Critical | EXIT REVIEW | 2026-11-21 | — |
+| M2 | Domain Boundaries and Data Ownership | Critical | EXIT REVIEW | 2026-11-24 | — |
+| M3 | Independent AI and ML Domain Architecture | Critical | EXIT REVIEW | 2026-11-21 | — |
+| M4 | Background Processing Infrastructure | Critical | EXIT REVIEW | 2026-11-22 | — |
 | M5 | AI and ML Workload Isolation | Critical | EXIT REVIEW (ML worker implemented; deploy pending) | 2026-11-23 | — |
 | M6 | Code Execution and Sandbox Hardening | Critical | EXIT REVIEW (live Docker host is owner dependency) | 2026-11-22 | — |
-| M7 | Resilience and Fault Isolation | High | IN PROGRESS | 2026-11-25 | — |
+| M7 | Resilience and Fault Isolation | High | EXIT REVIEW | 2026-11-25 | — |
 | M8 | Observability and Operational Intelligence | High | EXIT REVIEW | 2026-11-23 | — |
-| M9 | Deployment and Infrastructure Evolution | High | PARTIAL | 2026-11-23 | — |
+| M9 | Deployment and Infrastructure Evolution | High | EXIT REVIEW | 2026-11-23 | — |
 | M10 | Security and Performance Hardening | Critical | PARTIAL (dependency audit added; load thresholds still failing) | 2026-11-21 | — |
 | M11 | Integration, Migration and Regression Testing | Critical | PARTIAL | 2026-11-21 | — |
 | M12 | Documentation and Release Readiness | High | EXIT REVIEW | 2026-11-21 | — |
@@ -65,3 +65,26 @@ _None yet for Architecture Evolution 1.0. Record explicit decisions here as each
 - `docs/RELEASE_STATUS_PARALLEL_PATHWAYS.md` — historical Parallel Pathways 1.0.0 board.
 - `docs/releases/1.1.0.md` — historical 1.1.0 release notes and verification evidence.
 - Root `M*_TEST_REPORT.md` files — implementation-era evidence for this architecture release; they use the pre-final numbering (e.g. `M3_EXECUTION_ARCHITECTURE.md` maps to M6 here).
+
+## Release blockers (owner / environment, not code)
+
+1. **M6** — deploy the judge worker on a container-capable host, run
+   `flask judge-worker-health` + one real authoritative submission, then enable
+   `JUDGE_SUBMISSIONS_ENABLED`.
+2. **M10** — re-run load tests with agreed thresholds; prior results in
+   `newgoals.md` show ~15% failures at 5k VU and p95 ~36.7s. Decide the CSP
+   residual risk.
+3. **M11** — full-journey browser E2E (CI covers IDE + continuity only) and a
+   Neon-branch migration/restore drill (current evidence is SQLite).
+4. **M5/M8** — verify `ruach-ml-worker` in production and decide whether to add
+   an aggregate metrics backend/alert delivery beyond the admin snapshot.
+5. **M1/M2** — incremental decomposition of `app/models.py` and the largest
+   route modules remains tracked technical debt (`docs/architecture/technical_debt.md`);
+   it is not a release blocker under the "adapt structure, don't move files for
+   appearances" rule, but requires owner acceptance at exit review.
+6. Owner exit approvals for M0–M12 in this document, then Architecture Evolution
+   1.0 release notes/tag.
+
+All engineering-closable gaps were addressed on 2026-11-25; CI run `45616216643`
+was green (browser-ide + Python 3.12/3.13) at commit `bf66780`, and production
+was migrated to `m2n3o4p5q6r7`.
