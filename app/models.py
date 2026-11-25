@@ -1745,3 +1745,51 @@ class FoundationLessonProgress(db.Model):
         db.UniqueConstraint('user_id', 'lesson_id', name='uq_foundation_progress_user_lesson'),
         db.Index('idx_foundation_progress_user', 'user_id'),
     )
+
+class MLBackgroundJob(db.Model):
+    """Durable ML work item owned by the Machine Learning domain.
+
+    Separate from ``AIBackgroundJob`` on purpose: AI and ML workers claim from
+    independent queues and never execute each other's handlers.
+    """
+    __tablename__ = 'ml_background_job'
+
+    id = db.Column(db.Integer, primary_key=True)
+    job_key = db.Column(db.String(160), unique=True, nullable=False)
+    job_type = db.Column(db.String(40), nullable=False)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
+    )
+    module_id = db.Column(db.String(100), nullable=True)
+    payload = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='queued')
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+    max_attempts = db.Column(db.Integer, nullable=False, default=3)
+    available_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    locked_at = db.Column(db.DateTime(timezone=True))
+    lease_token = db.Column(db.String(64))
+    started_at = db.Column(db.DateTime(timezone=True))
+    completed_at = db.Column(db.DateTime(timezone=True))
+    progress_pct = db.Column(db.Integer, nullable=False, default=0)
+    last_error = db.Column(db.Text)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)
+    updated_at = db.Column(
+        db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
+    )
+    __table_args__ = (
+        db.Index('idx_ml_job_status_available', 'status', 'available_at'),
+        db.Index('idx_ml_job_user', 'user_id'),
+        db.Index('idx_ml_job_locked_at', 'locked_at'),
+    )
+
+
+class MLJobResult(db.Model):
+    """Structured result for one ML job; metadata only, no learner content."""
+    __tablename__ = 'ml_job_result'
+
+    job_id = db.Column(
+        db.Integer, db.ForeignKey('ml_background_job.id', ondelete='CASCADE'),
+        primary_key=True,
+    )
+    result_json = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), nullable=False, default=utcnow)

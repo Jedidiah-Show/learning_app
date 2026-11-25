@@ -195,6 +195,7 @@ def _register_blueprints(app):
     from app.routes.cloud_ai_infrastructure import cloud_ai_infrastructure_bp
     from app.routes.pathway_practice import pathway_practice_bp
     from app.routes.ai_jobs import ai_jobs_bp
+    from app.routes.ml_jobs import ml_jobs_bp
     from app.routes.artifacts import artifacts_bp
 
     app.register_blueprint(main_bp)
@@ -204,6 +205,7 @@ def _register_blueprints(app):
     app.register_blueprint(lessons_bp, url_prefix='/api/lessons')
     app.register_blueprint(pathway_practice_bp, url_prefix='/api/pathways')
     app.register_blueprint(ai_jobs_bp, url_prefix='/api/ai')
+    app.register_blueprint(ml_jobs_bp)  # owns /api/ml-jobs prefix
     app.register_blueprint(artifacts_bp, url_prefix='/api/artifacts')
     app.register_blueprint(quizzes_bp, url_prefix='/api/quizzes')
     app.register_blueprint(calendar_bp, url_prefix='/api/calendar')
@@ -214,6 +216,8 @@ def _register_blueprints(app):
     app.cli.add_command(rebuild_leaderboard_scores)
     from app.workers.ai_worker import register_ai_job_cli
     register_ai_job_cli(app)
+    from app.workers.ml_worker import register_ml_job_cli
+    register_ml_job_cli(app)
     from app.services.judge_worker import register_judge_worker_cli
     register_judge_worker_cli(app)
     from app.workers.scheduler import register_scheduler_cli
