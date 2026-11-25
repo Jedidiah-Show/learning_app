@@ -172,7 +172,7 @@ class AdminPortalTests(unittest.TestCase):
             db.session.commit()
         self._login_admin()
         body = self.client.get('/admin/analytics').get_data(as_text=True)
-        self.assertIn('ML Engineering pilot (Modules 1–2)', body)
+        self.assertIn('ML Engineering progress snapshot', body)
         self.assertIn('What AI, machine learning, and deep learning actually mean', body)
         self.assertIn('1 enrolled learner', body)
         self.assertIn('Passed', body)
@@ -587,6 +587,18 @@ class AdminPortalTests(unittest.TestCase):
         self.assertIsNotNone(
             self._audit('user.role_change', self.learner_id)
         )
+
+    def test_json_role_request_is_not_treated_as_is_admin_toggle(self):
+        self._login_admin()
+        response = self.client.post(
+            f'/admin/users/{self.learner_id}/role',
+            json={'role': 'reviewer'},
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.get_json()['role'], 'reviewer')
+        self.assertFalse(response.get_json()['is_admin'])
+        self.assertEqual(self._account(self.learner_id).role, 'reviewer')
+        self.assertFalse(self._account(self.learner_id).is_admin)
 
     def test_admin_cannot_remove_their_own_access(self):
         self._login_admin()

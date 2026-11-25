@@ -5,6 +5,7 @@
     "build:js": "esbuild static/js/practice.js --bundle --minify --format=esm --target=es2020 --outdir=static/js --entry-names=practice.bundle && esbuild static/js/arena.js --bundle --minify --format=esm --target=es2020 --outdir=static/js --entry-names=arena.bundle && esbuild static/js/multi-file-workspace.js --bundle --minify --format=esm --target=es2020 --outdir=static/js --entry-names=multi-file-workspace.bundle",
     "build:arena": "esbuild static/js/arena.js --bundle --minify --format=esm --target=es2020 --outdir=static/js --entry-names=arena.bundle",
     "test:browser": "playwright test",
+    "test:browser:navigation": "playwright test tests/browser/navigation_and_admin.spec.js",
     "build:workspace": "esbuild static/js/multi-file-workspace.js --bundle --minify --format=esm --target=es2020 --outdir=static/js --entry-names=multi-file-workspace.bundle"
   },
   "engines": {

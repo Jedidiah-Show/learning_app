@@ -9,6 +9,8 @@ the correlation id, SQL parameters or learner content are recorded.
 from __future__ import annotations
 
 from collections import deque
+from contextlib import contextmanager
+from contextvars import ContextVar
 from datetime import datetime, timezone
 import json
 import logging
@@ -41,7 +43,59 @@ logger = logging.getLogger(__name__)
 _FIELD_WHITELIST = (
     'event', 'method', 'path', 'status_code', 'duration_ms', 'service',
     'worker', 'db_query_count', 'db_query_ms', 'statement',
+    'job_id', 'correlation_id',
 )
+
+# Worker/module loggers have no Flask request context. A ContextVar carries
+# bounded correlation fields across the job-processing call chain (including
+# code that runs between request boundaries) without touching global state.
+_LOG_CONTEXT: ContextVar[dict | None] = ContextVar('ruach_log_context', default=None)
+
+
+def get_log_context() -> dict:
+    """Return a copy of the current structured-logging context."""
+    return dict(_LOG_CONTEXT.get() or {})
+
+
+def bind_log_context(**fields):
+    """Add bounded fields to the log context; return a reset token."""
+    context = get_log_context()
+    context.update({
+        key: str(value) for key, value in fields.items()
+        if value is not None and key in {'job_id', 'correlation_id'}
+    })
+    return _LOG_CONTEXT.set(context)
+
+
+def reset_log_context(token) -> None:
+    """Restore the log context captured by :func:`bind_log_context`."""
+    _LOG_CONTEXT.reset(token)
+
+
+@contextmanager
+def log_context(**fields):
+    """Temporarily bind job/correlation fields for structured worker logs."""
+    token = bind_log_context(**fields)
+    try:
+        yield
+    finally:
+        reset_log_context(token)
+
+
+class WorkerContextFilter(logging.Filter):
+    """Attach the current worker log context to a record before formatting.
+
+    Explicit ``extra=`` values win; the filter only fills fields that were not
+    already supplied by the caller. It never raises, so logging cannot break
+    worker control flow.
+    """
+
+    def filter(self, record):
+        context = get_log_context()
+        for key in ('job_id', 'correlation_id'):
+            if not hasattr(record, key) and context.get(key) is not None:
+                setattr(record, key, context[key])
+        return True
 
 
 class JsonFormatter(logging.Formatter):
@@ -230,8 +284,9 @@ def register_database_observability(app) -> None:
 
 
 __all__ = [
-    'REQUEST_ID_HEADER', 'JsonFormatter', 'finish_request', 'get_request_id',
-    'new_request_id', 'register_database_observability',
-    'register_observability_hooks', 'request_metrics', 'reset_request_metrics',
-    'slow_queries', 'start_request',
+    'REQUEST_ID_HEADER', 'JsonFormatter', 'WorkerContextFilter',
+    'bind_log_context', 'finish_request', 'get_log_context', 'get_request_id',
+    'log_context', 'new_request_id', 'register_database_observability',
+    'register_observability_hooks', 'request_metrics', 'reset_log_context',
+    'reset_request_metrics', 'slow_queries', 'start_request',
 ]

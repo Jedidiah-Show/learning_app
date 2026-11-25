@@ -48,6 +48,7 @@ def get_ml_project_record(user_id: int, module_id: str) -> MLSpecializationProje
     """Query stored ML specialization project record for learner."""
     return MLSpecializationProject.query.filter_by(
         user_id=user_id,
+        pathway_id=PATHWAY_ID,
         module_id=module_id,
     ).first()
 
@@ -72,32 +73,50 @@ def get_or_create_ml_project(user_id: int, module_id: str) -> MLSpecializationPr
             user_id=user_id, pathway_id=PATHWAY_ID, module_id=module_id,
         )
         db.session.add(record)
-        db.session.commit()
+        # Transaction ownership stays with the caller (route helper).
     return record
 
 
 def is_module_lessons_complete(user_id: int, module: dict) -> bool:
     """Check if all ready lessons in an ML module are completed by the learner."""
     lessons = module.get('lessons') or []
-    lesson_ids = [lesson['id'] for lesson in lessons]
-    if not lesson_ids or any(lesson.get('status') != 'ready' for lesson in lessons):
+    if not lessons or any(
+        lesson.get('status') != 'ready' or not lesson.get('id')
+        for lesson in lessons
+    ):
         return False
+    lesson_ids = [lesson['id'] for lesson in lessons]
     completed = get_ml_lesson_completions(user_id, lesson_ids)
     return set(lesson_ids).issubset(completed)
 
 
 def are_previous_projects_complete(user_id: int, module: dict) -> bool:
-    """Check if all earlier ready ML projects are marked completed for the learner."""
+    """Check if all earlier ready ML projects are marked completed for the learner.
+
+    A manifest module with no published lessons is not a prerequisite: an
+    empty lesson list must never satisfy ``all(status == 'ready')`` and demand
+    a project that does not exist.  The first module has no earlier modules and
+    therefore no prerequisite projects to check.
+    """
     pathway = machine_learning_pathway()
-    earlier = [item for item in pathway.get('modules', []) if item.get('number', 0) < module.get('number', 0)]
+    earlier = [
+        item for item in pathway.get('modules', [])
+        if item.get('number', 0) < module.get('number', 0)
+    ]
     if not earlier:
         return True
     completed_modules = get_completed_ml_modules(user_id)
     for item in earlier:
         item_lessons = item.get('lessons') or []
-        if all(lesson.get('status') == 'ready' for lesson in item_lessons):
-            if item.get('id') not in completed_modules:
-                return False
+        if (
+            item_lessons
+            and all(
+                lesson.get('status') == 'ready' and lesson.get('id')
+                for lesson in item_lessons
+            )
+            and item.get('id') not in completed_modules
+        ):
+            return False
     return True
 
 
@@ -127,7 +146,7 @@ def record_ml_lesson_completion(user_id: int, lesson_id: str) -> MLSpecializatio
         lesson_id=lesson_id,
     )
     db.session.add(record)
-    db.session.commit()
+    # Caller owns the transaction; see get_or_create_ml_project.
     return record
 
 

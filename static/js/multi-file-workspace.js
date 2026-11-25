@@ -253,6 +253,7 @@ const runProject = async (mode) => {
     setOutput(mode === 'checks' ? 'Running checks in tests/…' : `Running ${entry}…`);
     iframe.contentWindow.postMessage({
         type: mode === 'checks' ? 'checks' : 'run',
+        appOrigin: location.origin,
         runId: activeRunId,
         files,
         entry,
@@ -281,7 +282,9 @@ iframe.addEventListener('load', () => {
     activeRunId = null;
     runnerReady = false;
 });
-iframe.src = '/static/workspace-sandbox.html';
+// The sandbox has an opaque origin; hand it our real origin so it can
+// validate inbound messages and target replies without using '*'.
+iframe.src = `/static/workspace-sandbox.html?appOrigin=${encodeURIComponent(location.origin)}`;
 
 window.addEventListener('message', (event) => {
     if (event.source !== iframe.contentWindow) return;

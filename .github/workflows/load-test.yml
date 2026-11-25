@@ -1,0 +1,98 @@
+name: Load test (manual)
+
+# Deliberately manual: load tests must never run automatically against a
+# shared deployment. Point `base_url` at a disposable/staging environment.
+on:
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: 'Base URL of the target environment (no trailing slash)'
+        required: true
+        type: string
+        default: 'http://127.0.0.1:18080'
+
+permissions:
+  contents: read
+
+jobs:
+  k6-smoke:
+    name: k6 task44 smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      # k6 script reads HOST.
+      HOST: ${{ inputs.base_url }}
+      APP_ENV: testing
+      SECRET_KEY: ci-loadtest-only-not-used-for-sessions
+      TOKEN_ENCRYPTION_KEY: ${{ secrets.TOKEN_ENCRYPTION_KEY }}
+      # Shared with the migration workflow: the unpooled URL lets this job
+      # seed the load-test account directly.
+      DATABASE_URL: ${{ secrets.DATABASE_URL_UNPOOLED }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+
+      - name: Install application dependencies (for user seeding)
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Seed idempotent load-test user
+        run: |
+          python - <<'PY'
+          import os
+
+          if not os.environ.get('DATABASE_URL'):
+              raise SystemExit(
+                  'DATABASE_URL_UNPOOLED secret is required to seed the load-test user.'
+              )
+
+          from werkzeug.security import generate_password_hash
+
+          from app import create_app, db
+          from app.models import CoursePlan, User
+
+          app = create_app()
+          with app.app_context():
+              user = User.query.filter_by(email='loadtest@example.com').first()
+              if user is None:
+                  user = User(
+                      username='loadtest',
+                      email='loadtest@example.com',
+                      full_name='Load Test Learner',
+                  )
+                  db.session.add(user)
+                  db.session.flush()
+              # Reset the password every run so previous load tests cannot
+              # leave the account in an unusable state.
+              user.password_hash = generate_password_hash('loadtest-password')
+              user.is_active = True
+              db.session.flush()
+              if CoursePlan.query.filter_by(user_id=user.id).first() is None:
+                  db.session.add(CoursePlan(user_id=user.id, track='standard'))
+              db.session.commit()
+              print(f'load-test user ready: id={user.id}')
+          PY
+
+      - name: Install k6
+        uses: grafana/setup-k6-action@v1
+
+      - name: Run k6 smoke test
+        run: |
+          set -o pipefail
+          k6 run --summary-export k6-summary.json tests/load/task44_smoke.js | tee k6-summary.txt
+
+      - name: Upload k6 summary
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: k6-summary
+          path: |
+            k6-summary.txt
+            k6-summary.json
+          if-no-files-found: warn

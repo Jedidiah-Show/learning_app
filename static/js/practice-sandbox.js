@@ -74,14 +74,29 @@
     let worker;
     let runTimer;
     let activeRunId = null;
+    // The iframe runs at an opaque origin (sandbox="allow-scripts"), so the
+    // parent tells us its own origin via ?appOrigin=. Referrer and ancestor
+    // origins are independent fallbacks; the meta no-referrer tag used to make
+    // document.referrer empty and force targetOrigin='*'.
     const appOrigin = (() => {
-        try {
-            return document.referrer ? new URL(document.referrer).origin : null;
-        } catch (error) {
-            return null;
-        }
+        const originOf = (value) => {
+            try {
+                const url = new URL(value, location.href);
+                return ['http:', 'https:'].includes(url.protocol) ? url.origin : null;
+            } catch (error) {
+                return null;
+            }
+        };
+        const declaredRaw = new URLSearchParams(location.search).get('appOrigin');
+        const declared = declaredRaw && originOf(declaredRaw) === declaredRaw.replace(/\/$/, '')
+            ? declaredRaw.replace(/\/$/, '') : null;
+        const referrer = document.referrer ? originOf(document.referrer) : null;
+        const ancestors = Array.from(location.ancestorOrigins || []).map(originOf).filter(Boolean);
+        return declared || referrer || ancestors[0] || null;
     })();
-    const sendToParent = (message) => parent.postMessage(message, appOrigin || '*');
+    const sendToParent = (message) => {
+        if (appOrigin) parent.postMessage(message, appOrigin);
+    };
     const startWorker = () => {
         try {
             workerUrl ||= URL.createObjectURL(new Blob([workerSource], {type: 'text/javascript'}));
@@ -115,8 +130,10 @@
     startWorker();
     addEventListener('message', (event) => {
         if (
-            event.source !== parent
-            || (appOrigin && event.origin !== appOrigin)
+            !appOrigin
+            || event.source !== parent
+            || event.origin !== appOrigin
+            || (event.data?.appOrigin && event.data.appOrigin !== appOrigin)
             || !event.data
             || event.data.type !== 'run'
         ) return;

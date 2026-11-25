@@ -24,6 +24,7 @@ from app import db
 from app.curriculum import all_lessons, all_modules
 from app.integrations import database_status
 from app.learning import course_progress
+from app.request_data import get_json_object
 from app.models import (
     AdminAuditLog, CoursePlan, CourseProject, Credential, LessonCompletion,
     MLSpecializationCredential, MLSpecializationLessonCompletion,
@@ -668,7 +669,10 @@ def set_role(user_id):
     account = db.session.get(User, user_id)
     if account is None:
         abort(404)
-    requested_role = (request.form.get('role') or '').strip().lower()
+    # JSON clients send the role in the body; form clients send it as form
+    # data. Reading only the form silently fell through to the legacy
+    # is_admin toggle for JSON requests, which could grant administrator.
+    requested_role = (get_json_object().get('role') or '').strip().lower() if request.is_json else (request.form.get('role') or '').strip().lower()
     if requested_role:
         if requested_role not in {'learner', 'reviewer', 'instructor', 'administrator'}:
             message = 'Role must be learner, reviewer, instructor, or administrator.'

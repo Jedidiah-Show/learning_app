@@ -42,6 +42,7 @@
     </script>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/tailwind.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/nav-groups.css') }}">
     {% block extra_head %}{% endblock %}
 </head>
 <body class="min-h-screen bg-slate-50 app-shell {% if current_user.is_authenticated %}has-sidebar{% endif %}{% if request.endpoint and request.endpoint.startswith('auth.') and request.endpoint != 'auth.profile' %} auth-shell{% endif %}">
@@ -87,94 +88,116 @@
                 {% endif %}
             </div>
             {% if current_user.is_authenticated %}<nav id="app-navigation" class="app-nav flex gap-1 py-2 lg:flex-col lg:flex-1 lg:gap-1 lg:py-4 lg:overflow-y-auto lg:overflow-x-hidden lg:max-h-full" aria-label="Main navigation">
-                    <a aria-label="Dashboard" title="Dashboard" href="{{ url_for('main.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.index' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                    {# One set of nav flags for the grouped sidebar. Every original
+                       destination is preserved inside its group; only the flat
+                       list is collapsed so the rail stays scannable. #}
+                    {% set nav_ep = request.endpoint or '' %}
+                    {% set ai_active = pathway_destination == 'ai-engineering' or nav_ep == 'main.lessons' %}
+                    {% set ml_active = pathway_destination == 'machine-learning' or nav_ep == 'main.machine_learning_specialization' %}
+                    {% set cloud_active = nav_ep.startswith('cloud_ai_infrastructure.') %}
+                    {% set workbench_active = nav_ep.startswith('ai_specialization.') %}
+                    {% set pathway_group_active = ai_active or ml_active or cloud_active or workbench_active %}
+                    {% set tools_active = nav_ep in ('main.gates', 'main.search', 'main.schedule') %}
+                    {% set practice_active = nav_ep.startswith('practice_arena.') or nav_ep == 'main.practice_catalog' %}
+                    {% set build_active = nav_ep in ('main.engineering_labs', 'main.engineering_lab_detail', 'projects.project_page', 'projects.portfolio_page') %}
+                    {% set assessment_active = nav_ep in ('main.mastery_dashboard', 'main.quizzes', 'leaderboard.page') %}
+                    {% set credential_active = nav_ep == 'main.achievements' or nav_ep.startswith('passport.') or nav_ep.startswith('credentials.') %}
+                    <a aria-label="Dashboard" title="Dashboard" href="{{ url_for('main.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'main.index' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">🏠</span><span class="nav-label">Dashboard</span>
                     </a>
                     <div class="nav-section-label mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Learn</div>
-  <a aria-label="Foundations" title="Shared Foundations — the common start of both pathways" href="{{ url_for('main.foundations') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.foundations' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-    <span class="nav-icon" aria-hidden="true">🧱</span><span class="nav-label">Foundations</span>
-  </a>
-  <!-- Both specialisations stay directly reachable; the active one leads. -->
-  {% set ai_link %}
-  <a aria-label="AI pathway" title="AI pathway — the app leads with whichever specialisation you activate" href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if pathway_destination == 'ai-engineering' or request.endpoint == 'main.lessons' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-    <span class="nav-icon" aria-hidden="true">📖</span><span class="nav-label">AI Pathway</span>
-  </a>
-  {% endset %}
-  {% set ml_link %}
-  <a aria-label="ML pathway" title="ML pathway — the app leads with whichever specialisation you activate" href="{{ url_for('main.machine_learning_specialization') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if pathway_destination == 'machine-learning' or request.endpoint == 'main.machine_learning_specialization' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-    <span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">ML Pathway</span>
-  </a>
-  {% endset %}
-  {% if pathway_destination == 'machine-learning' %}{{ ml_link }}{{ ai_link }}{% else %}{{ ai_link }}{{ ml_link }}{% endif %}
-  {% if has_ai %}
-  <a aria-label="AI Engineering workbench" title="AI Engineering workbench" href="{{ url_for('ai_specialization.dashboard') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint and request.endpoint.startswith('ai_specialization.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-    <span class="nav-icon" aria-hidden="true">🛠️</span><span class="nav-label">AI Workbench</span>
-  </a>
-  {% endif %}
-                    <a aria-label="Gates" title="Gates" href="{{ url_for('main.gates') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.gates' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🗺️</span><span class="nav-label">Gates</span>
+                    <a aria-label="Foundations" title="Shared Foundations — the common start of both pathways" href="{{ url_for('main.foundations') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'main.foundations' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">🧱</span><span class="nav-label">Foundations</span>
                     </a>
-                    <a aria-label="Search" title="Search" href="{{ url_for('main.search') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.search' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🔍</span><span class="nav-label">Search</span>
-                    </a>
+                    <details class="nav-group{% if pathway_group_active %} is-active{% endif %}"{% if pathway_group_active %} open{% endif %}>
+                        <summary class="nav-group-summary" aria-label="Learning pathways" title="Learning pathways">
+                            <span class="nav-icon" aria-hidden="true">🧬</span><span class="nav-label">Pathways</span><span class="nav-caret" aria-hidden="true">▸</span>
+                        </summary>
+                        <div class="nav-children">
+                            {% if pathway_destination == 'machine-learning' %}
+                            <a aria-label="ML pathway" title="ML pathway" href="{{ url_for('main.machine_learning_specialization') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if ml_active %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">ML Pathway</span></a>
+                            <a aria-label="AI pathway" title="AI pathway" href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if ai_active %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">📖</span><span class="nav-label">AI Pathway</span></a>
+                            {% else %}
+                            <a aria-label="AI pathway" title="AI pathway" href="{{ url_for('main.lessons') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if ai_active %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">📖</span><span class="nav-label">AI Pathway</span></a>
+                            <a aria-label="ML pathway" title="ML pathway" href="{{ url_for('main.machine_learning_specialization') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if ml_active %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">📊</span><span class="nav-label">ML Pathway</span></a>
+                            {% endif %}
+                            <a aria-label="Cloud and AI Infrastructure pathway" title="Cloud &amp; AI Infrastructure pathway" href="{{ url_for('cloud_ai_infrastructure.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if cloud_active %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">☁️</span><span class="nav-label">Cloud Infrastructure</span></a>
+                            {% if has_ai %}
+                            <a aria-label="AI Engineering workbench" title="AI Engineering workbench" href="{{ url_for('ai_specialization.dashboard') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if workbench_active %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">🛠️</span><span class="nav-label">AI Workbench</span></a>
+                            {% endif %}
+                        </div>
+                    </details>
+                    <details class="nav-group{% if tools_active %} is-active{% endif %}"{% if tools_active %} open{% endif %}>
+                        <summary class="nav-group-summary" aria-label="Explore tools" title="Explore tools">
+                            <span class="nav-icon" aria-hidden="true">🧰</span><span class="nav-label">Explore</span><span class="nav-caret" aria-hidden="true">▸</span>
+                        </summary>
+                        <div class="nav-children">
+                            <a aria-label="Gates" title="Gates" href="{{ url_for('main.gates') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'main.gates' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">🗺️</span><span class="nav-label">Gates</span></a>
+                            <a aria-label="Search" title="Search" href="{{ url_for('main.search') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'main.search' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">🔍</span><span class="nav-label">Search</span></a>
+                            <a aria-label="Schedule" title="Schedule" href="{{ url_for('main.schedule') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'main.schedule' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">📅</span><span class="nav-label">Schedule</span></a>
+                        </div>
+                    </details>
                     <div class="nav-section-label mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Practice &amp; build</div>
-                    <a aria-label="Practice Arena" title="Practice Arena" href="{{ url_for('practice_arena.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint and request.endpoint.startswith('practice_arena.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🏟️</span><span class="nav-label">Practice Arena</span>
-                    </a>
-                    <a aria-label="Practice" title="Practice" href="{{ url_for('main.practice_catalog') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.practice_catalog' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">💻</span><span class="nav-label">Practice Workspace</span>
-                    </a>
-                    <a aria-label="Engineering Labs" title="Engineering Labs" href="{{ url_for('main.engineering_labs') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint in ['main.engineering_labs', 'main.engineering_lab_detail'] %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🧪</span><span class="nav-label">Engineering Labs</span>
-                    </a>
-                    <a aria-label="Projects" title="Projects" href="{{ url_for('projects.project_page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'projects.project_page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🧩</span><span class="nav-label">Projects</span>
-                    </a>
-                    <a aria-label="Showcase" title="Engineering Showcase" href="{{ url_for('projects.portfolio_page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'projects.portfolio_page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🗂️</span><span class="nav-label">Showcase</span>
-                    </a>
+                    <details class="nav-group{% if practice_active %} is-active{% endif %}"{% if practice_active %} open{% endif %}>
+                        <summary class="nav-group-summary" aria-label="Practice" title="Practice">
+                            <span class="nav-icon" aria-hidden="true">🏟️</span><span class="nav-label">Practice</span><span class="nav-caret" aria-hidden="true">▸</span>
+                        </summary>
+                        <div class="nav-children">
+                            <a aria-label="Practice Arena" title="Practice Arena" href="{{ url_for('practice_arena.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep.startswith('practice_arena.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">🏟️</span><span class="nav-label">Practice Arena</span></a>
+                            <a aria-label="Practice Workspace" title="Practice Workspace" href="{{ url_for('main.practice_catalog') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'main.practice_catalog' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">💻</span><span class="nav-label">Practice Workspace</span></a>
+                        </div>
+                    </details>
+                    <details class="nav-group{% if build_active %} is-active{% endif %}"{% if build_active %} open{% endif %}>
+                        <summary class="nav-group-summary" aria-label="Build and share" title="Build and share">
+                            <span class="nav-icon" aria-hidden="true">🧩</span><span class="nav-label">Build &amp; share</span><span class="nav-caret" aria-hidden="true">▸</span>
+                        </summary>
+                        <div class="nav-children">
+                            <a aria-label="Engineering Labs" title="Engineering Labs" href="{{ url_for('main.engineering_labs') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep in ('main.engineering_labs', 'main.engineering_lab_detail') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">🧪</span><span class="nav-label">Engineering Labs</span></a>
+                            <a aria-label="Projects" title="Projects" href="{{ url_for('projects.project_page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'projects.project_page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">🧩</span><span class="nav-label">Projects</span></a>
+                            <a aria-label="Showcase" title="Engineering Showcase" href="{{ url_for('projects.portfolio_page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'projects.portfolio_page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">🗂️</span><span class="nav-label">Showcase</span></a>
+                        </div>
+                    </details>
                     <div class="nav-section-label mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Review &amp; progress</div>
-                    <a aria-label="Mastery" title="Concept-level mastery and recommended practice" href="{{ url_for('main.mastery_dashboard') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.mastery_dashboard' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🧭</span><span class="nav-label">Mastery</span>
-                    </a>
-                    <a aria-label="Quizzes" title="Quizzes" href="{{ url_for('main.quizzes') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.quizzes' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🎯</span><span class="nav-label">Quizzes</span>
-                    </a>
-                    <a aria-label="Leaderboard" title="Leaderboard" href="{{ url_for('leaderboard.page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'leaderboard.page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">👑</span><span class="nav-label">Leaderboard</span>
-                    </a>
-                    <a aria-label="Review center{% if review_due_count %}, {{ review_due_count }} due for review{% endif %}" title="Review center" href="{{ url_for('main.review') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.review' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🧠</span><span class="nav-label">Review Center</span>{% if review_due_count %}<span class="nav-badge" aria-hidden="true">{{ review_due_count }}</span>{% endif %}
-                    </a>
-                    <a aria-label="Achievements" title="Achievements" href="{{ url_for('main.achievements') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.achievements' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🏆</span><span class="nav-label">Achievements</span>
-                    </a>
-                    <a aria-label="Skill Passport" title="Skill Passport" href="{{ url_for('passport.passport') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint and request.endpoint.startswith('passport.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🛂</span><span class="nav-label">Skill Passport</span>
-                    </a>
-                    <a aria-label="Progress" title="Progress" href="{{ url_for('main.progress') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.progress' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                    <a aria-label="Progress" title="Progress" href="{{ url_for('main.progress') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'main.progress' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">📈</span><span class="nav-label">Progress</span>
                     </a>
-                    <a aria-label="Credential" title="Credential" href="{{ url_for('credentials.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint and request.endpoint.startswith('credentials.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">🎓</span><span class="nav-label">Credential</span>
+                    <a aria-label="Review center{% if review_due_count %}, {{ review_due_count }} due for review{% endif %}" title="Review center" href="{{ url_for('main.review') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'main.review' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <span class="nav-icon" aria-hidden="true">🧠</span><span class="nav-label">Review Center</span>{% if review_due_count %}<span class="nav-badge" aria-hidden="true">{{ review_due_count }}</span>{% endif %}
                     </a>
-                    <div class="nav-section-label mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Community</div>
-                    <a aria-label="Community" title="Community" href="{{ url_for('community.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint and request.endpoint.startswith('community.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                    <details class="nav-group{% if assessment_active %} is-active{% endif %}"{% if assessment_active %} open{% endif %}>
+                        <summary class="nav-group-summary" aria-label="Assessments" title="Assessments">
+                            <span class="nav-icon" aria-hidden="true">🎯</span><span class="nav-label">Assessments</span><span class="nav-caret" aria-hidden="true">▸</span>
+                        </summary>
+                        <div class="nav-children">
+                            <a aria-label="Mastery" title="Concept-level mastery and recommended practice" href="{{ url_for('main.mastery_dashboard') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'main.mastery_dashboard' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">🧭</span><span class="nav-label">Mastery</span></a>
+                            <a aria-label="Quizzes" title="Quizzes" href="{{ url_for('main.quizzes') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'main.quizzes' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">🎯</span><span class="nav-label">Quizzes</span></a>
+                            <a aria-label="Leaderboard" title="Leaderboard" href="{{ url_for('leaderboard.page') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'leaderboard.page' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">👑</span><span class="nav-label">Leaderboard</span></a>
+                        </div>
+                    </details>
+                    <details class="nav-group{% if credential_active %} is-active{% endif %}"{% if credential_active %} open{% endif %}>
+                        <summary class="nav-group-summary" aria-label="Credentials" title="Credentials">
+                            <span class="nav-icon" aria-hidden="true">🎓</span><span class="nav-label">Credentials</span><span class="nav-caret" aria-hidden="true">▸</span>
+                        </summary>
+                        <div class="nav-children">
+                            <a aria-label="Achievements" title="Achievements" href="{{ url_for('main.achievements') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'main.achievements' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">🏆</span><span class="nav-label">Achievements</span></a>
+                            <a aria-label="Skill Passport" title="Skill Passport" href="{{ url_for('passport.passport') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep.startswith('passport.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">🛂</span><span class="nav-label">Skill Passport</span></a>
+                            <a aria-label="Credential" title="Credential" href="{{ url_for('credentials.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep.startswith('credentials.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}"><span class="nav-icon" aria-hidden="true">🎓</span><span class="nav-label">Credential</span></a>
+                        </div>
+                    </details>
+                    <div class="nav-section-label mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Connect</div>
+                    <a aria-label="Community" title="Community" href="{{ url_for('community.index') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep.startswith('community.') %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                         <span class="nav-icon" aria-hidden="true">💬</span><span class="nav-label">Community</span>
-                    </a>
-                    <a aria-label="Schedule" title="Schedule" href="{{ url_for('main.schedule') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.schedule' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                        <span class="nav-icon" aria-hidden="true">📅</span><span class="nav-label">Schedule</span>
                     </a>
                     <div class="nav-section-label mt-2 mb-1 px-3 text-[10px] uppercase tracking-wider text-slate-400">Account</div>
                     <div class="nav-utility-group">
-                        <a href="{{ url_for('main.settings') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.settings' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                        <a href="{{ url_for('main.settings') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'main.settings' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
                             <span class="nav-icon" aria-hidden="true">⚙️</span><span class="nav-label">Settings</span>
                         </a>
-                        <a href="{{ url_for('main.support') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint == 'main.support' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
-                            <span class="nav-icon" aria-hidden="true">🛠️</span><span class="nav-label">Tech Support & Ideas</span>
+                        <a href="{{ url_for('main.support') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep == 'main.support' %}bg-indigo-50 text-indigo-700{% else %}text-slate-600 hover:text-indigo-600 hover:bg-slate-50{% endif %}">
+                            <span class="nav-icon" aria-hidden="true">🛠️</span><span class="nav-label">Tech Support &amp; Ideas</span>
                         </a>
                         {% if current_user.is_admin %}
-                        <a href="{{ url_for('admin_portal.dashboard') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if request.endpoint and request.endpoint.startswith('admin_portal.') %}bg-red-50 text-red-700{% else %}text-red-600 hover:text-red-700 hover:bg-red-50{% endif %}">
+                        <a href="{{ url_for('admin_portal.dashboard') }}" class="nav-link px-3 py-2 text-xs font-semibold rounded-md {% if nav_ep.startswith('admin_portal.') %}bg-red-50 text-red-700{% else %}text-red-600 hover:text-red-700 hover:bg-red-50{% endif %}">
                             <span class="nav-icon" aria-hidden="true">🛡️</span><span class="nav-label">Admin Portal</span>
                         </a>
                         {% endif %}

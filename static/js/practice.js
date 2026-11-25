@@ -197,7 +197,9 @@ if (root) {
         if (!runnerStarted) {
             runnerStarted = true;
             setRunOutput('Loading the browser Python runtime…');
-            iframe.src = '/static/practice-sandbox.html';
+            // Tell the opaque-origin frame which parent origin to trust and
+            // which origin to target with its postMessage replies.
+            iframe.src = `/static/practice-sandbox.html?appOrigin=${encodeURIComponent(location.origin)}`;
             runnerLoadTimeout = setTimeout(() => {
                 if (runnerReady) return;
                 runnerStarted = false;
@@ -250,6 +252,17 @@ if (root) {
                                 resolve(null);
                             }
                         };
+                        // The server ends the stream with a TIMEOUT event at
+                        // its 20s polling boundary. Stop there: do not wait
+                        // another 10s or silently switch to the Pyodide run.
+                        stream.addEventListener('TIMEOUT', () => {
+                            clearTimeout(timeout);
+                            stream.close();
+                            resolve({
+                                verdict: 'TIMEOUT',
+                                error_details: 'The server judge is still working. Your submission is saved; check back shortly.',
+                            });
+                        });
                         stream.onerror = () => {
                             clearTimeout(timeout);
                             stream.close();
@@ -263,6 +276,12 @@ if (root) {
             }
         } catch (error) {
             serverResult = null;
+        }
+        if (serverResult?.verdict === 'TIMEOUT') {
+            clearTimeout(runTimeout);
+            runButton.disabled = false;
+            setRunOutput(serverResult.error_details, true);
+            return;
         }
         if (serverResult) {
             const verdict = serverResult.verdict || 'INTERNAL_ERROR';
@@ -302,6 +321,7 @@ if (root) {
         // opaque. The sandbox itself validates the sender origin and parent.
         iframe.contentWindow.postMessage({
             type: 'run',
+            appOrigin: location.origin,
             runId,
             code: `${currentSource()}\n\n${selectedExercise.checks_code}`,
         }, '*');

@@ -15,8 +15,12 @@ from app import db
 from app.ai_pathway import (
     PATHWAY_ID, ai_engineering_pathway, ai_engineering_project_module_ids,
 )
+from app.core.exceptions import EntityNotFoundError
+from app.domains.ai_engineering.service import (
+    get_ai_project_record, get_ai_project_records, get_or_create_ai_project,
+)
 from app.models import (
-    AISpecializationProject, AIPromptVersion, AIRetrievalConfiguration,
+    AIPromptVersion, AIRetrievalConfiguration,
     AIAgentExecutionRecord, AIEvaluationRecord,
 )
 from app.request_data import get_json_object
@@ -55,24 +59,21 @@ def _bounded_int(value, field_name, minimum=0):
 
 
 def _module(module_id):
-    return next(
-        (m for m in ai_engineering_pathway()['modules'] if m['id'] == module_id),
-        None,
-    )
+    from app.domains.ai_engineering.service import get_ai_module
+
+    try:
+        return get_ai_module(module_id)
+    except EntityNotFoundError:
+        return None
 
 
 def _project(module_id, create=False):
-    record = AISpecializationProject.query.filter_by(
-        user_id=current_user.id, pathway_id=PATHWAY_ID, module_id=module_id,
-    ).first()
-    if record is None and create:
-        record = AISpecializationProject(
-            user_id=current_user.id, pathway_id=PATHWAY_ID,
-            module_id=module_id,
-        )
-        db.session.add(record)
+    """Route helper around the AI domain's pathway-scoped project getter."""
+    if create:
+        record = get_or_create_ai_project(current_user.id, module_id)
         db.session.commit()
-    return record
+        return record
+    return get_ai_project_record(current_user.id, module_id)
 
 
 def _bounded_string(value, minimum, maximum, field_name):
@@ -145,9 +146,7 @@ def _artefact_model(model_class, json_fields, int_fields=None, id_field=None,
 def dashboard():
     pathway = ai_engineering_pathway()
     # Fetch all project records in one query instead of one per module (N+1).
-    records = AISpecializationProject.query.filter_by(
-        user_id=current_user.id, pathway_id=PATHWAY_ID,
-    ).all()
+    records = get_ai_project_records(current_user.id)
     record_by_module = {r.module_id: r for r in records}
     modules = []
     for module in pathway['modules']:

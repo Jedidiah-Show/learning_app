@@ -148,7 +148,7 @@
                     <p class="mt-1 text-xs text-slate-500">
                         {% if account.role == 'administrator' %}This user can open the admin portal and manage reviewer access.
                         {% elif account.role == 'reviewer' %}This user can assess competency evidence submitted by learners.
-                        {% elif account.role == 'instructor' %}This user can assess competency evidence and (when analytics ship) view cohort reports.
+                        {% elif account.role == 'instructor' %}This user can assess competency evidence and view cohort reports.
                         {% else %}This user has learner access only.{% endif %}
                     </p>
                     {% if account.id == current_user.id %}

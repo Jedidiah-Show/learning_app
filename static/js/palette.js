@@ -22,14 +22,37 @@
     let debounce = null;
     let requestSeq = 0;
     let lastFocused = null;
+    let activeIndex = -1;
+
+    // The listbox markup lives in base.html; the option semantics and the
+    // combobox's aria-activedescendant are owned here so keyboard focus can
+    // stay on the input while arrows move through the results.
+    input.setAttribute('role', 'combobox');
+    input.setAttribute('aria-autocomplete', 'list');
+    input.setAttribute('aria-expanded', 'false');
 
     const setStatus = (message) => {
         if (status) status.textContent = message;
     };
 
+    const options = () => [...list.querySelectorAll('[role="option"]')];
+
+    const setActive = (index) => {
+        const items = options();
+        activeIndex = index >= 0 && index < items.length ? index : -1;
+        items.forEach((option, position) => {
+            const selected = position === activeIndex;
+            option.setAttribute('aria-selected', String(selected));
+            option.classList.toggle('is-active', selected);
+        });
+        if (activeIndex >= 0) input.setAttribute('aria-activedescendant', items[activeIndex].id);
+        else input.removeAttribute('aria-activedescendant');
+    };
+
     const open = () => {
         lastFocused = document.activeElement;
         root.hidden = false;
+        input.setAttribute('aria-expanded', 'true');
         document.body.classList.add('palette-open');
         input.value = '';
         renderItems(QUICK_ACTIONS, 'Quick actions');
@@ -40,6 +63,8 @@
 
     const close = () => {
         root.hidden = true;
+        input.setAttribute('aria-expanded', 'false');
+        setActive(-1);
         document.body.classList.remove('palette-open');
         setStatus('Type to search · ↑↓ navigate · Enter opens · Esc closes');
         if (lastFocused && typeof lastFocused.focus === 'function') lastFocused.focus();
@@ -51,6 +76,8 @@
         const button = document.createElement('button');
         button.type = 'button';
         button.className = 'palette-item';
+        button.setAttribute('role', 'option');
+        button.setAttribute('aria-selected', 'false');
         button.dataset.url = url;
         button.id = `palette-item-${index}`;
         const iconSpan = document.createElement('span');
@@ -85,6 +112,8 @@
             return;
         }
         rows.forEach((row, index) => list.append(itemButton(row, index)));
+        // Start on the first result so Enter works before any arrow key press.
+        setActive(rows.length ? 0 : -1);
     };
 
     const runSearch = async (query) => {
@@ -130,16 +159,18 @@
     });
 
     input.addEventListener('keydown', (event) => {
-        const buttons = [...list.querySelectorAll('.palette-item')];
-        const current = buttons.findIndex((button) => button === document.activeElement);
+        const items = options();
         if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
             event.preventDefault();
             const delta = event.key === 'ArrowDown' ? 1 : -1;
-            const next = buttons.length ? (current === -1 ? (delta === 1 ? 0 : buttons.length - 1) : (current + delta + buttons.length) % buttons.length) : -1;
-            if (next !== -1) buttons[next].focus();
-        } else if (event.key === 'Enter' && current !== -1) {
+            const next = items.length
+                ? (activeIndex === -1 ? (delta === 1 ? 0 : items.length - 1) : (activeIndex + delta + items.length) % items.length)
+                : -1;
+            setActive(next);
+            items[activeIndex]?.scrollIntoView({ block: 'nearest' });
+        } else if (event.key === 'Enter' && activeIndex !== -1) {
             event.preventDefault();
-            buttons[current].click();
+            items[activeIndex].click();
         } else if (event.key === 'Escape') {
             event.preventDefault();
             close();

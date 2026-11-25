@@ -5,29 +5,25 @@
 <header class="mb-7">
   <p class="text-xs font-bold uppercase tracking-widest text-emerald-600">Everyone starts here</p>
   <h2 class="mt-2 text-3xl font-bold text-slate-900">Shared Foundations</h2>
-  <p class="mt-2 max-w-3xl text-slate-600">The common start of both RUACH specializations: Engineering Foundations, Python for Engineers, and Backend Engineering — fifty lessons, three module projects, and the environment you will build everything else on. Complete the modules in order; each module project unlocks the next. The AI Engineering specialization opens once these are complete; the Machine Learning pathway carries its own on-ramp and can be started now.</p>
+  <p class="mt-2 max-w-3xl text-slate-600">The common start of both RUACH specializations: six modules and 21 published lessons, from programming and Python through tools, APIs and computational thinking. This is one standalone pathway. Its lessons and progress are recorded here only — completing them does not grant, alter or unlock AI Engineering or Machine Learning progress.</p>
   <div class="mt-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-5">
     <div class="flex flex-wrap items-center justify-between gap-4">
       <div>
         <p class="text-xs font-bold uppercase tracking-wider text-emerald-700">Your foundation progress</p>
-        <p class="mt-1 text-lg font-bold text-slate-900">{{ foundation.completed_lessons }} of {{ foundation.total_lessons }} lessons · {{ foundation.completed_projects }} of {{ foundation.total_projects }} projects</p>
+        <p class="mt-1 text-lg font-bold text-slate-900">{{ foundation.completed_lessons }} of {{ foundation.total_lessons }} lessons complete</p>
       </div>
-      <p class="text-2xl font-bold text-emerald-700">{{ ((foundation.completed_lessons + foundation.completed_projects) / ((foundation.total_lessons + foundation.total_projects) if (foundation.total_lessons + foundation.total_projects) else 1) * 100)|round(0)|int }}%</p>
+      <p class="text-2xl font-bold text-emerald-700">{{ ((foundation.completed_lessons / (foundation.total_lessons if foundation.total_lessons else 1) * 100)|round(0))|int }}%</p>
     </div>
-    <div class="mt-3 h-2 overflow-hidden rounded-full bg-emerald-100"><div class="h-full rounded-full bg-emerald-500" style="width:{{ ((foundation.completed_lessons + foundation.completed_projects) / ((foundation.total_lessons + foundation.total_projects) if (foundation.total_lessons + foundation.total_projects) else 1) * 100)|round(1) }}%"></div></div>
-    {% set ready_modules = modules | selectattr('_project_ready') | rejectattr('_project_completed') | list %}
-    {% if ready_modules %}
-    <p class="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 text-sm font-semibold text-amber-900">A module project is waiting for you: {% for m in ready_modules %}<a class="underline" href="{{ url_for('projects.project_page') }}#module-{{ m.id }}">Module {{ m.number }} project →</a>{% if not loop.last %} · {% endif %}{% endfor %}</p>
-    {% endif %}
+    <div class="mt-3 h-2 overflow-hidden rounded-full bg-emerald-100"><div class="h-full rounded-full bg-emerald-500" style="width:{{ (foundation.completed_lessons / (foundation.total_lessons if foundation.total_lessons else 1) * 100)|round(1) }}%"></div></div>
     {% if foundation.complete %}
-    <p class="mt-3 text-sm font-semibold text-emerald-800">✓ Foundation complete — both specializations are open to you.</p>
+    <p class="mt-3 text-sm font-semibold text-emerald-800">✓ All Shared Foundations lessons complete.</p>
     {% endif %}
   </div>
 </header>
 
 <section aria-labelledby="foundation-modules-title">
-  <h3 id="foundation-modules-title" class="text-xl font-bold text-slate-900">The three modules</h3>
-  <div class="mt-4 grid gap-4 md:grid-cols-3">
+  <h3 id="foundation-modules-title" class="text-xl font-bold text-slate-900">The six modules</h3>
+  <div class="mt-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
     {% for module in modules %}
     <article class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm" id="module-{{ module.id }}">
       <p class="text-xs font-semibold uppercase text-slate-500">{{ module.badge }}</p>
@@ -35,50 +31,20 @@
       <p class="mt-2 text-sm text-slate-600">{{ (module.outcomes or [module.description])[0] }}</p>
       <div class="mt-3 h-1.5 rounded-full bg-slate-100"><div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-500" style="width:{{ (module._completed_lessons / (module._total_lessons if module._total_lessons else 1) * 100)|round }}%"></div></div>
       <p class="mt-2 text-xs text-slate-500">{{ module._completed_lessons }} / {{ module._total_lessons }} lessons complete · {{ module.estimated_hours }} estimated hours</p>
-      {% if module._canonical_total %}
-      <p class="mt-1 text-xs font-semibold text-indigo-700">Published lessons: {{ module._canonical_completed }} / {{ module._canonical_total }} complete</p>
-      {% endif %}
-    <div class="mt-3 flex flex-wrap gap-2">
+      <div class="mt-3 flex flex-wrap gap-2">
         {% if module._canonical_next %}
         <a class="rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-800" href="{{ url_for('main.shared_foundations_lesson', lesson_id=module._canonical_next.id) }}">{{ 'Continue module →' if module._canonical_completed else 'Start module →' }}</a>
-        {% elif module._next_lesson_id %}
-        <a class="rounded-lg bg-brand-900 px-3 py-2 text-xs font-semibold text-white transition hover:bg-brand-800" href="{{ url_for('main.lesson_detail', lesson_id=module._next_lesson_id) }}">{{ 'Continue module →' if module._completed_lessons else 'Start module →' }}</a>
-        {% endif %}
-        {% if module._project_completed %}
-        <a class="rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100" href="{{ url_for('projects.project_page') }}#module-{{ module.id }}">Project complete ✓</a>
-        {% elif module._project_ready %}
-        <a class="rounded-lg border border-gold-300 bg-gold-400 px-3 py-2 text-xs font-bold text-brand-950 shadow-sm transition hover:bg-gold-300" href="{{ url_for('projects.project_page') }}#module-{{ module.id }}">Module {{ module.number }} project unlocked — open →</a>
+        {% elif module._canonical_completed == module._canonical_total %}
+        <span class="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">Module complete ✓</span>
         {% else %}
-        <a class="rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-500 transition hover:border-brand-300 hover:text-brand-800" href="{{ url_for('projects.project_page') }}#module-{{ module.id }}" title="{{ module._missing_lessons|length }} lesson{{ 's' if module._missing_lessons|length != 1 }} left — complete them to unlock the project">Project locked · {{ module._missing_lessons|length }} left</a>
+        <span class="rounded-lg bg-slate-100 px-3 py-2 text-xs font-semibold text-slate-500" role="status">Locked — finish earlier lessons first</span>
         {% endif %}
       </div>
-      {% if not module._project_completed and not module._project_ready %}
-      <p class="mt-2 text-xs text-slate-500">{{ module._missing_lessons|length }} of {{ module._total_lessons }} lessons left · next: <a class="font-semibold text-indigo-700 underline" href="{{ url_for('main.lesson_detail', lesson_id=module._missing_lessons[0].id) }}">{{ module._missing_lessons[0].id }} {{ module._missing_lessons[0].title }}</a></p>
-      {% elif not module._project_completed %}
-      <p class="mt-2 text-xs font-semibold text-amber-800">All lessons complete — submit the module project to unlock the next module.</p>
+      {% if module._missing_lessons %}
+      <p class="mt-2 text-xs text-slate-500">{{ module._missing_lessons|length }} lesson{{ 's' if module._missing_lessons|length != 1 }} left</p>
       {% endif %}
     </article>
     {% endfor %}
-  </div>
-</section>
-
-<section class="mt-10" aria-labelledby="choose-specialization-title">
-  <p class="text-xs font-bold uppercase tracking-wider text-indigo-600">After the foundation</p>
-  <h3 id="choose-specialization-title" class="mt-1 text-2xl font-bold text-slate-900">Choose your specialization — or switch later, whenever you like</h3>
-  <p class="mt-1 max-w-3xl text-sm text-slate-600">Both pathways draw on everything you just built. Neither is ranked above the other, neither locks you out, and you can switch at any time — your progress in each is kept separately.</p>
-  <div class="mt-4 grid gap-4 sm:grid-cols-2">
-    <div class="rounded-2xl border border-indigo-200 bg-indigo-50 p-5 flex flex-col">
-      <h4 class="text-lg font-bold text-slate-900">AI Engineering</h4>
-      <p class="mt-1 text-sm text-slate-700">LLM application engineering: prompt engineering, RAG pipelines, agents and orchestration, versioned MCP, production AI, deployment, and system design — then a capstone.</p>
-      <p class="mt-3 text-xs text-indigo-800">Opens when your foundation is complete.</p>
-      <a class="mt-auto inline-flex self-start rounded-lg bg-indigo-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-indigo-700 mt-4" href="{{ url_for('main.lessons') }}">Open the AI Pathway →</a>
-    </div>
-    <div class="rounded-2xl border border-violet-200 bg-violet-50 p-5 flex flex-col">
-      <h4 class="text-lg font-bold text-slate-900">Machine Learning</h4>
-      <p class="mt-1 text-sm text-slate-700">The full ML discipline: math and data foundations, classical ML, deep learning from scratch, PyTorch, reproducible training, deployment and a capstone.</p>
-      <p class="mt-3 text-xs text-violet-800">Its own on-ramp — start now.</p>
-      <a class="mt-auto inline-flex self-start rounded-lg bg-violet-700 px-4 py-2 text-sm font-semibold text-white transition hover:bg-violet-800 mt-4" href="{{ url_for('main.machine_learning_specialization') }}">Open the ML Pathway →</a>
-    </div>
   </div>
 </section>
 </div>

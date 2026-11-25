@@ -278,7 +278,9 @@ if (root) {
         if (runnerStarted) return;
         runnerStarted = true;
         setOutput('Loading the browser Python runtime…', 'loading');
-        iframe.src = '/static/practice-sandbox.html';
+        // The sandbox has an opaque origin; hand it our real origin out of band
+        // so it can validate inbound messages and target replies precisely.
+        iframe.src = `/static/practice-sandbox.html?appOrigin=${encodeURIComponent(location.origin)}`;
         runnerLoadTimeout = setTimeout(() => {
             if (runnerReady) return;
             runnerStarted = false;
@@ -332,6 +334,17 @@ if (root) {
                                 resolve(null);
                             }
                         };
+                        // A TIMEOUT event is the server's terminal result at
+                        // its polling boundary — stop waiting and do not fall
+                        // back to the browser runner for this submission.
+                        stream.addEventListener('TIMEOUT', () => {
+                            clearTimeout(timeout);
+                            stream.close();
+                            resolve({
+                                verdict: 'TIMEOUT',
+                                error_details: 'The judge is still working. Your submission is saved; check its status shortly.',
+                            });
+                        });
                         stream.onerror = () => {
                             clearTimeout(timeout);
                             stream.close();
@@ -345,6 +358,11 @@ if (root) {
             }
         } catch (error) {
             serverResult = null;
+        }
+        if (serverResult?.verdict === 'TIMEOUT') {
+            clearTimeout(runTimeout);
+            setOutput(serverResult.error_details, 'running');
+            return;
         }
         if (serverResult) {
             const verdict = serverResult.verdict || 'INTERNAL_ERROR';
@@ -376,6 +394,7 @@ if (root) {
         setOutput('Running your code and optional local checks in the browser…', 'running');
         iframe.contentWindow.postMessage({
             type: 'run',
+            appOrigin: location.origin,
             runId,
             code: `${currentSource()}\n\n${customChecks.value}`,
         }, '*');
@@ -438,6 +457,13 @@ if (root) {
                                 resolve(null);
                             }
                         };
+                        es.addEventListener('TIMEOUT', () => {
+                            cleanup();
+                            resolve({
+                                verdict: 'TIMEOUT',
+                                error_details: 'The judge is still working. Your submission is saved; check its status shortly.',
+                            });
+                        });
                         es.onerror = () => {
                             cleanup();
                             resolve(null);
@@ -457,6 +483,12 @@ if (root) {
                     result = await statusResponse.json();
                     if (!statusResponse.ok) throw new Error(result.error || 'Could not load submission status.');
                 }
+            }
+            if (result.verdict === 'TIMEOUT') {
+                // The stream already told us judging is still in progress;
+                // don't poll again or start a browser run for this submission.
+                setOutput(result.error_details, 'running');
+                return;
             }
             const verdict = result.verdict || 'INTERNAL_ERROR';
             setOutput(

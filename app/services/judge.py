@@ -10,6 +10,7 @@ The design follows the RUACH Practice Arena spec:
 """
 
 import json
+import os
 import subprocess
 import time
 from typing import Any, Dict, List
@@ -35,6 +36,28 @@ ALLOWED_PACKAGES = {
     "sklearn",
 }
 
+# The parent process must allow for Docker daemon round-trips, image startup
+# and cold imports before the runner starts its own SIGALRM clock. This is
+# *only* startup headroom; the runner still enforces ``timeout_sec`` on the
+# learner code. A timeout inside this window is classified separately from a
+# genuine runner time limit.
+STARTUP_GRACE_SECONDS = 12.0
+MAX_STARTUP_GRACE_SECONDS = 60.0
+MAX_STORED_EXECUTION_MS = 3_600_000
+MAX_STORED_TESTS = 10_000
+MAX_STORED_TEXT = 20_000
+
+# Keep in sync with the Submission.verdict Enum in app/models.py. Queue states
+# (PENDING/RUNNING) are deliberately absent: a judge result must be terminal.
+STORABLE_VERDICTS = frozenset({
+    "ACCEPTED", "WRONG_ANSWER", "TIME_LIMIT_EXCEEDED",
+    "MEMORY_LIMIT_EXCEEDED", "RUNTIME_ERROR", "COMPILE_ERROR",
+    "INTERNAL_ERROR", "COMPLETED",
+})
+# Interactive runs can emit CHECKS_FAILED; the database Enum predates it, so
+# normalize to the closest storable verdict instead of breaking the commit.
+VERDICT_ALIASES = {"CHECKS_FAILED": "WRONG_ANSWER"}
+FALLBACK_VERDICT = "INTERNAL_ERROR"
 
 
 class SandboxExecutionError(RuntimeError):
@@ -42,42 +65,177 @@ class SandboxExecutionError(RuntimeError):
 
 
 class JudgeResult:
-    """Result of a sandboxed code execution."""
+    """Result of a sandboxed code execution, backed by a safe dict payload."""
 
-    __slots__ = ("verdict", "tests_passed", "total_tests", "execution_time_ms",
-                 "memory_kb", "error_details", "output", "execution_profile")
+    _FIELDS = (
+        'verdict', 'tests_passed', 'total_tests', 'execution_time_ms',
+        'memory_kb', 'error_details', 'output', 'execution_profile',
+    )
 
-    def __init__(
-        self,
-        verdict: str = "RUNTIME_ERROR",
-        tests_passed: int = 0,
-        total_tests: int = 0,
-        execution_time_ms: int = 0,
-        memory_kb: int = 0,
-        error_details: str = "",
-        output: str = "",
-        execution_profile: str = "",
-    ) -> None:
-        self.verdict: str = verdict
-        self.tests_passed: int = tests_passed
-        self.total_tests: int = total_tests
-        self.execution_time_ms: int = execution_time_ms
-        self.memory_kb: int = memory_kb
-        self.error_details: str = error_details
-        self.output: str = output
-        self.execution_profile: str = execution_profile
-
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            "verdict": self.verdict,
-            "tests_passed": self.tests_passed,
-            "total_tests": self.total_tests,
-            "execution_time_ms": self.execution_time_ms,
-            "memory_kb": self.memory_kb,
-            "error_details": self.error_details,
-            "output": self.output,
-            "execution_profile": self.execution_profile,
+    def __init__(self, verdict: str = "RUNTIME_ERROR", tests_passed: int = 0,
+                 total_tests: int = 0, execution_time_ms: int = 0,
+                 memory_kb: int = 0, error_details: str = "", output: str = "",
+                 execution_profile: str = "") -> None:
+        self._data = {
+            'verdict': verdict, 'tests_passed': tests_passed,
+            'total_tests': total_tests, 'execution_time_ms': execution_time_ms,
+            'memory_kb': memory_kb, 'error_details': error_details,
+            'output': output, 'execution_profile': execution_profile,
         }
+
+    def __getattr__(self, name):
+        try:
+            return self._data[name]
+        except KeyError as error:
+            raise AttributeError(name) from error
+
+    def __setattr__(self, name, value):
+        if name.startswith('_'):
+            object.__setattr__(self, name, value)
+        elif name in self._FIELDS:
+            self._data[name] = value
+        else:
+            object.__setattr__(self, name, value)
+
+    def to_dict(self):
+        return dict(self._data)
+
+    def safe_fields(self, profile=None):
+        """Return values validated for a Submission row (no Enum breakage)."""
+        return sanitize_result_for_storage(self, profile=profile)
+
+
+def _config_float(name, default, minimum=0.0, maximum=None):
+    raw = None
+    if has_app_context():
+        raw = current_app.config.get(name)
+    if raw is None:
+        raw = os.environ.get(name, default)
+    try:
+        value = float(raw)
+    except (TypeError, ValueError, OverflowError):
+        return default
+    value = max(value, minimum)
+    return value if maximum is None else min(value, maximum)
+
+
+def startup_grace_seconds() -> float:
+    """Bounded parent-side allowance for Docker/image startup."""
+    return _config_float(
+        'SANDBOX_STARTUP_GRACE_SECONDS', STARTUP_GRACE_SECONDS,
+        0.0, MAX_STARTUP_GRACE_SECONDS,
+    )
+
+
+def _bounded_int(value, maximum, default=0):
+    if value is None or isinstance(value, bool):
+        return default
+    try:
+        number = int(value)
+    except (TypeError, ValueError, OverflowError):
+        return default
+    return min(max(number, 0), maximum)
+
+
+def _bounded_text(value, limit=MAX_STORED_TEXT):
+    if value is None:
+        return ''
+    if not isinstance(value, str):
+        value = str(value)
+    return value[:limit]
+
+
+def _field(source, name, default=None):
+    if isinstance(source, dict):
+        return source.get(name, default)
+    return getattr(source, name, default)
+
+
+def normalize_verdict(value, *, default=FALLBACK_VERDICT):
+    """Return a verdict the Submission Enum can store, never a queue state."""
+    if not isinstance(value, str):
+        return default
+    candidate = value.strip().upper()
+    candidate = VERDICT_ALIASES.get(candidate, candidate)
+    return candidate if candidate in STORABLE_VERDICTS else default
+
+
+def sanitize_result_for_storage(result, *, profile: ExecutionProfile = None) -> Dict[str, Any]:
+    """Normalize/judge fields into bounded values safe for a Submission row.
+
+    Accepts a ``JudgeResult``, a mapping, or a submission-like object. This is
+    the last line of defence before a verdict reaches the SQLAlchemy Enum.
+    """
+    if profile is None:
+        declared = _field(result, 'execution_profile', '')
+        if isinstance(declared, str) and declared:
+            try:
+                profile = get_profile(declared)
+            except Exception:
+                profile = None
+    if profile is not None:
+        time_limit_ms = int(profile.timeout_sec * 1000) + 1000
+        memory_limit_kb = max(profile.memory_mb * 1024 * 2, 1)
+    else:
+        time_limit_ms = MAX_STORED_EXECUTION_MS
+        memory_limit_kb = MAX_MEMORY_MB * 1024 * 8
+
+    raw_verdict = _field(result, 'verdict')
+    verdict = normalize_verdict(raw_verdict)
+    error_details = _bounded_text(_field(result, 'error_details', ''))
+    if not isinstance(raw_verdict, str) or verdict != raw_verdict.strip().upper():
+        note = 'Runner verdict was normalized before storage'
+        error_details = _bounded_text(
+            f'{error_details}; {note}' if error_details else note
+        )
+    total_tests = _bounded_int(_field(result, 'total_tests', 0), MAX_STORED_TESTS)
+    tests_passed = min(
+        _bounded_int(_field(result, 'tests_passed', 0), MAX_STORED_TESTS),
+        total_tests,
+    )
+    declared_profile = _field(result, 'execution_profile', '')
+    return {
+        'verdict': verdict,
+        'tests_passed': tests_passed,
+        'total_tests': total_tests,
+        'execution_time_ms': _bounded_int(
+            _field(result, 'execution_time_ms', 0), time_limit_ms,
+        ),
+        'memory_kb': _bounded_int(
+            _field(result, 'memory_kb', 0), memory_limit_kb,
+        ),
+        'error_details': error_details,
+        'output': _bounded_text(_field(result, 'output', '')),
+        'execution_profile': (
+            declared_profile.strip()[:40]
+            if isinstance(declared_profile, str) else ''
+        ),
+    }
+
+
+def _container_status(container_name):
+    """Best-effort probe of the container state after a parent timeout."""
+    try:
+        probe = subprocess.run(
+            ['docker', 'inspect', '--format', '{{.State.Status}}', container_name],
+            text=True, capture_output=True, timeout=3.0, check=False,
+        )
+    except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
+        return None
+    if probe.returncode != 0:
+        return None
+    return (probe.stdout or '').strip().lower() or None
+
+
+def _remove_container(container_name):
+    """Best-effort reaper for abnormal exits and interrupted workers."""
+    try:
+        subprocess.run(
+            ['docker', 'rm', '-f', container_name],
+            text=True, capture_output=True, timeout=5.0, check=False,
+        )
+    except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
+        pass
 
 
 def _build_docker_command(
@@ -170,6 +328,7 @@ def execute_in_sandbox(
     )
 
     result = JudgeResult(execution_profile=profile.name)
+    grace = startup_grace_seconds()
     try:
         start_time = time.monotonic()
         result.execution_time_ms = 0
@@ -178,7 +337,8 @@ def execute_in_sandbox(
             input=json.dumps(payload),
             text=True,
             capture_output=True,
-            timeout=timeout_sec + 5.0,
+            # Cold starts must not be charged to the learner's time limit.
+            timeout=timeout_sec + grace,
         )
         elapsed_ms = int((time.monotonic() - start_time) * 1000)
         result.execution_time_ms = elapsed_ms
@@ -186,20 +346,54 @@ def execute_in_sandbox(
         if proc.returncode == 0:
             try:
                 output = json.loads(proc.stdout)
-                result.verdict = output.get("verdict", "RUNTIME_ERROR")
-                result.tests_passed = output.get("tests_passed", 0)
-                result.total_tests = output.get("total_tests", 0)
-                result.execution_time_ms = output.get(
-                    "execution_time_ms", elapsed_ms,
-                )
-                result.memory_kb = output.get("memory_kb", 0)
-                result.error_details = output.get("error_details", "")
-                if mode == "run":
-                    result.output = output.get("output") or ""
             except (json.JSONDecodeError, ValueError):
                 # Docker ran but didn't produce valid JSON output
                 result.verdict = "RUNTIME_ERROR"
                 result.error_details = "Sandbox returned an invalid result"
+            else:
+                if not isinstance(output, dict):
+                    raise ValueError('runner JSON is not an object')
+                raw_verdict = output.get('verdict')
+                verdict = normalize_verdict(raw_verdict)
+                error_details = _bounded_text(output.get('error_details', ''))
+                if (not isinstance(raw_verdict, str)
+                        or verdict != raw_verdict.strip().upper()):
+                    note = (
+                        'Sandbox verdict was mapped to a storable value'
+                        if isinstance(raw_verdict, str)
+                        and raw_verdict.strip().upper() in VERDICT_ALIASES
+                        else 'Sandbox returned an unrecognized verdict'
+                    )
+                    error_details = _bounded_text(
+                        f'{error_details}; {note}' if error_details else note
+                    )
+                total_tests = _bounded_int(
+                    output.get('total_tests', 0), MAX_STORED_TESTS,
+                )
+                parsed = JudgeResult(
+                    verdict=verdict,
+                    tests_passed=min(
+                        _bounded_int(output.get('tests_passed', 0), MAX_STORED_TESTS),
+                        total_tests,
+                    ),
+                    total_tests=total_tests,
+                    execution_time_ms=_bounded_int(
+                        output.get('execution_time_ms', elapsed_ms),
+                        int(profile.timeout_sec * 1000) + 1000,
+                        default=elapsed_ms,
+                    ),
+                    memory_kb=_bounded_int(
+                        output.get('memory_kb', 0),
+                        max(profile.memory_mb * 1024 * 2, 1),
+                    ),
+                    error_details=error_details,
+                    output=_bounded_text(output.get('output', '')) if mode == 'run' else '',
+                    execution_profile=profile.name,
+                )
+                for key, value in sanitize_result_for_storage(
+                    parsed, profile=profile,
+                ).items():
+                    setattr(result, key, value)
         else:
             result.verdict = (
                 "TIME_LIMIT_EXCEEDED" if proc.returncode in (-9, 137)
@@ -209,33 +403,53 @@ def execute_in_sandbox(
 
     except subprocess.TimeoutExpired:
         result.execution_time_ms = int(timeout_sec * 1000)
-        try:
-            cleanup = subprocess.run(
-                ["docker", "kill", container_name],
-                text=True,
-                capture_output=True,
-                timeout=5.0,
-                check=False,
-            )
-        except (FileNotFoundError, subprocess.TimeoutExpired):
+        # Distinguish a container that never reached `running` (image pull,
+        # daemon stall, cold import) from the runner's own wall-clock limit.
+        status = _container_status(container_name)
+        if status in {'created', 'dead', 'exited', 'removing'}:
             result.verdict = "INTERNAL_ERROR"
-            result.error_details = "Timed-out sandbox could not be stopped"
+            result.error_details = (
+                "Sandbox startup exceeded the "
+                f"{grace:g}s allowance (container state: {status})"
+            )
         else:
-            if cleanup.returncode != 0 and "No such container" not in cleanup.stderr:
+            try:
+                cleanup = subprocess.run(
+                    ["docker", "kill", container_name],
+                    text=True,
+                    capture_output=True,
+                    timeout=5.0,
+                    check=False,
+                )
+            except (FileNotFoundError, OSError, subprocess.TimeoutExpired):
                 result.verdict = "INTERNAL_ERROR"
                 result.error_details = "Timed-out sandbox could not be stopped"
             else:
-                result.verdict = "TIME_LIMIT_EXCEEDED"
-                result.error_details = (
-                    f"Execution exceeded the {timeout_sec}s limit"
-                )
+                if (cleanup.returncode != 0
+                        and "No such container" not in (cleanup.stderr or '')):
+                    result.verdict = "INTERNAL_ERROR"
+                    result.error_details = "Timed-out sandbox could not be stopped"
+                else:
+                    result.verdict = "TIME_LIMIT_EXCEEDED"
+                    result.error_details = (
+                        f"Execution exceeded the {timeout_sec}s limit"
+                    )
     except FileNotFoundError:
         result.verdict = "INTERNAL_ERROR"
         result.error_details = "Sandbox runtime is unavailable"
     except Exception:
         result.verdict = "INTERNAL_ERROR"
         result.error_details = "Sandbox execution could not be completed"
+    finally:
+        # --rm covers the happy path only. Kill/reap here as well so a worker
+        # crash, abnormal daemon exit or failed run never leaks a container.
+        _remove_container(container_name)
 
+    # Normalize once more so nothing unstorable can escape this boundary.
+    for key, value in sanitize_result_for_storage(result, profile=profile).items():
+        if key == 'execution_profile' and not value:
+            continue
+        setattr(result, key, value)
     return result
 
 

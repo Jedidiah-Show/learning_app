@@ -1525,13 +1525,7 @@ class RuachAICourseTests(unittest.TestCase):
     def test_dashboard_loads_for_enrolled_user(self):
         self.register()
         response = self.client.get('/')
-        self.assertIn(response.status_code, [200, 503])
-
-
-    def test_dashboard_loads_for_enrolled_user(self):
-        self.register()
-        response = self.client.get('/')
-        self.assertIn(response.status_code, [200, 503])
+        self.assertEqual(response.status_code, 200)
 
 
 class SearchAndDashboardChromeTests(unittest.TestCase):

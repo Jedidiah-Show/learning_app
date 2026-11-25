@@ -15,6 +15,7 @@ import time
 import click
 from flask import current_app
 
+from app.core.logging import configure_worker_logging
 from app.services.operations import record_heartbeat
 
 logger = logging.getLogger(__name__)
@@ -58,6 +59,7 @@ def configured_tasks():
 
 def run_once(app, *, tasks=None):
     """Run one maintenance pass and return a secret-free report."""
+    configure_worker_logging()
     selected = tuple(tasks) if tasks is not None else configured_tasks()
     started = time.monotonic()
     with app.app_context():
@@ -103,6 +105,7 @@ def scheduled_jobs(once, interval_seconds):
     from app import create_app
 
     app = create_app()
+    configure_worker_logging()
     if once:
         run_once(app)
         return
@@ -123,6 +126,7 @@ def register_scheduler_cli(app) -> None:
 
 def main() -> None:
     """Standalone entry point: python -m app.workers.scheduler."""
+    configure_worker_logging()
     raw = os.environ.get('SCHEDULER_INTERVAL_SECONDS', str(DEFAULT_INTERVAL_SECONDS))
     try:
         interval = int(raw)

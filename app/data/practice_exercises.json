@@ -1139,5 +1139,99 @@
     ],
     "prerequisites": [],
     "judge_tests": "agents = [\n    {\"id\": \"agent-b\", \"capabilities\": [\"legal\"], \"healthy\": True, \"cost\": 2},\n    {\"id\": \"agent-a\", \"capabilities\": [\"legal\"], \"healthy\": True, \"cost\": 2},\n    {\"id\": \"agent-c\", \"capabilities\": [\"legal\"], \"healthy\": False, \"cost\": 0},\n    {\"id\": \"agent-d\", \"capabilities\": [\"hr\"], \"healthy\": True, \"cost\": 1},\n]\nassert route_task({\"capability\": \"legal\"}, agents, 5) == \"agent-a\"\nassert route_task({\"capability\": \"legal\"}, agents, 1) is None\nassert route_task({\"capability\": \"hr\"}, agents, 1) == \"agent-d\"\nassert route_task({\"capability\": \"legal\"}, agents, 2) == \"agent-a\"\nassert route_task({\"no_capability\": True}, agents, 100) is None\nassert route_task({\"capability\": \"legal\"}, [], 100) is None\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "mle-decision-threshold",
+    "lesson_id": "mle.tools.02",
+    "title": "Turn a score into a decision",
+    "instructions": "Implement classify_score(score, threshold). Scores and thresholds must be numbers between 0 and 1 inclusive; otherwise raise ValueError. Return \"approve\" when score >= threshold and \"review\" otherwise.",
+    "starter_code": "def classify_score(score, threshold):\n    # Apply the decision rule after validating both inputs.\n    raise NotImplementedError\n\n\nprint(classify_score(0.8, 0.7))",
+    "checks_code": "assert classify_score(0.8, 0.7) == \"approve\"\nassert classify_score(0.7, 0.7) == \"approve\"\nassert classify_score(0.69, 0.7) == \"review\"\nfor bad in [(-0.1, 0.5), (1.1, 0.5), (0.5, -0.1), (0.5, 1.1), (\"0.5\", 0.5)]:\n    try:\n        classify_score(*bad)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"scores must stay in [0, 1]\")\nprint(\"All checks passed.\")",
+    "solution_code": "def classify_score(score, threshold):\n    for value in (score, threshold):\n        if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 1:\n            raise ValueError(\"values must be numbers in [0, 1]\")\n    return \"approve\" if score >= threshold else \"review\"",
+    "estimated_minutes": 12,
+    "difficulty": "beginner",
+    "skills": [
+      "machine-learning",
+      "python",
+      "decision-making"
+    ],
+    "prerequisites": [],
+    "judge_tests": "assert classify_score(0.0, 0.0) == \"approve\"\nassert classify_score(0.0, 0.01) == \"review\"\nassert classify_score(1, 1) == \"approve\"\nassert classify_score(0.4999, 0.5) == \"review\"\nfor bad in [(float(\"nan\"), 0.5), (0.5, float(\"inf\")), (True, 0.5), (0.5, None)]:\n    try:\n        classify_score(*bad)\n    except ValueError:\n        pass\n    else:\n        raise AssertionError(\"invalid inputs must be rejected\")\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "mle-mean-and-spread",
+    "lesson_id": "mle.math.01",
+    "title": "Summarize a distribution before modeling",
+    "instructions": "Implement mean_and_spread(values) returning (mean, population standard deviation) as floats using the statistics module. Raise ValueError for an empty collection. Do not round the result.",
+    "starter_code": "import statistics\n\n\ndef mean_and_spread(values):\n    # Return (mean, population standard deviation).\n    raise NotImplementedError\n\n\nprint(mean_and_spread([2, 3, 3, 4, 8]))",
+    "checks_code": "mean, spread = mean_and_spread([2, 3, 3, 4, 8])\nassert mean == 4\nassert round(spread, 6) == round(2.0976176963403033, 6)\nassert mean_and_spread([5]) == (5, 0)\ntry:\n    mean_and_spread([])\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"empty input must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "import statistics\n\n\ndef mean_and_spread(values):\n    values = list(values)\n    if not values:\n        raise ValueError(\"values must not be empty\")\n    return statistics.fmean(values), statistics.pstdev(values)",
+    "estimated_minutes": 15,
+    "difficulty": "beginner",
+    "skills": [
+      "machine-learning",
+      "python",
+      "statistics"
+    ],
+    "prerequisites": [],
+    "judge_tests": "mean, spread = mean_and_spread((1, 2, 3, 4))\nassert mean == 2.5\nassert round(spread, 6) == round(1.118033988749895, 6)\nsingle = mean_and_spread([7.5])\nassert single == (7.5, 0)\ntry:\n    mean_and_spread(iter([]))\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"empty input must be rejected\")\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "mle-missing-value-policy",
+    "lesson_id": "mle.data.06",
+    "title": "Handle missing values without inventing data",
+    "instructions": "Implement fill_missing(rows, column, fallback). Return a new list of dictionaries where None values in the given column are replaced with fallback. Do not mutate the input rows; leave all other columns untouched.",
+    "starter_code": "def fill_missing(rows, column, fallback):\n    # Copy each row and replace only missing values in the named column.\n    raise NotImplementedError\n\n\nprint(fill_missing([{\"age\": None}, {\"age\": 30}], \"age\", 0))",
+    "checks_code": "rows = [{\"age\": None, \"note\": \"a\"}, {\"age\": 30, \"note\": \"b\"}]\nresult = fill_missing(rows, \"age\", 0)\nassert result == [{\"age\": 0, \"note\": \"a\"}, {\"age\": 30, \"note\": \"b\"}]\nassert rows == [{\"age\": None, \"note\": \"a\"}, {\"age\": 30, \"note\": \"b\"}]\nassert fill_missing([], \"age\", 0) == []\nprint(\"All checks passed.\")",
+    "solution_code": "def fill_missing(rows, column, fallback):\n    return [\n        {**row, column: fallback if row.get(column) is None else row[column]}\n        for row in rows\n    ]",
+    "estimated_minutes": 18,
+    "difficulty": "beginner",
+    "skills": [
+      "machine-learning",
+      "python",
+      "data-cleaning"
+    ],
+    "prerequisites": [
+      "mle-mean-and-spread"
+    ],
+    "judge_tests": "original = [{\"x\": None, \"y\": 1}, {\"x\": 0, \"y\": None}, {\"x\": 5}]\nresult = fill_missing(original, \"x\", -1)\nassert result == [{\"x\": -1, \"y\": 1}, {\"x\": 0, \"y\": None}, {\"x\": 5}]\nassert original[0][\"x\"] is None\nassert result[1][\"y\"] is None\nassert all(a is not b for a, b in zip(original, result))\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "mle-majority-baseline",
+    "lesson_id": "mle.classical.01",
+    "title": "Build a baseline before a model",
+    "instructions": "Implement majority_baseline(labels) returning the most frequent label. Break ties alphabetically so the baseline is reproducible. Raise ValueError when labels is empty.",
+    "starter_code": "from collections import Counter\n\n\ndef majority_baseline(labels):\n    # Find the most common label; break ties alphabetically.\n    raise NotImplementedError\n\n\nprint(majority_baseline([\"yes\", \"no\", \"yes\"]))",
+    "checks_code": "assert majority_baseline([\"yes\", \"no\", \"yes\"]) == \"yes\"\nassert majority_baseline([\"b\", \"a\", \"a\", \"b\"]) == \"a\"\nassert majority_baseline([\"single\"]) == \"single\"\ntry:\n    majority_baseline([])\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"empty labels must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "from collections import Counter\n\n\ndef majority_baseline(labels):\n    labels = list(labels)\n    if not labels:\n        raise ValueError(\"labels must not be empty\")\n    counts = Counter(labels)\n    return min(counts, key=lambda label: (-counts[label], label))",
+    "estimated_minutes": 15,
+    "difficulty": "beginner",
+    "skills": [
+      "machine-learning",
+      "python",
+      "baselines"
+    ],
+    "prerequisites": [],
+    "judge_tests": "assert majority_baseline([\"cat\", \"dog\", \"cat\", \"dog\", \"bird\"]) == \"cat\"\nassert majority_baseline([\"z\", \"a\"]) == \"a\"\nassert majority_baseline(iter([\"x\", \"x\", \"y\"])) == \"x\"\ntry:\n    majority_baseline([])\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"empty labels must be rejected\")\nprint('Hidden checks passed.')\n"
+  },
+  {
+    "id": "mle-score-to-label-confusion",
+    "lesson_id": "mle.classification.02",
+    "title": "Score a classifier's labels",
+    "instructions": "Implement confusion_counts(actual, predicted) returning a dict with keys tp, fp, tn, fn for boolean 0/1 labels. Raise ValueError when the two lists have different lengths.",
+    "starter_code": "def confusion_counts(actual, predicted):\n    # Count true/false positives and negatives.\n    raise NotImplementedError\n\n\nprint(confusion_counts([1, 0], [1, 1]))",
+    "checks_code": "counts = confusion_counts([1, 0, 1, 0], [1, 1, 0, 0])\nassert counts == {\"tp\": 1, \"fp\": 1, \"tn\": 1, \"fn\": 1}\nassert confusion_counts([], []) == {\"tp\": 0, \"fp\": 0, \"tn\": 0, \"fn\": 0}\ntry:\n    confusion_counts([1], [])\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"length mismatch must be rejected\")\nprint(\"All checks passed.\")",
+    "solution_code": "def confusion_counts(actual, predicted):\n    actual, predicted = list(actual), list(predicted)\n    if len(actual) != len(predicted):\n        raise ValueError(\"length mismatch\")\n    counts = {\"tp\": 0, \"fp\": 0, \"tn\": 0, \"fn\": 0}\n    for expected, got in zip(actual, predicted):\n        key = (\"tp\" if got else \"fn\") if expected else (\"fp\" if got else \"tn\")\n        counts[key] += 1\n    return counts",
+    "estimated_minutes": 20,
+    "difficulty": "intermediate",
+    "skills": [
+      "machine-learning",
+      "python",
+      "evaluation"
+    ],
+    "prerequisites": [
+      "mle-majority-baseline"
+    ],
+    "judge_tests": "assert confusion_counts([1, 1, 0], [1, 0, 0]) == {\"tp\": 1, \"fp\": 0, \"tn\": 1, \"fn\": 1}\nassert confusion_counts([True, False], [True, True]) == {\"tp\": 1, \"fp\": 1, \"tn\": 0, \"fn\": 0}\nassert confusion_counts(iter([0]), iter([0])) == {\"tp\": 0, \"fp\": 0, \"tn\": 1, \"fn\": 0}\ntry:\n    confusion_counts([1, 0], [1])\nexcept ValueError:\n    pass\nelse:\n    raise AssertionError(\"length mismatch must be rejected\")\nprint('Hidden checks passed.')\n"
   }
 ]

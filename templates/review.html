@@ -2,7 +2,7 @@
 {% block title %}Review Center · RUACH{% endblock %}
 {% block content %}
 <header class="mb-6"><p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Spaced practice</p><h1 class="mt-2 text-3xl font-bold">Review center</h1><p class="mt-2 text-slate-600">Questions you missed return here. Correct answers come back at gradually longer intervals.</p></header>
-<section id="review-card" class="max-w-3xl rounded-2xl border bg-white p-6" aria-live="polite"><div class="flex items-center gap-3"><span class="loading-spinner" aria-hidden="true"></span><p>Loading your review queue…</p></div></section>
+<section id="review-card" data-progress-url="{{ url_for('main.progress') }}" class="max-w-3xl rounded-2xl border bg-white p-6" aria-live="polite"><div class="flex items-center gap-3"><span class="loading-spinner" aria-hidden="true"></span><p>Loading your review queue…</p></div></section>
 {% endblock %}
 {% block extra_scripts %}<script>
 const root = document.getElementById('review-card');
@@ -25,7 +25,7 @@ function showNext() {
   if (position >= queue.length) {
     root.append(h('h2', 'text-xl font-bold', 'You’re caught up for now'));
     root.append(h('p', 'mt-2 text-slate-600', queue.length ? 'Your next review items will appear when they are due.' : 'Missed quiz questions will appear here for another practice round.'));
-    root.append(Object.assign(h('a', 'mt-4 inline-block font-semibold text-indigo-700', 'Back to progress →'), {href: '/progress'}));
+    root.append(Object.assign(h('a', 'mt-4 inline-block font-semibold text-indigo-700', 'Back to progress →'), {href: root.dataset.progressUrl}));
     return;
   }
   const item = queue[position];

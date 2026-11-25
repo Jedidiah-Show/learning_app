@@ -86,6 +86,8 @@ class EvaluationHarnessTests(unittest.TestCase):
 
     def test_lesson_contexts_match_their_domain(self):
         from app.curriculum_registry import registry
+        unresolved = []
+        checked = 0
         for domain, path in DATASETS.items():
             data = json.loads(path.read_text(encoding='utf-8'))
             for case in data['cases']:
@@ -93,10 +95,36 @@ class EvaluationHarnessTests(unittest.TestCase):
                              or (case.get('context') or {}).get('lesson_id'))
                 if not lesson_id:
                     continue
-                owner, _ = registry.find_lesson(lesson_id)
-                if owner is None:
-                    continue  # legacy course ids resolve to AI by convention; skip
-                self.assertEqual(owner, domain, f'case {case["id"]} context resolves to {owner}')
+                with self.subTest(case=case['id'], lesson_id=lesson_id):
+                    owner, _ = registry.find_lesson(lesson_id)
+                    if owner is None:
+                        # Explicit subTest skip for the handful of legacy
+                        # bundled ids (e.g. 01.03) that the canonical registry
+                        # cannot own. Assert the legacy fallback still assigns
+                        # the right domain rather than silently continuing.
+                        unresolved.append(lesson_id)
+                        with self.subTest(case=case['id'], lesson_id=lesson_id,
+                                          reason='legacy id'):
+                            self.assertEqual(
+                                infer_learning_domain(lesson_id=lesson_id), domain,
+                            )
+                        continue
+                    checked += 1
+                    self.assertEqual(owner, domain, f'case {case["id"]} context resolves to {owner}')
+        self.assertTrue(
+            all(lesson_id[:2].isdigit() and lesson_id[2:3] == '.'
+                for lesson_id in unresolved),
+            f'unexpected unresolved lesson ids: {unresolved}',
+        )
+        # Accounting assertion: canonical ids were checked against the
+        # registry; legacy ids were checked via the fallback resolver above.
+        cases_with_lesson = sum(
+            1 for data in (json.loads(path.read_text(encoding='utf-8'))
+                           for path in DATASETS.values())
+            for case in data['cases']
+            if case.get('lesson_id') or (case.get('context') or {}).get('lesson_id')
+        )
+        self.assertEqual(checked + len(unresolved), cases_with_lesson)
 
     def test_structural_validation_runs_and_is_green(self):
         result = subprocess.run(

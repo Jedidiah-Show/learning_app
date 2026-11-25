@@ -12,7 +12,7 @@ from flask_login import current_user, login_required
 from sqlalchemy.exc import SQLAlchemyError
 from app import db
 from app.curriculum import all_lessons, all_modules, curriculum, get_lesson
-from app.ml_pathway import machine_learning_pathway
+from app.ml_pathway import PATHWAY_ID, machine_learning_pathway
 from app.ml_pathway import get_machine_learning_lesson, machine_learning_lessons
 from app.ml_pathway import machine_learning_lesson_is_open, ml_pathway_overview
 from app.ml_pathway import ml_module_progress
@@ -38,6 +38,57 @@ from app.request_data import get_json_object
 from app.services.lesson_state import learner_today, stored_setup_checks
 
 main_bp = Blueprint('main', __name__)
+
+
+def _scoped_lesson(destination, lesson_id):
+    """Resolve a progress pointer against the learner's own lesson catalogue.
+
+    ``course_progress`` returns an id from the learner's pathway, which for an
+    ML learner is an ``mle.*`` id absent from the AI curriculum.  Looking it up
+    with the AI-only ``get_lesson`` used to leave the dashboard and lesson list
+    without a "continue" lesson (and without a module caption).
+    """
+    if not lesson_id:
+        return None
+    from app.pathway_scope import lesson_by_id
+
+    lesson = lesson_by_id(destination, lesson_id)
+    if lesson is None:
+        # course_progress() returns ids from the shared/bundled curriculum
+        # (e.g. ``0.01``), which are absent from a specialization-only catalog.
+        lesson = lesson_by_id('shared-foundations', lesson_id)
+    if lesson is None:
+        # Legacy pointers can still reference the bundled curriculum even for
+        # an ML learner; resolve them without tagging them as ML content.
+        lesson = get_lesson(lesson_id)
+    if lesson is None and str(lesson_id).startswith('mle.'):
+        lesson = get_machine_learning_lesson(lesson_id)
+        if lesson is not None:
+            lesson = {**lesson, 'source': 'ml'}
+    return lesson
+
+
+def _lesson_href(lesson):
+    """Catalogue-correct link for a lesson row, including ML pathway rows."""
+    if not lesson:
+        return None
+    from app.pathway_scope import lesson_href
+
+    return lesson_href(lesson, lesson['id'])
+
+
+def _template_url_for(endpoint, **values):
+    """Template-scoped ``url_for`` that sends ``mle.*`` links to the pathway.
+
+    The shared catalog templates historically link every lesson through
+    ``main.lesson_detail``.  The lesson lookup now yields real ML lessons, so
+    their links must resolve to the ML lesson route instead.
+    """
+    if (endpoint == 'main.lesson_detail'
+            and str(values.get('lesson_id') or '').startswith('mle.')):
+        return url_for('main.machine_learning_lesson',
+                       lesson_id=values['lesson_id'])
+    return url_for(endpoint, **values)
 
 
 @lru_cache(maxsize=1)
@@ -347,11 +398,11 @@ def index():
         # course_progress() is already scoped to the learner's own pathway,
         # so no re-scoping is needed here.
         # Derived after the swap above: an ML learner's "continue" pointers must
-        # come from their own curriculum, never from a module 03-12 lesson.
-        next_lesson = get_lesson(progress['next_lesson_id']) if progress['next_lesson_id'] else None
-        from app.pathway_scope import FOUNDATION_COURSE_MODULE_IDS
+        # come from their own curriculum, never from an AI lesson.
+        next_lesson = _scoped_lesson(pathway_destination, progress['next_lesson_id'])
+        next_lesson_url = _lesson_href(next_lesson)
         next_is_foundation = bool(
-            next_lesson and next_lesson.get('module_id') in FOUNDATION_COURSE_MODULE_IDS
+            next_lesson and str(next_lesson.get('id', '')).startswith('sf.')
         )
         next_project = progress['next_action'] if progress['next_action'] and progress['next_action']['type'] == 'project' else None
         next_module_id = None
@@ -360,7 +411,7 @@ def index():
             if action['type'] == 'project':
                 next_module_id = action.get('module_id')
             elif action.get('lesson_id'):
-                focused = get_lesson(action['lesson_id'])
+                focused = _scoped_lesson(pathway_destination, action['lesson_id'])
                 next_module_id = focused.get('module_id') if focused else None
         due_reviews = current_review_due_count()
         module_states = {}
@@ -411,6 +462,8 @@ def index():
         return render_template('dashboard.html', config=config, user=current_user,
                                course=curriculum(),
                                progress=progress, next_lesson=next_lesson,
+                               next_lesson_url=next_lesson_url,
+                               url_for=_template_url_for,
                                next_is_foundation=next_is_foundation,
                                next_project=next_project, setup_checks=setup_checks,
                                setup_states=setup_states, setup_done=setup_done,
@@ -434,8 +487,8 @@ def index():
                                    'course_complete': False, 'modules': [],
                                    'next_lesson_id': None, 'next_action': None,
                                },
-                               next_lesson=None, next_project=None,
-                               next_is_foundation=False,
+                               next_lesson=None, next_lesson_url=None,
+                               next_project=None, next_is_foundation=False,
                                onboarding_complete=True, next_module_id=None,
                                due_reviews=0, ml_overview=None,
                                pathway_comparison=None,
@@ -468,7 +521,7 @@ def lessons():
     )
     current_module_id = None
     if progress.get('next_lesson_id'):
-        current = get_lesson(progress['next_lesson_id'])
+        current = _scoped_lesson(destination, progress['next_lesson_id'])
         current_module_id = current.get('module_id') if current else None
     elif progress.get('next_action', {}).get('type') == 'project':
         current_module_id = progress['next_action'].get('module_id')
@@ -490,6 +543,7 @@ def lessons():
                            header=pathway_header(destination),
                            ml_overview=ml_overview,
                            pathway_destination=destination,
+                           url_for=_template_url_for,
                            skill_level=(plan.skill_level if plan else '') or '')
 
 
@@ -555,12 +609,12 @@ def machine_learning_specialization():
     """Show the optional ML pathway without adding it to the shared course."""
     pathway = machine_learning_pathway()
     completions = MLSpecializationLessonCompletion.query.filter_by(
-        user_id=current_user.id, pathway_id=pathway['id']
+        user_id=current_user.id, pathway_id=PATHWAY_ID
     ).all()
     completed = {item.lesson_id for item in completions}
     projects = {
         item.module_id: item for item in MLSpecializationProject.query.filter_by(
-            user_id=current_user.id, pathway_id=pathway['id']
+            user_id=current_user.id, pathway_id=PATHWAY_ID
         ).all()
     }
     # ML starts with its own foundation module, so a learner can choose it
@@ -568,7 +622,7 @@ def machine_learning_specialization():
     prerequisites_met = True
     ml_project_ids = {
         item.module_id for item in MLSpecializationProject.query.filter_by(
-            user_id=current_user.id, pathway_id=pathway['id'], completed=True
+            user_id=current_user.id, pathway_id=PATHWAY_ID, completed=True
         ).all()
     }
     ready_lessons = [
@@ -627,7 +681,7 @@ def machine_learning_lesson(lesson_id):
         abort(403)
 
     completions = MLSpecializationLessonCompletion.query.filter_by(
-        user_id=current_user.id, pathway_id=pathway['id']
+        user_id=current_user.id, pathway_id=PATHWAY_ID
     ).all()
     completed = {item.lesson_id for item in completions}
 
@@ -637,7 +691,7 @@ def machine_learning_lesson(lesson_id):
         except (TypeError, ValueError):
             selected = -1
         existing = MLSpecializationLessonCompletion.query.filter_by(
-            user_id=current_user.id, pathway_id=pathway['id'], lesson_id=lesson_id
+            user_id=current_user.id, pathway_id=PATHWAY_ID, lesson_id=lesson_id
         ).first()
         if selected != lesson['quiz']['answer']:
             # A miss here is the pathway equivalent of a failed course quiz
@@ -647,7 +701,7 @@ def machine_learning_lesson(lesson_id):
         else:
             if not existing:
                 db.session.add(MLSpecializationLessonCompletion(
-                    user_id=current_user.id, pathway_id=pathway['id'], lesson_id=lesson_id,
+                    user_id=current_user.id, pathway_id=PATHWAY_ID, lesson_id=lesson_id,
                 ))
             from app.services.skill_passport import update_skill_progress_from_ml_lesson
             update_skill_progress_from_ml_lesson(
@@ -848,7 +902,7 @@ def progress():
             item.completed_at.date() for item in completions if item.completed_at
         )
         for row in MLSpecializationLessonCompletion.query.filter_by(
-            user_id=current_user.id
+            user_id=current_user.id, pathway_id=PATHWAY_ID
         ).all():
             if row.completed_at:
                 day_counts[row.completed_at.date()] += 1
@@ -1201,59 +1255,33 @@ def foundations():
 
     destination = destination_for(current_user)
     modules = pathway_modules('shared-foundations', user_id=current_user.id)
-    completed = {
-        row.lesson_id for row in LessonCompletion.query.filter_by(
-            user_id=current_user.id, completed=True
-        ).all()
-    }
-    from app.models import CourseProject
-    completed_projects = {
-        row.module_id for row in CourseProject.query.filter_by(
-            user_id=current_user.id, completed=True
-        ).all()
-    }
+    from app.foundations_pathway import (
+        foundation_completed_lesson_ids, foundation_lesson_is_open,
+    )
+    completed = foundation_completed_lesson_ids(current_user.id)
     for module in modules:
         next_lesson = next(
-            (lesson for lesson in module['lessons']
-             if lesson['id'] not in completed),
-            module['lessons'][0] if module['lessons'] else None,
+            (
+                lesson for lesson in module['lessons']
+                if lesson['id'] not in completed
+                and foundation_lesson_is_open(current_user.id, lesson['id'])
+            ),
+            None,
         )
+        module['_canonical_next'] = next_lesson
         module['_next_lesson_id'] = next_lesson['id'] if next_lesson else None
+        module['_canonical_total'] = len(module['lessons'])
+        module['_canonical_completed'] = sum(
+            1 for lesson in module['lessons'] if lesson['id'] in completed
+        )
         module['_missing_lessons'] = [
             {'id': lesson['id'], 'title': lesson.get('title') or lesson['id']}
             for lesson in module['lessons']
             if lesson['id'] not in completed
         ]
-        module['_project_ready'] = not module['_missing_lessons']
-        module['_project_completed'] = module['id'] in completed_projects
+        module['_project_ready'] = False
+        module['_project_completed'] = False
     state = foundation_completion_state(current_user.id)
-    sf_completed = foundation_completed_lesson_ids(current_user.id)
-    # Canonical lessons (sf.*) are the authoritative progression record. The
-    # legacy 00–02 modules remain in this catalogue for project/evidence
-    # continuity, but "Continue"/"next lesson" must follow the canonical
-    # chain — otherwise a completed sf.* lesson never unlocks the next one.
-    from app.foundations_pathway import (
-        foundation_lesson_is_open, shared_foundations_lessons,
-    )
-    canonical_module_for_legacy = {'00': 'sf.00', '01': 'sf.01', '02': 'sf.04'}
-    all_sf = shared_foundations_lessons()
-    for module in modules:
-        sf_lessons = [
-            lesson for lesson in all_sf
-            if lesson['module_id'] == canonical_module_for_legacy.get(module['id'])
-        ]
-        module['_canonical_total'] = len(sf_lessons)
-        module['_canonical_completed'] = sum(
-            1 for lesson in sf_lessons if lesson['id'] in sf_completed
-        )
-        module['_canonical_next'] = next(
-            (
-                lesson for lesson in sf_lessons
-                if lesson['id'] not in sf_completed
-                and foundation_lesson_is_open(current_user.id, lesson['id'])
-            ),
-            None,
-        )
     return render_template(
         'foundations.html', modules=modules, foundation=state,
         pathway_destination=destination,

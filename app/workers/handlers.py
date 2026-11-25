@@ -11,10 +11,23 @@ from app.ai.gateway import generate
 from app.ai.prompts.registry import active_version
 from app.ai.schemas import AIRequest
 from app.models import CourseProject
-from app.workers.base import is_cancelled
+from app.workers.base import is_cancelled, update_progress
 from app.workers.job_registry import register_handler
 
 MAX_JOB_PROMPT_LENGTH = 8000
+# A single bounded provider call is the long-running part of these handlers.
+# There is no meaningful mid-call step to report: progress before dispatch
+# comes from process_one_job(), completion (100) from _finish(), and the tail
+# is bracketed by cancellation checks. Handlers therefore report one short
+# step just before handing off to the provider; they never report completion.
+DISPATCH_PROGRESS_PCT = 10
+
+
+def _mark_dispatched(job) -> None:
+    """Check cancellation and record a bounded pre-provider progress step."""
+    if is_cancelled(job.id):
+        raise CancelledJob('Job was cancelled')
+    update_progress(job.id, DISPATCH_PROGRESS_PCT)
 
 
 def _prompt_version(value, task_type):
@@ -48,8 +61,7 @@ def ai_generation(job, payload):
         correlation_id=job.correlation_id,
         user_id=job.user_id,
     )
-    if is_cancelled(job.id):
-        raise CancelledJob('Job was cancelled')
+    _mark_dispatched(job)
     response = generate(request)
     if is_cancelled(job.id):
         raise CancelledJob('Job was cancelled')
@@ -70,8 +82,7 @@ def project_review(job, payload):
         raise ValueError('Project not found for this learner')
     if not project.submission:
         raise ValueError('Project has no saved submission to review')
-    if is_cancelled(job.id):
-        raise CancelledJob('Job was cancelled')
+    _mark_dispatched(job)
 
     brief = project.get_project()
     prompt = (

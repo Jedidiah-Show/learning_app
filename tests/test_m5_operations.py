@@ -18,7 +18,10 @@ from app import create_app, db
 from app.core.observability import (
     REQUEST_ID_HEADER, JsonFormatter, reset_request_metrics, request_metrics,
 )
-from app.models import AIBackgroundJob, ServiceHeartbeat, User, utcnow
+from app.models import (
+    AIBackgroundJob, JudgeWorkerHeartbeat, ServiceHeartbeat, Submission, User,
+    utcnow,
+)
 from app.services.operations import (
     OperationsError, evaluate_alerts, heartbeats, operations_snapshot,
     record_heartbeat,
@@ -175,6 +178,53 @@ class M5OperationsTests(unittest.TestCase):
             codes = {alert['code'] for alert in evaluate_alerts(snapshot)}
             self.assertIn('ai_queue_backlog', codes)
             self.assertIn('ai_queue_oldest_pending', codes)
+
+    def test_stale_judge_worker_raises_derived_alert(self):
+        """The judge worker's own heartbeat must produce an alert when dead."""
+        with self.app.app_context():
+            db.session.add(JudgeWorkerHeartbeat(
+                id='judge-a', hostname='judge-host', pid=4242,
+                status='online', started_at=utcnow() - timedelta(seconds=2000),
+                last_seen_at=utcnow() - timedelta(seconds=999),
+            ))
+            db.session.commit()
+            self.app.config['HEARTBEAT_STALE_SECONDS'] = 10
+            snapshot = operations_snapshot(self.app)
+            codes = {alert['code'] for alert in snapshot['alerts']}
+            self.assertIn('judge_worker_stale', codes)
+            self.assertNotIn('judge_heartbeat_invalid', codes)
+            # Snapshot shape and secret-free guarantee remain unchanged.
+            self.assertIn('judge', snapshot['workers'])
+            serialized = json.dumps(snapshot)
+            self.assertNotIn('SECRET_KEY', serialized)
+            self.assertNotIn('secure-pass-123', serialized)
+
+            row = db.session.get(JudgeWorkerHeartbeat, 'judge-a')
+            row.status = 'degraded'
+            row.last_seen_at = utcnow()
+            db.session.commit()
+            codes = {alert['code'] for alert in evaluate_alerts(operations_snapshot(self.app))}
+            self.assertNotIn('judge_worker_stale', codes)
+            self.assertIn('judge_worker_unhealthy', codes)
+
+    def test_judge_backlog_and_dead_letter_alerts_use_existing_data(self):
+        with self.app.app_context():
+            db.session.add(Submission(
+                id='judge-backlog-1', user_id=self.learner_id,
+                problem_id='p1', code_snapshot='print(1)', verdict='PENDING',
+            ))
+            db.session.add(AIBackgroundJob(
+                job_key='m5-dead-letter', job_type='ai_generation',
+                user_id=self.learner_id, payload='{}', status='dead_letter',
+                available_at=utcnow(),
+            ))
+            db.session.commit()
+            self.app.config['AI_QUEUE_ALERT_DEPTH'] = 1
+            codes = {
+                alert['code'] for alert in operations_snapshot(self.app)['alerts']
+            }
+            self.assertIn('judge_queue_backlog', codes)
+            self.assertIn('ai_job_dead_letter', codes)
 
     def test_scheduler_pass_records_generic_heartbeat(self):
         with self.app.app_context():

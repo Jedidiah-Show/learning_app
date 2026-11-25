@@ -592,14 +592,24 @@
             setOpen(backdrop.hidden);
             return;
         }
-        const path = { g: '/gates', a: '/achievements', n: '/notifications' }[event.key.toLowerCase()];
-        if (path) window.location.href = path;
+        // Resolve shortcuts from the nav links rendered with url_for in the
+        // shell rather than hardcoding deployment paths here.
+        const shortcuts = {
+            g: document.querySelector('a[aria-label="Gates"]')?.href,
+            a: document.querySelector('a[aria-label="Achievements"]')?.href,
+            n: document.querySelector('#notif-panel .notif-panel-head a')?.href,
+        };
+        const target = shortcuts[event.key.toLowerCase()];
+        if (target) window.location.href = target;
     });
 })();
 
 // Achievement toasts — renders badges handed back in JSON payloads (new_badges).
 window.showAchievementToasts = (badges) => {
     if (!Array.isArray(badges) || badges.length === 0) return;
+    // The achievements link in the shell is url_for-generated; no deployment
+    // path belongs in this global script.
+    const achievementsUrl = document.querySelector('a[aria-label="Achievements"]')?.href;
     let wrap = document.querySelector('.achv-toast-wrap');
     if (!wrap) {
         wrap = document.createElement('div');
@@ -611,7 +621,7 @@ window.showAchievementToasts = (badges) => {
     shown.forEach((badge) => {
         const toast = document.createElement('a');
         toast.className = 'achv-toast';
-        toast.href = '/achievements';
+        if (achievementsUrl) toast.href = achievementsUrl;
         toast.innerHTML = `
             <span class="achv-toast-icon" aria-hidden="true">${badge.icon || '🏆'}</span>
             <span>
@@ -626,7 +636,7 @@ window.showAchievementToasts = (badges) => {
     if (badges.length > 3) {
         const extra = document.createElement('a');
         extra.className = 'achv-toast';
-        extra.href = '/achievements';
+        if (achievementsUrl) extra.href = achievementsUrl;
         extra.innerHTML = `<span class="achv-toast-icon" aria-hidden="true">🏆</span><span><span class="achv-toast-kicker">Achievement unlocked</span><span class="achv-toast-name">${badges.length - 3} more badges earned</span></span><span class="achv-toast-link">View →</span>`;
         wrap.appendChild(extra);
         window.setTimeout(() => extra.remove(), 7000);

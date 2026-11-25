@@ -49,6 +49,20 @@ class ExecutionProfileTests(unittest.TestCase):
             profile_for_workload('ml_training')
         self.assertFalse(get_profile('gpu_training').enabled)
 
+    def test_problem_selection_fails_closed_for_disabled_profiles(self):
+        with self.assertRaises(ProfileDisabledError):
+            profile_for_problem({
+                'track': 'algorithms', 'execution_profile': 'gpu_training',
+            })
+        with self.assertRaises(ProfileDisabledError):
+            profile_for_problem({
+                'track': 'machine-learning', 'execution_profile': 'container_ml',
+            })
+        self.assertEqual(
+            profile_for_problem({'track': 'ai-engineering'}).name,
+            'container_python',
+        )
+
     def test_unknown_workload_and_profile_are_rejected(self):
         with self.assertRaises(UnknownProfileError):
             profile_for_workload('unrestricted')

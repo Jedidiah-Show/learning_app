@@ -123,6 +123,44 @@ def _increment(bucket, window_start):
         return count
 
 
+def _increment_with_retry(bucket, window_start):
+    """Increment a counter, retrying a first-insert race in a private session.
+
+    Counters are deliberately isolated from the Flask request session.  If two
+    instances create the first counter for a window at the same time, only the
+    private session that raised may be rolled back: calling
+    ``db.session.rollback()`` here would silently discard the request's own
+    uncommitted work.
+    """
+    from sqlalchemy.orm import Session
+
+    from app.models import RateLimitCounter
+
+    try:
+        return _increment(bucket, window_start)
+    except IntegrityError:
+        # The losing inserter retries under the row lock using a fresh
+        # private session, so the request session is never touched.
+        with Session(db.engine) as session:
+            try:
+                row = session.query(RateLimitCounter).filter_by(
+                    bucket=bucket, window_start=window_start
+                ).with_for_update().first()
+                if row is None:
+                    session.add(RateLimitCounter(
+                        bucket=bucket, window_start=window_start, count=1
+                    ))
+                    count = 1
+                else:
+                    row.count += 1
+                    count = row.count
+                session.commit()
+                return count
+            except Exception:
+                session.rollback()
+                raise
+
+
 def check_rate_limit(name, identity=None, *, limit=None, window_seconds=None):
     """Increment a counter and return seconds to wait when over the limit.
 
@@ -155,20 +193,15 @@ def check_rate_limit(name, identity=None, *, limit=None, window_seconds=None):
         )
         now = aware_now
         bucket = _bucket_key(name, identity)
-        try:
-            count = _increment(bucket, window_start)
-        except IntegrityError:
-            # Two instances inserted the first counter for this window at the
-            # same time.  Retry under the row lock and let the unique
-            # constraint pick a single winner.
-            db.session.rollback()
-            count = _increment(bucket, window_start)
+        count = _increment_with_retry(bucket, window_start)
         if count > limit:
             elapsed = (now - window_start).total_seconds()
             return max(1, int(window_seconds - elapsed))
         return None
     except Exception:
-        db.session.rollback()
+        # Rate limiting uses only private sessions.  Never roll back the
+        # request session here: a database hiccup in the limiter must not
+        # discard work the view has already staged.
         try:
             current_app.logger.warning(
                 'Rate limiting failed open for %s', name, exc_info=True

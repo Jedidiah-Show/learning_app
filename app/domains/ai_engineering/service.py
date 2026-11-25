@@ -44,6 +44,7 @@ def get_ai_project_record(user_id: int, module_id: str) -> AISpecializationProje
     """Query stored AI specialization project record for learner."""
     return AISpecializationProject.query.filter_by(
         user_id=user_id,
+        pathway_id=PATHWAY_ID,
         module_id=module_id,
     ).first()
 
@@ -59,7 +60,7 @@ def get_or_create_ai_project(user_id: int, module_id: str) -> AISpecializationPr
             module_id=module_id,
         )
         db.session.add(record)
-        db.session.commit()
+        # Caller owns the transaction; do not commit inside the service.
     return record
 
 

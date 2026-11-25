@@ -25,6 +25,30 @@ from urllib.parse import parse_qsl, unquote, urlsplit
 
 BACKUP_PREFIX = 'ruach-'
 
+# libpq settings that may safely be forwarded from a DATABASE_URL query string
+# (e.g. ``?sslmode=require``). Credentials and endpoints always come from the
+# parsed URL itself; unknown keys are ignored rather than smuggled into argv.
+PG_OPTION_KEYS = frozenset({
+    'sslmode', 'sslrootcert', 'sslcert', 'sslkey', 'sslcrl', 'sslcrldir',
+    'ssl_min_protocol_version', 'ssl_max_protocol_version', 'sslnegotiation',
+    'channel_binding', 'connect_timeout', 'application_name', 'gssencmode',
+    'gsslib', 'krbsrvname', 'target_session_attrs', 'service', 'options',
+    'client_encoding', 'timezone',
+})
+
+
+def pg_option_env(options: dict) -> dict:
+    """Translate libpq URL options into PG* environment variables."""
+    env = {}
+    for key, value in (options or {}).items():
+        name = str(key).strip().lower().replace('-', '_')
+        if name not in PG_OPTION_KEYS or not isinstance(value, str) or not value:
+            continue
+        if any(char in value for char in ('\x00', '\n', '\r')):
+            continue
+        env['PG' + name.upper()] = value
+    return env
+
 
 @dataclass(frozen=True)
 class DatabaseTarget:
@@ -104,6 +128,7 @@ def build_pg_command(url: str, output_path: Path) -> tuple[list[str], dict, str]
         command += ['--username', target.username]
     command += ['--dbname', target.database]
     env = {'PGPASSWORD': target.password} if target.password else {}
+    env.update(pg_option_env(target.options))
     return command, env, ' '.join(command)
 
 
@@ -150,6 +175,9 @@ def create_backup(
         'destination': str(destination),
         'dry_run': dry_run,
     }
+    if target.kind == 'postgres':
+        # Names only: never print option values, which may be paths/secrets.
+        plan['connection_options'] = sorted(pg_option_env(target.options))
     if dry_run:
         if target.kind == 'postgres':
             plan['command'] = build_pg_command(database_url, destination)[2]

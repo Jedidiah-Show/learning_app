@@ -42,8 +42,8 @@ def register_error_handlers(app):
         return rate_limit_response(error)
 
     def error_page(status, title, message, next_url, next_label,
-                   secondary_url=None, secondary_label=None):
-        return render_template(
+                   secondary_url=None, secondary_label=None, status_code=None):
+        body = render_template(
             f'error/{status}.html',
             blocker_title=title,
             blocker_message=message,
@@ -51,7 +51,21 @@ def register_error_handlers(app):
             next_label=next_label,
             secondary_url=secondary_url,
             secondary_label=secondary_label,
-        ), status
+        )
+        status_code = status if status_code is None else status_code
+        if status_code == status:
+            return body, status
+        # Shared 5xx templates hard-code their status label.  Keep it honest
+        # when a handler needs a different (retryable) code.
+        response = current_app.response_class(
+            body, status=status_code, mimetype='text/html',
+        )
+        response.set_data(
+            response.get_data(as_text=True).replace(
+                f'>{status}<', f'>{status_code}<', 1,
+            )
+        )
+        return response
 
     @app.errorhandler(EntityNotFoundError)
     def handle_entity_not_found(error):
@@ -93,11 +107,13 @@ def register_error_handlers(app):
                                    request.path, error.message, error.profile)
         if is_api_path(request.path):
             return json_error(error.message, 503)
+        # Retryable by nature: HTML and JSON callers must see the same 503.
         return error_page(
             500, 'Workload execution failed',
             error.message or 'The requested computational workload could not be completed. Please try again shortly.',
             url_for('main.index'), 'Back to your dashboard',
             url_for('main.support'), 'Tell support',
+            status_code=503,
         )
 
     @app.errorhandler(RuachDomainError)

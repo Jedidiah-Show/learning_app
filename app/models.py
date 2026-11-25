@@ -1190,6 +1190,9 @@ class CommunityPost(db.Model):
     updated_at = db.Column(
         db.DateTime(timezone=True), default=utcnow, onupdate=utcnow, nullable=False
     )
+    # Set when a learner resets/deletes their account so the thread shape
+    # survives without keeping the author's content visible.
+    deleted_at = db.Column(db.DateTime(timezone=True), nullable=True)
     replies = db.relationship(
         'CommunityReply', backref='post', lazy=True, cascade='all, delete-orphan',
         order_by='CommunityReply.created_at',
@@ -1212,6 +1215,7 @@ class CommunityReply(db.Model):
     )
     body = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime(timezone=True), default=utcnow, nullable=False)
+    deleted_at = db.Column(db.DateTime(timezone=True), nullable=True)
     __table_args__ = (
         db.Index('idx_community_reply_post_created', 'post_id', 'created_at'),
         db.Index('idx_community_reply_user', 'user_id'),

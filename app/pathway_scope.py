@@ -45,6 +45,22 @@ def _completed_lesson_ids(user_id):
     return cache[user_id]
 
 
+def _completion_state(user_id, pathway_id):
+    """``(lesson ids, project module ids)`` completed in one pathway.
+
+    AI Engineering and the shared foundation record evidence in
+    ``LessonCompletion``/``CourseProject``; the ML pathway has its own tables
+    (see :func:`ml_completion_state`).  Every counting surface must go through
+    this helper so a completion in one discipline can never inflate the other.
+    """
+    if is_ml(pathway_id):
+        return ml_completion_state(user_id)
+    if normalize_pathway_id(pathway_id) in (None, 'shared-foundations'):
+        from app.foundations_pathway import foundation_completed_lesson_ids
+        return foundation_completed_lesson_ids(user_id), set()
+    return _completed_lesson_ids(user_id), _ai_project_modules(user_id)
+
+
 # The six Shared Foundations modules in the standalone manifest (sf.00–sf.05)
 # and the three foundation modules of the bundled manifest (00–02).
 FOUNDATION_MODULE_IDS = {'sf.00', 'sf.01', 'sf.02', 'sf.03', 'sf.04', 'sf.05'}
@@ -297,23 +313,10 @@ def pathway_modules(pathway_id, user_id=None):
     # assembled from them; the sf.* authoring manifest remains available for
     # evidence and passport grouping.
     if canonical == 'shared-foundations':
-        foundation = [
-            {**module, 'source': 'foundations',
-             'badge': f'Foundations · Module {module["number"]}'}
-            for module in foundation_course_modules()
-        ]
-        if user_id:
-            completed_lessons = _completed_lesson_ids(user_id)
-            for module in foundation:
-                lessons = module.get('lessons') or []
-                module['_completed_lessons'] = sum(
-                    1 for lesson in lessons if lesson['id'] in completed_lessons
-                )
-                module['_total_lessons'] = len(lessons)
-        return foundation
+        return foundation_course_modules(user_id)
 
-    # AI Engineering: modules 03–12 (foundation modules 00–02 live in Shared
-    # Foundations and are referenced via prerequisites).
+    # AI Engineering: only ai.* modules. Foundation progress is independent and
+    # never gates, injects or inflates AI lessons/projects.
     if canonical == 'ai-engineering':
         ai_modules = ai_specialization_modules()
         if user_id:
@@ -333,7 +336,8 @@ def pathway_modules(pathway_id, user_id=None):
         modules = []
         for module in pathway['modules']:
             lessons = [
-                {**lesson, 'module_id': module['id'], 'module_title': module['title']}
+                {**lesson, 'module_id': module['id'], 'module_title': module['title'],
+                 'source': 'ml'}
                 for lesson in module['lessons']
                 if lesson.get('status') == 'ready'
             ]
@@ -356,56 +360,74 @@ def pathway_modules(pathway_id, user_id=None):
                 'outcome': module.get('summary') or module.get('title', ''),
             })
         if user_id:
-            completed_lessons = _completed_lesson_ids(user_id)
+            # ML completions live in the ML-specific tables, never in the
+            # shared LessonCompletion/CourseProject tables.
+            completed_lessons, _ = _completion_state(user_id, 'machine-learning')
             for module in modules:
                 lessons = module.get('lessons') or []
                 module['_completed_lessons'] = sum(
-                    1 for lesson in lessons if lesson['id'] in completed_lessons
+                    1 for lesson in lessons
+                    if lesson.get('id') in completed_lessons
                 )
                 module['_total_lessons'] = len(lessons)
         return modules
 
     if canonical is None:
-        # Undecided learners are foundations learners: the common course only.
-        modules = [
-            {**module, 'source': 'foundations',
-             'badge': f'Foundations · Module {module["number"]}'}
-            for module in foundation_course_modules()
-        ]
-        if user_id:
-            completed_lessons = _completed_lesson_ids(user_id)
-            for module in modules:
-                lessons = module.get('lessons') or []
-                module['_completed_lessons'] = sum(
-                    1 for lesson in lessons if lesson['id'] in completed_lessons
-                )
-                module['_total_lessons'] = len(lessons)
-        return modules
+        # Undecided learners see the canonical Shared Foundations catalogue.
+        return foundation_course_modules(user_id)
 
     # Unknown pathway_id — return empty list
     return []
 
 
 def ai_specialization_modules():
-    """The AI Engineering specialization modules (03–12) as authored.
-
-    The three shared-foundation modules (00–02) are deliberately not part of
-    this list: the foundation is its own pathway and both specializations draw
-    on it.  Module 12 (the capstone) belongs to the AI pathway.
-    """
+    """The AI Engineering specialization modules (all non-foundation modules)."""
     return [
         module for module in all_modules()
-        if not module['id'].startswith(('00', '01', '02'))
+        if not module['id'].startswith('sf.')
         and not module['id'].startswith('mle.')
+        and module['id'] not in FOUNDATION_COURSE_MODULE_IDS
     ]
 
 
-def foundation_course_modules():
-    """The shared foundation modules of the main course (00–02)."""
-    return [
-        module for module in all_modules()
-        if module['id'] in FOUNDATION_COURSE_MODULE_IDS
-    ]
+def foundation_course_modules(user_id=None):
+    """The ONE learner-facing Shared Foundations catalogue: six sf.* modules.
+
+    Modules and lessons come from the canonical registry/content manifest;
+    progress comes only from ``FoundationLessonProgress``. The legacy
+    00–02 course IDs are historical evidence aliases, never displayed as a
+    competing foundation curriculum and never used to gate AI or ML progress.
+    """
+    from app.foundations_pathway import (
+        foundation_completed_lesson_ids, shared_foundations_lessons,
+    )
+
+    content = shared_foundations_lessons()
+    completed = foundation_completed_lesson_ids(user_id) if user_id else set()
+    modules = []
+    for module in foundation_modules():
+        lessons = [
+            {**lesson, 'source': 'foundations'}
+            for lesson in content if lesson['module_id'] == module['id']
+        ]
+        entry = {
+            **module,
+            'lessons': lessons,
+            'source': 'foundations',
+            'badge': f'Foundations · Module {module["number"]}',
+            'outcomes': module.get('competencies') or [],
+            'readiness_check': 'Complete the published lessons in order; results stay within Shared Foundations.',
+            'resources': {},
+            'project': '',
+            'project_rubric': [],
+        }
+        if user_id:
+            entry['_completed_lessons'] = sum(
+                1 for lesson in lessons if lesson['id'] in completed
+            )
+            entry['_total_lessons'] = len(lessons)
+        modules.append(entry)
+    return modules
 
 
 def ml_course_modules():
@@ -437,11 +459,13 @@ def course_modules(pathway_id, user_id=None):
         modules = []
 
     if user_id:
-        completed_lessons = _completed_lesson_ids(_user_id(user_id))
+        # An ML catalogue must count ML-table evidence; a foundation or AI
+        # catalogue keeps reading the shared completion tables.
+        completed_lessons, _ = _completion_state(_user_id(user_id), canonical)
         for module in modules:
             lessons = module.get('lessons') or []
             module['_completed_lessons'] = sum(
-                1 for lesson in lessons if lesson['id'] in completed_lessons
+                1 for lesson in lessons if lesson.get('id') in completed_lessons
             )
             module['_total_lessons'] = len(lessons)
     return modules
@@ -461,16 +485,17 @@ def journey_modules(pathway_id, user_id=None):
     if canonical == 'shared-foundations':
         modules = foundation_course_modules()
     else:
-        # Unknown or undecided destinations walk the AI journey: foundations
-        # first, then the AI specialization (both specialisations draw on the
-        # same foundation).
-        modules = foundation_course_modules() + ai_specialization_modules()
+        # AI Engineering is an independent journey. Foundations are their own
+        # standalone pathway and must never gate or inflate AI progress.
+        modules = ai_specialization_modules()
     if user_id:
-        completed_lessons = _completed_lesson_ids(_user_id(user_id))
+        # An ML catalogue must count ML-table evidence; a foundation or AI
+        # catalogue keeps reading the shared completion tables.
+        completed_lessons, _ = _completion_state(_user_id(user_id), canonical)
         for module in modules:
             lessons = module.get('lessons') or []
             module['_completed_lessons'] = sum(
-                1 for lesson in lessons if lesson['id'] in completed_lessons
+                1 for lesson in lessons if lesson.get('id') in completed_lessons
             )
             module['_total_lessons'] = len(lessons)
     return modules
@@ -494,6 +519,11 @@ def pathway_lessons(pathway_id, user_id=None):
     for module in modules:
         for lesson in module.get('lessons', []):
             entry = dict(lesson)
+            # The ML manifest carries its source on the module; expose it on
+            # each lesson too so lesson_href() (and catalog templates) route an
+            # mle.* lesson to the pathway rather than the AI lesson page.
+            if entry.get('source') is None and module.get('source') == 'ml':
+                entry['source'] = 'ml'
             entry['_ordinal'] = len(lessons) + 1
             entry['_module'] = module
             lessons.append(entry)
@@ -561,8 +591,10 @@ def foundation_evidence(user_id):
             'total_lessons': len(lessons),
             'completed_projects': done_projects,
             'complete': complete,
-            'ai_satisfied': complete,
-            'ml_satisfied': complete,
+            # Evidence reuse is explicit and per-pathway: completing a
+            # foundation never auto-credits either specialisation.
+            'ai_satisfied': False,
+            'ml_satisfied': False,
             'evidence_source': 'lesson_completion' if complete else 'none',
         }
     return evidence
@@ -591,35 +623,28 @@ def _foundation_state_for(modules, completed_lessons, completed_projects):
 
 
 def foundation_completion_state(user_id):
-    """Whether the learner has completed the shared foundation.
+    """Canonical Shared Foundations progress, isolated from both specialisations.
 
-    Shared foundation evidence is reusable across both specialisations, so
-    either canonical manifestation counts: the standalone Shared Foundations
-    manifest (``sf.*``) or the legacy foundation modules (00-02) inside the
-    original AI course.  The learner's more advanced representation is
-    reported, and completion of either opens the pathway-change gate.
+    Six sf.* modules, 21 lessons, counted only from FoundationLessonProgress.
+    Legacy 00–02 evidence remains in the database for historical/credential
+    record integrity but is not a competing curriculum and cannot satisfy AI
+    or ML requirements.
     """
-    from app.models import CourseProject
-
+    from app.foundations_pathway import (
+        foundation_completed_lesson_ids, shared_foundations_lessons,
+    )
     uid = _user_id(user_id)
-    completed_lessons = _completed_lesson_ids(uid)
-    completed_projects = {
-        row.module_id for row in CourseProject.query.filter_by(
-            user_id=uid, completed=True
-        ).all()
+    completed = foundation_completed_lesson_ids(uid)
+    lessons = shared_foundations_lessons()
+    done = sum(1 for lesson in lessons if lesson['id'] in completed)
+    total = len(lessons)
+    return {
+        'completed_lessons': done,
+        'total_lessons': total,
+        'completed_projects': 0,
+        'total_projects': 0,
+        'complete': bool(total and done == total),
     }
-    shared = _foundation_state_for(
-        foundation_modules(), completed_lessons, completed_projects)
-    legacy = _foundation_state_for(
-        foundation_course_modules(), completed_lessons, completed_projects)
-
-    def progress_ratio(state):
-        return (
-            state['completed_lessons'] + state['completed_projects']
-        ) / max(1, state['total_lessons'] + state['total_projects'])
-
-    chosen = shared if progress_ratio(shared) >= progress_ratio(legacy) else legacy
-    return {**chosen, 'complete': shared['complete'] or legacy['complete']}
 
 
 def foundation_modules():
@@ -674,17 +699,10 @@ def pathway_pace(user_id, pathway_id, weekly_hours=None):
     ):
         weekly_hours = 6
 
-    # Get completed lessons for this user
-    completed_lessons = _completed_lesson_ids(user_id)
-
-    # Get completed project modules
-    from app.models import CourseProject
-    completed_projects = {
-        row.module_id
-        for row in CourseProject.query.filter_by(
-            user_id=user_id, completed=True
-        ).all()
-    }
+    # Read evidence from the tables that own this pathway.  ML progress is
+    # recorded in MLSpecialization* tables (scoped by pathway_id); reading the
+    # shared tables here used to report zero lessons/projects for ML learners.
+    completed_lessons, completed_projects = _completion_state(user_id, pathway_id)
 
     total_hours = 0.0
     total_lessons = 0
@@ -893,11 +911,22 @@ def ml_completion_state(user_id):
 
     ML completions live in their own tables — never in ``LessonCompletion`` or
     ``CourseProject`` — which is what keeps AI and ML progress independent.
+    Both tables are multi-pathway, so every query is scoped by ``pathway_id``:
+    a row written for a different ML pathway variant must not credit this one.
     """
+    from flask import has_request_context, g
     from app.ml_pathway import PATHWAY_ID
     from app.models import MLSpecializationLessonCompletion, MLSpecializationProject
 
     uid = _user_id(user_id)
+    cache = None
+    if has_request_context():
+        cache = getattr(g, '_ml_completion_state_cache', None)
+        if cache is None:
+            cache = {}
+            g._ml_completion_state_cache = cache
+        if uid in cache:
+            return cache[uid]
     completed_lessons = {
         row.lesson_id for row in MLSpecializationLessonCompletion.query.filter_by(
             user_id=uid, pathway_id=PATHWAY_ID
@@ -908,7 +937,10 @@ def ml_completion_state(user_id):
             user_id=uid, pathway_id=PATHWAY_ID, completed=True
         ).all()
     }
-    return completed_lessons, completed_projects
+    state = (completed_lessons, completed_projects)
+    if cache is not None:
+        cache[uid] = state
+    return state
 
 
 # --------------------------------------------------------------------------

@@ -1,8 +1,10 @@
 import ast
+import json
 import os
 import re
 import tempfile
 import unittest
+from pathlib import Path
 
 from app import create_app, db
 from app.curriculum import all_lessons, all_modules
@@ -68,6 +70,15 @@ class PracticeWorkspaceTests(unittest.TestCase):
                     project='{}',
                     completed=True,
                 ))
+            # Completed lessons stay revisitable under the sequential unlock
+            # rules, so the target itself must be marked complete too.
+            db.session.add(LessonCompletion(
+                user_id=user.id,
+                lesson_id=lesson_id,
+                subject_id=lesson['module_id'],
+                day_number=lesson['_ordinal'],
+                completed=True,
+            ))
             db.session.commit()
 
     def test_curated_exercises_are_available_for_selected_lessons(self):
@@ -116,13 +127,37 @@ class PracticeWorkspaceTests(unittest.TestCase):
             '0.06', '0.07', '0.08', '0.09', '0.10', '0.11',
             '3.16', '3.17', '3.18', '6.18', '7.18',
         }
-        self.assertEqual(
-            {
-                exercise['lesson_id']
-                for exercise in all_practice_exercises().values()
-            },
-            expected_python_lessons | expected_guided_lessons,
+        # Practice also covers the independent ML pathway; those lesson ids
+        # live in the ML manifest rather than the shared AI curriculum.
+        ml_manifest = Path(__file__).resolve().parents[1] / 'app' / 'data' / 'machine_learning_pathway.json'
+        with ml_manifest.open(encoding='utf-8') as source:
+            ml_pathway = json.load(source)
+        expected_ml_lessons = {
+            lesson['id']
+            for module in ml_pathway['modules']
+            for lesson in module.get('lessons', [])
+        }
+        actual_lesson_ids = {
+            exercise['lesson_id']
+            for exercise in all_practice_exercises().values()
+        }
+        # Every historic AI/guided exercise must still be present; the only
+        # additions are exercises attached to real ML pathway lessons.
+        self.assertTrue(
+            (expected_python_lessons | expected_guided_lessons) <= actual_lesson_ids
         )
+        self.assertTrue(actual_lesson_ids <= (
+            expected_python_lessons | expected_guided_lessons | expected_ml_lessons
+        ))
+        ml_exercise_ids = {
+            exercise['lesson_id']
+            for exercise in all_practice_exercises().values()
+            if exercise['lesson_id'].startswith('mle.')
+        }
+        self.assertTrue(ml_exercise_ids)
+        self.assertEqual(actual_lesson_ids - (
+            expected_python_lessons | expected_guided_lessons
+        ), ml_exercise_ids)
         for exercise in all_practice_exercises().values():
             with self.subTest(exercise=exercise['id']):
                 compile(
@@ -146,13 +181,26 @@ class PracticeWorkspaceTests(unittest.TestCase):
             self.assertTrue(set(exercise['prerequisites']).issubset(exercises))
 
         self.register('cataloglearner')
+        # The library is scoped to the learner's active pathway; the legacy
+        # lesson ids used by the exercise fixtures live in the AI catalogue.
+        from app.models import LearnerPathwayEnrollment
+        from app.pathway_scope import seed_learning_pathways
+        with self.app.app_context():
+            seed_learning_pathways()
+            user = User.query.filter_by(username='cataloglearner').one()
+            db.session.add(LearnerPathwayEnrollment(
+                learner_id=user.id, pathway_id='ai-engineering', status='ENROLLED',
+            ))
+            db.session.commit()
         response = self.client.get(
             '/practice?difficulty=intermediate&skill=python'
         )
         self.assertEqual(response.status_code, 200)
         html = response.get_data(as_text=True)
-        self.assertIn('Find the cheapest model per provider', html)
-        self.assertIn('Score one case safely', html)
+        found = re.search(r'(\d+) exercises found', html)
+        self.assertIsNotNone(found)
+        self.assertGreater(int(found.group(1)), 0)
+        self.assertIn('Enforce an agent tool-call budget', html)
         self.assertNotIn('Run your first tiny Python program', html)
         self.assertIn('apply filters', html.lower())
 
@@ -170,7 +218,7 @@ class PracticeWorkspaceTests(unittest.TestCase):
         html = practice_lesson.get_data(as_text=True)
         self.assertIn('data-practice-workspace', html)
         self.assertIn('Open practice workspace', html)
-        self.assertIn('Pilot notice: daily aggregate counts', html)
+        self.assertIn('Daily aggregate counts', html)
         self.assertIn('data-usage-url="/api/lessons/practice-usage"', html)
         self.assertIn('id="practice-sandbox"', html)
         self.assertIn('sandbox="allow-scripts"', html)

@@ -19,34 +19,53 @@ The registry is verified against the schema by
 without deciding what happens to it.
 """
 
+from datetime import datetime
+
 from app import db
 from app.models import (
-    AIBackgroundJob, AdminAuditLog, AppConfigOverride, CalendarEvent,
+    AIAgentExecutionRecord, AIBackgroundJob, AIEvaluationRecord,
+    AIPromptVersion, AIRetrievalConfiguration, AISpecializationProject,
+    AdminAuditLog, AIUsageRecord, ArenaRecommendationDismissal, CalendarEvent,
     CommunityPost, CommunityReply, CoursePlan, CourseProject, Credential,
-    GeminiUsageBucket, LearningProject, LessonBookmark, LessonCompletion,
-    LessonNote, LessonTaskProgress, MLSpecializationCredential,
+    EngineeringLabCompletion, FoundationLessonProgress, GeminiUsageBucket,
+    LabDebrief, LearnerPathwayEnrollment, LeaderboardScore, LearningProject,
+    LessonBookmark, LessonCompletion, LessonNote, LessonTaskProgress,
+    MLBackgroundJob, MLSpecializationCredential,
     MLSpecializationLessonCompletion, MLSpecializationProject,
     MLProjectExperiment, PasswordResetToken, PathwayChangeRequest,
     PhoneVerificationCode, PracticeWorkspace, Progress, ProficiencyTest,
-    QuizResult, ReviewItem, Submission, StudySession, SubjectCurriculum,
-    SupportRequest, TutorConversation, User, UserConfig, UserProfilePhoto,
-    UserSchedule, UserSkillProgress, UserSubject, UserSubjectConfig,
-    VideoProgress, utcnow,
+    ProjectEvaluation, ProjectLifecycleEvent, ProjectMilestone, QuizResult,
+    ReviewItem, SkillVerification, Submission, StudySession,
+    SubjectCurriculum, SupportRequest, TutorConversation, User, UserConfig,
+    UserProfilePhoto, UserSchedule, UserSkillProgress, UserSubject,
+    UserSubjectConfig, VideoProgress, WorkspaceProject, utcnow,
 )
 
 
 # Rows removed completely when a learner resets or deletes their account.
 DELETE_ON_RESET = (
+    AIAgentExecutionRecord,
     AIBackgroundJob,
+    AIEvaluationRecord,
+    AIPromptVersion,
+    AIRetrievalConfiguration,
+    AISpecializationProject,
+    ArenaRecommendationDismissal,
     CalendarEvent,
     CoursePlan,
     CourseProject,
     Credential,
+    EngineeringLabCompletion,
+    FoundationLessonProgress,
+    LabDebrief,
+    LeaderboardScore,
+    LearnerPathwayEnrollment,
     LearningProject,
     LessonBookmark,
     LessonCompletion,
     LessonNote,
     LessonTaskProgress,
+    MLBackgroundJob,
     MLSpecializationCredential,
     MLSpecializationLessonCompletion,
     MLSpecializationProject,
@@ -57,6 +76,9 @@ DELETE_ON_RESET = (
     PracticeWorkspace,
     Progress,
     ProficiencyTest,
+    ProjectEvaluation,
+    ProjectLifecycleEvent,
+    ProjectMilestone,
     QuizResult,
     ReviewItem,
     Submission,
@@ -71,6 +93,7 @@ DELETE_ON_RESET = (
     UserSubject,
     UserSubjectConfig,
     VideoProgress,
+    WorkspaceProject,
 )
 
 # Rows kept as a visible tombstone instead of disappearing.
@@ -88,7 +111,26 @@ RETAIN_ON_RESET = {
     AdminAuditLog: (
         'The administrator audit trail is retained for accountability.'
     ),
+    AIUsageRecord: (
+        'Provider-call telemetry is privacy-conscious audit data and is kept '
+        'for operational accountability.'
+    ),
+    SkillVerification: (
+        'Skill verification evidence is preserved forever so competency '
+        'decisions remain traceable.'
+    ),
 }
+
+# A few ownership columns are named for the role rather than for the user.
+OWNER_COLUMNS = {
+    LearnerPathwayEnrollment: 'learner_id',
+}
+
+
+def owner_column(model):
+    """Return the column identifying the learner that owns ``model`` rows."""
+    return getattr(model, OWNER_COLUMNS.get(model, 'user_id'))
+
 
 # Every learner-owned model in the schema, used by the drift test.
 USER_OWNED_MODELS = tuple(
@@ -108,14 +150,14 @@ def purge_user_data(user_id, session=None):
     session = session or db.session
     removed = {}
     for model in DELETE_ON_RESET:
-        count = session.query(model).filter(model.user_id == user_id).delete(
-            synchronize_session=False,
-        )
+        count = session.query(model).filter(
+            owner_column(model) == user_id
+        ).delete(synchronize_session=False)
         if count:
             removed[model.__tablename__] = count
     for model in TOMBSTONE_ON_RESET:
         rows = session.query(model).filter(
-            model.user_id == user_id, model.deleted_at.is_(None),
+            owner_column(model) == user_id, model.deleted_at.is_(None),
         ).all()
         for row in rows:
             row.deleted_at = utcnow()
@@ -146,7 +188,7 @@ def export_user_data(user_id, session=None):
     for model in USER_OWNED_MODELS:
         if model in RETAIN_ON_RESET:
             continue
-        rows = session.query(model).filter(model.user_id == user_id).all()
+        rows = session.query(model).filter(owner_column(model) == user_id).all()
         if not rows:
             continue
         export[model.__tablename__] = [_serialize(row) for row in rows]

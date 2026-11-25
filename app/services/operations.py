@@ -15,7 +15,7 @@ import json
 import os
 import re
 import socket
-from datetime import timedelta, timezone
+from datetime import datetime, timedelta, timezone
 
 from flask import current_app, has_app_context
 
@@ -57,6 +57,19 @@ def _as_utc(value):
     if value is not None and value.tzinfo is None:
         return value.replace(tzinfo=timezone.utc)
     return value
+
+
+def _parse_iso_utc(value):
+    """Parse a heartbeat timestamp into an aware UTC datetime, or None."""
+    if not isinstance(value, str) or not value:
+        return None
+    try:
+        parsed = datetime.fromisoformat(value.replace('Z', '+00:00'))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed
 
 
 def record_heartbeat(
@@ -213,6 +226,50 @@ def evaluate_alerts(snapshot: dict) -> list[dict]:
         alerts.append({
             'severity': 'warning', 'code': 'ai_lease_stale',
             'message': f"{queue['stale_running']} AI jobs have stale leases.",
+        })
+
+    # The judge worker owns a dedicated heartbeat table, so a dead judge never
+    # appears in the generic ServiceHeartbeat rows above. Derive its health
+    # from the already-present snapshot (no new columns or external polling).
+    judge = (snapshot.get('workers') or {}).get('judge') or {}
+    judge_worker = judge.get('worker') or {}
+    stale_after = _config_int('HEARTBEAT_STALE_SECONDS', DEFAULT_STALE_SECONDS)
+    judge_last_seen = _parse_iso_utc(judge_worker.get('last_seen_at'))
+    if judge_worker and judge_last_seen is None:
+        alerts.append({
+            'severity': 'warning', 'code': 'judge_heartbeat_invalid',
+            'message': 'Judge worker heartbeat has no usable timestamp.',
+        })
+    elif judge_last_seen is not None:
+        age = (utcnow() - judge_last_seen).total_seconds()
+        if age > stale_after:
+            alerts.append({
+                'severity': 'warning', 'code': 'judge_worker_stale',
+                'message': (
+                    f"Judge worker has not reported for {max(0, int(age))} seconds."
+                ),
+            })
+        if judge_worker.get('status') in {'error', 'degraded', 'stopped'}:
+            alerts.append({
+                'severity': 'warning', 'code': 'judge_worker_unhealthy',
+                'message': f"Judge worker reported {judge_worker['status']}.",
+            })
+    if judge.get('stale'):
+        alerts.append({
+            'severity': 'warning', 'code': 'judge_submissions_stale',
+            'message': f"{judge['stale']} judge submissions have stale leases.",
+        })
+
+    judge_queue = (snapshot.get('queues') or {}).get('judge') or {}
+    if judge_queue.get('pending', 0) >= depth_limit:
+        alerts.append({
+            'severity': 'warning', 'code': 'judge_queue_backlog',
+            'message': f"Judge queue depth is {judge_queue['pending']}.",
+        })
+    if queue.get('dead_letter', 0):
+        alerts.append({
+            'severity': 'warning', 'code': 'ai_job_dead_letter',
+            'message': f"{queue['dead_letter']} AI jobs reached the dead letter queue.",
         })
     return alerts
 

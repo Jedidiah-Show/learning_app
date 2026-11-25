@@ -17,7 +17,7 @@
   </section>
   {% endfor %}
 
-  {% if practice_exercises %}<div class="mt-5"><a href="#practice-anchor" class="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-800 hover:bg-indigo-100">💻 Practice this lesson</a></div>{% endif %}
+  {% if practice_exercises %}<div class="mt-5"><a href="#practice-anchor" data-open-practice class="inline-flex items-center gap-2 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-2 text-sm font-semibold text-indigo-800 hover:bg-indigo-100">💻 Practice this lesson</a></div>{% endif %}
   <section class="mt-5 rounded-2xl border border-indigo-100 bg-indigo-50 p-6">
     <h3 class="text-lg font-bold">Apply it</h3>
     <p class="mt-2 leading-7 text-slate-700">{{ lesson.task }}</p>
@@ -107,7 +107,9 @@ const saveNotes = document.getElementById('save-notes');
 const notesArea = document.getElementById('lesson-notes');
 if (saveNotes && notesArea) {
   saveNotes.addEventListener('click', async () => {
-    const lessonId = bookmarkBtn ? bookmarkBtn.dataset.lessonId : '';
+    // Notes and bookmarks share this lesson id; do not couple the note handler
+    // to the bookmark button's dataset (the button may be absent or re-rendered).
+    const lessonId = mlLessonId;
     const status = document.getElementById('notes-status');
     saveNotes.disabled = true;
     status.textContent = 'Saving notes…';

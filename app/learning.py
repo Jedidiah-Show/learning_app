@@ -174,18 +174,18 @@ def lesson_is_available(user, lesson_id, completed=None, completed_projects=None
             has_ml = True
         else:
             has_ai = True
-    foundation_ids = {
-        module['id'] for module in foundation_course_modules()
-    }
-    if ai_lesson is not None and ai_lesson['module_id'] not in foundation_ids:
-        # The AI specialization opens only after the shared foundation is
-        # complete — the foundation is its own pathway, and it is the gate.
-        from app.pathway_scope import foundation_completion_state
-        foundation_done = foundation_completion_state(uq).get('complete')
-        if not foundation_done:
-            return False
-        if not has_ai:
-            return False
+    from app.pathway_scope import FOUNDATION_COURSE_MODULE_IDS
+    is_foundation_lesson = (
+        ai_lesson is not None
+        and (
+            str(lesson_id).startswith('sf.')
+            or ai_lesson.get('module_id') in FOUNDATION_COURSE_MODULE_IDS
+        )
+    )
+    if ai_lesson is not None and not is_foundation_lesson and not has_ai:
+        # AI lessons require AI enrolment only. Shared Foundations progress
+        # is standalone and must never gate or inflate the AI pathway.
+        return False
     if ml_lesson is not None and not has_ml:
         return False
 
@@ -206,14 +206,27 @@ def lesson_is_available(user, lesson_id, completed=None, completed_projects=None
     from app.pathway_scope import (
         ai_specialization_modules, foundation_course_modules, ml_course_modules,
     )
-    foundation_ids = {module['id'] for module in foundation_course_modules()}
-    if ai_lesson is not None:
-        module_id = ai_lesson['module_id']
-        pointer_modules = (
-            foundation_course_modules()
-            if module_id in foundation_ids
-            else ai_specialization_modules()
+    if is_foundation_lesson:
+        if str(lesson_id).startswith('sf.'):
+            from app.foundations_pathway import foundation_lesson_is_open
+            return foundation_lesson_is_open(uq, lesson_id)
+        # Historical 00–02 lessons keep their own study order and never feed
+        # AI or ML counters. Their evidence is read from the legacy shared
+        # completion table, which is separate from pathway progress.
+        legacy_modules = [
+            module for module in all_modules()
+            if module['id'] in FOUNDATION_COURSE_MODULE_IDS
+        ]
+        action = _next_course_action(
+            completed_lesson_ids(uq), set(), modules=legacy_modules,
         )
+        return (
+            action is not None
+            and action.get('type') == 'lesson'
+            and action.get('lesson_id') == lesson_id
+        )
+    if ai_lesson is not None:
+        pointer_modules = ai_specialization_modules()
     else:
         pointer_modules = ml_course_modules()
     action = _next_course_action(

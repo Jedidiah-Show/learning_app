@@ -21,10 +21,48 @@ from app.course_data import (
     PROJECT_BY_ID, REQUIRED_PROJECTS, TRACKS, track_for, track_label,
 )
 from app.models import CoursePlan, CourseProject, MLSpecializationProject
+from app.ml_pathway import PATHWAY_ID
 from app.project_verification import VerificationError, verify_checks
 from app.request_data import get_json_object
 
 projects_bp = Blueprint('projects', __name__)
+
+
+def _project_passes_completion_gate(evaluation, evaluation_source, checks_verified):
+    """The single gate that may mark a shared course project completed.
+
+    Both the review submission endpoint and the GitHub webhook use this exact
+    rule: CI must be verified, the score must come from AI review (never a local
+    fallback), the total must be at least 70, and *every* rubric criterion must
+    reach 50.  The webhook previously used score >= 70 alone and could complete
+    a project whose rubric had gaps or whose evaluation had been unavailable.
+    """
+    # Legacy evaluations were stored before the source field existed; a
+    # missing source means an AI review from that era.  An explicit non-AI
+    # source (local/outage fallback) can never satisfy the gate.
+    if (
+        not checks_verified
+        or evaluation_source not in ('ai', None)
+        or not isinstance(evaluation, dict)
+    ):
+        return False
+    score = evaluation.get('score')
+    if (
+        not isinstance(score, int) or isinstance(score, bool)
+        or not 70 <= score <= 100
+    ):
+        return False
+    criteria = evaluation.get('criterion_feedback') or []
+    if not isinstance(criteria, list):
+        return False
+    return all(
+        isinstance(item, dict)
+        and isinstance(item.get('score'), int)
+        and not isinstance(item.get('score'), bool)
+        and 50 <= item['score'] <= 100
+        for item in criteria
+    )
+
 
 # Module 0 delivers a glossary plus an architecture sketch, so it gets the docs
 # kit; every later module gets a code kit shaped by its project brief.
@@ -320,7 +358,7 @@ def project_page():
         pathway = machine_learning_pathway()
         project_rows = {
             row.module_id: row for row in MLSpecializationProject.query.filter_by(
-                user_id=current_user.id
+                user_id=current_user.id, pathway_id=PATHWAY_ID
             ).all()
         }
         all_progress = ml_module_progress(current_user.id)
@@ -901,12 +939,8 @@ def submit_module_project(module_id):
     # A saved submission is not automatically a passed project. Learners can
     # revise low scoring work and retry; AI outages and failing/missing checks
     # never unlock a module.
-    record.completed = bool(
-        record.checks_verified
-        and evaluation_source == 'ai'
-        and evaluation.get('score') is not None
-        and evaluation['score'] >= 70
-        and all(item['score'] >= 50 for item in evaluation.get('criterion_feedback', []))
+    record.completed = _project_passes_completion_gate(
+        evaluation, evaluation_source, record.checks_verified
     )
     if record.completed:
         from app.services.skill_passport import (
@@ -973,7 +1007,7 @@ def _build_portfolio_data(user, domain_filter=None):
             module['id']: module for module in course_modules(destination)
         }
         for item in MLSpecializationProject.query.filter_by(
-            user_id=user.id, completed=True
+            user_id=user.id, pathway_id=PATHWAY_ID, completed=True
         ).order_by(MLSpecializationProject.updated_at.desc()).all():
             module = scoped_modules.get(item.module_id)
             if not module:
@@ -1133,7 +1167,14 @@ def github_webhook():
             if parsed.get('checks_url'):
                 project.checks_url = parsed['checks_url']
             eval_data = project.get_evaluation()
-            if eval_data and eval_data.get('score', 0) and eval_data.get('score', 0) >= 70:
+            # A verified CI run only supplies the checks half of the gate.  It
+            # must not bypass the AI-review/rubric requirements applied to a
+            # normal submission (criterion_gate, local fallback, etc.).
+            if _project_passes_completion_gate(
+                eval_data,
+                eval_data.get('evaluation_source') if isinstance(eval_data, dict) else None,
+                project.checks_verified,
+            ):
                 project.completed = True
             matched.append(project.id)
             affected_user_ids.add(project.user_id)

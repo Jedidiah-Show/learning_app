@@ -198,11 +198,44 @@ def set_cached_response(
             pass
 
 
-def clear_ai_cache() -> None:
-    """Purge all entries from the in-memory AI cache."""
+def purge_shared_ai_cache() -> int:
+    """Delete RUACH-owned AI cache entries from shared Redis, if configured.
+
+    Uses bounded SCAN batches (never KEYS) and fails open: a Redis outage must
+    not break cache administration or provider calls. Returns the number of
+    keys deleted, or 0 when no shared cache is configured/reachable.
+    """
+    client = _redis_client()
+    if client is None:
+        return 0
+    deleted = 0
+    try:
+        batch = []
+        for key in client.scan_iter(match=REDIS_KEY_PREFIX + '*', count=100):
+            batch.append(key)
+            if len(batch) >= 100:
+                deleted += int(client.delete(*batch) or 0)
+                batch = []
+        if batch:
+            deleted += int(client.delete(*batch) or 0)
+    except Exception:
+        # Shared-cache purge is best-effort; local state is still cleared.
+        return deleted
+    return deleted
+
+
+def clear_ai_cache(*, include_shared: bool = False) -> None:
+    """Purge local AI cache state, optionally the shared Redis cache too.
+
+    Operators can run ``flask clear-ai-cache --shared`` to purge both stores
+    without adding an HTTP endpoint. The default stays local-only so ordinary
+    test/setup teardown never touches a shared deployment cache.
+    """
     with _CACHE_LOCK:
         _CACHE.clear()
         _SEMANTIC_CACHE.clear()
+    if include_shared:
+        purge_shared_ai_cache()
 
 
 def cache_stats() -> Dict[str, Any]:

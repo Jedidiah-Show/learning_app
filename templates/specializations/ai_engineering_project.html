@@ -13,29 +13,30 @@
     <p class="mt-2 text-sm text-slate-600">{{ module.description }}</p>
 
     <form id="project-form" action="{{ url_for('ai_specialization.submit_project', module_id=module.id) }}" method="POST" class="mt-6 space-y-4" novalidate>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
       <div>
-        <label class="block text-sm font-medium text-slate-700">Problem statement</label>
-        <textarea required name="problem_statement" rows="4" minlength="40" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ submission.problem_statement or '' }}</textarea>
+        <label for="problem-statement" class="block text-sm font-medium text-slate-700">Problem statement</label>
+        <textarea id="problem-statement" required name="problem_statement" rows="4" minlength="40" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ submission.problem_statement or '' }}</textarea>
         <p class="mt-1 text-xs text-slate-500">The problem the project solves, for whom, and how success is recognized (40–12000 characters).</p>
       </div>
       <div>
-        <label class="block text-sm font-medium text-slate-700">Reflection</label>
-        <textarea required name="reflection" rows="5" minlength="80" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ submission.reflection or '' }}</textarea>
+        <label for="reflection" class="block text-sm font-medium text-slate-700">Reflection</label>
+        <textarea id="reflection" required name="reflection" rows="5" minlength="80" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ submission.reflection or '' }}</textarea>
         <p class="mt-1 text-xs text-slate-500">What you built, the approach you took, and what you learned (80–12000 characters).</p>
       </div>
       <div>
-        <label class="block text-sm font-medium text-slate-700">Architecture decisions</label>
-        <textarea name="architecture_decisions" rows="5" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ submission.architecture_decisions or '' }}</textarea>
+        <label for="architecture-decisions" class="block text-sm font-medium text-slate-700">Architecture decisions</label>
+        <textarea id="architecture-decisions" name="architecture_decisions" rows="5" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500">{{ submission.architecture_decisions or '' }}</textarea>
         <p class="mt-1 text-xs text-slate-500">Model choices, retrieval strategy, agent design, cost/latency trade-offs.</p>
       </div>
       <div>
-        <label class="block text-sm font-medium text-slate-700">API contracts</label>
-        <textarea name="api_contracts" rows="5" spellcheck="false" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 font-mono text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder='[{"method": "POST", "path": "/api/…", "request": {…}, "response": {…}}]'>{{ submission.api_contracts or '' }}</textarea>
+        <label for="api-contracts" class="block text-sm font-medium text-slate-700">API contracts</label>
+        <textarea id="api-contracts" name="api_contracts" rows="5" spellcheck="false" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 font-mono text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder='[{"method": "POST", "path": "/api/…", "request": {…}, "response": {…}}]'>{{ submission.api_contracts or '' }}</textarea>
         <p class="mt-1 text-xs text-slate-500">The endpoints your system exposes, or consumes: method, path, request and response shapes, error model. JSON or fenced text.</p>
       </div>
       <div>
-        <label class="block text-sm font-medium text-slate-700">Deployment evidence</label>
-        <textarea name="deployment_evidence" rows="4" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="deployment URL, image tag, health check output, runbook link…">{{ submission.deployment_evidence or '' }}</textarea>
+        <label for="deployment-evidence" class="block text-sm font-medium text-slate-700">Deployment evidence</label>
+        <textarea id="deployment-evidence" name="deployment_evidence" rows="4" class="mt-1 block w-full rounded-lg border border-slate-300 p-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" placeholder="deployment URL, image tag, health check output, runbook link…">{{ submission.deployment_evidence or '' }}</textarea>
         <p class="mt-1 text-xs text-slate-500">For deployment-focused modules: where the system runs and the evidence it is operating. Optional otherwise.</p>
       </div>
       <button type="submit" class="inline-flex rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800">Save project draft</button>
@@ -130,6 +131,9 @@
 <script>
 (function () {
   const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content;
+  // Every value below comes from stored API records, so escape it before it
+  // becomes markup (the same pattern used on the ML project workbench).
+  const escapeHtml = (value) => String(value ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
   function api(path, body) {
     const headers = { 'Content-Type': 'application/json' };
     if (csrfToken) headers['X-CSRF-Token'] = csrfToken;
@@ -142,16 +146,16 @@
     }).catch(err => { el.innerHTML = '<p class="text-xs text-red-600">Unable to load.</p>'; console.error(err); });
   }
   function row(label, value) {
-    return `<p class="text-xs"><span class="font-medium text-slate-700">${label}:</span> ${value || '—'}</p>`;
+    return `<p class="text-xs"><span class="font-medium text-slate-700">${escapeHtml(label)}:</span> ${escapeHtml(value) || '—'}</p>`;
   }
   list('/api/ai-engineering/prompt-versions', document.getElementById('prompt-versions'), r =>
-    `<div class="border-b border-slate-100 pb-2 last:border-0"><p class="text-xs text-slate-500">v${r.version} · ${r.created_at || ''}</p><p class="text-xs truncate max-w-[34rem]">${(r.prompt_content || '').slice(0, 200)}</p></div>`);
+    `<div class="border-b border-slate-100 pb-2 last:border-0"><p class="text-xs text-slate-500">v${escapeHtml(r.version)} · ${escapeHtml(r.created_at)}</p><p class="text-xs truncate max-w-[34rem]">${escapeHtml(r.prompt_content).slice(0, 200)}</p></div>`);
   list('/api/ai-engineering/retrieval-configs', document.getElementById('retrieval-configs'), r =>
-    `<div class="border-b border-slate-100 pb-2 last:border-0"><p class="text-xs text-slate-500">${r.created_at || ''}</p>${row('Chunking', r.chunking_configuration)}${row('Embedding', r.embedding_configuration)}${row('Parameters', r.retrieval_parameters)}</div>`);
+    `<div class="border-b border-slate-100 pb-2 last:border-0"><p class="text-xs text-slate-500">${escapeHtml(r.created_at)}</p>${row('Chunking', r.chunking_configuration)}${row('Embedding', r.embedding_configuration)}${row('Parameters', r.retrieval_parameters)}</div>`);
   list('/api/ai-engineering/agent-executions', document.getElementById('agent-executions'), r =>
-    `<div class="border-b border-slate-100 pb-2 last:border-0"><p class="text-xs text-slate-500">${r.execution_id} · ${r.status} · ${r.created_at || ''}</p>${row('Duration (ms)', r.duration)}${row('Tools', r.tool_calls)}${row('Error', r.error_summary)}</div>`);
+    `<div class="border-b border-slate-100 pb-2 last:border-0"><p class="text-xs text-slate-500">${escapeHtml(r.execution_id)} · ${escapeHtml(r.status)} · ${escapeHtml(r.created_at)}</p>${row('Duration (ms)', r.duration)}${row('Tools', r.tool_calls)}${row('Error', r.error_summary)}</div>`);
   list('/api/ai-engineering/evaluations', document.getElementById('evaluations'), r =>
-    `<div class="border-b border-slate-100 pb-2 last:border-0"><p class="text-xs text-slate-500">${r.evaluation_dataset || 'dataset'} · ${r.created_at || ''}</p>${row('Metrics', r.metric_summary)}${row('Results', r.evaluation_results)}</div>`);
+    `<div class="border-b border-slate-100 pb-2 last:border-0"><p class="text-xs text-slate-500">${escapeHtml(r.evaluation_dataset) || 'dataset'} · ${escapeHtml(r.created_at)}</p>${row('Metrics', r.metric_summary)}${row('Results', r.evaluation_results)}</div>`);
 
   document.getElementById('project-form').addEventListener('submit', async (ev) => {
     ev.preventDefault();

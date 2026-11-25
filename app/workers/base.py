@@ -7,6 +7,7 @@ not require a Flask request context.
 
 import json
 import logging
+import os
 import secrets
 import threading
 import time
@@ -14,6 +15,7 @@ from datetime import timedelta
 from typing import Optional
 
 from app import db
+from app.core.logging import configure_worker_logging
 from app.models import AIBackgroundJob, AIJobResult, utcnow
 from app.workers.job_registry import handler_for, load_default_handlers
 
@@ -31,8 +33,34 @@ ACTIVE_STATUSES = frozenset({'queued', 'running'})
 TERMINAL_STATUSES = frozenset({'succeeded', 'failed', 'dead_letter', 'cancelled'})
 
 
-def reclaim_stale_jobs(app, stale_seconds: int = STALE_LEASE_SECONDS) -> int:
-    """Recover expired leases; cancelled jobs finish instead of being requeued."""
+def _configured_stale_lease_seconds(app) -> int:
+    """Resolve the operator-tuned stale lease window at worker runtime.
+
+    ``STALE_LEASE_SECONDS`` stays as the documented/test default, but a value
+    from app config or the environment takes precedence so tuning the env var
+    changes actual reclaim behaviour without a code change.
+    """
+    raw = None
+    config = getattr(app, 'config', None)
+    if config is not None:
+        raw = config.get('AI_STALE_LEASE_SECONDS')
+    if raw is None:
+        raw = os.environ.get('AI_STALE_LEASE_SECONDS', str(STALE_LEASE_SECONDS))
+    try:
+        value = int(raw)
+    except (TypeError, ValueError):
+        return STALE_LEASE_SECONDS
+    return value if value > 0 else STALE_LEASE_SECONDS
+
+
+def reclaim_stale_jobs(app, stale_seconds: Optional[int] = None) -> int:
+    """Recover expired leases; cancelled jobs finish instead of being requeued.
+
+    Omit ``stale_seconds`` to use the configured AI_STALE_LEASE_SECONDS value.
+    An explicit argument (including ``0`` from tests) is always honoured.
+    """
+    if stale_seconds is None:
+        stale_seconds = _configured_stale_lease_seconds(app)
     with app.app_context():
         now = utcnow()
         cutoff = now - timedelta(seconds=max(1, int(stale_seconds)))
@@ -99,10 +127,20 @@ def is_cancelled(job_id: int) -> bool:
     return cancelled_at is not None
 
 
-def update_progress(job_id: int, pct: int, lease: str) -> None:
-    """Record bounded progress if this worker still owns the lease."""
+def update_progress(job_id: int, pct: int, lease: Optional[str] = None) -> None:
+    """Record bounded progress if the worker still owns the lease.
+
+    Handlers run inside the worker's app context but are not handed the lease
+    token. When ``lease`` is omitted the token is read from the authoritative
+    row and checked there, so a handler cannot report progress for a job whose
+    lease was lost or reclaimed. Explicit leases remain supported for callers
+    that hold one (e.g. the dispatch step in ``process_one_job``).
+    """
     job = db.session.get(AIBackgroundJob, job_id)
-    if job is None or job.lease_token != lease:
+    if job is None:
+        return
+    expected_lease = lease if lease is not None else job.lease_token
+    if not expected_lease or job.lease_token != expected_lease:
         return
     job.progress_pct = max(0, min(100, int(pct)))
     db.session.commit()
@@ -194,31 +232,38 @@ def process_one_job(app) -> bool:
             if is_cancelled(job_id):
                 _finish(job_id, lease, status='cancelled', error='Cancelled before execution')
                 return True
-            try:
-                payload = json.loads(job.payload)
-                if not isinstance(payload, dict):
-                    raise ValueError('Job payload must be a JSON object')
-                handler = handler_for(job.job_type)
-                result = handler(job, payload)
-                if not isinstance(result, dict):
-                    raise ValueError('Job handler must return a JSON object')
-                if not _owns_lease(job_id, lease):
-                    return True
-                if is_cancelled(job_id):
-                    _finish(job_id, lease, status='cancelled', error='Cancelled before completion')
-                else:
-                    _finish(job_id, lease, status='succeeded', result=result)
-            except Exception as error:
-                db.session.rollback()
-                from app.workers.handlers import CancelledJob
-                if isinstance(error, CancelledJob) or is_cancelled(job_id):
-                    _finish(job_id, lease, status='cancelled', error=error)
-                elif isinstance(
-                    error, (ValueError, TypeError, json.JSONDecodeError)
-                ):
-                    _finish(job_id, lease, status='failed', error=error)
-                else:
-                    _retry(job_id, lease, error)
+            from app.core.observability import log_context
+            with log_context(job_id=job_id, correlation_id=job.correlation_id):
+                # A short, lease-checked progress step before dispatch. Only
+                # _finish() may report completion; handlers can add their own
+                # finer-grained steps between cancellation checks.
+                update_progress(job_id, 5, lease)
+                logger.info('Dispatching AI job %s (%s)', job_id, job.job_type)
+                try:
+                    payload = json.loads(job.payload)
+                    if not isinstance(payload, dict):
+                        raise ValueError('Job payload must be a JSON object')
+                    handler = handler_for(job.job_type)
+                    result = handler(job, payload)
+                    if not isinstance(result, dict):
+                        raise ValueError('Job handler must return a JSON object')
+                    if not _owns_lease(job_id, lease):
+                        return True
+                    if is_cancelled(job_id):
+                        _finish(job_id, lease, status='cancelled', error='Cancelled before completion')
+                    else:
+                        _finish(job_id, lease, status='succeeded', result=result)
+                except Exception as error:
+                    db.session.rollback()
+                    from app.workers.handlers import CancelledJob
+                    if isinstance(error, CancelledJob) or is_cancelled(job_id):
+                        _finish(job_id, lease, status='cancelled', error=error)
+                    elif isinstance(
+                        error, (ValueError, TypeError, json.JSONDecodeError)
+                    ):
+                        _finish(job_id, lease, status='failed', error=error)
+                    else:
+                        _retry(job_id, lease, error)
     finally:
         stop.set()
         renewal.join(timeout=1)
@@ -255,6 +300,7 @@ def run_worker(app, poll_seconds: float = 1.0, once: bool = False,
     if stop is None:
         from app.workers.lifecycle import WorkerStop
         stop = WorkerStop().install()
+    configure_worker_logging()
     reclaim_stale_jobs(app)
     _record_worker_heartbeat(app, status='starting')
     if once:

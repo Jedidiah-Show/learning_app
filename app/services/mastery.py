@@ -67,8 +67,6 @@ def _state_for(progress, events):
         return 'proficient' if evidence_type in _EVIDENCE_FOR_PROFICIENT else 'practising'
     if status == 'DEVELOPING':
         return 'developing' if evidence_type in _EVIDENCE_FOR_PROFICIENT else 'practising'
-    if evidence_type:
-        return 'introduced'
     return 'introduced'
 
 

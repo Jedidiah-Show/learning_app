@@ -118,15 +118,20 @@ def get_profile(name: str) -> ExecutionProfile:
         raise UnknownProfileError(f'Unknown execution profile: {name}') from error
 
 
+def _require_enabled(profile: ExecutionProfile) -> ExecutionProfile:
+    """Fail closed: a disabled profile is never a valid selection."""
+    if not profile.enabled:
+        raise ProfileDisabledError(
+            f'Execution profile {profile.name} is not enabled'
+        )
+    return profile
+
+
 def profile_for_workload(workload: str) -> ExecutionProfile:
     """Select a profile server-side from a workload name."""
     for profile in PROFILES.values():
         if workload in profile.workloads:
-            if not profile.enabled:
-                raise ProfileDisabledError(
-                    f'Execution profile {profile.name} is not enabled'
-                )
-            return profile
+            return _require_enabled(profile)
     raise UnknownProfileError(f'No execution profile for workload: {workload}')
 
 
@@ -134,12 +139,13 @@ def profile_for_problem(problem: dict) -> ExecutionProfile:
     """Select a profile from trusted exercise metadata.
 
     ``execution_profile`` is read only from the server-side problem catalogue;
-    a learner-supplied field cannot influence this call.
+    a learner-supplied field cannot influence this call. Disabled profiles are
+    rejected just as they are by :func:`profile_for_workload`.
     """
     declared = (problem or {}).get('execution_profile')
     if declared:
-        return get_profile(str(declared))
+        return _require_enabled(get_profile(str(declared)))
     track = (problem or {}).get('track')
     if track == 'machine-learning':
-        return get_profile('container_data_science')
-    return get_profile('container_python')
+        return _require_enabled(get_profile('container_data_science'))
+    return _require_enabled(get_profile('container_python'))

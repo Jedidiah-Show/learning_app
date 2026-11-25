@@ -116,15 +116,12 @@ class TestPathwayEnrolmentModel:
         assert len(enrolments) == 0
     
     def test_is_pathway_false_when_no_enrolment(self, app, three_pathways, user_with_enrolment):
-        """M2.2: is_pathway returns False when learner not enrolled."""
-        # Test with a different user (no enrolment)
-        from app.models import User
-        other_user = User(query={'username': 'other'}).__class__(username='other_user')
-        # Just test the function exists and works
+        """M2.2: an enrolled AI learner is not reported as enrolled in ML."""
         from app.pathway_scope import is_pathway
-        # With no enrolments, should return False
-        result = is_pathway(9999, 'ai-engineering')
-        assert result == False
+        enrolled_id = user_with_enrolment['user'].id
+        # The fixture's learner is enrolled in AI Engineering only, so the
+        # other specialisation must read as not enrolled.
+        assert is_pathway(enrolled_id, 'machine-learning') is False
     
     def test_is_pathway_true_when_enrolled(self, app, user_with_enrolment):
         """M2.2: is_pathway returns True when learner is enrolled."""
@@ -148,23 +145,26 @@ class TestPathwayModules:
     """Test pathway_modules returns correct modules."""
     
     def test_shared_foundations_modules(self, app):
-        """The foundations course is its own pathway (modules 00–02)."""
+        """The foundations course has ONE canonical catalogue: six sf.* modules."""
         modules = pathway_modules('shared-foundations')
-        assert len(modules) == 3
+        assert len(modules) == 6
         module_ids = {m['id'] for m in modules}
-        assert module_ids == {'00', '01', '02'}
+        assert module_ids == {
+            'sf.00', 'sf.01', 'sf.02', 'sf.03', 'sf.04', 'sf.05',
+        }
+        assert all(len(m['lessons']) == 4 or len(m['lessons']) == 3 for m in modules)
 
     def test_shared_foundations_course_view(self, app):
         """The foundations catalog counts only foundation lessons."""
         from app.pathway_scope import course_modules
         modules = course_modules('shared-foundations')
-        assert [m['id'] for m in modules] == ['00', '01', '02']
+        assert [m['id'] for m in modules] == ['sf.00', 'sf.01', 'sf.02', 'sf.03', 'sf.04', 'sf.05']
 
     def test_undecided_catalog_is_the_foundation(self, app):
         """An undecided learner's catalog is the shared foundation only."""
         from app.pathway_scope import course_modules
         modules = course_modules(None)
-        assert [m['id'] for m in modules] == ['00', '01', '02']
+        assert [m['id'] for m in modules] == ['sf.00', 'sf.01', 'sf.02', 'sf.03', 'sf.04', 'sf.05']
 
     def test_ai_engineering_modules(self, app):
         """The AI specialization is its own modules (03–12 incl. capstone)."""
@@ -203,13 +203,39 @@ class TestPathwayLessons:
 class TestFoundationEvidence:
     """Test foundation evidence reuse."""
     
-    def test_foundation_evidence_structure(self, app):
-        """M2.4: foundation_evidence has correct structure."""
-        import inspect
-        source = inspect.getsource(foundation_evidence)
-        assert 'FOUNDATION_MODULE_IDS' in source
-        assert 'LessonCompletion' in source
-        assert 'CourseProject' in source
+    def test_foundation_evidence_structure(self, app, db_session):
+        """M2.4: foundation_evidence reads completion and project records.
+
+        Behavioural check: seed the shared tables used by the helper and
+        verify the evidence it reports, instead of asserting on source text.
+        """
+        from app.models import CourseProject, LessonCompletion, User
+        from app.pathway_scope import foundation_modules
+
+        user = User(username='evidence-user', email='evidence@example.test')
+        db_session.add(user)
+        db_session.commit()
+        module = foundation_modules()[0]
+        for lesson in module['lessons']:
+            db_session.add(LessonCompletion(
+                user_id=user.id, lesson_id=lesson['id'], subject_id=module['id'],
+                day_number=1, completed=True,
+            ))
+        db_session.add(CourseProject(
+            user_id=user.id, module_id=module['id'], project='{}', completed=True,
+        ))
+        db_session.commit()
+
+        result = foundation_evidence(user.id)
+        evidence = result[module['id']]
+        assert evidence['completed_lessons'] == len(module['lessons'])
+        assert evidence['completed_projects'] == 1
+        assert evidence['complete'] is True
+        assert evidence['ai_satisfied'] is False and evidence['ml_satisfied'] is False
+        assert evidence['evidence_source'] == 'lesson_completion'
+        assert set(result) == {
+            item['id'] for item in foundation_modules()
+        }
     
     def test_foundation_evidence_returns_dict(self, app, user_with_enrolment):
         """M2.4: foundation_evidence returns proper structure."""

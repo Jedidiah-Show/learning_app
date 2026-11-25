@@ -78,6 +78,7 @@ def compute_achievements(user):
     longest_streak = max(current_streak, getattr(user, 'longest_streak', 0) or 0)
 
     try:
+        from app.ml_pathway import PATHWAY_ID
         from app.models import (
             Credential, LabDebrief, MLSpecializationLessonCompletion,
             QuizResult, ReviewItem,
@@ -101,7 +102,7 @@ def compute_achievements(user):
         )
         ml_lessons = (
             MLSpecializationLessonCompletion.query
-            .filter_by(user_id=user.id)
+            .filter_by(user_id=user.id, pathway_id=PATHWAY_ID)
             .count()
         )
         reviews_answered = (

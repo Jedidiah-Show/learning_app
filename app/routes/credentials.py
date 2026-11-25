@@ -64,7 +64,7 @@ def index():
     # destination so ML learners never see AI course denominators for their
     # own progress.
     eligibility = course_progress(current_user, destination='ai-engineering',
-                                  include_journey=True)
+                                  include_journey=False)
     progress = course_progress(
         current_user, destination=destination_for(current_user),
     )

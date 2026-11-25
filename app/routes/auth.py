@@ -14,6 +14,7 @@ from app.models import (
 )
 from app.phone import PhoneError, normalize_phone
 from app.rate_limit import client_ip, enforce_rate_limit, identity_hash
+from app.services.account_data import purge_user_data, reset_profile_counters
 from app.course_data import (
     PACE_CHOICES, SKILL_LEVELS, TRACKS, pace_choice_for_hours, recommend_track,
 )
@@ -23,6 +24,7 @@ from app.pathway_fit import (
 )
 from datetime import datetime, timedelta, timezone
 import hashlib
+import hmac
 import os
 import secrets
 import uuid
@@ -729,26 +731,37 @@ def verify_phone():
         'phone-verify', identity_hash(str(current_user.id))
     )
     submitted = (request.form.get('code') or '').strip()
-    if not submitted.isdigit():
+    if len(submitted) != 6 or not submitted.isdigit():
         flash('Enter the 6-digit code from the text message.', 'error')
         return redirect(url_for('auth.profile'))
     code_hash = hashlib.sha256(submitted.encode('utf-8')).hexdigest()
     now = datetime.now(timezone.utc)
+    # Look the pending code up by owner, not by the submitted hash: a wrong
+    # guess must still find the record so it can be counted as an attempt.
     record = PhoneVerificationCode.query.filter_by(
-        user_id=current_user.id, purpose='verify_phone', code_hash=code_hash
-    ).first()
-    if record is None or record.expires_at <= now:
+        user_id=current_user.id, purpose='verify_phone'
+    ).order_by(PhoneVerificationCode.created_at.desc()).first()
+    if record is None:
         flash('That code is invalid or expired. Request a new one.', 'error')
         return redirect(url_for('auth.profile'))
-    record.attempts = int(record.attempts or 0) + 1
-    if record.attempts > 5:
-        db.session.delete(record)
-        db.session.commit()
-        flash('Too many incorrect attempts. Request a new code.', 'error')
-        return redirect(url_for('auth.profile'))
-    if len(submitted) != 6:
-        db.session.commit()
+    expires_at = record.expires_at
+    # SQLite returns naive datetimes for timezone-aware columns; treat those
+    # as UTC so a valid code is not rejected (or crash the view) there.
+    if expires_at.tzinfo is None:
+        expires_at = expires_at.replace(tzinfo=timezone.utc)
+    if expires_at <= now:
         flash('That code is invalid or expired. Request a new one.', 'error')
+        return redirect(url_for('auth.profile'))
+    if not hmac.compare_digest(record.code_hash, code_hash):
+        # Only wrong codes consume attempts; a correct code succeeds while the
+        # record is still inside its attempt window.
+        record.attempts = int(record.attempts or 0) + 1
+        if record.attempts > 5:
+            db.session.delete(record)
+            flash('Too many incorrect attempts. Request a new code.', 'error')
+        else:
+            flash('That code is invalid or expired. Request a new one.', 'error')
+        db.session.commit()
         return redirect(url_for('auth.profile'))
     db.session.delete(record)
     current_user.phone_verified = True
@@ -1116,6 +1129,11 @@ def delete_account():
             if response is not None:
                 return response
         google_revoked = gcal.revoke_authorization(user)
+        # Remove learner-owned rows through the same registry as reset before
+        # deleting the account itself; retained rows follow their own
+        # foreign-key rules once the account is gone.
+        purge_user_data(user.id)
+        reset_profile_counters(user)
         db.session.delete(user)
         db.session.commit()
         logout_user()
@@ -1165,34 +1183,12 @@ def reset_account():
         user = db.session.execute(
             db.select(User).filter_by(id=user_id).with_for_update().execution_options(populate_existing=True)
         ).scalar_one()
-        # Delete all user data but keep the account.  The AI usage bucket is
-        # intentionally preserved so resetting cannot be used to bypass the
-        # shared per-learner quota.
-        from app.models import (
-            Progress, LessonCompletion, QuizResult, StudySession,
-            UserSubjectConfig, ProficiencyTest, CalendarEvent,
-            UserSubject, UserSchedule, UserConfig,
-            SubjectCurriculum, LearningProject, CourseProject,
-            AIBackgroundJob, ReviewItem, VideoProgress, PracticeWorkspace,
-        )
-        Progress.query.filter_by(user_id=user.id).delete()
-        LessonCompletion.query.filter_by(user_id=user.id).delete()
-        VideoProgress.query.filter_by(user_id=user.id).delete()
-        QuizResult.query.filter_by(user_id=user.id).delete()
-        StudySession.query.filter_by(user_id=user.id).delete()
-        UserSubjectConfig.query.filter_by(user_id=user.id).delete()
-        ProficiencyTest.query.filter_by(user_id=user.id).delete()
-        CalendarEvent.query.filter_by(user_id=user.id).delete()
-        SubjectCurriculum.query.filter_by(user_id=user.id).delete()
-        LearningProject.query.filter_by(user_id=user.id).delete()
-        CourseProject.query.filter_by(user_id=user.id).delete()
-        PracticeWorkspace.query.filter_by(user_id=user.id).delete()
-        AIBackgroundJob.query.filter_by(user_id=user.id).delete()
-        ReviewItem.query.filter_by(user_id=user.id).delete()
-        PasswordResetToken.query.filter_by(user_id=user.id).delete()
-        UserSubject.query.filter_by(user_id=user.id).delete()
-        UserSchedule.query.filter_by(user_id=user.id).delete()
-        UserConfig.query.filter_by(user_id=user.id).delete()
+        # Apply the single learner-data policy so a new user-owned table can
+        # no longer survive a reset just because it was missing from a
+        # hand-maintained list. AI usage and audit records are retained by the
+        # policy itself.
+        purge_user_data(user.id)
+        reset_profile_counters(user)
         user.google_access_token = None
         user.google_refresh_token = None
         user.google_id = None

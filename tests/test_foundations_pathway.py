@@ -199,7 +199,7 @@ class FoundationsRouteTests(unittest.TestCase):
 
         foundations = self.client.get('/foundations').get_data(as_text=True)
         self.assertIn(f'href="{second}"', foundations)
-        self.assertIn('Published lessons: 1 / 4 complete', foundations)
+        self.assertIn("1 / 4 lessons complete", foundations)
 
     def test_pending_lesson_renders_notice(self):
         """A seeded pending lesson shows the notice and records nothing."""

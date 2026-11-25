@@ -20,11 +20,14 @@ from app.curriculum import all_modules, curriculum
 from app.models import CoursePlan, CourseProject, LessonCompletion, User
 
 
-FOUNDATION_IDS = ('00', '01', '02')
+FOUNDATION_IDS = ('sf.00', 'sf.01', 'sf.02', 'sf.03', 'sf.04', 'sf.05')
 FOUNDATION_TITLES = (
-    'AI Engineering Foundations',
-    'Python for AI Engineers',
-    'Backend Engineering',
+    'Programming Foundations',
+    'Python Foundations',
+    'Software Engineering Foundations',
+    'Development Tools and Workflow',
+    'API and Backend Foundations',
+    'Data and Computational Thinking',
 )
 ML_TITLES = (
     'AI Tools and Decision-Making',
@@ -149,7 +152,7 @@ class DashboardCurriculumGridTests(DynamicShellTestCase):
     def test_ai_and_unset_destinations_keep_the_full_course(self):
         for destination, expected in (
             ('ai', '10 modules · 163 lessons'),
-            (None, '3 modules · 50 lessons'),
+            (None, '6 modules · 21 lessons'),
         ):
             with self.subTest(destination=destination):
                 self._set_destination(destination)
@@ -195,9 +198,9 @@ class DashboardCurriculumGridTests(DynamicShellTestCase):
         self.assertIn('12 modules · 59 lessons', html)
         for title in AI_ONLY_TITLES:
             self.assertNotIn(title, html)
-        # The foundation pointer is spent, so no generic "continue" card is left
-        # pointing at the AI course; the pathway card carries the next step.
-        self.assertNotIn('Continue your course', html)
+        # The ML learner is pointed only at their own pathway's next lesson.
+        self.assertIn('/specializations/machine-learning/lessons/mle.', html)
+        self.assertNotIn('/lesson/3.', html)
         self.assertIn('Continue your pathway', html)
 
 

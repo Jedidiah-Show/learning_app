@@ -40,11 +40,15 @@ def restore_plan(*, backup_path: Path, database_url: str) -> dict:
         command.remove('--format=custom')
         command.remove('--file')
         command.remove(str(backup))
-        command += ['--clean', '--if-exists', '--no-owner', '--no-privileges', str(backup)]
+        flags = [
+            '--clean', '--if-exists', '--no-owner', '--no-privileges',
+            '--single-transaction', '--exit-on-error',
+        ]
+        command += flags + [str(backup)]
         display = display.replace('pg_dump', 'pg_restore', 1)
         display = display.replace('--format=custom ', '')
         display = display.replace(f'--file {backup} ', '')
-        display += ' --clean --if-exists --no-owner --no-privileges'
+        display += ' ' + ' '.join(flags)
         return {
             'target': target.display,
             'backup': str(backup),

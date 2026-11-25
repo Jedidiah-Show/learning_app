@@ -145,6 +145,10 @@ class PracticeExerciseIntegrityTests(unittest.TestCase):
     def test_exercises_are_valid_and_reference_real_lessons(self):
         lessons = _load('dynamoai_curriculum.json')['lessons']
         lesson_ids = {lesson['id'] for lesson in lessons}
+        # Practice exercises also cover the independent ML pathway; those
+        # lesson ids live in the ML manifest, not the AI curriculum.
+        for module in _load('machine_learning_pathway.json')['modules']:
+            lesson_ids.update(lesson['id'] for lesson in module.get('lessons', []))
         exercises = _load('practice_exercises.json')
         self.assertGreaterEqual(len(exercises), 62)
         seen = set()

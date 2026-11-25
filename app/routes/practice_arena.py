@@ -570,7 +570,9 @@ def stream_execution(run_id):
         with app.app_context():
             last_verdict = None
             start_time = time.monotonic()
+            last_keepalive = start_time
             poll_interval = 0.2
+            completed = False
             try:
                 while time.monotonic() - start_time < 20.0:
                     sub = db.session.get(Submission, run_id)
@@ -590,10 +592,26 @@ def stream_execution(run_id):
                         }
                         yield f"data: {json.dumps(payload)}\n\n"
                         if sub.verdict not in ('PENDING', 'RUNNING'):
+                            completed = True
                             break
+                    now = time.monotonic()
+                    if now - last_keepalive >= 4.0:
+                        # SSE comments are ignored by EventSource but keep
+                        # proxies from closing an idle judging stream.
+                        yield ': keep-alive\n\n'
+                        last_keepalive = now
                     db.session.expire(sub)
                     time.sleep(poll_interval)
                     poll_interval = min(poll_interval * 1.5, 1.0)
+                if not completed:
+                    # The client must stop waiting at the same boundary the
+                    # server stops polling, instead of silently falling back
+                    # to the in-browser runner after its own 30s timeout.
+                    yield (
+                        "event: TIMEOUT\ndata: "
+                        + json.dumps({'run_id': run_id, 'verdict': 'TIMEOUT'})
+                        + "\n\n"
+                    )
             finally:
                 db.session.remove()
 

@@ -16,12 +16,17 @@ from flask import (
 from flask_login import current_user, login_required
 
 from app import db
+from app.core.exceptions import EntityNotFoundError
 from app.ml_pathway import PATHWAY_ID, machine_learning_pathway
 from app.models import (
-    CourseProject, MLSpecializationLessonCompletion,
-    MLSpecializationCredential, MLSpecializationProject, MLProjectExperiment,
+    MLSpecializationCredential, MLProjectExperiment,
 )
 from sqlalchemy.exc import IntegrityError
+from app.domains.machine_learning.service import (
+    are_previous_projects_complete, get_completed_ml_modules,
+    get_ml_lesson_completions, get_ml_project_record,
+    get_or_create_ml_project, is_module_lessons_complete,
+)
 from app.project_verification import VerificationError, verify_checks
 from app.request_data import get_json_object
 from app.user_preferences import get_effective_config_for_user
@@ -57,11 +62,12 @@ def _attempt_outcome(record, stage, detail=None):
 
 
 def _module(module_id):
-    return next(
-        (module for module in machine_learning_pathway()['modules']
-         if module['id'] == module_id),
-        None,
-    )
+    from app.domains.machine_learning.service import get_ml_module
+
+    try:
+        return get_ml_module(module_id)
+    except EntityNotFoundError:
+        return None
 
 
 def _project_module_ids():
@@ -75,45 +81,20 @@ def _project_module_ids():
 
 
 def _record(module_id, create=False):
-    record = MLSpecializationProject.query.filter_by(
-        user_id=current_user.id, pathway_id=PATHWAY_ID, module_id=module_id
-    ).first()
-    if record is None and create:
-        record = MLSpecializationProject(
-            user_id=current_user.id, pathway_id=PATHWAY_ID, module_id=module_id,
-        )
-        db.session.add(record)
+    """Route helper around the ML domain's pathway-scoped project getter."""
+    if create:
+        record = get_or_create_ml_project(current_user.id, module_id)
         db.session.commit()
-    return record
+        return record
+    return get_ml_project_record(current_user.id, module_id)
 
 
 def _module_lessons_complete(module):
-    lesson_ids = [lesson['id'] for lesson in module['lessons']]
-    if not lesson_ids or any(lesson.get('status') != 'ready' for lesson in module['lessons']):
-        return False
-    completed = {
-        row.lesson_id for row in MLSpecializationLessonCompletion.query.filter_by(
-            user_id=current_user.id, pathway_id=PATHWAY_ID
-        ).filter(MLSpecializationLessonCompletion.lesson_id.in_(lesson_ids)).all()
-    }
-    return set(lesson_ids).issubset(completed)
+    return is_module_lessons_complete(current_user.id, module)
 
 
 def _previous_projects_complete(module):
-    pathway = machine_learning_pathway()
-    earlier = [item for item in pathway['modules'] if item['number'] < module['number']]
-    if not earlier:
-        return True
-    projects = {
-        row.module_id: row.completed for row in MLSpecializationProject.query.filter_by(
-            user_id=current_user.id, pathway_id=PATHWAY_ID
-        ).all()
-    }
-    for item in earlier:
-        if all(lesson.get('status') == 'ready' for lesson in item['lessons']):
-            if not projects.get(item['id'], False):
-                return False
-    return True
+    return are_previous_projects_complete(current_user.id, module)
 
 
 def _prerequisites_met():
@@ -210,16 +191,8 @@ def _pathway_completion():
         lesson.get('status') == 'ready'
         for module in modules for lesson in module['lessons']
     )
-    completed_lessons = {
-        row.lesson_id for row in MLSpecializationLessonCompletion.query.filter_by(
-            user_id=current_user.id, pathway_id=PATHWAY_ID
-        ).all()
-    }
-    completed_projects = {
-        row.module_id for row in MLSpecializationProject.query.filter_by(
-            user_id=current_user.id, pathway_id=PATHWAY_ID, completed=True
-        ).all()
-    }
+    completed_lessons = get_ml_lesson_completions(current_user.id)
+    completed_projects = get_completed_ml_modules(current_user.id)
     complete = (
         all_lessons_published and _prerequisites_met()
         and required_lessons.issubset(completed_lessons)

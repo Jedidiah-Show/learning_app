@@ -256,11 +256,15 @@ html[data-theme="dark"] .app-brand .text-slate-500 { color:var(--app-muted); }
 /* Pathway switch: one-tap focus toggle in the top-right cluster. */
 .pathway-switch .pathway-switch-btn { padding:5px 12px;border-radius:9999px;border:0;background:transparent;color:var(--app-muted,#64748b);font-size:11px;font-weight:800;letter-spacing:.06em;cursor:pointer;transition:background .15s ease,color .15s ease,box-shadow .15s ease; }
 .pathway-switch .pathway-switch-btn:hover { color:var(--app-text,#1e293b); }
-.pathway-switch .pathway-switch-btn.is-active { background:#4f46e5;color:#fff;box-shadow:0 1px 3px rgba(79,70,229,.4); }
-.pathway-switch .pathway-switch-btn:focus-visible { outline:2px solid #6366f1;outline-offset:2px; }
-@media (max-width:640px) { .pathway-switch { display:none; } }
+.pathway-switch .pathway-switch-btn.is-active { background:var(--ruach-cyan-deep);color:#fff;box-shadow:0 1px 3px rgba(14,116,144,.4); }
+.pathway-switch .pathway-switch-btn:focus-visible { outline:2px solid var(--ruach-cyan);outline-offset:2px; }
+/* Keep the switch reachable on phones: compact the buttons instead of hiding them. */
+@media (max-width:640px) {
+    .pathway-switch { display:flex;padding:2px;gap:0; }
+    .pathway-switch .pathway-switch-btn { padding:4px 8px;font-size:10px;letter-spacing:.02em; }
+}
 html[data-theme="dark"] .pathway-switch { background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.09); }
-html[data-theme="dark"] .pathway-switch .pathway-switch-btn.is-active { background:#6366f1;color:#0b0623; }
+html[data-theme="dark"] .pathway-switch .pathway-switch-btn.is-active { background:var(--ruach-cyan);color:#0b0623; }
 
 /* Arena editor container — dark background to match the VS Code Dark+
    editor theme so light text stays readable on both site themes. */
@@ -864,7 +868,8 @@ html[data-theme="dark"] .lesson-hero { background:linear-gradient(135deg,#062330
 .palette-input:focus { background:var(--app-surface-muted); }
 .palette-results { max-height:340px;margin:0;padding:6px;overflow-y:auto;list-style:none; }
 .palette-item { display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;border-radius:10px;background:transparent;color:var(--app-text);text-align:left;cursor:pointer;font-size:13px; }
-.palette-item:hover,.palette-item:focus { background:var(--app-sidebar-hover);outline:none; }
+.palette-item:hover,.palette-item:focus,.palette-item.is-active { background:var(--app-sidebar-hover);outline:none; }
+.palette-item.is-active { box-shadow:inset 2px 0 0 var(--ruach-cyan-deep); }
 .palette-item-icon { width:24px;font-size:16px;text-align:center; }
 .palette-item-body { display:flex;flex-direction:column;min-width:0; }
 .palette-item-title { font-weight:800; }
