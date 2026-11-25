@@ -33,5 +33,9 @@ files = [
   "app/services/project_completion.py",
   "app/services/project_review_contract.py",
   "app/services/project_starter_kits.py",
+  "app/services/lesson_completion.py",
+  "app/services/password_reset.py",
+  "app/services/video_progress.py",
+  "app/services/search_index.py",
 ]
 exclude = "(migrations/|tests/|static/|node_modules/|.venv/)"

@@ -111,7 +111,11 @@ class RuachAICourseTests(unittest.TestCase):
         self.register()
         first = self.client.get('/api/lessons/daily/1')
         self.assertEqual(first.status_code, 200)
-        self.assertEqual(first.get_json()['lesson']['id'], all_lessons()[0]['id'])
+        from app.pathway_scope import destination_for, pathway_lessons
+        with self.app.app_context():
+            user = User.query.one()
+            expected = pathway_lessons(destination_for(user))[0]['id']
+        self.assertEqual(first.get_json()['lesson']['id'], expected)
         self.assertEqual(self.client.get('/proficiency-test').status_code, 404)
         self.assertEqual(self.client.get('/subject-config').status_code, 404)
 

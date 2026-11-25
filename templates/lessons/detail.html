@@ -28,6 +28,16 @@
   {% for reference in lesson.maintenance.references or [] %}<a class="ml-1 font-semibold underline" href="{{ reference }}" target="_blank" rel="noopener noreferrer">Primary source ↗</a>{% endfor %}
 </aside>{% endif %}
 
+{% if next_lesson and next_lesson.source == 'ml' %}
+  {% set setup_next_url = url_for('main.machine_learning_lesson', lesson_id=next_lesson.id) %}
+{% elif next_lesson and (next_lesson.source == 'sf' or next_lesson.id.startswith('sf.')) %}
+  {% set setup_next_url = url_for('main.shared_foundations_lesson', lesson_id=next_lesson.id) %}
+{% elif next_lesson %}
+  {% set setup_next_url = url_for('main.lesson_detail', lesson_id=next_lesson.id) %}
+{% else %}
+  {% set setup_next_url = '' %}
+{% endif %}
+{% set setup_all_done = (setup_checks|length > 0) and (setup_states|length >= (setup_checks|length)) %}
 <div class="lesson-layout">
   <article class="lesson-body">
     {% if lesson.extras and lesson.extras.intro %}
@@ -37,7 +47,7 @@
     </section>
     {% endif %}
     {% if lesson.id == '0.01' %}
-    <section class="lesson-card lesson-first-win">
+    <section class="lesson-card lesson-first-win" id="guided-setup" data-next-lesson-url="{{ setup_next_url }}" data-next-lesson-available="{{ 'true' if next_lesson_available else 'false' }}">
       <p class="lesson-eyebrow">Get a quick win</p>
       <p class="lesson-text">Before the course overview, check that Python can run a tiny program. Work through the setup checks below, self-attest the ones you have done, then run your first program.</p>
       <ul class="lesson-setup-checks">
@@ -56,6 +66,21 @@
       <p class="lesson-text">Now run your first program:</p>
       <pre class="lesson-code"><code>python -c "print('Hello, AI engineering!')"</code></pre>
       <p class="lesson-text">If your computer does not recognize <code>python</code>, try <code>python3</code> or <code>py</code>. Lesson 0.06 will explain how the program works.</p>
+      <div id="guided-setup-cta" class="mt-4 rounded-lg border p-3 {% if setup_all_done %}border-emerald-200 bg-emerald-50{% else %}border-slate-200 bg-slate-50{% endif %}" role="status" aria-live="polite">
+        {% if setup_all_done %}
+          <p class="text-sm font-semibold text-emerald-900">All setup checks complete. You're ready to move on.</p>
+          {% if setup_next_url and next_lesson_available %}
+          <a id="guided-setup-next" class="mt-2 inline-flex rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800" href="{{ setup_next_url }}">Continue to next lesson →</a>
+          {% elif setup_next_url %}
+          <p class="mt-1 text-sm text-slate-700">Mark this lesson complete to unlock the next lesson.</p>
+          <button type="button" class="mt-2 inline-flex rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800" data-scroll-to-complete>Go to complete lesson →</button>
+          {% else %}
+          <p class="mt-1 text-sm text-slate-700">Setup complete. Continue with the lesson below.</p>
+          {% endif %}
+        {% else %}
+          <p class="text-sm text-slate-700">Complete all setup checks to get a clear next step.</p>
+        {% endif %}
+      </div>
     </section>
     {% endif %}
     <section id="overview" class="lesson-card lesson-overview">
@@ -372,8 +397,24 @@
 </div>
 
 <nav class="lesson-navigation" aria-label="Lesson navigation">
-  {% set prev_url = url_for('main.machine_learning_lesson', lesson_id=previous_lesson.id) if previous_lesson.source == 'ml' else url_for('main.lesson_detail', lesson_id=previous_lesson.id) %}
-  {% set next_url = url_for('main.machine_learning_lesson', lesson_id=next_lesson.id) if next_lesson and next_lesson.source == 'ml' else url_for('main.lesson_detail', lesson_id=next_lesson.id) if next_lesson else '' %}
+  {% if previous_lesson and previous_lesson.source == 'ml' %}
+    {% set prev_url = url_for('main.machine_learning_lesson', lesson_id=previous_lesson.id) %}
+  {% elif previous_lesson and (previous_lesson.source == 'sf' or previous_lesson.id.startswith('sf.')) %}
+    {% set prev_url = url_for('main.shared_foundations_lesson', lesson_id=previous_lesson.id) %}
+  {% elif previous_lesson %}
+    {% set prev_url = url_for('main.lesson_detail', lesson_id=previous_lesson.id) %}
+  {% else %}
+    {% set prev_url = '' %}
+  {% endif %}
+  {% if next_lesson and next_lesson.source == 'ml' %}
+    {% set next_url = url_for('main.machine_learning_lesson', lesson_id=next_lesson.id) %}
+  {% elif next_lesson and (next_lesson.source == 'sf' or next_lesson.id.startswith('sf.')) %}
+    {% set next_url = url_for('main.shared_foundations_lesson', lesson_id=next_lesson.id) %}
+  {% elif next_lesson %}
+    {% set next_url = url_for('main.lesson_detail', lesson_id=next_lesson.id) %}
+  {% else %}
+    {% set next_url = '' %}
+  {% endif %}
   {% if previous_lesson %}<a href="{{ prev_url }}">← Previous lesson</a>{% else %}<button type="button" disabled>← Previous lesson</button>{% endif %}
   {% if next_lesson %}
     {% if next_lesson_available %}<a id="next-lesson-button" href="{{ next_url }}">Next lesson →</a>
@@ -666,6 +707,37 @@ if (saveNotes && notesArea) {
   });
 }
 const setupCheckInputs = document.querySelectorAll('.setup-check');
+const guidedSetup = document.getElementById('guided-setup');
+const guidedSetupCta = document.getElementById('guided-setup-cta');
+const updateGuidedSetupCta = (allDone) => {
+  if (!guidedSetupCta) return;
+  const nextUrl = guidedSetup?.dataset.nextLessonUrl || '';
+  const nextAvailable = guidedSetup?.dataset.nextLessonAvailable === 'true';
+  guidedSetupCta.className = 'mt-4 rounded-lg border p-3 ' + (allDone ? 'border-emerald-200 bg-emerald-50' : 'border-slate-200 bg-slate-50');
+  if (allDone) {
+    let html = '<p class="text-sm font-semibold text-emerald-900">All setup checks complete. You\'re ready to move on.</p>';
+    if (nextUrl && nextAvailable) {
+      html += '<a id="guided-setup-next" class="mt-2 inline-flex rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800" href="' + nextUrl.replace(/"/g, '&quot;') + '">Continue to next lesson →</a>';
+    } else if (nextUrl) {
+      html += '<p class="mt-1 text-sm text-slate-700">Mark this lesson complete to unlock the next lesson.</p>';
+      html += '<button type="button" class="mt-2 inline-flex rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800" data-scroll-to-complete>Go to complete lesson →</button>';
+    } else {
+      html += '<p class="mt-1 text-sm text-slate-700">Setup complete. Continue with the lesson below.</p>';
+    }
+    guidedSetupCta.innerHTML = html;
+  } else {
+    guidedSetupCta.innerHTML = '<p class="text-sm text-slate-700">Complete all setup checks to get a clear next step.</p>';
+  }
+};
+document.addEventListener('click', (event) => {
+  const scrollBtn = event.target.closest('[data-scroll-to-complete]');
+  if (!scrollBtn) return;
+  const completeBtn = document.getElementById('complete-button');
+  if (completeBtn) {
+    completeBtn.scrollIntoView({behavior: 'smooth', block: 'center'});
+    completeBtn.focus({preventScroll: true});
+  }
+});
 const saveSetupCheck = async (id, done) => {
   const status = document.querySelector(`[data-setup-status="${id}"]`);
   if (status) status.textContent = done ? 'Setup check saved ✓' : 'Setup check cleared.';
@@ -673,6 +745,9 @@ const saveSetupCheck = async (id, done) => {
     const response = await fetch('/api/lessons/setup-checks', {method:'POST', headers:{'Content-Type':'application/json','X-CSRF-Token':csrf}, body:JSON.stringify({checks:{[id]:done}})});
     const data = await readJson(response);
     if (!response.ok) throw new Error(data.error || 'Could not save the setup check.');
+    const total = setupCheckInputs.length;
+    const allDone = total > 0 && Number(data.done || 0) >= total;
+    updateGuidedSetupCta(allDone);
   } catch (error) { if (status) status.textContent = 'Could not save the setup check. Retry.'; }
 };
 document.addEventListener('change', async (event) => {
@@ -743,9 +818,12 @@ if (completeButton) completeButton.addEventListener('click', async () => {
     } else if (data.next_lesson_id) {
       status.textContent = 'Lesson complete. Loading your next lesson…';
       // Pathway lessons live under their own route, not /lesson/<id>.
-      const nextPath = String(data.next_lesson_id).startsWith('mle.')
-        ? `/specializations/machine-learning/lessons/${data.next_lesson_id}`
-        : `/lesson/${data.next_lesson_id}`;
+      const nextId = String(data.next_lesson_id);
+      const nextPath = nextId.startsWith('mle.')
+        ? `/specializations/machine-learning/lessons/${nextId}`
+        : nextId.startsWith('sf.')
+        ? `/specializations/shared-foundations/lessons/${nextId}`
+        : `/lesson/${nextId}`;
       window.location.href = nextPath;
       return;
     } else if (nextButton) {

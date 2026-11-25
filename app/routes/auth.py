@@ -22,10 +22,9 @@ from app.pathway_fit import (
     PATHWAY_DESTINATIONS, PATHWAY_FIT_QUESTIONS,
     score_pathway_fit, validate_pathway_fit_answers,
 )
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 import hashlib
 import hmac
-import os
 import secrets
 import uuid
 from urllib.parse import urljoin, urlsplit
@@ -119,80 +118,11 @@ def safe_local_redirect(target):
     return ref.scheme in {'http', 'https'} and ref.netloc == request.host
 
 
-def _password_reset_identifier(raw_identifier):
-    if not isinstance(raw_identifier, str) or not raw_identifier.strip():
-        return None, None
-    identifier = raw_identifier.strip()
-    if '@' in identifier:
-        return 'email', identifier.lower()
-    try:
-        return 'phone', normalize_phone(identifier)
-    except PhoneError:
-        return None, None
-
-
-def _password_reset_channels(user, identifier_kind, email_available, sms_available):
-    """Choose delivery methods, preferring the identifier the learner used."""
-    channels = []
-    if identifier_kind == 'phone' and user.phone and sms_available:
-        channels.append('sms')
-    if user.email and email_available:
-        channels.append('email')
-    if user.phone and sms_available and 'sms' not in channels:
-        channels.append('sms')
-    return channels
-
-
-def _deliver_password_reset(user, channels, reset_url):
-    """Try each configured channel and return the one that succeeded."""
-    from app.mail import send_password_reset_email
-    from app.sms import send_password_reset_sms
-
-    for channel in channels:
-        try:
-            if channel == 'sms':
-                send_password_reset_sms(user.phone, reset_url)
-            else:
-                send_password_reset_email(user.email, reset_url)
-            return channel
-        except Exception:
-            current_app.logger.exception(
-                'Could not send password recovery %s for user %s',
-                channel, user.id,
-            )
-    return None
-
-
-def _issue_phone_verification_code(user):
-    """Create and text a fresh 6-digit phone verification code for a user."""
-    from app.sms import password_reset_sms_configured, send_phone_verification_sms
-
-    if not (user.phone and password_reset_sms_configured()):
-        return False
-    PhoneVerificationCode.query.filter_by(
-        user_id=user.id, purpose='verify_phone'
-    ).delete(synchronize_session=False)
-    code = f'{secrets.randbelow(1_000_000):06d}'
-    db.session.add(PhoneVerificationCode(
-        user_id=user.id,
-        phone=user.phone,
-        code_hash=hashlib.sha256(code.encode('utf-8')).hexdigest(),
-        purpose='verify_phone',
-        expires_at=datetime.now(timezone.utc) + timedelta(minutes=15),
-    ))
-    db.session.commit()
-    try:
-        send_phone_verification_sms(user.phone, code)
-    except Exception:
-        current_app.logger.exception(
-            'Could not send phone verification SMS for user %s', user.id
-        )
-        PhoneVerificationCode.query.filter_by(
-            user_id=user.id, purpose='verify_phone'
-        ).delete(synchronize_session=False)
-        db.session.commit()
-        return False
-    return True
+from app.services.password_reset import (
+    issue_password_reset,
+    issue_phone_verification_code,
+    normalize_reset_identifier,
+)
 
 @auth_bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -256,7 +186,7 @@ def forgot_password():
         'forgot-identifier',
         f'{client_ip()}:{identity_hash(raw_identifier)}',
     )
-    identifier_kind, identifier = _password_reset_identifier(raw_identifier)
+    identifier_kind, identifier = normalize_reset_identifier(raw_identifier)
     if not identifier_kind:
         flash('Enter the email address or phone number on your account.', 'error')
         return render_template(
@@ -270,43 +200,9 @@ def forgot_password():
     else:
         user = User.query.filter_by(phone=identifier).first()
     if user:
-        now = datetime.now(timezone.utc)
-        recent = PasswordResetToken.query.filter(
-            PasswordResetToken.user_id == user.id,
-            PasswordResetToken.created_at >= now - timedelta(minutes=15),
-            PasswordResetToken.used_at.is_(None),
-            PasswordResetToken.expires_at > now,
-        ).first()
-        if not recent:
-            channels = _password_reset_channels(
-                user, identifier_kind, email_available, sms_available
-            )
-            if channels:
-                raw_token = secrets.token_urlsafe(32)
-                token = PasswordResetToken(
-                    user_id=user.id,
-                    token_hash=hashlib.sha256(
-                        raw_token.encode('utf-8')
-                    ).hexdigest(),
-                    expires_at=now + timedelta(minutes=30),
-                )
-                db.session.add(token)
-                db.session.commit()
-                public_url = os.environ.get('PUBLIC_APP_URL', '').rstrip('/')
-                reset_url = (
-                    public_url
-                    + url_for('auth.reset_password', token=raw_token)
-                )
-                if not _deliver_password_reset(user, channels, reset_url):
-                    db.session.delete(token)
-                    db.session.commit()
-                    # The learner was promised instructions through every
-                    # configured channel and none arrived; surface loudly.
-                    current_app.logger.error(
-                        'Password recovery failed for user %s over all '
-                        'configured channels %s; no reset was delivered.',
-                        user.id, channels,
-                    )
+        issue_password_reset(
+            user, identifier_kind, email_available, sms_available
+        )
     flash(
         'If an account exists for that email or phone number, password reset '
         'instructions will be sent.',
@@ -453,7 +349,7 @@ def register():
         login_user(user)
         _set_auth_session(user)
         flash('Registration successful!', 'success')
-        if phone and _issue_phone_verification_code(user):
+        if phone and issue_phone_verification_code(user):
             flash('A verification code was texted to your phone number.', 'info')
         # Every new learner starts with the two setup questions. Keep a safe
         # destination when one was supplied; otherwise return to the dashboard.
@@ -798,7 +694,7 @@ def resend_phone_verification():
     enforce_rate_limit(
         'phone-resend', identity_hash(str(current_user.id))
     )
-    if _issue_phone_verification_code(current_user):
+    if issue_phone_verification_code(current_user):
         flash('A new verification code was texted to you.', 'success')
     else:
         flash('Could not send a verification code right now. Try again later.', 'error')
@@ -1021,7 +917,7 @@ def update_account():
 
     if email_changed or phone_changed or password_changed:
         _set_auth_session(current_user)
-    if phone_changed and phone and _issue_phone_verification_code(current_user):
+    if phone_changed and phone and issue_phone_verification_code(current_user):
         flash('A new verification code was texted to your phone number.', 'info')
     if request.is_json:
         return {'status': 'success'}

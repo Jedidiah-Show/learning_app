@@ -154,7 +154,14 @@ def lesson_is_available(user, lesson_id, completed=None, completed_projects=None
     destination = _scope(uq, None)
     ai_lesson = get_lesson(lesson_id)
     ml_lesson = get_machine_learning_lesson(lesson_id)
-    if ai_lesson is None and ml_lesson is None:
+    sf_lesson = None
+    if str(lesson_id).startswith('sf.'):
+        try:
+            from app.foundations_pathway import get_shared_foundations_lesson
+            sf_lesson = get_shared_foundations_lesson(lesson_id)
+        except Exception:
+            sf_lesson = None
+    if ai_lesson is None and ml_lesson is None and sf_lesson is None:
         return False
 
     # A dual-enrolled learner can open both specialisations.  A learner scoped
@@ -175,10 +182,13 @@ def lesson_is_available(user, lesson_id, completed=None, completed_projects=None
             has_ai = True
     from app.pathway_scope import FOUNDATION_COURSE_MODULE_IDS
     is_foundation_lesson = (
-        ai_lesson is not None
-        and (
-            str(lesson_id).startswith('sf.')
-            or ai_lesson.get('module_id') in FOUNDATION_COURSE_MODULE_IDS
+        sf_lesson is not None
+        or (
+            ai_lesson is not None
+            and (
+                str(lesson_id).startswith('sf.')
+                or ai_lesson.get('module_id') in FOUNDATION_COURSE_MODULE_IDS
+            )
         )
     )
     if ai_lesson is not None and not is_foundation_lesson and not has_ai:

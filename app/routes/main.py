@@ -2,7 +2,6 @@
 
 import json
 from datetime import datetime, timezone
-from functools import lru_cache
 from urllib.parse import urlsplit
 
 from flask import (Blueprint, Response, abort, current_app, flash, g, jsonify,
@@ -10,7 +9,7 @@ from flask import (Blueprint, Response, abort, current_app, flash, g, jsonify,
 from flask_login import current_user, login_required
 from sqlalchemy.exc import SQLAlchemyError
 from app import db
-from app.curriculum import all_lessons, curriculum, get_lesson
+from app.curriculum import curriculum, get_lesson
 from app.ml_pathway import PATHWAY_ID, machine_learning_pathway
 from app.ml_pathway import get_machine_learning_lesson, machine_learning_lessons
 from app.ml_pathway import machine_learning_lesson_is_open, ml_pathway_overview
@@ -90,43 +89,10 @@ def _template_url_for(endpoint, **values):
     return url_for(endpoint, **values)
 
 
-@lru_cache(maxsize=1)
-def _lesson_search_index():
-    indexed = []
-    for lesson in all_lessons():
-        body = ' '.join(str(page) for page in lesson.get('pages') or [])
-        text = ' '.join([
-            lesson.get('title', ''), lesson.get('goal', ''),
-            ' '.join(lesson.get('outcomes') or []),
-            ' '.join(lesson.get('tasks') or []), body,
-        ])
-        indexed.append((lesson, text, text.lower()))
-    return indexed
-
-
-@lru_cache(maxsize=1)
-def _pathway_search_index():
-    """Index the ML manifest separately: it ships as its own file.
-
-    Entries are read out of ``pathway_lessons`` so they arrive already carrying
-    their scoped ordinal and module, exactly like the AI rows beside them.
-    """
-    from app.pathway_scope import pathway_lessons
-
-    indexed = []
-    for lesson in pathway_lessons('ml'):
-        if lesson.get('source') != 'ml':
-            continue
-        sections = ' '.join(
-            ' '.join([section.get('heading', ''), ' '.join(section.get('body') or [])])
-            for section in lesson.get('sections') or []
-        )
-        text = ' '.join([
-            lesson.get('title', ''), lesson.get('goal', ''),
-            lesson.get('task', ''), sections,
-        ])
-        indexed.append((lesson, text, text.lower()))
-    return indexed
+from app.services.search_index import (  # noqa: E402
+    lesson_search_index as _lesson_search_index,
+    pathway_search_index as _pathway_search_index,
+)
 
 
 
@@ -830,6 +796,13 @@ def shared_foundations_lesson(lesson_id):
             db.session.commit()
             mark_foundation_lesson_complete(current_user.id, lesson_id)
             flash('Lesson complete. Shared Foundations progress has been saved.', 'success')
+            chain = shared_foundations_lessons()
+            for position, candidate in enumerate(chain):
+                if candidate['id'] == lesson_id and position + 1 < len(chain):
+                    nxt = chain[position + 1]
+                    if foundation_lesson_is_open(current_user.id, nxt['id']):
+                        return redirect(url_for('main.shared_foundations_lesson', lesson_id=nxt['id']))
+                    break
             return redirect(url_for('main.shared_foundations_lesson', lesson_id=lesson_id))
 
     chain = shared_foundations_lessons()
@@ -840,10 +813,22 @@ def shared_foundations_lesson(lesson_id):
             next_open = foundation_lesson_is_open(current_user.id, next_lesson['id'])
             break
 
+    tutor_greeting = (
+        "Hi, I’m Ruach-AI, your Shared Foundations tutor. I can help you with this lesson, "
+        "including the concepts, task, and how to reason through mistakes."
+    )
+    try:
+        from app.services.tutor import pathway_context_for_user
+        tutor_ctx = pathway_context_for_user(current_user.id, lesson_id=lesson_id)
+        tutor_greeting = tutor_ctx.get('tutor_greeting') or tutor_greeting
+    except Exception:
+        pass
+
     return render_template(
         'specializations/shared_foundations_lesson.html',
         lesson=lesson, completed=existing,
         next_lesson=next_lesson, next_open=next_open,
+        tutor_greeting=tutor_greeting,
     )
 
 

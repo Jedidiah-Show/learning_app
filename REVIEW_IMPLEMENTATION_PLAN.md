@@ -31,8 +31,12 @@ Address all recommendations from the LMS codebase review: fix risks, optimize ma
 - [x] Extract project completion gate from `app/routes/projects.py`
 - [x] Extract starter kit generation from `app/routes/projects.py`
 - [x] Extract project review output validation to `app/services/project_review_contract.py`
+- [x] Extract lesson completion domain logic to `app/services/lesson_completion.py` (streak, study session, skill passport, leaderboard, badges, idempotency/race handling); `lessons.complete_lesson` route is now thin
+- [x] Extract password reset/phone verification helpers to `app/services/password_reset.py`; `auth.forgot_password` and phone verification call sites simplified
+- [x] Extract video progress domain logic to `app/services/video_progress.py`; `lessons.update_video_progress` route is now thin
+- [x] Extract search index builders to `app/services/search_index.py`; `main` search routes delegate to service
 - [x] Add architecture boundary guardrails for route size budgets and service-gate ownership
-- [~] Auth/main/lessons hotspots still large; further extraction requires careful behavior-preserving refactors with broad integration coverage (tracked by guardrail budgets)
+- [~] Remaining hotspots (auth account/profile/delete orchestration, lessons ask/tutor orchestration, main dashboard/index aggregation) still large; continue extracting use-case services behind existing route contracts with integration tests
 
 ### 4. Security hardening
 - [x] Add security header/CSP/request-id tests (`tests/test_security_headers.py`)

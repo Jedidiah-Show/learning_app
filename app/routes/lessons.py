@@ -15,12 +15,12 @@ from app.course_data import SETUP_CHECKS
 from app.curriculum import curriculum, get_lesson, lesson_context
 from app.ml_pathway import get_machine_learning_lesson, machine_learning_lesson_is_open
 from app.learning import (
-    invalidate_completion_caches, lesson_is_available,
-    next_course_action, next_unlocked_lesson,
+    lesson_is_available,
+    next_unlocked_lesson,
 )
 from app.models import (
     CoursePlan, LessonCompletion, LessonTaskProgress, PracticeUsageDaily,
-    PracticeWorkspace, StudySession, Submission, VideoProgress, utcnow,
+    PracticeWorkspace, Submission, utcnow,
 )
 from app.models import TutorConversation
 from app.practice import get_practice_exercise
@@ -28,7 +28,7 @@ from app.rate_limit import enforce_rate_limit
 from app.request_data import get_json_object
 
 from app.services.lesson_state import (
-    learner_today, setup_checks_for_plan,
+    setup_checks_for_plan,
 )
 
 lessons_bp = Blueprint('lessons', __name__)
@@ -40,8 +40,6 @@ TUTOR_GREETING_RE = re.compile(
     re.IGNORECASE,
 )
 
-MAX_VIDEO_SECONDS = 24 * 60 * 60
-VIDEO_COMPLETION_RATIO = 0.9
 
 
 @lessons_bp.cli.command('practice-usage')
@@ -90,44 +88,15 @@ def record_practice_usage():
     return jsonify({'status': 'recorded'})
 
 
-def _request_seconds(value, field):
-    """Validate a non-negative numeric second value from the client."""
-    if isinstance(value, bool) or not isinstance(value, (int, float)):
-        raise ValueError(f'{field} must be a number of seconds')
-    if value < 0 or value > MAX_VIDEO_SECONDS:
-        raise ValueError(f'{field} must be between 0 and {MAX_VIDEO_SECONDS}')
-    return int(value)
-
-
-def _video_lengths(video, client_duration):
-    """Return the clip start and length used to calculate watch progress."""
-    start = video.get('start') or 0
-    end = video.get('end')
-    if end is not None:
-        return start, max(0, end - start)
-    curated_duration = video.get('duration_seconds')
-    if client_duration:
-        return start, max(0, client_duration - start)
-    if curated_duration:
-        return start, max(0, curated_duration - start)
-    return start, None
-
-
-def _video_is_complete(watched_seconds, length):
-    return bool(length) and watched_seconds >= length * VIDEO_COMPLETION_RATIO
+from app.services.video_progress import (  # noqa: E402
+    record_video_progress, request_seconds,
+)
 
 
 def _next_course_payload():
     """Return the learner's next lesson and any blocking module project."""
-    action = next_course_action(current_user)
-    return {
-        'next_lesson_id': (
-            action['lesson_id']
-            if action and action['type'] == 'lesson'
-            else None
-        ),
-        'next_action': action,
-    }
+    from app.services.lesson_completion import next_course_payload
+    return next_course_payload(current_user)
 
 
 @lessons_bp.route('/tasks/<lesson_id>', methods=['GET'])
@@ -405,8 +374,10 @@ def setup_checks():
         plan = CoursePlan(user_id=current_user.id, track='standard')
         db.session.add(plan)
     checks = setup_checks_for_plan(plan)
+    total = len(SETUP_CHECKS)
     if request.method == 'GET':
-        return jsonify({'checks': checks, 'done': sum(checks.values())})
+        done = sum(checks.values())
+        return jsonify({'checks': checks, 'done': done, 'total': total, 'all_done': done >= total})
 
     data = get_json_object()
     submitted = data.get('checks') if data else None
@@ -423,7 +394,8 @@ def setup_checks():
         {key: value for key, value in checks.items() if value}, sort_keys=True
     )
     db.session.commit()
-    return jsonify({'checks': checks, 'done': sum(checks.values())})
+    done = sum(checks.values())
+    return jsonify({'checks': checks, 'done': done, 'total': total, 'all_done': done >= total})
 
 
 @lessons_bp.route('/daily/<int:ordinal>', methods=['GET'])
@@ -643,7 +615,6 @@ def lesson_note(lesson_id):
 @lessons_bp.route('/complete', methods=['POST'])
 @login_required
 def complete_lesson():
-    from datetime import timedelta
     data = get_json_object()
     if not isinstance(data, dict):
         return jsonify({'error': 'Request body must be a JSON object'}), 400
@@ -662,84 +633,9 @@ def complete_lesson():
     from app.user_preferences import get_effective_config_for_user
     if not get_effective_config_for_user(current_user).get('progress', {}).get('track_time_spent', True):
         minutes = 0
-    from app.services.achievements import achievement_keys, new_badges_since
-    before_achievements = achievement_keys(current_user)
-    completion = LessonCompletion.query.filter_by(
-        user_id=current_user.id, lesson_id=lesson_id
-    ).first()
-    now = datetime.now(timezone.utc)
-    if completion and completion.completed:
-        invalidate_completion_caches()
-        return jsonify({'status': 'success', 'already_completed': True,
-                        **_next_course_payload()})
-    if completion is None:
-        completion = LessonCompletion(user_id=current_user.id, lesson_id=lesson_id,
-                                      subject_id=lesson['module_id'],
-                                      day_number=lesson['_ordinal'])
-        db.session.add(completion)
-    completion.completed = True
-    completion.started_at = completion.started_at or now
-    completion.completed_at = now
-    completion.time_spent_minutes = (completion.time_spent_minutes or 0) + minutes
-    if minutes:
-        db.session.add(StudySession(
-            user_id=current_user.id, session_type='lesson', date=now.date(),
-            start_time=now, end_time=now, duration_minutes=minutes,
-            subjects_studied=json.dumps([lesson['module_id']]), completed=True,
-        ))
-    try:
-        from datetime import timedelta
-        _today = learner_today()
-        if current_user.last_study_date is None:
-            current_user.streak = 1
-            current_user.longest_streak = max(current_user.longest_streak or 0, 1)
-        elif current_user.last_study_date == _today:
-            pass
-        elif current_user.last_study_date == _today - timedelta(days=1):
-            current_user.streak = (current_user.streak or 0) + 1
-            current_user.longest_streak = max(current_user.longest_streak or 0, current_user.streak)
-        else:
-            current_user.streak = 1
-        current_user.last_study_date = _today
-        db.session.add(current_user)
-        from app.services.skill_passport import update_skill_progress_from_lesson
-        update_skill_progress_from_lesson(
-            current_user.id, lesson_id, commit=False,
-        )
-        db.session.commit()
-        from app.leaderboard import refresh_leaderboard_score
-        refresh_leaderboard_score(current_user.id)
-    except IntegrityError:
-        # Two tabs completed the same lesson at once. The unique constraint
-        # makes one request the winner; treat the other as already completed
-        # while still preserving the time the learner spent in this tab.
-        db.session.rollback()
-        completion = LessonCompletion.query.filter_by(
-            user_id=current_user.id, lesson_id=lesson_id
-        ).first()
-        if completion is None or not completion.completed:
-            raise
-        if minutes:
-            db.session.add(StudySession(
-                user_id=current_user.id, session_type='lesson', date=now.date(),
-                start_time=now, end_time=now, duration_minutes=minutes,
-                subjects_studied=json.dumps([lesson['module_id']]),
-                completed=True,
-            ))
-            db.session.commit()
-        invalidate_completion_caches()
-        return jsonify({
-            'status': 'success',
-            'already_completed': True,
-            **_next_course_payload(),
-            'new_badges': [],
-            'completed_lesson_id': lesson_id,
-        })
-    invalidate_completion_caches()
-    earned_badges = new_badges_since(current_user, before_achievements)
-    return jsonify({'status': 'success', **_next_course_payload(),
-                    'new_badges': earned_badges,
-                    'completed_lesson_id': lesson_id})
+    from app.services.lesson_completion import complete_lesson_for_user
+    payload = complete_lesson_for_user(current_user, lesson_id, minutes)
+    return jsonify(payload)
 
 
 @lessons_bp.route('/video-progress', methods=['POST'])
@@ -761,73 +657,28 @@ def update_video_progress():
     if lesson_kind == 'ml':
         if not machine_learning_lesson_is_open(current_user.id, lesson_id):
             return jsonify({'error': 'Lesson is locked'}), 403
+    elif lesson_kind == 'sf':
+        from app.foundations_pathway import foundation_lesson_is_open
+        if not foundation_lesson_is_open(current_user.id, lesson_id):
+            return jsonify({'error': 'Lesson is locked'}), 403
     elif not lesson_is_available(current_user, lesson_id):
         return jsonify({'error': 'Lesson is locked'}), 403
     video = lesson.get('video')
     if not video:
         return jsonify({'error': 'This lesson has no video'}), 404
     try:
-        position = _request_seconds(data.get('position_seconds'), 'position_seconds')
-        duration = _request_seconds(
-            data.get('duration_seconds'), 'duration_seconds'
-        ) if data.get('duration_seconds') is not None else None
+        position = request_seconds(data.get('position_seconds'), 'position_seconds')
+        client_duration = (
+            request_seconds(data.get('duration_seconds'), 'duration_seconds')
+            if data.get('duration_seconds') is not None else None
+        )
     except ValueError as error:
         return jsonify({'error': str(error)}), 400
-
-    clip_start, clip_length = _video_lengths(video, duration)
-    position = max(position, clip_start)
-    if clip_length is not None:
-        position = min(position, clip_start + clip_length)
-    watched_this_event = max(
-        0,
-        position - clip_start if clip_length is None else min(
-            position - clip_start, clip_length
-        ),
+    payload = record_video_progress(
+        current_user.id, lesson_id, video,
+        position_seconds=position, client_duration=client_duration,
     )
-
-    progress = VideoProgress.query.filter_by(
-        user_id=current_user.id, lesson_id=lesson_id
-    ).first()
-    now = datetime.now(timezone.utc)
-    if progress is None:
-        progress = VideoProgress(
-            user_id=current_user.id,
-            lesson_id=lesson_id,
-            video_id=video['id'],
-        )
-        db.session.add(progress)
-    elif progress.video_id != video['id']:
-        # A curated replacement starts a fresh watch history for the lesson.
-        progress.video_id = video['id']
-        progress.watched_seconds = 0
-        progress.completed = False
-        progress.completed_at = None
-
-    progress.watched_seconds = max(
-        progress.watched_seconds or 0, watched_this_event
-    )
-    progress.last_position = position
-    if clip_length:
-        progress.duration_seconds = clip_length
-    completed_now = (
-        not progress.completed
-        and _video_is_complete(progress.watched_seconds, clip_length)
-    )
-    if completed_now:
-        progress.completed = True
-        progress.completed_at = now
-    progress.updated_at = now
-    db.session.commit()
-    return jsonify({
-        'status': 'success',
-        'lesson_id': lesson_id,
-        'video_id': video['id'],
-        'watched_seconds': progress.watched_seconds,
-        'last_position': progress.last_position,
-        'duration_seconds': progress.duration_seconds,
-        'completed': progress.completed,
-        'just_completed': completed_now,
-    })
+    return jsonify(payload)
 
 
 def _resolve_tutor_lesson(lesson_id):
@@ -839,6 +690,13 @@ def _resolve_tutor_lesson(lesson_id):
     ml_lesson = get_machine_learning_lesson(lesson_id)
     if ml_lesson:
         return ml_lesson, 'ml'
+    try:
+        from app.foundations_pathway import get_shared_foundations_lesson
+        sf_lesson = get_shared_foundations_lesson(lesson_id)
+        if sf_lesson:
+            return sf_lesson, 'sf'
+    except Exception:
+        pass
     return None, None
 
 
@@ -850,6 +708,10 @@ def get_tutor_history(lesson_id):
         return jsonify({'error': 'Lesson not found'}), 404
     if kind == 'ml':
         if not machine_learning_lesson_is_open(current_user.id, lesson_id):
+            return jsonify({'error': 'Lesson is locked'}), 403
+    elif kind == 'sf':
+        from app.foundations_pathway import foundation_lesson_is_open
+        if not foundation_lesson_is_open(current_user.id, lesson_id):
             return jsonify({'error': 'Lesson is locked'}), 403
     elif not lesson_is_available(current_user, lesson_id):
         return jsonify({'error': 'Lesson is locked'}), 403
@@ -892,6 +754,10 @@ def ask_lesson_question():
         return jsonify({'error': 'Lesson not found'}), 404
     if lesson_kind == 'ml':
         if not machine_learning_lesson_is_open(current_user.id, lesson_id):
+            return jsonify({'error': 'Lesson is locked'}), 403
+    elif lesson_kind == 'sf':
+        from app.foundations_pathway import foundation_lesson_is_open
+        if not foundation_lesson_is_open(current_user.id, lesson_id):
             return jsonify({'error': 'Lesson is locked'}), 403
     elif not lesson_is_available(current_user, lesson_id):
         return jsonify({'error': 'Lesson is locked'}), 403
