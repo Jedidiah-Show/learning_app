@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from app.ai_pathway import PATHWAY_ID, ai_engineering_pathway
 from app.core.exceptions import EntityNotFoundError, ValidationError
+from app.core.extensions import db
 from app.domains.ai_engineering.evaluation import build_evidence
 from app.models import AISpecializationProject
 
@@ -45,6 +46,29 @@ def get_ai_project_record(user_id: int, module_id: str) -> AISpecializationProje
         user_id=user_id,
         module_id=module_id,
     ).first()
+
+
+def get_or_create_ai_project(user_id: int, module_id: str) -> AISpecializationProject:
+    """Retrieve or create AI specialization project record for learner."""
+    record = AISpecializationProject.query.filter_by(
+        user_id=user_id, pathway_id=PATHWAY_ID, module_id=module_id,
+    ).first()
+    if record is None:
+        record = AISpecializationProject(
+            user_id=user_id, pathway_id=PATHWAY_ID,
+            module_id=module_id,
+        )
+        db.session.add(record)
+        db.session.commit()
+    return record
+
+
+def get_ai_project_records(user_id: int) -> list[AISpecializationProject]:
+    """Query all AI specialization project records for learner."""
+    return AISpecializationProject.query.filter_by(
+        user_id=user_id,
+        pathway_id=PATHWAY_ID,
+    ).all()
 
 
 def get_evaluation_evidence(module_id: str, user_id: int) -> dict:

@@ -8,12 +8,16 @@ from app.domains.ai_engineering.service import (
     get_ai_competencies,
     get_ai_module,
     get_ai_project_record,
+    get_ai_project_records,
     get_evaluation_evidence,
+    get_or_create_ai_project,
 )
 
 __all__ = [
     'get_ai_module',
     'get_ai_competencies',
     'get_ai_project_record',
+    'get_or_create_ai_project',
+    'get_ai_project_records',
     'get_evaluation_evidence',
 ]

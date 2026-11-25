@@ -7,11 +7,12 @@ and evidence collection without any cross-domain coupling to AI logic.
 from __future__ import annotations
 
 from app.core.exceptions import EntityNotFoundError, ValidationError
+from app.core.extensions import db
 from app.domains.machine_learning.competencies import ML_COMPETENCIES, ML_PROJECT_COMPETENCIES
 from app.domains.machine_learning.evaluation import build_evidence
 from app.domains.machine_learning.report import module_by_id, report_matches
 from app.ml_pathway import PATHWAY_ID, machine_learning_pathway
-from app.models import MLSpecializationProject
+from app.models import MLSpecializationLessonCompletion, MLSpecializationProject
 
 
 def get_ml_module(module_id: str) -> dict:
@@ -49,6 +50,85 @@ def get_ml_project_record(user_id: int, module_id: str) -> MLSpecializationProje
         user_id=user_id,
         module_id=module_id,
     ).first()
+
+
+def get_completed_ml_modules(user_id: int) -> set[str]:
+    """Return set of completed ML module IDs for a learner."""
+    rows = MLSpecializationProject.query.filter_by(
+        user_id=user_id,
+        pathway_id=PATHWAY_ID,
+        completed=True,
+    ).all()
+    return {r.module_id for r in rows}
+
+
+def get_or_create_ml_project(user_id: int, module_id: str) -> MLSpecializationProject:
+    """Retrieve or create ML specialization project record for learner."""
+    record = MLSpecializationProject.query.filter_by(
+        user_id=user_id, pathway_id=PATHWAY_ID, module_id=module_id,
+    ).first()
+    if record is None:
+        record = MLSpecializationProject(
+            user_id=user_id, pathway_id=PATHWAY_ID, module_id=module_id,
+        )
+        db.session.add(record)
+        db.session.commit()
+    return record
+
+
+def is_module_lessons_complete(user_id: int, module: dict) -> bool:
+    """Check if all ready lessons in an ML module are completed by the learner."""
+    lessons = module.get('lessons') or []
+    lesson_ids = [lesson['id'] for lesson in lessons]
+    if not lesson_ids or any(lesson.get('status') != 'ready' for lesson in lessons):
+        return False
+    completed = get_ml_lesson_completions(user_id, lesson_ids)
+    return set(lesson_ids).issubset(completed)
+
+
+def are_previous_projects_complete(user_id: int, module: dict) -> bool:
+    """Check if all earlier ready ML projects are marked completed for the learner."""
+    pathway = machine_learning_pathway()
+    earlier = [item for item in pathway.get('modules', []) if item.get('number', 0) < module.get('number', 0)]
+    if not earlier:
+        return True
+    completed_modules = get_completed_ml_modules(user_id)
+    for item in earlier:
+        item_lessons = item.get('lessons') or []
+        if all(lesson.get('status') == 'ready' for lesson in item_lessons):
+            if item.get('id') not in completed_modules:
+                return False
+    return True
+
+
+def get_ml_lesson_completions(user_id: int, lesson_ids: list[str] | None = None) -> set[str]:
+    """Return set of completed ML lesson IDs for a learner, optionally filtered by lesson_ids."""
+    query = MLSpecializationLessonCompletion.query.filter_by(
+        user_id=user_id,
+        pathway_id=PATHWAY_ID,
+    )
+    if lesson_ids:
+        query = query.filter(MLSpecializationLessonCompletion.lesson_id.in_(lesson_ids))
+    return {row.lesson_id for row in query.all()}
+
+
+def record_ml_lesson_completion(user_id: int, lesson_id: str) -> MLSpecializationLessonCompletion:
+    """Record completion of an ML specialization lesson."""
+    existing = MLSpecializationLessonCompletion.query.filter_by(
+        user_id=user_id,
+        pathway_id=PATHWAY_ID,
+        lesson_id=lesson_id,
+    ).first()
+    if existing:
+        return existing
+    record = MLSpecializationLessonCompletion(
+        user_id=user_id,
+        pathway_id=PATHWAY_ID,
+        lesson_id=lesson_id,
+    )
+    db.session.add(record)
+    db.session.commit()
+    return record
 
 
 def get_evaluation_evidence(module_id: str, user_id: int) -> dict:
