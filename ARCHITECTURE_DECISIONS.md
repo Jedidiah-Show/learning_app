@@ -124,3 +124,25 @@
 **Decision:** Code-side verification covers the docker command contract, sandbox runner limits, stale-lease reclaim and failure containment. Authoritative submissions stay disabled (`JUDGE_SUBMISSIONS_ENABLED=false`) until a hardened container-capable host runs `python -m app.workers.judge_worker` with the pinned sandbox image; enable only after `flask judge-worker-health` and one real submission succeed.  
 **Alternatives:** enable submissions on an unverified host (rejected: false passes and orphaned containers), run learner code in Gunicorn (rejected: host compromise).  
 **Consequences:** M6 remains EXIT REVIEW until live-host evidence is attached; the learner experience degrades honestly to browser-only practice.
+
+## ADR-021 — ML workload isolation with a dedicated queue and worker
+
+**Status:** Accepted for Architecture Evolution 1.0 (M5); supersedes the
+deferred execution mode in ADR-020.  
+**Context:** AI and ML workloads must not become a second monolith. Reusing
+`ai_background_job` for ML tasks would couple two domain queues and force the
+AI worker to carry ML handlers. Declaring a worker with no work would be fake
+isolation.  
+**Options:** (1) ML jobs in the AI queue (rejected — shared queue and handler
+registry), (2) keep ML synchronous forever (rejected by the architecture
+goal), (3) separate ML queue, handlers, worker process and heartbeat.  
+**Decision:** `MLBackgroundJob`/`MLJobResult` are owned by the ML domain;
+`app/services/ml_jobs.py`, `app/workers/ml_handlers.py` and
+`app/workers/ml_worker.py` have zero AI imports. The ML worker is declared as
+`ruach-ml-worker` in `render.yaml` and exposes `/api/ml-jobs` for enqueue/status.
+Handlers are bounded pure-Python computations (dataset profile, metrics compare)
+until GPU workloads require dedicated images.  
+**Consequences:** AI and ML can be restarted/scaled independently; the ML
+migration must precede deployment of the new service; live deployment
+verification remains an owner task. ADR-020 is retained as history for the
+period when no ML workload existed.

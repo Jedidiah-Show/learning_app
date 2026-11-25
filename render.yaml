@@ -250,6 +250,32 @@ services:
       - key: WORKER_INSTANCE_ID
         sync: false
 
+  # M5: independent ML workload. Own queue (ml_background_job), own handlers,
+  # own heartbeat — never touches the AI job table or AI handlers.
+  - type: worker
+    name: ruach-ml-worker
+    runtime: python
+    plan: free
+    branch: main
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m app.workers.ml_worker
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.13.5"
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        sync: false
+      - key: TOKEN_ENCRYPTION_KEY
+        sync: false
+      - key: DATABASE_URL
+        sync: false
+      - key: LOG_FORMAT
+        value: json
+      - key: HEARTBEAT_STALE_SECONDS
+        value: "300"
+
   # M5: scheduled maintenance process. It reuses the existing durable queue
   # and leaderboard CLI; it is not a second job system. Judge submissions stay
   # disabled in the web service and no judge-worker service is declared here.
