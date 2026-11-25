@@ -1,6 +1,6 @@
 # Deployment Architecture
 
-**Date:** 2026-11-21  
+**Date:** 2026-11-21 (updated 2026-11-25)  
 **Sources:** `render.yaml`, `vercel.json`, `app/core/config.py`, `wsgi.py`, `sandbox/Dockerfile`, `MIGRATION.md`, `docs/RELEASE_PROCESS.md`.
 
 ## 1. Canonical deployment
@@ -39,16 +39,38 @@ Database pooling is tuned in `render.yaml` (pool size 5, overflow 10, recycle 30
 
 ## 4. Processes actually deployed
 
-- **One web process** (Gunicorn with 2 gthread workers) is declared in `render.yaml`.
-- **No judge worker service is declared on Render.** M3 adds an independently startable worker at `python -m app.workers.judge_worker` and CLI commands `flask process-submissions` / `flask judge-worker-health`, but Render free/plan workers cannot provide the sibling Docker daemon this design requires. `JUDGE_SUBMISSIONS_ENABLED=false` stays on the web service; enabling it without a container-capable host would make authoritative submissions fail rather than queue silently. See `M3_EXECUTION_ARCHITECTURE.md` for the separate-host contract and health checks.
-- **One AI worker service is declared** (`ruach-ai-worker`, started with `python -m app.workers.ai_worker`). It consumes the same database queue as the web app; no Celery/Redis queue was introduced. Deployment health is not claimed here: the worker must be provisioned and observed after migrations are applied.
-- AI generation is available through `app/ai/gateway.py` in both web and worker processes; no separate gateway service is required.
+`render.yaml` declares four process types; all start from `main` with
+`autoDeploy: true` and share the same Postgres/secret configuration.
+
+| Process | Start command | Responsibility | Queue |
+|---|---|---|---|
+| `ruach-learning-app` (web) | `gunicorn wsgi:app --bind 0.0.0.0:$PORT --workers 2 --threads 4 --worker-class gthread --timeout 60` | HTTP/learner journeys, enqueues work only | — |
+| `ruach-ai-worker` | `python -m app.workers.ai_worker` | AI generation, project review handlers | `ai_background_job` |
+| `ruach-ml-worker` | `python -m app.workers.ml_worker` | ML dataset profiles and metric comparisons | `ml_background_job` (independent — ADR-021) |
+| `ruach-scheduler` | `python -m app.workers.scheduler` | Bounded maintenance passes | — |
+
+The web process never executes learner code or ML/AI jobs. All workers use
+`app/workers/lifecycle.py` for SIGTERM/SIGINT and publish heartbeats to
+`service_heartbeat`. Each process has its own restart handled by the platform;
+no shared supervisor is required on Render. Resource sizes are the free-plan
+defaults — independent scaling needs a paid plan and is an owner decision.
+
+**Judge workload (external):** no judge worker service is declared on Render
+because the plan cannot provide the sibling Docker daemon this design requires.
+The independently startable worker is `python -m app.workers.judge_worker`, with
+CLI `flask process-submissions` / `flask judge-worker-health`; see
+`M3_EXECUTION_ARCHITECTURE.md` and ADR-016/019. `JUDGE_SUBMISSIONS_ENABLED=false`
+stays on the web service until a container-capable host is verified. A
+`systemd` unit approach for that host is described in `docs/OPERATIONS_RUNBOOK.md`.
+
+AI generation is available through `app/ai/gateway.py` in both web and AI
+worker processes; no separate gateway service is required.
 
 ## 5. Migrations and release flow
 
 - Migrations remain a guarded manual workflow; `render.yaml` deliberately has no `preDeployCommand` (see `MIGRATION.md`), so the additive M2 and M3 migrations must be applied before the AI or judge workers are started.
 - `MIGRATION.md` and `docs/RELEASE_PROCESS.md` describe the Neon pooled/direct connection split and manual migration procedure.
-- `flask db heads` reports one head: **`m7n8o9p1q2r3`**, descending from the M5 head `k6l7m8n9o0p1`. The conflicting untracked `1a7665109d7c` draft was archived without being applied, and `flask db check` reports no pending operations. Historical multi-head/drift findings remain in the milestone reports; see `docs/MIGRATION_HEAD_RECONCILIATION.md` for the current state and pre-deploy gate.
+- `flask db heads` reports one head (currently `m2n3o4p5q6r7`, adding the independent ML queue; check the live value before deploying). The conflicting untracked `1a7665109d7c` draft was archived without being applied, and `flask db check` reports no pending operations. Historical multi-head/drift findings remain in the milestone reports; see `docs/MIGRATION_HEAD_RECONCILIATION.md` for the current state and pre-deploy gate.
 - Release packaging uses `scripts/export_release_source.sh`, which exports committed source only, scans paths and content, writes a manifest and SHA-256 checksum, and fails closed.
 
 ## 6. Production safety checks in code
