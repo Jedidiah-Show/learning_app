@@ -277,22 +277,28 @@ def process_next_submission(app) -> bool:
         return True
 
 
-def run_worker(app, poll_seconds: float = 1.0) -> None:
-    """Continuously process queued submissions until the worker is stopped."""
+def run_worker(app, poll_seconds: float = 1.0,
+               stop: 'WorkerStop | None' = None) -> None:
+    """Continuously process queued submissions until a stop signal arrives."""
+    if stop is None:
+        from app.workers.lifecycle import WorkerStop
+        stop = WorkerStop().install()
     reclaim_stale_submissions(app)
     update_worker_heartbeat(app, status='starting')
-    while True:
-        try:
-            if not process_next_submission(app):
-                update_worker_heartbeat(app, status='idle')
-                time.sleep(poll_seconds)
-        except KeyboardInterrupt:
-            update_worker_heartbeat(app, status='stopped')
-            raise
-        except Exception:
-            logger.exception('Judge worker loop failed')
-            update_worker_heartbeat(app, status='error')
-            time.sleep(max(poll_seconds, 1.0))
+    try:
+        while not stop.should_stop():
+            try:
+                if not process_next_submission(app):
+                    update_worker_heartbeat(app, status='idle')
+                    stop.wait(poll_seconds)
+            except KeyboardInterrupt:
+                stop.handle()
+            except Exception:
+                logger.exception('Judge worker loop failed')
+                update_worker_heartbeat(app, status='error')
+                stop.wait(max(poll_seconds, 1.0))
+    finally:
+        update_worker_heartbeat(app, status='stopped')
 
 
 @click.command('process-submissions')

@@ -245,8 +245,16 @@ def _record_worker_heartbeat(app, status: str = 'online', processed: int = 0) ->
         logger.warning('Could not record AI worker heartbeat: %s', error)
 
 
-def run_worker(app, poll_seconds: float = 1.0, once: bool = False) -> bool:
-    """Run the worker loop; ``once`` processes at most one job."""
+def run_worker(app, poll_seconds: float = 1.0, once: bool = False,
+               stop: 'WorkerStop | None' = None) -> bool:
+    """Run the worker loop; ``once`` processes at most one job.
+
+    ``stop`` may be supplied by tests or an embedding process; production
+    workers rely on SIGTERM/SIGINT handled by :class:`WorkerStop`.
+    """
+    if stop is None:
+        from app.workers.lifecycle import WorkerStop
+        stop = WorkerStop().install()
     reclaim_stale_jobs(app)
     _record_worker_heartbeat(app, status='starting')
     if once:
@@ -254,16 +262,20 @@ def run_worker(app, poll_seconds: float = 1.0, once: bool = False) -> bool:
         _record_worker_heartbeat(app, processed=int(processed))
         return processed
     last_reclaim = time.monotonic()
-    while True:
-        try:
-            if time.monotonic() - last_reclaim >= RECLAIM_INTERVAL_SECONDS:
-                reclaim_stale_jobs(app)
-                last_reclaim = time.monotonic()
-            processed = process_one_job(app)
-            _record_worker_heartbeat(app, processed=int(processed))
-            if not processed:
-                time.sleep(max(0.1, poll_seconds))
-        except Exception:
-            logger.exception('AI worker iteration failed')
-            _record_worker_heartbeat(app, status='degraded')
-            time.sleep(max(0.1, poll_seconds))
+    try:
+        while not stop.should_stop():
+            try:
+                if time.monotonic() - last_reclaim >= RECLAIM_INTERVAL_SECONDS:
+                    reclaim_stale_jobs(app)
+                    last_reclaim = time.monotonic()
+                processed = process_one_job(app)
+                _record_worker_heartbeat(app, processed=int(processed))
+                if not processed:
+                    stop.wait(max(0.1, poll_seconds))
+            except Exception:
+                logger.exception('AI worker iteration failed')
+                _record_worker_heartbeat(app, status='degraded')
+                stop.wait(max(0.1, poll_seconds))
+    finally:
+        _record_worker_heartbeat(app, status='stopped')
+    return True

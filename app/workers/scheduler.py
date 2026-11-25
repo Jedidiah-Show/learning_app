@@ -107,12 +107,14 @@ def scheduled_jobs(once, interval_seconds):
         run_once(app)
         return
     interval = max(30, interval_seconds)
-    while True:
+    from app.workers.lifecycle import WorkerStop
+    stop = WorkerStop().install()
+    while not stop.should_stop():
         try:
             run_once(app)
         except Exception:
             logger.exception('Scheduled maintenance pass failed')
-        time.sleep(interval)
+        stop.wait(interval)
 
 
 def register_scheduler_cli(app) -> None:

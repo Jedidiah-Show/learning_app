@@ -108,3 +108,19 @@
 **Decision:** Reserve per-user quota at enqueue, count provider attempts through `attempt_sink`, finalize stale cancelled jobs and reclaim stale leases periodically, leave `fallback_provider` unset by default, resolve prompt versions through `active_version()` at call sites, clip user-controlled strings to column widths, and declare M2 config on both Render services while keeping migrations manual under `MIGRATION.md`.  
 **Evidence:** Targeted gateway/job suites pass with new tests for retry counting, quota reservation and stale cancellation; `M2_TEST_REPORT.md` records the full-suite result.  
 **Consequence:** Async jobs cannot bypass request limits, retry rates are measured, cancellations cannot be overwritten by late success, config-level prompt rollback works across processes, and the migration prerequisite remains explicit because Render free plan and pooled runtime URL are unsuitable for automatic DDL.
+
+## ADR-018 — Worker-to-core communication uses the durable database, not HTTP
+
+**Status:** Accepted for Architecture Evolution 1.0 (M6/M10).  
+**Context:** AI, ML, judge and scheduler processes run outside Gunicorn. Adding HTTP endpoints that accept task execution requests from workers would create a new internal attack surface requiring per-worker authentication, signature verification and replay protection.  
+**Decision:** Workers communicate with the core only through authoritatively owned database rows: jobs are claimed with atomic leases and lease tokens, results are written to result tables, and health is published through heartbeat rows. The core never accepts a worker task over HTTP. Worker identity is the lease token plus the heartbeat `instance_id`; no shared "worker API token" is introduced.  
+**Alternatives:** authenticated internal HTTP callbacks (rejected: new endpoint, new secret, no benefit over the existing queue), direct worker writes to learner tables (already prohibited by domain ownership rules).  
+**Consequences:** The database connection is the trust boundary and must remain restricted to the platform secret store; leaks of `DATABASE_URL` are treated as critical. New workers must use `app.workers.base` conventions (lease, heartbeat, graceful stop) or justify an exception in a new ADR.
+
+## ADR-019 — Judge deployment remains an explicit external prerequisite
+
+**Status:** Accepted for Architecture Evolution 1.0 (M6/M9).  
+**Context:** The core hosting plan cannot run the Docker daemon, so the judge worker cannot be declared as a functioning service there. Live kernel-level resource enforcement cannot be proven in CI.  
+**Decision:** Code-side verification covers the docker command contract, sandbox runner limits, stale-lease reclaim and failure containment. Authoritative submissions stay disabled (`JUDGE_SUBMISSIONS_ENABLED=false`) until a hardened container-capable host runs `python -m app.workers.judge_worker` with the pinned sandbox image; enable only after `flask judge-worker-health` and one real submission succeed.  
+**Alternatives:** enable submissions on an unverified host (rejected: false passes and orphaned containers), run learner code in Gunicorn (rejected: host compromise).  
+**Consequences:** M6 remains EXIT REVIEW until live-host evidence is attached; the learner experience degrades honestly to browser-only practice.
