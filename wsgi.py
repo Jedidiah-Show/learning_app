@@ -1,6 +1,10 @@
 """WSGI entry point for production servers such as gunicorn on Render."""
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:  # Serverless runtimes may not bundle python-dotenv
+    def load_dotenv():
+        return False
 
 load_dotenv()
 

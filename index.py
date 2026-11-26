@@ -2,7 +2,11 @@
 
 import os
 
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:  # Vercel's Python runtime does not bundle python-dotenv
+    def load_dotenv():
+        return False
 
 load_dotenv()
 
