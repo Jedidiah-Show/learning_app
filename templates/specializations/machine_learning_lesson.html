@@ -41,6 +41,8 @@
 
   {% if practice_exercises %}<div id="practice-anchor" class="mt-5">{% set practice_url_prefix = '/api/pathways/practice' %}{% include "lessons/_practice_workspace.html" %}</div>{% endif %}
 
+  {% include 'partials/lesson_video.html' %}
+
   <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-6" aria-labelledby="ml-tutor-title">
     <p class="text-xs font-bold uppercase tracking-widest text-indigo-600">Domain-aware tutor</p>
     <h3 id="ml-tutor-title" class="mt-1 text-lg font-bold">Ask your ML tutor</h3>

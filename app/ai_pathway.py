@@ -6,12 +6,14 @@ Learning never depend on one another, and Shared Foundations is the only
 allowed shared curriculum dependency.
 """
 
-from functools import lru_cache
-
 PATHWAY_ID = 'ai-engineering'
 
 
-@lru_cache(maxsize=1)
+def _attach(lesson):
+    from app.lesson_videos import attach_curated_video
+    return attach_curated_video(dict(lesson))
+
+
 def ai_engineering_pathway():
     """Load and validate the standalone AI Engineering pathway manifest.
 
@@ -44,7 +46,12 @@ def ai_engineering_pathway():
         'version': domain.version,
         'status': domain.status,
         'learning_objectives': list(domain.learning_objectives),
-        'modules': domain.modules,
+        'modules': [
+            {**module, 'lessons': [
+                _attach(lesson) for lesson in module['lessons']
+            ]}
+            for module in domain.modules
+        ],
     }
 
 

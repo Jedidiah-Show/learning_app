@@ -19,12 +19,14 @@ def cloud_ai_infrastructure_pathway():
 
 
 def cloud_ai_infrastructure_lessons():
-    return [
-        {**lesson, 'module_id': module['id'], 'module_title': module['title'],
-         'module_number': module['number']}
-        for module in cloud_ai_infrastructure_pathway()['modules']
-        for lesson in module['lessons']
-    ]
+    from app.lesson_videos import attach_curated_video
+    out = []
+    for module in cloud_ai_infrastructure_pathway()['modules']:
+        for lesson in module['lessons']:
+            out.append(attach_curated_video(
+                {**lesson, 'module_id': module['id'], 'module_title': module['title'],
+                 'module_number': module['number']}))
+    return out
 
 
 def get_cloud_ai_infrastructure_lesson(lesson_id):

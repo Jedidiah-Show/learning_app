@@ -304,7 +304,12 @@ def _load_curriculum():
             **module_resources,
             **(resources.get(lesson['id']) or {}),
         }
-        lesson['video'] = build_lesson_video(lesson['resources'].get('video'))
+        # Curated 3-20min concept video wins; fall back to any explicitly-set resource video.
+        from app.lesson_videos import curated_lesson_video
+        lesson['video'] = (
+            curated_lesson_video(lesson['id'])
+            or build_lesson_video(lesson['resources'].get('video'))
+        )
         lesson['concepts'] = _lesson_concepts(lesson)
         lesson['reading_minutes'] = _reading_minutes(lesson)
         lesson['study_minutes'] = _study_minutes(lesson)

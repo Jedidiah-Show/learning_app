@@ -2,10 +2,11 @@
     <header class="bg-white/95 backdrop-blur border-b border-slate-200 sticky top-0 z-50 shadow-sm {% if current_user.is_authenticated %}lg:fixed lg:inset-y-0 lg:left-0 lg:w-64 lg:flex-col lg:border-r lg:border-b-0{% endif %}">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 {% if current_user.is_authenticated %}lg:max-w-none lg:h-full lg:flex lg:flex-col lg:px-4 lg:py-4{% endif %}">
             <div class="flex min-h-16 items-center justify-between gap-2 sm:gap-3 {% if current_user.is_authenticated %}lg:flex-col lg:items-stretch lg:min-h-0 lg:gap-4{% endif %}">
-                <a href="{{ url_for('main.index') if current_user.is_authenticated else url_for('auth.login') }}" class="app-brand flex items-center space-x-2 sm:space-x-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 flex-shrink-0 {% if current_user.is_authenticated %}lg:px-2{% endif %}" aria-label="RUACH AI & ML Engineering home">
-                    <span class="brand-mark"><img src="{{ url_for('static', filename='img/ruachai.png') }}" alt="" width="40" height="40" loading="eager"></span>
-                    <div class="brand-copy">
-                        <h1 class="brand-wordmark">RUACH</h1>
+                <div class="app-brand-row flex w-full flex-1 items-center justify-between gap-2 sm:gap-3">
+                    <a href="{{ url_for('main.index') if current_user.is_authenticated else url_for('auth.login') }}" class="app-brand flex items-center space-x-2 sm:space-x-3 rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 flex-shrink-0 {% if current_user.is_authenticated %}lg:px-2{% endif %}" aria-label="RUACH AI & ML Engineering home">
+                        <span class="brand-mark"><img src="{{ url_for('static', filename='img/ruachai.png') }}" alt="" width="40" height="40" loading="eager"></span>
+                        <div class="brand-copy">
+                            <h1 class="brand-wordmark">RUACH</h1>
 {% if current_user.is_authenticated %}
   {% set has_ai = 'ai-engineering' in pathway_ids %}
   {# The brand line follows the active pathway focus, not enrolments. #}
@@ -21,14 +22,15 @@
 {% else %}
   <p class="brand-subtitle hidden sm:block">Spirit · Connection · Growth</p>
 {% endif %}
-                    </div>
-                </a>
-                {% if current_user.is_authenticated %}
-                <button type="button" class="app-nav-toggle flex-shrink-0" data-toggle-nav aria-label="Toggle navigation" aria-controls="app-navigation" aria-pressed="false">
-                    <span aria-hidden="true">☰</span>
-                    <span data-nav-toggle-label>Menu</span>
-                </button>
-                {% endif %}
+                        </div>
+                    </a>
+                    {% if current_user.is_authenticated %}
+                    <button type="button" class="app-nav-toggle flex-shrink-0" data-toggle-nav aria-label="Collapse navigation" aria-controls="app-navigation" aria-pressed="true">
+                        <svg class="nav-toggle-icon" viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>
+                        <span data-nav-toggle-label class="sr-only">Collapse navigation</span>
+                    </button>
+                    {% endif %}
+                </div>
                 {% if not current_user.is_authenticated %}
                 <div class="app-user-menu flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
                     <button type="button" class="theme-toggle flex-shrink-0" data-theme-toggle aria-label="Switch to dark mode">

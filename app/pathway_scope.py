@@ -291,6 +291,11 @@ def pathway_ids_for(user_id=None):
     return ids
 
 
+def __attach(lesson):
+    from app.lesson_videos import attach_curated_video
+    return attach_curated_video(lesson)
+
+
 def pathway_modules(pathway_id, user_id=None):
     """Module dicts in study order for a given pathway.
 
@@ -334,8 +339,8 @@ def pathway_modules(pathway_id, user_id=None):
         modules = []
         for module in pathway['modules']:
             lessons = [
-                {**lesson, 'module_id': module['id'], 'module_title': module['title'],
-                 'source': 'ml'}
+                __attach({**lesson, 'module_id': module['id'], 'module_title': module['title'],
+                 'source': 'ml'})
                 for lesson in module['lessons']
                 if lesson.get('status') == 'ready'
             ]
@@ -379,12 +384,22 @@ def pathway_modules(pathway_id, user_id=None):
 
 
 def ai_specialization_modules():
-    """The AI Engineering specialization modules (all non-foundation modules)."""
-    return [
+    """The AI Engineering specialization modules, numbered from 1.
+
+    Shared Foundations is a standalone pathway, so the AI course no longer
+    reserves module numbers 0–2 for it.  Module IDs stay stable because learner
+    completions, projects and the legacy mapping reference them; only the
+    learner-facing module number is renumbered to a contiguous 1-based range.
+    """
+    modules = [
         module for module in all_modules()
         if not module['id'].startswith('sf.')
         and not module['id'].startswith('mle.')
         and module['id'] not in FOUNDATION_COURSE_MODULE_IDS
+    ]
+    return [
+        {**module, 'number': index}
+        for index, module in enumerate(modules, start=1)
     ]
 
 
@@ -527,7 +542,8 @@ def pathway_lessons(pathway_id, user_id=None):
                 entry['source'] = 'ml'
             entry['_ordinal'] = len(lessons) + 1
             entry['_module'] = module
-            lessons.append(entry)
+            from app.lesson_videos import attach_curated_video
+            lessons.append(attach_curated_video(entry))
     return lessons
 
 

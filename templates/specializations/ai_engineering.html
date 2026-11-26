@@ -28,7 +28,10 @@
         {% for lesson in module.lessons %}
         <li class="flex items-center justify-between gap-2 rounded-lg bg-slate-50 px-3 py-1">
           <span>{{ loop.index }}. {{ lesson.title }}</span>
-          <span class="shrink-0 text-xs text-slate-400">{{ lesson.id }}</span>
+          <span class="flex items-center gap-2">
+            {% if lesson.video %}<span class="video-badge" title="Includes a curated lesson video">▶ Video</span>{% endif %}
+            <span class="shrink-0 text-xs text-slate-400">{{ lesson.id }}</span>
+          </span>
         </li>
         {% endfor %}
       </ul>

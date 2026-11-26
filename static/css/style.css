@@ -181,6 +181,12 @@ body.has-sidebar > header { position:fixed;inset:0 auto 0 0;width:var(--nav-widt
 body.has-sidebar > header > .max-w-7xl { display:flex;width:100%;height:100%;max-width:none;flex-direction:column;margin:0;padding:22px 12px; }
 body.has-sidebar > header .min-h-16 { min-height:0;flex-direction:column;align-items:stretch;justify-content:flex-start;gap:16px; }
 body.has-sidebar .app-brand { justify-content:flex-start;padding:0 6px; }
+body.has-sidebar .app-brand-row { display:flex;width:100%;align-items:center;justify-content:space-between;gap:8px; }
+body.has-sidebar .nav-toggle-icon { width:16px;height:16px;flex:none;transition:transform .18s ease; }
+html.nav-collapsed body.has-sidebar .nav-toggle-icon { transform:rotate(180deg); }
+html.nav-collapsed body.has-sidebar .app-brand-row { gap:0; }
+html.nav-collapsed body.has-sidebar .app-brand .brand-mark { width:30px;height:30px; }
+html.nav-collapsed body.has-sidebar .app-nav-toggle { min-height:30px;padding:5px; }
 body.has-sidebar .app-user-menu { align-items:flex-start;flex-wrap:wrap;gap:10px;margin-top:6px;padding:0 6px; }
 body.has-sidebar .theme-toggle { order:1; }
 body.has-sidebar #app-navigation { display:flex;flex-direction:column;flex-wrap:nowrap;gap:4px;width:100%;margin-top:18px;padding:16px 0;border-top:1px solid var(--app-border);min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin;scrollbar-color:var(--app-border) transparent; } body.has-sidebar #app-navigation::-webkit-scrollbar { width:6px; } body.has-sidebar #app-navigation::-webkit-scrollbar-track { background:transparent; } body.has-sidebar #app-navigation::-webkit-scrollbar-thumb { background:var(--app-border);border-radius:999px; }

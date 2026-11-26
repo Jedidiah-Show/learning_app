@@ -135,13 +135,15 @@ def machine_learning_pathway():
 
 
 def machine_learning_lessons():
-    """Return pathway lessons in their authored module order."""
-    return [
-        {**lesson, 'module_id': module['id'], 'module_title': module['title'],
-         'module_number': module['number']}
-        for module in machine_learning_pathway()['modules']
-        for lesson in module['lessons']
-    ]
+    """Return pathway lessons in their authored module order + curated video."""
+    from app.lesson_videos import attach_curated_video
+    out = []
+    for module in machine_learning_pathway()['modules']:
+        for lesson in module['lessons']:
+            out.append(attach_curated_video(
+                {**lesson, 'module_id': module['id'], 'module_title': module['title'],
+                 'module_number': module['number']}))
+    return out
 
 
 def get_machine_learning_lesson(lesson_id):

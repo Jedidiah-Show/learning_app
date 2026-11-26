@@ -16,7 +16,7 @@
   "modules": [
     {
       "id": "ai.03",
-      "number": 3,
+      "number": 1,
       "title": "LLM Fundamentals",
       "description": "Core concepts of large language models, prompting, and generation",
       "estimated_hours": 25,
@@ -60,7 +60,7 @@
     },
     {
       "id": "ai.04",
-      "number": 4,
+      "number": 2,
       "title": "LLM Application Engineering",
       "description": "Building production LLM applications with routing, fallback, and validation",
       "estimated_hours": 30,
@@ -103,7 +103,7 @@
     },
     {
       "id": "ai.05",
-      "number": 5,
+      "number": 3,
       "title": "RAG (Retrieval-Augmented Generation)",
       "description": "Retrieval, vector search, and RAG debugging",
       "estimated_hours": 25,
@@ -146,7 +146,7 @@
     },
     {
       "id": "ai.06",
-      "number": 6,
+      "number": 4,
       "title": "AI Agents",
       "description": "Agent systems, tool integration, and orchestration",
       "estimated_hours": 30,
@@ -189,7 +189,7 @@
     },
     {
       "id": "ai.07",
-      "number": 7,
+      "number": 5,
       "title": "Agent Orchestration",
       "description": "Multi-agent systems and workflow management",
       "estimated_hours": 25,
@@ -232,7 +232,7 @@
     },
     {
       "id": "ai.08",
-      "number": 8,
+      "number": 6,
       "title": "MCP (Model Context Protocol)",
       "description": "Standardized context and provenance for LLM applications",
       "estimated_hours": 20,
@@ -275,7 +275,7 @@
     },
     {
       "id": "ai.09",
-      "number": 9,
+      "number": 7,
       "title": "Production AI Engineering",
       "description": "Deployment, monitoring, and observability for AI systems",
       "estimated_hours": 35,
@@ -322,7 +322,7 @@
     },
     {
       "id": "ai.10",
-      "number": 10,
+      "number": 8,
       "title": "Docker & Deployment",
       "description": "Containerization and deployment for AI workloads",
       "estimated_hours": 20,
@@ -365,7 +365,7 @@
     },
     {
       "id": "ai.11",
-      "number": 11,
+      "number": 9,
       "title": "AI System Design",
       "description": "End-to-end AI system architecture and decision records",
       "estimated_hours": 30,

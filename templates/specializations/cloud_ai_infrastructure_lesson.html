@@ -39,6 +39,8 @@
     </form>
     {% if completed %}<p class="mt-4 rounded-lg bg-emerald-50 p-3 text-sm text-emerald-900">Answer: {{ lesson.quiz.choices[lesson.quiz.answer] }} — {{ lesson.quiz.explanation }}</p>{% endif %}
   </section>
+  {% include 'partials/lesson_video.html' %}
+
   {% if practice_exercises %}<div id="practice-anchor" class="mt-5">{% set practice_url_prefix = '/api/pathways/practice' %}{% include "lessons/_practice_workspace.html" %}</div>{% endif %}
 </article>
 {% endblock %}
