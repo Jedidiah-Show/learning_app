@@ -9,8 +9,10 @@ Reproducible generator for the LMS-wide lesson → YouTube video review document
 every pathway is listed; nothing is skipped. Each lesson shows a curated,
 **verified** YouTube video (duration **3–20 minutes**, i.e. 180–1200 s) plus
 match confidence and verification details. Lessons with no qualifying video are
-explicitly marked `NO_MATCH`, never silently dropped. (Current build: **282
-lessons, 282 with a verified video, 0 NO_MATCH.**)
+explicitly marked `NO_MATCH`, never silently dropped. (Current build: **382
+lessons discovered across all LMS sources, 381 with a verified video, 1
+NO_MATCH** — lesson `2.13` “SQL”, which has no qualifying 3–20 min YouTube
+video; it is listed explicitly rather than skipped.)
 
 ## Pathways covered (every pathway in the LMS)
 
@@ -64,5 +66,5 @@ the shipped `video_content.docx`. Caches (`cache_search.json`,
 - `repair_no_match.py` — retry `NONE` with better queries + re-verification.
 - `repair_low.py` — re-query/re-rank `LOW` picks.
 - `build_docx.py` — render `video_content.docx`.
-- `lessons_inventory.json` — the 282-lesson inventory.
+- `lessons_inventory.json` — the lesson inventory.
 - `curated_videos.json` — final curated + verified video per lesson.
