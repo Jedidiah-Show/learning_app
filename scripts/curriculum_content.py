@@ -1713,128 +1713,534 @@ MAINTENANCE = {
 
 # Placement is the single source of truth for /api/lessons/placement and the
 # lesson-listing card; upgrade_curriculum.py deep-copies it over the live
-# overrides. Keep the invariants the release audit and tests check: ten
-# questions, exactly four of them `short`, and the union of topics[].lessons
-# equal to skippable_lessons.
-PLACEMENT = {
-    'title': 'Experienced learner placement check',
-    'description': (
-        'This is a short knowledge check for Python, Git, and HTTP basics, not a '
-        'practical coding assessment. A score of 8 or more places out the listed '
-        'foundation lessons; module projects still verify that you can apply the '
-        'skills. If the questions feel unfamiliar, use the beginner route. Module '
-        'projects and later lessons are still required.'
-    ),
-    'passing_score': 8,
-    'skippable_lessons': [
-        '0.01', '0.02', '0.03', '0.04', '0.05',
-        '0.06', '0.07', '0.08', '0.09', '0.10', '0.11',
-        '1.01', '1.02', '1.03', '1.04',
-    ],
-    # Each topic is scored on its own: a topic counts as placed out only when
-    # every question in it is correct, and its lessons become the recommended
-    # skip set. This is what lets a learner who knows Git but not HTTP keep the
-    # lessons they actually need.
-    'topics': [
-        {
-            'id': 'setup_runtime',
-            'title': 'Course setup, running code, and reading errors',
-            'questions': ['q3'],
-            'lessons': ['0.01', '0.02', '0.03', '0.04', '0.05', '0.06', '1.02'],
-        },
-        {
-            'id': 'python_data',
-            'title': 'Python values, functions, and type hints',
-            'questions': ['q1', 'q2', 'q9', 'q10'],
-            'lessons': ['0.07', '0.08', '1.01', '1.03', '1.04'],
-        },
-        {
-            'id': 'files_git_envs',
-            'title': 'Files, virtual environments, and Git',
-            'questions': ['q4', 'q5', 'q6'],
-            'lessons': ['0.09', '0.10'],
-        },
-        {
-            'id': 'http_status',
-            'title': 'HTTP status codes and API responses',
-            'questions': ['q7', 'q8'],
-            'lessons': ['0.11'],
-        },
-    ],
-    'questions': [
-        {
-            'id': 'q1',
-            'topic': 'python_data',
-            'prompt': 'Which Python value is a dictionary?',
-            'options': ['[1, 2, 3]', '{"name": "Ada"}', '("a", "b")', '"a,b"'],
-            'answer': 1,
-        },
-        {
-            'id': 'q2',
-            'topic': 'python_data',
-            'prompt': 'What does an f-string do?',
-            'options': ['Formats a file', 'Inserts expressions into a string', 'Creates a virtual environment', 'Starts a web server'],
-            'answer': 1,
-        },
-        {
-            'id': 'q3',
-            'topic': 'setup_runtime',
-            'type': 'short',
-            'prompt': 'A traceback ends with `line 8` followed by `KeyError: \'price\'`. Enter the line number you should inspect first.',
-            'answer': '8',
-            'accepted_answers': ['8', 'line 8'],
-        },
-        {
-            'id': 'q4',
-            'topic': 'files_git_envs',
-            'prompt': 'What is the main purpose of a virtual environment?',
-            'options': ['Speed up the CPU', 'Isolate a project’s Python packages', 'Compress source files', 'Replace Git'],
-            'answer': 1,
-        },
-        {
-            'id': 'q5',
-            'topic': 'files_git_envs',
-            'type': 'short',
-            'prompt': 'You ran `git add app.py` and the file is staged. Enter the Git command that records the staged snapshot locally.',
-            'answer': 'git commit',
-            'accepted_answers': ['git commit', 'commit'],
-        },
-        {
-            'id': 'q6',
-            'topic': 'files_git_envs',
-            'type': 'short',
-            'prompt': 'Your API key is in a local file named `.env`. Enter the filename you should put in `.gitignore`.',
-            'answer': '.env',
-            'accepted_answers': ['.env'],
-        },
-        {
-            'id': 'q7',
-            'topic': 'http_status',
-            'prompt': 'What does HTTP status 404 mean?',
-            'options': ['Server error', 'Unauthorized', 'Resource not found', 'Success'],
-            'answer': 2,
-        },
-        {
-            'id': 'q8',
-            'topic': 'http_status',
-            'prompt': 'Which status codes are usually safe to retry?',
-            'options': ['400 and 401', '429 and 503', '404 and 422', '200 and 201'],
-            'answer': 1,
-        },
-        {
-            'id': 'q9',
-            'topic': 'python_data',
-            'type': 'short',
-            'prompt': 'A Python function should give a value back to the code that called it. Enter the keyword used for that.',
-            'answer': 'return',
-            'accepted_answers': ['return'],
-        },
-        {
-            'id': 'q10',
-            'topic': 'python_data',
-            'prompt': 'Why add type hints to a function?',
-            'options': ['They enforce runtime validation automatically', 'They document intended types and help tools', 'They make Python compile faster', 'They replace tests'],
-            'answer': 1,
-        },
-    ],
-}
+# overrides. Invariants the release audit and tests check: exactly thirty
+# timed questions covering every lesson in the foundational modules
+# (legacy modules 00-02 and Shared Foundations sf.*), the union of
+# topics[].lessons equal to skippable_lessons, and a `time_limit_seconds`
+# countdown.
+PLACEMENT = {'title': 'Guided placement check',
+ 'description': 'A timed knowledge check covering every lesson in the foundational modules (Shared '
+                'Foundations sf.* and legacy Modules 0-2). About 30 questions; a score of 24 or '
+                'more places out the listed foundation lessons; module projects still verify that '
+                'you can apply the skills. If the questions feel unfamiliar, use the beginner '
+                'route. Module projects and later lessons are still required.',
+ 'passing_score': 24,
+ 'time_limit_minutes': 30,
+ 'time_limit_seconds': 1800,
+ 'skippable_lessons': ['0.01',
+                       '0.02',
+                       '0.03',
+                       '0.04',
+                       '0.05',
+                       '0.06',
+                       '0.07',
+                       '0.08',
+                       '0.09',
+                       '0.10',
+                       '0.11',
+                       '1.01',
+                       '1.02',
+                       '1.03',
+                       '1.04'],
+ 'topics': [{'id': 'm0_orientation',
+             'title': 'Module 0 · Course setup and how the course works',
+             'lessons': ['0.01', '0.02', '0.03', '0.04', '0.05'],
+             'questions': ['q_m0_welcome']},
+            {'id': 'm0_python',
+             'title': 'Module 0 · Python ramp',
+             'lessons': ['0.06', '0.07', '0.08', '0.09'],
+             'questions': ['q_m0_first_program', 'q_m0_data', 'q_m0_functions', 'q_m0_json_files']},
+            {'id': 'm0_git_http',
+             'title': 'Module 0 · Git and HTTP',
+             'lessons': ['0.10', '0.11'],
+             'questions': ['q_m0_git', 'q_m0_http']},
+            {'id': 'm1_python',
+             'title': 'Module 1 · Python for AI Engineers',
+             'lessons': ['1.01', '1.02', '1.03', '1.04'],
+             'questions': ['q_m1_review', 'q_m1_structure', 'q_m1_typehints']},
+            {'id': 'm1_typing_data',
+             'title': 'Module 1 · Data, typing, and validation',
+             'lessons': [],
+             'questions': ['q_m1_pydantic', 'q_m1_json_http']},
+            {'id': 'm1_async_test',
+             'title': 'Module 1 · Errors, async, testing, Git',
+             'lessons': [],
+             'questions': ['q_m1_errors',
+                           'q_m1_env_deps',
+                           'q_m1_async',
+                           'q_m1_testing',
+                           'q_m1_git']},
+            {'id': 'm2_http',
+             'title': 'Module 2 · Internet, HTTP, REST',
+             'lessons': [],
+             'questions': ['q_m2_internet', 'q_m2_rest_api']},
+            {'id': 'm2_fastapi',
+             'title': 'Module 2 · FastAPI services',
+             'lessons': [],
+             'questions': ['q_m2_fastapi', 'q_m2_di']},
+            {'id': 'm2_data',
+             'title': 'Module 2 · PostgreSQL, SQL, SQLAlchemy',
+             'lessons': [],
+             'questions': ['q_m2_data', 'q_m2_sqlalchemy']},
+            {'id': 'm2_ops',
+             'title': 'Module 2 · Auth, caching, jobs, async',
+             'lessons': [],
+             'questions': ['q_m2_ops', 'q_m2_async_backend']},
+            {'id': 'sf_prog',
+             'title': 'Shared Foundations · Programming Foundations',
+             'lessons': [],
+             'questions': ['q_sf_prog']},
+            {'id': 'sf_py',
+             'title': 'Shared Foundations · Python Foundations',
+             'lessons': [],
+             'questions': ['q_sf_python']},
+            {'id': 'sf_eng',
+             'title': 'Shared Foundations · Software Engineering',
+             'lessons': [],
+             'questions': ['q_sf_eng']},
+            {'id': 'sf_tools',
+             'title': 'Shared Foundations · Tools and APIs',
+             'lessons': [],
+             'questions': ['q_sf_tools']},
+            {'id': 'sf_data',
+             'title': 'Shared Foundations · Data and computation',
+             'lessons': [],
+             'questions': ['q_sf_data']}],
+ 'questions': [{'id': 'q_m0_welcome',
+                'topic': 'm0_orientation',
+                'lesson_id': '0.01',
+                'covered_lessons': ['0.01', '0.02', '0.03', '0.04', '0.05'],
+                'type': 'choice',
+                'prompt': 'Module 0.01 says start from zero with good habits. Lesson 0.02 explains '
+                          "what an AI engineer does; 0.03 maps a modern AI app's pieces; 0.04 "
+                          'helps you choose the smallest stack meeting quality, latency, cost and '
+                          'control; 0.05 turns the thirteen modules into a plan whose artefacts '
+                          'compound into a capstone. Which combination is accurate?',
+                'options': ['0.02 lists grading; 0.03 is only a database; 0.04 is GPU choice; 0.05 '
+                            'skips projects',
+                            '0.02 = AI-engineer role; 0.03 = app anatomy; 0.04 = smallest stack '
+                            'for quality/latency/cost/control; 0.05 = realistic plan with '
+                            'compounding artefacts',
+                            '0.02 = Git; 0.03 = HTTP; 0.04 = testing; 0.05 = random topics',
+                            '0.02 = deployment; 0.03 = frontend; 0.04 = colors; 0.05 = memorize '
+                            'syntax'],
+                'answer': 1},
+               {'id': 'q_m0_first_program',
+                'topic': 'm0_python',
+                'lesson_id': '0.06',
+                'covered_lessons': ['0.06', 'sf.00.01', 'sf.00.02'],
+                'type': 'choice',
+                'prompt': 'Lesson 0.06: write, run and debug a tiny Python script without '
+                          'guessing. On Shared Foundations, what does `name = value` mean, and '
+                          'what does control flow decide (sf.00.01–sf.00.02)?',
+                'options': ['Assert equality; control flow only sets names',
+                            'Bind a name to a value (case-sensitive, rebindable); control flow '
+                            'decides which statements run, in what order, when loops stop',
+                            'Allocate constant memory; no ordering',
+                            'Print output; no control flow exists'],
+                'answer': 1},
+               {'id': 'q_m0_data',
+                'topic': 'm0_python',
+                'lesson_id': '0.07',
+                'covered_lessons': ['0.07', 'sf.00.04', 'sf.01.02'],
+                'type': 'choice',
+                'prompt': 'Which structure maps keys to values, and which built-ins group values; '
+                          'a `for item in collection` loop avoids repetition (0.07, sf.00.04, '
+                          'sf.01.02)?',
+                'options': ['Dictionary maps keys→values; lists/tuples/sets group values; `for '
+                            'item in collection` processes each item',
+                            'List maps keys; needs index; `while` required',
+                            'Tuple maps keys; no loops',
+                            'Set maps keys; no iteration'],
+                'answer': 0},
+               {'id': 'q_m0_functions',
+                'topic': 'm0_python',
+                'lesson_id': '0.08',
+                'covered_lessons': ['0.08', '1.03', 'sf.00.03'],
+                'type': 'choice',
+                'prompt': 'Lesson 0.08 turns repeated steps into a named function with clear input '
+                          'and output. What makes a function testable when retries/parsing/prompts '
+                          'arrive (sf.00.03, 1.03)?',
+                'options': ['Hidden globals; no return',
+                            'Clear name; honest inputs; clear return; one responsibility; '
+                            'injectable dependencies',
+                            'Many unrelated jobs; no name',
+                            'Only side effects'],
+                'answer': 1},
+               {'id': 'q_m0_json_files',
+                'topic': 'm0_python',
+                'lesson_id': '0.09',
+                'covered_lessons': ['0.09', '1.09', 'sf.01.01'],
+                'type': 'choice',
+                'prompt': 'Lesson 0.09 covers files, JSON and the command line. JSON moving across '
+                          'boundaries has what property (1.09)?',
+                'options': ["Read a file, parse JSON, accept a path argument; JSON's type system "
+                            "is narrower than Python's, so parse deliberately",
+                            'Only stdin; JSON preserves tuples/sets; no CLI args',
+                            'Require a database; JSON can carry functions',
+                            'Binary only'],
+                'answer': 0},
+               {'id': 'q_m0_git',
+                'topic': 'm0_git_http',
+                'lesson_id': '0.10',
+                'covered_lessons': ['0.10', '1.17', 'sf.02.01', 'sf.02.02'],
+                'type': 'choice',
+                'prompt': 'Lesson 0.10: save snapshots, write useful commit messages, keep secrets '
+                          'out of history. On Shared Foundations + Git essentials, how should '
+                          'teams use Git (sf.02.01–sf.02.02, 1.17)?',
+                'options': ['As a reviewable history of decisions with branching/PR workflow '
+                            'protecting main; not a backup folder; no secrets',
+                            'Only a backup folder; secrets in commits; force-push main',
+                            "No snapshots; messages don't matter",
+                            'Store secrets; no branches'],
+                'answer': 0},
+               {'id': 'q_m0_http',
+                'topic': 'm0_git_http',
+                'lesson_id': '0.11',
+                'covered_lessons': ['0.11', '1.10', '2.02', 'sf.04.01'],
+                'type': 'choice',
+                'prompt': 'HTTP/APIs from zero (0.11): check status code and handle response. HTTP '
+                          'messages + remote calls (sf.04.01, 2.02, 1.10) hinge on what?',
+                'options': ['Ignore status codes; assume success; no timeouts',
+                            'Status codes, headers, idempotency; check status; explicit timeouts, '
+                            'bounded retries, schema validation',
+                            'Only body length; no failure modes',
+                            'Only URL'],
+                'answer': 1},
+               {'id': 'q_m1_review',
+                'topic': 'm1_python',
+                'lesson_id': '1.01',
+                'covered_lessons': ['1.00', '1.01', 'sf.01.01'],
+                'type': 'choice',
+                'prompt': 'Lesson 1.01 reviews Python for AI apps. Which areas does it cover, and '
+                          'what does 1.00 add for AI engineers (sf.01.01)?',
+                'options': ['Data, loops, and reading tracebacks; 1.00 adds mean/median, p95/p99 '
+                            'percentiles and turning usage into cost',
+                            'Frontend CSS; 1.00 adds trigonometry only',
+                            'Cloud billing; 1.00 adds HR',
+                            'GPU kernels; 1.00 adds sorting only'],
+                'answer': 0},
+               {'id': 'q_m1_structure',
+                'topic': 'm1_python',
+                'lesson_id': '1.02',
+                'covered_lessons': ['1.02', '1.03', 'sf.01.03', 'sf.02.04'],
+                'type': 'choice',
+                'prompt': 'A package should import consistently on laptop, in tests, and in '
+                          'container (1.02). What about small functions (1.03), modules/packages '
+                          '(sf.01.03), project structure (sf.02.04)?',
+                'options': ['Random layout; hidden globals; no packages; no structure',
+                            'Consistent package layout; small functions with honest '
+                            'inputs/outputs; reusable modules; project laid out to build/test '
+                            'cleanly',
+                            'Single file; no imports; no tests',
+                            'No names; no returns'],
+                'answer': 1},
+               {'id': 'q_m1_typehints',
+                'topic': 'm1_python',
+                'lesson_id': '1.04',
+                'covered_lessons': ['1.04', '1.05', '1.06', 'sf.00.01'],
+                'type': 'choice',
+                'prompt': 'Why type hints at boundaries (1.04); when classes (1.05); dataclasses '
+                          '(1.06)?',
+                'options': ['No runtime check; classes only for filing; replace nothing',
+                            'Catch wrong shapes before requests; classes for consistent injectable '
+                            'state; dataclasses replace hand-written records with '
+                            'frozen/default-factory/validation choices',
+                            'Hints replace tests; classes for everything; dataclasses replace '
+                            'functions',
+                            'Faster compile; global state; no validation'],
+                'answer': 1},
+               {'id': 'q_m1_pydantic',
+                'topic': 'm1_typing_data',
+                'lesson_id': '1.07',
+                'covered_lessons': ['1.07', '1.08', '2.07', 'sf.01.04'],
+                'type': 'choice',
+                'prompt': 'Pydantic (1.07): treat incoming data as untrusted until a schema parses '
+                          'it. Errors (1.08); request validation (2.07); error handling sf.01.04?',
+                'options': ['Trust input; swallow all errors; no validation',
+                            'Parse untrusted data to typed objects; catch only actionable failures '
+                            'with a small taxonomy; validate at boundary with actionable 422s; '
+                            'respond to failures not crash blindly',
+                            'Execute input; silence errors; no schema',
+                            'Assume valid JSON; retry forever'],
+                'answer': 1},
+               {'id': 'q_m1_errors',
+                'topic': 'm1_async_test',
+                'lesson_id': '1.08',
+                'covered_lessons': ['1.08', 'sf.01.04', 'sf.03.02'],
+                'type': 'choice',
+                'prompt': 'Error handling (1.08, sf.01.04) + debugging (sf.03.02): which is '
+                          'accurate?',
+                'options': ['Catch everything; silence exceptions; never surface failures; guess '
+                            'fixes',
+                            'Catch only failures you can act on; translate into a small taxonomy; '
+                            'make every skip visible in metrics; debug to isolate cause; respond '
+                            'to failures',
+                            'Swallow errors silently; hide from metrics',
+                            'Let everything crash with no handling'],
+                'answer': 1},
+               {'id': 'q_m1_json_http',
+                'topic': 'm1_typing_data',
+                'lesson_id': '1.09',
+                'covered_lessons': ['0.09', '1.09', '1.10', 'sf.04.01'],
+                'type': 'choice',
+                'prompt': 'JSON boundaries (1.09) + HTTP requests (1.10) + files/JSON (0.09) + '
+                          "HTTP fundamentals (sf.04.01): what's correct?",
+                'options': ['JSON is richer than Python; happy path only; no timeouts',
+                            'Move data deliberately (JSON narrower than Python); explicit '
+                            'timeouts, bounded retries, schema validation; parse JSON; check '
+                            'status codes',
+                            'JSON preserves functions; infinite retries; no status checks',
+                            'No parsing; no timeouts'],
+                'answer': 1},
+               {'id': 'q_m1_env_deps',
+                'topic': 'm1_async_test',
+                'lesson_id': '1.11',
+                'covered_lessons': ['1.11', '1.12', '1.13', 'sf.01.03', 'sf.03.03'],
+                'type': 'choice',
+                'prompt': 'Config + secrets (1.11); virtualenv (1.12); dependencies (1.13); tool '
+                          'integration (sf.03.03); modules (sf.01.03): which is accurate?',
+                'options': ['Hardcode secrets in image; one global env; unpinned packages; no '
+                            'tooling',
+                            'Config outside image, validate at startup, secrets stricter; '
+                            "per-project venv so upgrades don't break others; pin+lock+review "
+                            'deps; integrate tools; reuse modules',
+                            'Secrets in source; shared env; no review; no tooling',
+                            'No config validation; no lockfile'],
+                'answer': 1},
+               {'id': 'q_m1_async',
+                'topic': 'm1_async_test',
+                'lesson_id': '1.14',
+                'covered_lessons': ['1.14', '1.15', '2.21'],
+                'type': 'choice',
+                'prompt': 'Async (1.14) + `await` (1.15) + async backend (2.21): which is '
+                          'accurate?',
+                'options': ['Async speeds CPU; `await` starts a thread; blocking in the loop; no '
+                            'deadlines',
+                            'One thread serves many calls by not blocking on I/O; `await` suspends '
+                            'without blocking others; propagate errors/cancellation; avoid '
+                            'orphaned tasks; blocking work has its own lane; every hop has a '
+                            'deadline',
+                            '`await` sleeps; no cancellation',
+                            'Synchronous only'],
+                'answer': 1},
+               {'id': 'q_m1_testing',
+                'topic': 'm1_async_test',
+                'lesson_id': '1.16',
+                'covered_lessons': ['1.16', 'sf.02.03', 'sf.03.01', 'sf.03.02', 'sf.03.03'],
+                'type': 'choice',
+                'prompt': 'Testing (1.16, sf.02.03) + CI/CD (sf.03.01) + debugging (sf.03.02) + '
+                          'tool integration (sf.03.03): which is accurate?',
+                'options': ['Slow random tests; test value vs itself; no CI; guess fixes',
+                            'Fast deterministic tests pinning boundary behaviour; automated '
+                            'build/test/deploy; debug to isolate cause; integrate tools; never '
+                            'compare a value to itself',
+                            'No tests; manual only; silence output',
+                            'Flaky tests fine'],
+                'answer': 1},
+               {'id': 'q_m1_git',
+                'topic': 'm1_async_test',
+                'lesson_id': '1.17',
+                'covered_lessons': ['1.02', '1.17', 'sf.02.02', 'sf.02.04'],
+                'type': 'choice',
+                'prompt': 'Git essentials (1.17); project structure (1.02, sf.02.04); repository '
+                          'workflow (sf.02.02): which is accurate?',
+                'options': ['Backup folder; commit secrets; no layout',
+                            'Reviewable history; checks protect main; consistent package layout; '
+                            'branching/PR workflow; not a backup folder',
+                            'Force-push; random layout',
+                            'No review'],
+                'answer': 1},
+               {'id': 'q_m2_internet',
+                'topic': 'm2_http',
+                'lesson_id': '2.01',
+                'covered_lessons': ['2.01', '2.02', 'sf.04.01', 'sf.04.02'],
+                'type': 'choice',
+                'prompt': 'One API request across DNS, TCP, TLS, routing (2.01); HTTP messages '
+                          '(2.02); HTTP fundamentals + API design (sf.04.01–sf.04.02): which is '
+                          'accurate?',
+                'options': ["Only DNS; no TLS; no routing; status codes don't matter",
+                            'Resolve name → open connection → secure → route to server; methods, '
+                            'status codes, headers, idempotency decide client behaviour under '
+                            'failure; clear contracts',
+                            'No connection; no status codes; invent RPC verbs',
+                            'Only HTML; only files'],
+                'answer': 1},
+               {'id': 'q_m2_rest_api',
+                'topic': 'm2_http',
+                'lesson_id': '2.03',
+                'covered_lessons': ['2.03', '2.04', 'sf.04.02', 'sf.04.03'],
+                'type': 'choice',
+                'prompt': 'REST (2.03); API design (2.04); API design + backend basics '
+                          '(sf.04.02–sf.04.03): which is accurate?',
+                'options': ['Invent custom verbs; breaking changes; no error format; no server '
+                            'logic',
+                            'Model resources; verbs/status codes/representations do work; '
+                            'consistent naming, cursors, idempotency, actionable errors; server '
+                            'receives request→applies logic→responds→persists',
+                            'One POST for everything; ignore status codes',
+                            'Only static files; no persistence'],
+                'answer': 1},
+               {'id': 'q_m2_fastapi',
+                'topic': 'm2_fastapi',
+                'lesson_id': '2.05',
+                'covered_lessons': ['2.05', '2.06', '2.07', '2.08'],
+                'type': 'choice',
+                'prompt': 'FastAPI (2.05); routes (2.06); request validation (2.07); response '
+                          'models (2.08): which is accurate?',
+                'options': ['Leak clients; no health check; random routes; no validation; expose '
+                            'everything',
+                            'Lifespan-managed clients; health check reflecting dependencies; typed '
+                            'path params/query contracts; Pydantic boundary validation with 422s; '
+                            "response models so internals don't leak",
+                            'Blocking startup; no types; no response contract',
+                            'No validation; ad-hoc strings'],
+                'answer': 1},
+               {'id': 'q_m2_di',
+                'topic': 'm2_fastapi',
+                'lesson_id': '2.09',
+                'covered_lessons': ['2.09', '2.10', '2.11'],
+                'type': 'choice',
+                'prompt': 'Dependency injection (2.09); authentication (2.10); authorization '
+                          '(2.11): which is accurate?',
+                'options': ['Hardcode; no test replacement; no identity; permissions once at '
+                            'login; UI-only',
+                            'Declare needs; one resolver owns construction/cleanup/replacement; '
+                            'prove identity (memory-hard hashes, short-lived verified tokens); '
+                            'authorize every request inside the query',
+                            'Globals; plaintext passwords; long-lived tokens; never recheck',
+                            'No injection; no auth'],
+                'answer': 1},
+               {'id': 'q_m2_data',
+                'topic': 'm2_data',
+                'lesson_id': '2.12',
+                'covered_lessons': ['2.12', '2.13', '2.14'],
+                'type': 'choice',
+                'prompt': 'PostgreSQL (2.12); SQL (2.13); database design (2.14): which is '
+                          'accurate?',
+                'options': ['Unlimited connections; no snapshots; ignore NULL; races fine; no '
+                            'constraints',
+                            'Connections scarce; snapshots define visibility; planner needs stats; '
+                            'set-based correct SQL respecting NULL under concurrency; '
+                            'keys/constraints prevent invalid states',
+                            'Stateless; no transactions; app-only validation',
+                            'Free-form only'],
+                'answer': 1},
+               {'id': 'q_m2_sqlalchemy',
+                'topic': 'm2_data',
+                'lesson_id': '2.15',
+                'covered_lessons': ['2.15', '2.16'],
+                'type': 'choice',
+                'prompt': 'SQLAlchemy (2.15); migrations (2.16): which is accurate?',
+                'options': ['One global session; no transactions; hand-edit prod; non-reversible',
+                            'Tables as classes; declared relationship loading; one session + one '
+                            'transaction per request; schema changes as reviewed reversible '
+                            'revisions compatible with either side',
+                            'Unbounded loading; no review',
+                            'Raw strings; no revisions'],
+                'answer': 1},
+               {'id': 'q_m2_ops',
+                'topic': 'm2_ops',
+                'lesson_id': '2.17',
+                'covered_lessons': ['2.17', '2.18', '2.19', '2.20'],
+                'type': 'choice',
+                'prompt': 'Redis (2.17); caching (2.18); background jobs (2.19); queues (2.20): '
+                          'which is accurate?',
+                'options': ['Only database; cache everything; keep in-request; exactly-once '
+                            'always; no dead letters',
+                            'Disposable side-store never sole copy; cache where reads repeat, '
+                            'guard stampedes/stale/tenant leaks; idempotent observable jobs safe '
+                            'to run twice; understand delivery guarantees, visibility timeouts, '
+                            'dead letters',
+                            'Permanent record; no invalidation; not idempotent; no dead letters',
+                            'No use'],
+                'answer': 1},
+               {'id': 'q_m2_async_backend',
+                'topic': 'm2_ops',
+                'lesson_id': '2.21',
+                'covered_lessons': ['1.14', '2.19', '2.21'],
+                'type': 'choice',
+                'prompt': 'Async backend architecture (2.21) restated: which is accurate?',
+                'options': ['One event loop serves many requests; blocking work has its own lane; '
+                            'every hop has a deadline; jobs idempotent',
+                            'Blocking in the loop; no deadlines; one request per loop',
+                            'Synchronous only',
+                            'No async'],
+                'answer': 0},
+               {'id': 'q_sf_prog',
+                'topic': 'sf_prog',
+                'lesson_id': 'sf.00.01',
+                'covered_lessons': ['sf.00.01', 'sf.00.02', 'sf.00.03', 'sf.00.04'],
+                'type': 'choice',
+                'prompt': 'Shared Foundations Programming Foundations (sf.00.01–sf.00.04): '
+                          'variables/types, control flow, functions, data structures — which is '
+                          'accurate?',
+                'options': ['`=` asserts equality; case-insensitive; no rebind; no loops; no '
+                            'functions; no structures',
+                            '`name=value` binds; case-sensitive; rebindable; control flow '
+                            'ordering; named functions with inputs/return; lists/tuples/sets + '
+                            'key→value dicts',
+                            'Everything immutable; no args; no collections',
+                            'Only strings'],
+                'answer': 1},
+               {'id': 'q_sf_python',
+                'topic': 'sf_py',
+                'lesson_id': 'sf.01.01',
+                'covered_lessons': ['sf.01.01', 'sf.01.02', 'sf.01.03', 'sf.01.04'],
+                'type': 'choice',
+                'prompt': 'Shared Foundations Python Foundations (sf.01.01–sf.01.04): basics, '
+                          'lists/dictionaries, modules/packages, error handling — which is '
+                          'accurate?',
+                'options': ['No imports; no packages; silence errors; no collections',
+                            'Core syntax + lists/dicts; import and reuse code across files as '
+                            'modules/packages; detect and respond to failures instead of crashing '
+                            'blindly',
+                            'Duplicate code; no error handling',
+                            'Only printing'],
+                'answer': 1},
+               {'id': 'q_sf_eng',
+                'topic': 'sf_eng',
+                'lesson_id': 'sf.02.01',
+                'covered_lessons': ['sf.02.01', 'sf.02.02', 'sf.02.03', 'sf.02.04'],
+                'type': 'choice',
+                'prompt': 'Shared Foundations Software Engineering (sf.02.01–sf.02.04): Git '
+                          'basics, repository workflow, testing, project structure — which is '
+                          'accurate?',
+                'options': ['No snapshots; no branches; no tests; no structure',
+                            'Snapshots/commits + branching/PR workflow; tests pinning behaviour; '
+                            'lay out project to build/test cleanly; no secrets in history',
+                            'Backup only; manual QA',
+                            'Random layout'],
+                'answer': 1},
+               {'id': 'q_sf_tools',
+                'topic': 'sf_tools',
+                'lesson_id': 'sf.03.01',
+                'covered_lessons': ['sf.03.01',
+                                    'sf.03.02',
+                                    'sf.03.03',
+                                    'sf.04.01',
+                                    'sf.04.02',
+                                    'sf.04.03'],
+                'type': 'choice',
+                'prompt': 'Shared Foundations tools + APIs (sf.03.01–sf.04.03): CI/CD, debugging, '
+                          'tool integration, HTTP, API design, backend basics — which is accurate?',
+                'options': ['Manual releases; guess fixes; no tooling; no methods; no persistence',
+                            'Automated build/test/deploy; debug to isolate cause; integrate tools; '
+                            'HTTP request/response + methods + status codes; clear API contracts; '
+                            'server applies logic and persists',
+                            'No automation; no tooling; only static files',
+                            'Screenshots only'],
+                'answer': 1},
+               {'id': 'q_sf_data',
+                'topic': 'sf_data',
+                'lesson_id': 'sf.05.01',
+                'covered_lessons': ['sf.05.01', 'sf.05.02', 'sf.05.03'],
+                'type': 'choice',
+                'prompt': 'Shared Foundations data + computation (sf.05.01–sf.05.03): algorithmic '
+                          'thinking, data structures, complexity — which is accurate?',
+                'options': ['No analysis; only syntax; only strings',
+                            'Break problems into steps; choose structures for efficiency; reason '
+                            'about time/space cost of an algorithm',
+                            'Only databases',
+                            'No trade-offs'],
+                'answer': 1}]}

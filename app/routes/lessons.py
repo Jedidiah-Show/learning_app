@@ -92,11 +92,23 @@ from app.services.video_progress import (  # noqa: E402
     record_video_progress, request_seconds,
 )
 
+_UNANSWERED = object()
+
 
 def _next_course_payload():
     """Return the learner's next lesson and any blocking module project."""
     from app.services.lesson_completion import next_course_payload
     return next_course_payload(current_user)
+
+
+def _placement_next_payload():
+    """Next action after placement, counting legacy foundation modules first."""
+    from app.learning import placement_course_action
+    action = placement_course_action(current_user)
+    return {
+        'next_lesson_id': action['lesson_id'] if action and action['type'] == 'lesson' else None,
+        'next_action': action,
+    }
 
 
 @lessons_bp.route('/tasks/<lesson_id>', methods=['GET'])
@@ -200,6 +212,10 @@ def placement_check():
             'title': placement.get('title'),
             'description': placement.get('description'),
             'passing_score': placement.get('passing_score'),
+            'time_limit_seconds': placement.get('time_limit_seconds'),
+            'time_limit_minutes': placement.get('time_limit_minutes'),
+            'timed': bool(placement.get('time_limit_seconds')),
+            'question_count': len(questions),
             'topics': [
                 {
                     'id': topic.get('id'),
@@ -215,6 +231,8 @@ def placement_check():
                     'prompt': question['prompt'],
                     'type': question.get('type', 'choice'),
                     'topic': question.get('topic'),
+                    'lesson_id': question.get('lesson_id'),
+                    'covered_lessons': question.get('covered_lessons') or [],
                     'options': question.get('options') or [],
                 }
                 for question in questions
@@ -229,26 +247,32 @@ def placement_check():
         return jsonify({'error': 'Answers must be an object keyed by question id'}), 400
     submitted = {}
     for question in questions:
-        value = answers.get(question['id'])
+        qid = question['id']
+        if qid not in answers:
+            # Unanswered questions (e.g. the timed clock ran out) score as
+            # incorrect rather than rejecting the whole submission.
+            submitted[qid] = _UNANSWERED
+            continue
+        value = answers.get(qid)
         if question.get('type') == 'short':
             if not isinstance(value, str) or not value.strip() or len(value) > 120:
-                return jsonify({'error': f"Answer {question['id']} is invalid"}), 400
+                return jsonify({'error': f"Answer {qid} is invalid"}), 400
             value = re.sub(r'\s+', ' ', value).strip().casefold()
         else:
             if isinstance(value, bool):
-                return jsonify({'error': f"Answer {question['id']} is invalid"}), 400
+                return jsonify({'error': f"Answer {qid} is invalid"}), 400
             try:
                 value = int(value)
             except (TypeError, ValueError):
-                return jsonify({'error': f"Answer {question['id']} is invalid"}), 400
+                return jsonify({'error': f"Answer {qid} is invalid"}), 400
             if value < 0 or value >= len(question['options']):
-                return jsonify({'error': f"Answer {question['id']} is invalid"}), 400
-        submitted[question['id']] = value
-    if len(submitted) != len(questions):
-        return jsonify({'error': 'Answer every placement question'}), 400
+                return jsonify({'error': f"Answer {qid} is invalid"}), 400
+        submitted[qid] = value
 
     def is_correct(question):
         given = submitted[question['id']]
+        if given is _UNANSWERED:
+            return False
         if question.get('type') != 'short':
             return given == question['answer']
         accepted = {
@@ -357,7 +381,7 @@ def placement_check():
         'recommended_lessons': recommended,
         'placed_lessons': placed_lessons,
         'message': message,
-        **_next_course_payload(),
+        **_placement_next_payload(),
     })
 
 

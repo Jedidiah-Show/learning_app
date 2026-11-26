@@ -141,11 +141,19 @@ def _validate_resources(errors, lessons, modules, resources, extras, overrides=N
             errors.append(f'Modern topic lesson {lesson_id} has no plain-language extra')
 
 
+PLACEMENT_QUESTION_COUNT = 30
+
+
 def _validate_placement(errors, course, lesson_ids):
     placement = course.get('placement') or {}
     questions = placement.get('questions') or []
-    if len(questions) != 10:
-        errors.append('Placement check must contain exactly 10 questions')
+    if len(questions) != PLACEMENT_QUESTION_COUNT:
+        errors.append(
+            f'Placement check must contain exactly {PLACEMENT_QUESTION_COUNT} questions'
+        )
+    time_limit = placement.get('time_limit_seconds')
+    if not isinstance(time_limit, int) or isinstance(time_limit, bool) or time_limit <= 0:
+        errors.append('Placement check must set a positive time_limit_seconds (timed)')
     passing = placement.get('passing_score')
     if not isinstance(passing, int) or isinstance(passing, bool) or not 0 < passing <= len(questions):
         errors.append('Placement passing_score must be between 1 and the question count')
@@ -158,6 +166,18 @@ def _validate_placement(errors, course, lesson_ids):
         if not qid or qid in seen:
             errors.append(f'Placement question id is missing or duplicated: {qid!r}')
         seen.add(qid)
+        lesson_refs = []
+        if question.get('lesson_id') is not None:
+            lesson_refs.append(question.get('lesson_id'))
+        extra = question.get('covered_lessons')
+        if extra is not None:
+            if not isinstance(extra, list) or any(not isinstance(item, str) for item in extra):
+                errors.append(f'Placement question {qid} has invalid covered_lessons')
+            else:
+                lesson_refs.extend(extra)
+        for ref in lesson_refs:
+            if ref not in lesson_ids:
+                errors.append(f'Placement question {qid} references unknown lesson {ref!r}')
         options = question.get('options') or []
         answer = question.get('answer')
         if question.get('type') == 'short':
@@ -221,6 +241,7 @@ def _validate_placement(errors, course, lesson_ids):
     if assigned_lessons != set(skippable):
         missing = sorted(set(skippable) - assigned_lessons)
         errors.append(f'Placement topics do not cover every skippable lesson; missing {missing}')
+
 
 
 def _validate_tracks(errors):
@@ -509,6 +530,16 @@ def audit(strict_reviews=False, run_exercises=True):
             errors.append(f"Lesson {lesson.get('id', '?')} has no learning outcomes")
     seen_exercises = set()
     known_lessons = set(lesson_ids)
+    # Shared Foundations (sf.*) lessons are a separate canonical domain; the
+    # placement check references both sf.* and legacy foundation lesson ids.
+    sf_path = DATA / 'shared_foundations_lessons.json'
+    if sf_path.exists():
+        sf_data = json.loads(sf_path.read_text(encoding='utf-8'))
+        known_lessons |= {
+            lesson['id']
+            for module in sf_data.get('modules') or []
+            for lesson in module.get('lessons') or []
+        }
     for exercise in exercises:
         exercise_id = exercise.get('id')
         if not exercise_id or exercise_id in seen_exercises:

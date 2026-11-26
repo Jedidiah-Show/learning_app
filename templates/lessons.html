@@ -35,14 +35,21 @@
   <details class="mt-4 rounded-xl border border-slate-200 bg-white p-4" id="placement-check">
     <summary class="cursor-pointer font-semibold text-slate-900">{{ placement.title }} · optional knowledge check</summary>
     <p class="mt-2 text-sm text-slate-600">{{ placement.description }} Module projects are never skipped.</p>
+    <p class="mt-2 flex flex-wrap items-center gap-2 text-sm" id="placement-timer-wrap">
+      <span class="font-semibold text-slate-900">Time remaining:</span>
+      <span id="placement-timer" class="rounded-lg bg-slate-100 px-2 py-1 font-mono text-slate-900" role="timer" aria-live="off" data-time-limit-seconds="{{ placement.time_limit_seconds or 1800 }}">--:--</span>
+      <span class="text-slate-500">· {{ (placement.questions|length) }} questions · {{ placement.time_limit_minutes or 30 }} minutes total</span>
+    </p>
     <form id="placement-form" class="mt-4 space-y-4">
+      {% set ns = namespace(qcount=0) %}
       {% for topic in placement.topics %}
       <div class="placement-topic" data-topic-id="{{ topic.id }}">
         <p class="placement-topic-title">{{ loop.index }}. {{ topic.title }}</p>
         {% for question in placement.questions %}
         {% if question.topic == topic.id %}
+        {% set ns.qcount = ns.qcount + 1 %}
         <fieldset class="rounded-xl border border-slate-200 p-3">
-          <legend class="px-1 text-sm font-semibold">{{ loop.index }}. {{ question.prompt }}</legend>
+          <legend class="px-1 text-sm font-semibold"><span class="mr-1 text-slate-400">{{ ns.qcount }}.</span>{{ question.prompt }}</legend>
           <div class="mt-2 grid gap-2 sm:grid-cols-2">
             {% if question.get('type') == 'short' %}
             <label class="text-sm text-slate-700 sm:col-span-2">Your answer<input class="mt-1 w-full rounded-lg border border-slate-300 p-2" type="text" name="{{ question.id }}" maxlength="120" autocomplete="off" required></label>
@@ -132,6 +139,54 @@
 </div>
 <script nonce="{{ csp_nonce }}">
 let placementAnswers = {};
+let placementTimerId = null;
+let placementDeadline = null;
+let placementTimedOut = false;
+function formatPlacementTime(seconds) {
+  const total = Math.max(0, Math.ceil(seconds));
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+function stopPlacementTimer() {
+  if (placementTimerId !== null) {
+    window.clearInterval(placementTimerId);
+    placementTimerId = null;
+  }
+}
+function startPlacementTimer() {
+  const timer = document.getElementById('placement-timer');
+  const form = document.getElementById('placement-form');
+  if (!timer || !form || placementTimerId !== null) return;
+  const limit = Number(timer.dataset.timeLimitSeconds || 1800);
+  placementDeadline = Date.now() + limit * 1000;
+  placementTimedOut = false;
+  const tick = () => {
+    const remaining = (placementDeadline - Date.now()) / 1000;
+    timer.textContent = formatPlacementTime(remaining);
+    timer.classList.toggle('text-rose-700', remaining <= 60);
+    if (remaining <= 0) {
+      stopPlacementTimer();
+      placementTimedOut = true;
+      timer.textContent = '00:00';
+      const result = document.getElementById('placement-result');
+      if (result) result.textContent = "Time's up — submitting your placement check…";
+      // Auto-submit whatever has been answered when the clock runs out.
+      form.noValidate = true; // timed auto-submit: score what's answered, leave the rest blank
+      if (typeof form.requestSubmit === 'function') {
+        form.requestSubmit();
+      } else {
+        form.dispatchEvent(new Event('submit', {cancelable: true, bubbles: true}));
+      }
+    }
+  };
+  tick();
+  placementTimerId = window.setInterval(tick, 250);
+}
+document.getElementById('placement-check')?.addEventListener('toggle', (event) => {
+  if (event.currentTarget.open) startPlacementTimer();
+  else stopPlacementTimer();
+});
 function placementHeaders() {
   return {
     'Content-Type': 'application/json',

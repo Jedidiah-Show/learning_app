@@ -105,7 +105,7 @@ def next_unlocked_lesson(user, completed=None, completed_projects=None,
 
 
 def next_course_action(user, completed=None, completed_projects=None,
-                       destination=None):
+                       destination=None, modules=None):
     uq = _user_id(user)
     destination = _scope(uq, destination)
     if completed is None:
@@ -120,7 +120,33 @@ def next_course_action(user, completed=None, completed_projects=None,
     # specialization; for ML that is the ML sequence, for foundations-only
     # destinations the foundation.
     return _next_course_action(
-        completed, completed_projects, modules=journey_modules(destination)
+        completed, completed_projects,
+        modules=journey_modules(destination) if modules is None else modules,
+    )
+
+
+def placement_course_action(user, completed=None, completed_projects=None,
+                            destination=None):
+    """Next action after a placement check, counting legacy foundations first.
+
+    A placement learner who has placed out foundation lessons should land on
+    the foundation module project, never a re-locked foundation lesson.
+    """
+    uq = _user_id(user)
+    destination = _scope(uq, destination)
+    from app.pathway_scope import FOUNDATION_COURSE_MODULE_IDS, journey_modules
+    journey = list(journey_modules(destination))
+    if destination != 'machine-learning':
+        already = {module.get('id') for module in journey}
+        foundations = [
+            module for module in all_modules()
+            if module.get('id') in FOUNDATION_COURSE_MODULE_IDS
+            and module.get('id') not in already
+        ]
+        journey = foundations + journey
+    return next_course_action(
+        user, completed=completed, completed_projects=completed_projects,
+        destination=destination, modules=journey,
     )
 
 
@@ -300,6 +326,25 @@ def module_project_is_available(user, module_id, completed=None):
     return all(lesson['id'] in completed for lesson in module['lessons'])
 
 
+def _journey_with_foundation(destination):
+    """Journey modules with legacy foundation modules (00-02) counted first.
+
+    A learner who has placed out foundation lessons should land on the
+    foundation module project, never a re-locked foundation lesson.
+    """
+    from app.pathway_scope import FOUNDATION_COURSE_MODULE_IDS, journey_modules
+    journey = list(journey_modules(destination))
+    if destination == 'machine-learning':
+        return journey
+    already = {module.get('id') for module in journey}
+    foundations = [
+        module for module in all_modules()
+        if module.get('id') in FOUNDATION_COURSE_MODULE_IDS
+        and module.get('id') not in already
+    ]
+    return foundations + journey
+
+
 def course_progress(user, completed=None, completed_projects=None,
                     destination=None, include_journey=False):
     """Progress over the learner's own course, not a fixed catalog.
@@ -333,7 +378,7 @@ def course_progress(user, completed=None, completed_projects=None,
     # Reuse these sets for all progress fields. Re-querying through
     # next_course_action() and next_unlocked_lesson() made dashboard renders
     # issue the same two completion queries three times.
-    pointer_modules = journey_modules(destination)
+    pointer_modules = _journey_with_foundation(destination)
     action = _next_course_action(completed, completed_projects,
                                  modules=pointer_modules)
     ai_lessons = [

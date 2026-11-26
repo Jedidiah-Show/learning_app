@@ -134,11 +134,11 @@ class RuachAICourseTests(unittest.TestCase):
         public = self.client.get('/api/lessons/placement')
         self.assertEqual(public.status_code, 200)
         public_payload = public.get_json()
-        self.assertEqual(len(public_payload['questions']), 10)
+        self.assertEqual(len(public_payload['questions']), 30)
         self.assertNotIn('answer', public_payload['questions'][0])
         self.assertEqual(
             sum(question.get('type') == 'short' for question in public_payload['questions']),
-            4,
+            0,
         )
 
         passed = self.client.post('/api/lessons/placement', json={
@@ -150,7 +150,7 @@ class RuachAICourseTests(unittest.TestCase):
         self.assertEqual(passed.status_code, 200, passed.get_json())
         payload = passed.get_json()
         self.assertTrue(payload['passed'])
-        self.assertEqual(payload['score'], 10)
+        self.assertEqual(payload['score'], 30)
         self.assertEqual(
             set(payload['placed_lessons']),
             set(placement['skippable_lessons']),
@@ -1325,7 +1325,7 @@ class RuachAICourseTests(unittest.TestCase):
         payload = diagnostic.get_json()
         self.assertTrue(payload['passed'])
         self.assertEqual(payload['placed_lessons'], [])
-        self.assertEqual(len(payload['topics']), 4)
+        self.assertEqual(len(payload['topics']), len(placement['topics']))
         self.assertTrue(all(topic['passed'] for topic in payload['topics']))
         self.assertEqual(
             set(payload['recommended_lessons']),

@@ -968,7 +968,8 @@ def main():
     routes['experienced'] = {
         'title': 'Placement check and skip path',
         'description': (
-            'Take the ten-question placement check. A score of 8 or more marks '
+            'Take the timed thirty-question placement check covering every '
+            'lesson in the foundational modules. A score of 24 or more marks '
             'the Module 0 and early Module 1 foundation lessons as placed out. '
             'The placement never skips module projects, evidence, or the later '
             'lessons; those remain the proof that you can build and operate a '

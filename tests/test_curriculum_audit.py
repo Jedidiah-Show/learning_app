@@ -60,7 +60,7 @@ def scope_overrides():
 
 def placement_fixture():
     questions = []
-    for index in range(1, 11):
+    for index in range(1, 31):
         if index % 3 == 0:
             questions.append({
                 'id': f'q{index}',
@@ -79,7 +79,8 @@ def placement_fixture():
                 'answer': 1,
             })
     return {
-        'passing_score': 8,
+        'passing_score': 24,
+        'time_limit_seconds': 1800,
         'skippable_lessons': ['0.06', '0.07', '1.01'],
         'topics': [
             {'id': 'setup_runtime', 'title': 'Setup and running code',
