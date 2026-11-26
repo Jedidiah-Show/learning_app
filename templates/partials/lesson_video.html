@@ -1,0 +1,28 @@
+{# Curated 3–20 min YouTube concept video for a lesson (app.lesson_videos). #}
+{% if lesson.video %}
+<section id="video" class="lesson-video mt-5 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm" aria-label="Lesson video" data-lesson-video data-lesson-id="{{ lesson.id }}" data-video-id="{{ lesson.video.id }}" data-video-url="{{ lesson.video.url }}" data-video-start="{{ lesson.video.start }}" data-video-end="{{ lesson.video.end or '' }}" data-video-completed="{{ 'true' if video_progress and video_progress.completed else 'false' }}" data-resume="{% if video_progress and not video_progress.completed %}{{ video_progress.last_position }}{% else %}{{ lesson.video.start or 0 }}{% endif %}" data-progress-url="{{ url_for('lessons.update_video_progress') }}">
+  <div class="lesson-video-head">
+    <div>
+      <p class="lesson-video-kicker text-xs font-semibold uppercase tracking-wide text-indigo-600">Watch to reinforce</p>
+      <h2 class="lesson-video-title mt-1 text-lg font-bold text-slate-900">{{ lesson.video.title }}</h2>
+      <p class="lesson-video-meta mt-1 text-sm text-slate-500">
+        {% if lesson.video.channel %}{{ lesson.video.channel }} · {% endif %}
+        {% if lesson.video.duration_seconds %}{{ lesson.video.duration_seconds|duration }} · {% endif %}
+        Optional video{% if lesson.video.within_3_20min %} · 3–20 min{% endif %}
+        {% if lesson.video.match_confidence %} · match: {{ lesson.video.match_confidence }}{% endif %}
+      </p>
+    </div>
+    <a class="lesson-video-link" href="{{ lesson.video.url }}" target="_blank" rel="noopener noreferrer">Open on YouTube ↗</a>
+  </div>
+  <div class="lesson-video-frame">
+    <button type="button" class="video-facade" data-video-play aria-label="Play video: {{ lesson.video.title }}" data-style-bg-image="{{ lesson.video.thumbnail_url }}">
+      <span class="video-facade-shade"></span>
+      <span class="video-play-button" aria-hidden="true">▶</span>
+      <span class="video-facade-caption">{{ lesson.video.title }}</span>
+    </button>
+  </div>
+  <p class="lesson-video-status" data-video-status role="status">{% if video_progress and video_progress.completed %}Watched ✓{% elif video_progress and video_progress.last_position %}Resume at {{ video_progress.last_position|duration }}{% else %}Not started{% endif %}</p>
+  {% if lesson.video.why %}<p class="lesson-video-why">{{ lesson.video.why }}</p>{% endif %}
+  {% if lesson.video.match_note %}<p class="lesson-video-note mt-1 text-xs text-slate-400">{{ lesson.video.match_note }}</p>{% endif %}
+</section>
+{% endif %}
