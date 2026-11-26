@@ -15,7 +15,7 @@ from sqlalchemy.exc import IntegrityError
 from app import create_app, db
 from app.encrypted_types import ENCRYPTED_PREFIX
 from app.models import (
-    CalendarEvent, GeminiUsageBucket, PasswordResetToken, PracticeWorkspace, User,
+    GeminiUsageBucket, PasswordResetToken, PracticeWorkspace, User,
 )
 from app.services.security import safe_fetch
 from app.rate_limit import RATE_LIMIT_CONFIG, _bucket_key, _get_config, identity_hash

@@ -320,7 +320,7 @@ class GitHubAppWebhookTests(unittest.TestCase):
         # Production runs with CSRF enforcement on; GitHub callbacks carry no
         # session token, so the endpoint must authenticate by signature only.
         self.app.config.update(CSRF_ENABLED=True)
-        project_id = self._seed_project()
+        self._seed_project()
         payload = self._payload('c' * 40, conclusion='success')
         response = self.client.post(
             '/api/webhooks/github', data=payload, content_type='application/json',
@@ -427,7 +427,7 @@ class WebhookPendingSubmissionTests(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def register(self, username):
-        response = self.client.post('/register', data={
+        self.client.post('/register', data={
             'username': username,
             'email': f'{username}@example.test',
             'password': 'secure-pass-123',

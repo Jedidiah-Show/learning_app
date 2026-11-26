@@ -10,7 +10,7 @@ from app.models import (
     SkillVerification, User, UserSkillProgress,
 )
 from app.services.mastery import (
-    concept_mastery, domain_summary, strongest_concepts, weakest_concepts,
+    concept_mastery, domain_summary,
 )
 from app.services.recommendations import recommend
 from app.services.concept_graph import (

@@ -13,10 +13,10 @@ from unittest.mock import patch
 
 from app import create_app, db
 from app.models import (
-    CoursePlan, CourseProject, LearnerPathwayEnrollment, LearningPathway, User,
+    CoursePlan, CourseProject, LearnerPathwayEnrollment, User,
 )
 from app.pathway_fit import (
-    PATHWAY_DESTINATIONS, PATHWAY_FIT_QUESTIONS, PROPOSAL_MIN_LEAD,
+    PATHWAY_FIT_QUESTIONS, PROPOSAL_MIN_LEAD,
     PathwayFitError, pathway_fit_question, score_pathway_fit,
     validate_pathway_fit_answers,
 )

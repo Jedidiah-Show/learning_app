@@ -14,8 +14,8 @@ SEED = 7
 
 def run_training():
     """Train, evaluate, and return the manifest fields required by README."""
-    training = pd.read_csv(ROOT / 'data' / 'train.csv')
-    evaluation = pd.read_csv(ROOT / 'data' / 'evaluation.csv')
+    pd.read_csv(ROOT / 'data' / 'train.csv')
+    pd.read_csv(ROOT / 'data' / 'evaluation.csv')
     # Add a training pipeline, training-only cross-validation, a fixed-set
     # report, a dataset digest, and a repeat-run comparison. Do not fit on the
     # evaluation frame.

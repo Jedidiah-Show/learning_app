@@ -163,7 +163,7 @@ class W3CCredentialRoutesTests(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def register(self, username):
-        response = self.client.post('/register', data={
+        self.client.post('/register', data={
             'username': username,
             'email': f'{username}@example.test',
             'password': 'secure-pass-123',

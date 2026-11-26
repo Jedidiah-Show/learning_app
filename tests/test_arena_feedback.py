@@ -6,7 +6,7 @@ import unittest
 
 from app import create_app, db
 from app.models import (
-    ArenaRecommendationDismissal, SkillNode, Submission, User, UserSkillProgress,
+    SkillNode, Submission, User, UserSkillProgress,
 )
 from app.services.arena_feedback import DISCLAIMER, diagnostic_for
 

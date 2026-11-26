@@ -10,9 +10,9 @@ import pytest
 
 from app import create_app, db
 from app.gemini import GeminiRateLimited
-from app.models import AIBackgroundJob, AIJobResult, AIUsageRecord, User, utcnow
+from app.models import AIBackgroundJob, AIJobResult, User, utcnow
 from app.services.ai_jobs import (
-    cancel_job, enqueue_ai_job, job_status, list_jobs, retry_job,
+    cancel_job, enqueue_ai_job, retry_job,
 )
 from app.workers.base import process_one_job, reclaim_stale_jobs
 from app.workers.job_registry import register_handler

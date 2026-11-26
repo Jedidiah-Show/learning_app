@@ -1,7 +1,6 @@
 """Project milestones and showcase privacy tests (M2.4)."""
 
 import os
-import re
 import tempfile
 import unittest
 

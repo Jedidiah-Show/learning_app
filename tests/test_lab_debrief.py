@@ -9,7 +9,6 @@ from app import create_app, db
 from app.models import (
     LabDebrief, SkillNode, Submission, User, UserSkillProgress,
 )
-from app.services.skill_passport import update_skill_progress_from_lab
 
 
 LAB_PROBLEM = 'lab-troubleshoot-vector-index'
@@ -249,7 +248,7 @@ class LabDebriefTestCase(unittest.TestCase):
             )
         with self.app.app_context():
             user = User.query.filter_by(username='learner').one()
-            for skill_id, title in (('rag', 'rag'),):
+            for skill_id, _title in (('rag', 'rag'),):
                 progress = UserSkillProgress.query.filter_by(
                     user_id=user.id, skill_id=skill_id,
                 ).one()

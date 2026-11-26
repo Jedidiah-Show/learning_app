@@ -140,7 +140,7 @@ class EvaluationHarnessTests(unittest.TestCase):
         self.assertTrue(scored['issues'])
 
     def test_records_carry_mode_model_run_metadata(self):
-        module = _load_eval_module()
+        _load_eval_module()
         # _structural_score is pure; emulate the record construction path.
         record = {
             'mode': 'structural', 'model_id': 'structural', 'run_id': 'test-run',

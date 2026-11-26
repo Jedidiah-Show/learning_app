@@ -40,7 +40,7 @@ class DynamoCurriculumIntegrityTests(unittest.TestCase):
             )
 
     def test_module_lesson_counts_match_the_lessons_list(self):
-        counts = {lesson['module_id'] for lesson in self.lessons}
+        {lesson['module_id'] for lesson in self.lessons}
         for module in self.curriculum['modules']:
             module_lessons = [l for l in self.lessons if l['module_id'] == module['id']]
             self.assertEqual(len(module_lessons), module['lesson_count'])

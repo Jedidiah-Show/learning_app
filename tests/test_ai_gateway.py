@@ -1,9 +1,8 @@
 """M2.1–M2.3, M2.5, M2.7: provider gateway, routing, telemetry, prompts, eval."""
 
-import json
 import os
 import tempfile
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 import requests

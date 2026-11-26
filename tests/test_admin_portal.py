@@ -10,7 +10,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import create_app, db
 from app.models import (
-    AdminAuditLog, CoursePlan, CourseProject, LessonCompletion,
+    AdminAuditLog, CoursePlan, LessonCompletion,
     PathwayChangeRequest, SupportRequest, User,
 )
 

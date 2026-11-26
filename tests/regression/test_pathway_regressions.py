@@ -16,7 +16,6 @@ from app.pathway_scope import (
     course_modules,
     enrol_learner_in_all,
     is_pathway,
-    pathway_pace,
     switch_pathway,
 )
 

@@ -11,7 +11,7 @@ import unittest
 
 from app import create_app, db
 from app.models import (
-    CoursePlan, EngineeringLabCompletion, User,
+    CoursePlan, User,
 )
 
 

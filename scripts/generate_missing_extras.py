@@ -1,7 +1,6 @@
 """Generate curated plain-language intros, concepts, and answers for the 88 lessons lacking them."""
 
 import json
-import re
 from pathlib import Path
 import sys
 
@@ -54,13 +53,13 @@ def build_answer(question: str, lesson: dict) -> str:
     q_clean = clean_text(question)
     # Formulate a direct, rigorous answer based on the question
     if 'why' in q_clean.lower() or 'when' in q_clean.lower():
-        ans = f"Engineers apply this approach to guarantee system predictability, isolate failure domains, and prevent silent regressions as the architecture scales under real production load."
+        ans = "Engineers apply this approach to guarantee system predictability, isolate failure domains, and prevent silent regressions as the architecture scales under real production load."
     elif 'how' in q_clean.lower():
-        ans = f"By decoupling the implementation details behind explicit interfaces and enforcing invariants through validation boundaries, the system remains maintainable and testable."
+        ans = "By decoupling the implementation details behind explicit interfaces and enforcing invariants through validation boundaries, the system remains maintainable and testable."
     elif 'what' in q_clean.lower() or 'which' in q_clean.lower():
-        ans = f"The primary factor is ensuring that invariants and error boundaries are explicitly defined rather than implicitly assumed across service and process boundaries."
+        ans = "The primary factor is ensuring that invariants and error boundaries are explicitly defined rather than implicitly assumed across service and process boundaries."
     else:
-        ans = f"Enforcing explicit boundary checks and defensive resource management ensures deterministic behavior across distributed worker instances."
+        ans = "Enforcing explicit boundary checks and defensive resource management ensures deterministic behavior across distributed worker instances."
     return ans
 
 

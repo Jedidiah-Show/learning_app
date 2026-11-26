@@ -7,7 +7,7 @@ import pytest
 from app import create_app, db
 from app.models import LearningPathway, LearnerPathwayEnrollment, User
 from app.pathway_scope import (
-    active_pathway_enrolments, is_pathway, pathway_modules,
+    is_pathway, pathway_modules,
     pathway_lessons, foundation_evidence
 )
 
@@ -74,7 +74,6 @@ def three_pathways(app, db_session):
 @pytest.fixture
 def user_with_enrolment(app, db_session):
     """Create a user with AI Engineering enrolment."""
-    from app.models import User
     
     # Use unique credentials to avoid conflicts with existing test data
     import uuid
@@ -117,7 +116,6 @@ class TestPathwayEnrolmentModel:
     
     def test_is_pathway_false_when_no_enrolment(self, app, three_pathways, user_with_enrolment):
         """M2.2: an enrolled AI learner is not reported as enrolled in ML."""
-        from app.pathway_scope import is_pathway
         enrolled_id = user_with_enrolment['user'].id
         # The fixture's learner is enrolled in AI Engineering only, so the
         # other specialisation must read as not enrolled.
@@ -125,7 +123,6 @@ class TestPathwayEnrolmentModel:
     
     def test_is_pathway_true_when_enrolled(self, app, user_with_enrolment):
         """M2.2: is_pathway returns True when learner is enrolled."""
-        from app.pathway_scope import is_pathway
         user_id = user_with_enrolment['user'].id
         result = is_pathway(user_id, 'ai-engineering')
         assert result == True
@@ -209,7 +206,7 @@ class TestFoundationEvidence:
         Behavioural check: seed the shared tables used by the helper and
         verify the evidence it reports, instead of asserting on source text.
         """
-        from app.models import CourseProject, LessonCompletion, User
+        from app.models import CourseProject, LessonCompletion
         from app.pathway_scope import foundation_modules
 
         user = User(username='evidence-user', email='evidence@example.test')

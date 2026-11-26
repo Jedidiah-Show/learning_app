@@ -49,7 +49,7 @@ class LifecycleServiceTests(unittest.TestCase):
     def test_learner_walks_working_stages(self):
         with self.app.app_context():
             owner = db.session.get(User, self.owner_id)
-            reviewer = db.session.get(User, self.reviewer_id)
+            db.session.get(User, self.reviewer_id)
             record_transition(owner.id, 'ai-engineering', 'ai.03', 'planned', actor=owner)
             record_transition(owner.id, 'ai-engineering', 'ai.03', 'in_progress', actor=owner)
             record_transition(owner.id, 'ai-engineering', 'ai.03', 'submitted', actor=owner)
@@ -61,14 +61,14 @@ class LifecycleServiceTests(unittest.TestCase):
     def test_learner_cannot_skip_to_approved(self):
         with self.app.app_context():
             owner = db.session.get(User, self.owner_id)
-            reviewer = db.session.get(User, self.reviewer_id)
+            db.session.get(User, self.reviewer_id)
             record_transition(owner.id, 'ai-engineering', 'ai.03', 'submitted', actor=owner)
             with self.assertRaises(LifecycleError):
                 record_transition(owner.id, 'ai-engineering', 'ai.03', 'approved', actor=owner)
 
     def test_reviewer_cannot_approve_own_project(self):
         with self.app.app_context():
-            owner = db.session.get(User, self.owner_id)
+            db.session.get(User, self.owner_id)
             reviewer = db.session.get(User, self.reviewer_id)
             record_transition(reviewer.id, 'ai-engineering', 'ai.03', 'submitted', actor=reviewer)
             with self.assertRaises(LifecycleError):
@@ -87,7 +87,7 @@ class LifecycleServiceTests(unittest.TestCase):
     def test_automated_review_can_approve(self):
         with self.app.app_context():
             owner = db.session.get(User, self.owner_id)
-            reviewer = db.session.get(User, self.reviewer_id)
+            db.session.get(User, self.reviewer_id)
             record_transition(owner.id, 'machine-learning', 'mle.classical-ml',
                               'submitted', actor=owner)
             record_transition(owner.id, 'machine-learning', 'mle.classical-ml',
@@ -98,7 +98,7 @@ class LifecycleServiceTests(unittest.TestCase):
     def test_resubmission_after_revision_requested(self):
         with self.app.app_context():
             owner = db.session.get(User, self.owner_id)
-            reviewer = db.session.get(User, self.reviewer_id)
+            db.session.get(User, self.reviewer_id)
             record_transition(owner.id, 'machine-learning', 'mle.classical-ml',
                               'submitted', actor=owner)
             record_transition(owner.id, 'machine-learning', 'mle.classical-ml',
@@ -111,7 +111,7 @@ class LifecycleServiceTests(unittest.TestCase):
     def test_owner_can_archive(self):
         with self.app.app_context():
             owner = db.session.get(User, self.owner_id)
-            reviewer = db.session.get(User, self.reviewer_id)
+            db.session.get(User, self.reviewer_id)
             record_transition(owner.id, 'ai-engineering', 'ai.03', 'archived', actor=owner)
             db.session.commit()
             self.assertEqual(current_stage(owner.id, 'ai-engineering', 'ai.03'), 'archived')
@@ -119,7 +119,7 @@ class LifecycleServiceTests(unittest.TestCase):
     def test_unknown_domain_and_stage_rejected(self):
         with self.app.app_context():
             owner = db.session.get(User, self.owner_id)
-            reviewer = db.session.get(User, self.reviewer_id)
+            db.session.get(User, self.reviewer_id)
             with self.assertRaises(LifecycleError):
                 current_stage(owner.id, 'data-science', 'x')
             with self.assertRaises(LifecycleError):
@@ -128,7 +128,7 @@ class LifecycleServiceTests(unittest.TestCase):
     def test_same_stage_is_idempotent_noop(self):
         with self.app.app_context():
             owner = db.session.get(User, self.owner_id)
-            reviewer = db.session.get(User, self.reviewer_id)
+            db.session.get(User, self.reviewer_id)
             record_transition(owner.id, 'ai-engineering', 'ai.03', 'submitted', actor=owner)
             record_transition(owner.id, 'ai-engineering', 'ai.03', 'submitted', actor=owner)
             db.session.commit()

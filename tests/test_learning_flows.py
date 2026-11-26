@@ -14,7 +14,7 @@ from app.curriculum import all_lessons, all_modules, curriculum
 from app.gemini import GeminiError, GeminiRateLimited
 from app.project_verification import VerificationError
 from app.models import (
-    CalendarEvent, CoursePlan, CourseProject, Credential, LessonCompletion, Quiz,
+    CalendarEvent, CoursePlan, CourseProject, LessonCompletion, Quiz,
     LessonTaskProgress, QuizResult, ReviewItem, StudySession,
     Submission, TutorConversation, User, VideoProgress,
 )
@@ -43,7 +43,7 @@ class RuachAICourseTests(unittest.TestCase):
             os.environ['DATABASE_URL'] = self.previous_database_url
         self.temp_dir.cleanup()
 
-    def register(self, username='learner'):
+    def register(self, username='learner', pathway='ai-engineering'):
         response = self.client.post('/register', data={
             'username': username,
             'email': f'{username}@example.test',
@@ -53,6 +53,15 @@ class RuachAICourseTests(unittest.TestCase):
         }, follow_redirects=True)
         self.assertEqual(response.status_code, 200)
         self.client.post('/onboarding', data={'action': 'skip'})
+        if pathway:
+            with self.app.app_context():
+                user = User.query.filter_by(username=username).first()
+                plan = CoursePlan.query.filter_by(user_id=user.id).first()
+                if plan is None:
+                    plan = CoursePlan(user_id=user.id)
+                    db.session.add(plan)
+                plan.pathway_destination = pathway
+                db.session.commit()
         return response
 
     def complete_lesson(self, lesson_id):
@@ -332,7 +341,10 @@ class RuachAICourseTests(unittest.TestCase):
 
     def test_lessons_unlock_sequentially_and_duplicate_completion_is_idempotent(self):
         self.register()
-        lessons = all_lessons()
+        from app.pathway_scope import destination_for, pathway_lessons
+        with self.app.app_context():
+            user = User.query.one()
+            lessons = pathway_lessons(destination_for(user))
         locked = self.client.get('/api/lessons/daily/2')
         self.assertEqual(locked.status_code, 403)
         result = self.complete_lesson(lessons[0]['id'])
@@ -340,7 +352,10 @@ class RuachAICourseTests(unittest.TestCase):
         duplicate = self.complete_lesson(lessons[0]['id'])
         self.assertTrue(duplicate['already_completed'])
         with self.app.app_context():
-            completion = LessonCompletion.query.one()
+            completion = LessonCompletion.query.filter_by(
+                user_id=User.query.one().id, lesson_id=lessons[0]['id']
+            ).first()
+            self.assertIsNotNone(completion)
             self.assertEqual(completion.time_spent_minutes, 20)
 
     def test_completed_lesson_maps_to_its_own_passport_competency(self):
@@ -1650,7 +1665,7 @@ class FoundationProjectFlowTests(RuachAICourseTests):
         module = next(
             item for item in all_modules() if item['number'] == module_number
         )
-        for index, lesson in enumerate(module['lessons'], start=1):
+        for _index, lesson in enumerate(module['lessons'], start=1):
             response = self.client.post('/api/lessons/complete', json={
                 'lesson_id': lesson['id'], 'time_spent_minutes': 5,
             })

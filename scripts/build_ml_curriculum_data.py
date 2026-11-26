@@ -168,7 +168,7 @@ def build_pixels():
         region, (r, g, b), (jr, jg, jb) = palette[band]
         for x in range(12):
             index += 1
-            jitter = ((index * 7) % 9) - 4
+            ((index * 7) % 9) - 4
             rows.append((
                 index, x, y,
                 max(0, min(255, r + ((index * 5) % 7) - 3 + jr * 0)),

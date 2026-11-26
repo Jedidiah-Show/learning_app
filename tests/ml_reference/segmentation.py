@@ -2,7 +2,6 @@
 
 import csv
 import json
-import math
 from pathlib import Path
 
 
@@ -106,7 +105,7 @@ def build_report():
     width = max(row['x'] for row in pixels) + 1
     height = max(row['y'] for row in pixels) + 1
     image = bytearray()
-    for row, cluster in zip(pixels, assignments):
+    for _row, cluster in zip(pixels, assignments):
         image.extend(int(max(0, min(255, round(channel)))) for channel in centroids[cluster])
     with (ARTIFACTS / 'segmentation.ppm').open('wb') as out:
         out.write(f'P6\n{width} {height}\n255\n'.encode('ascii'))

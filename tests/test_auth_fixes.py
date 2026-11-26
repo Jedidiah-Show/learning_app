@@ -11,7 +11,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app import create_app, db
-from app.models import PhoneVerificationCode, RateLimitCounter, User, utcnow
+from app.models import PhoneVerificationCode, RateLimitCounter, User
 from app.rate_limit import _bucket_key, check_rate_limit
 
 

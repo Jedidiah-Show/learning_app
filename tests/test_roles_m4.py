@@ -111,7 +111,7 @@ class RoleModelTests(unittest.TestCase):
 
     def test_instructor_counts_as_reviewer(self):
         owner = self._create('instr-owner')
-        instructor = self._create('instr-reviewer', role='instructor')
+        self._create('instr-reviewer', role='instructor')
         self._seed_progress(owner)
         self._login('instr-reviewer')
         response = self.client.post(
@@ -141,7 +141,7 @@ class RoleModelTests(unittest.TestCase):
 
     def test_revocation_preserves_original_verification_event(self):
         owner = self._create('auditowner')
-        reviewer = self._create('auditreviewer', role='reviewer')
+        self._create('auditreviewer', role='reviewer')
         self._seed_progress(owner, verification_status='UNVERIFIED')
         self._login('auditowner')
         response = self.client.post('/api/passport/skills/ml-mathematics-statistics/verify')

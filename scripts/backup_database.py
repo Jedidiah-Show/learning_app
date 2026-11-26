@@ -17,7 +17,6 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import os
 from pathlib import Path
-import shutil
 import sqlite3
 import subprocess
 from urllib.parse import parse_qsl, unquote, urlsplit

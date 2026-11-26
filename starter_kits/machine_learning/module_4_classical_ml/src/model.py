@@ -41,8 +41,8 @@ def regression_report():
 
 def evaluate():
     """Return deterministic metrics for the fixed held-out evaluation set."""
-    training = pd.read_csv(ROOT / 'data' / 'train.csv')
-    evaluation = pd.read_csv(ROOT / 'data' / 'evaluation.csv')
+    pd.read_csv(ROOT / 'data' / 'train.csv')
+    pd.read_csv(ROOT / 'data' / 'evaluation.csv')
     # Keep the fixed evaluation data out of fitting and model selection.
     # Build a DummyClassifier baseline, then a preprocessing + classifier
     # Pipeline. Use only FEATURE_COLUMNS; cancelled_after_snapshot is leakage.

@@ -1,14 +1,13 @@
 """Browser multi-file workspace: starter kits, drafts, validation, isolation."""
 
 import io
-import json
 import os
 import tempfile
 import unittest
 from zipfile import ZipFile
 
 from app import create_app, db
-from app.models import User, WorkspaceProject
+from app.models import WorkspaceProject
 
 
 class WorkspaceTestCase(unittest.TestCase):
@@ -34,7 +33,7 @@ class WorkspaceTestCase(unittest.TestCase):
         self.temp_dir.cleanup()
 
     def register(self, username):
-        response = self.client.post('/register', data={
+        self.client.post('/register', data={
             'username': username,
             'email': f'{username}@example.test',
             'password': 'secure-pass-123',

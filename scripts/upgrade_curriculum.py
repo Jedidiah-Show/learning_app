@@ -24,7 +24,6 @@ from curriculum_content import (  # noqa: E402
     LESSONS,
     MAINTENANCE,
     MODULE_RESOURCES,
-    MODULE_TITLES,
     PLACEMENT,
     RESOURCES,
 )
@@ -614,7 +613,7 @@ def clean_lesson(lesson, module, index, module_lessons):
     if not lesson['capstone']:
         project = str(module.get('project') or '').strip().rstrip('.')
         lesson['capstone'] = (
-            f"In the capstone, this lesson's decisions feed the module project"
+            "In the capstone, this lesson's decisions feed the module project"
             + (f" — {project}" if project else '')
             + '.'
         )

@@ -480,12 +480,15 @@ def journey_modules(pathway_id, user_id=None):
     if canonical == 'machine-learning':
         # The ML pathway is independently sequenced from the start.
         return ml_course_modules()
-    if canonical == 'shared-foundations':
-        modules = foundation_course_modules()
-    else:
+    if canonical == 'ai-engineering':
         # AI Engineering is an independent journey. Foundations are their own
         # standalone pathway and must never gate or inflate AI progress.
         modules = ai_specialization_modules()
+    else:
+        # Undecided learners and the explicit shared-foundations pathway start
+        # in Shared Foundations. This keeps next-action/journey pointers aligned
+        # with the foundations-first catalogue shown to undecided users.
+        modules = foundation_course_modules()
     if user_id:
         # An ML catalogue must count ML-table evidence; a foundation or AI
         # catalogue keeps reading the shared completion tables.

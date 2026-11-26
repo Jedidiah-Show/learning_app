@@ -7,7 +7,7 @@ import unittest
 
 from app import create_app, db
 from app.cloud_ai_infrastructure import cloud_ai_infrastructure_lessons
-from app.models import MLSpecializationLessonCompletion, ReviewItem, User
+from app.models import MLSpecializationLessonCompletion, ReviewItem
 
 PATHWAY_ID = 'cloud-ai-infrastructure'
 

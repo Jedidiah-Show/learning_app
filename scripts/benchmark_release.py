@@ -36,7 +36,7 @@ def main():
         with app.app_context():
             db.create_all()
             from werkzeug.security import generate_password_hash
-            user = db.session.execute(db.text(
+            db.session.execute(db.text(
                 "INSERT INTO user (username, email, password_hash, public_id) "
                 "VALUES ('bench', 'bench@example.test', :p, 'RU-BENCH01')"
             ), {'p': generate_password_hash('x')})

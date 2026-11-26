@@ -9,7 +9,7 @@ import unittest
 from app import create_app, db
 from app.models import (
     MLSpecializationLessonCompletion, MLSpecializationProject,
-    PracticeWorkspace, User,
+    User,
 )
 
 PATHWAY_CATALOG = 'pathway_practice_exercises.json'

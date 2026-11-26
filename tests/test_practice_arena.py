@@ -695,7 +695,7 @@ class ArenaApiTests(ArenaTestCase):
         data = queued.get_json()
         self.assertEqual(data['status'], 'queued')
         self.assertIn('stream_url', data)
-        run_id = data['run_id']
+        data['run_id']
 
         mock_result = JudgeResult(
             verdict='COMPLETED',

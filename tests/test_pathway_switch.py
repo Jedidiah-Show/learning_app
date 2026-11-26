@@ -17,11 +17,11 @@ import unittest
 
 from app import create_app, db
 from app.models import (
-    CoursePlan, LearnerPathwayEnrollment, LearningPathway, LessonCompletion,
+    CoursePlan, LearnerPathwayEnrollment, LessonCompletion,
     MLSpecializationLessonCompletion, User,
 )
 from app.pathway_scope import (
-    active_pathway_enrolments, destination_for, enrol_learner,
+    destination_for, enrol_learner,
     seed_learning_pathways, switch_pathway,
 )
 
