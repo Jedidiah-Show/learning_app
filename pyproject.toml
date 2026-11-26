@@ -1,3 +1,31 @@
+[project]
+# Vercel's Python runtime installs dependencies from pyproject.toml via uv;
+# requirements.txt covers Render/gunicorn, so keep both lists in sync.
+name = "ruach-learning-app"
+version = "1.1.0"
+description = "RUACH AI & ML Engineering learning app"
+requires-python = ">=3.12"
+dependencies = [
+  "Flask==3.0.3",
+  "Flask-SQLAlchemy==3.1.1",
+  "Flask-Migrate==4.0.7",
+  "cryptography==50.0.2",
+  "psycopg[binary]==3.3.9",
+  "Flask-Login==0.6.3",
+  "google-api-python-client==2.108.0",
+  "google-auth-httplib2==0.1.1",
+  "google-auth-oauthlib==1.1.0",
+  "PyYAML==6.0.3",
+  "requests==2.32.5",
+  "python-dotenv==1.2.4",
+  "Werkzeug==3.0.6",
+  "gunicorn==23.0.0",
+  "boto3==1.40.0",
+  "redis==5.2.1",
+  "python-dateutil==2.9.0.post0",
+  "tzdata==2026.6",
+]
+
 [tool.ruff]
 target-version = "py312"
 line-length = 100
