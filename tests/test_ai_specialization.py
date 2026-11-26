@@ -56,6 +56,11 @@ class AISpecializationFlowTests(unittest.TestCase):
         self.assertEqual(PATHWAY_ID, 'ai-engineering')
         ids = [m['id'] for m in self.pathway['modules']]
         self.assertEqual(ids, ['ai.03', 'ai.04', 'ai.05', 'ai.06', 'ai.07', 'ai.08', 'ai.09', 'ai.10', 'ai.11'])
+        # Shared Foundations is standalone, so AI modules start at 1. IDs stay
+        # stable because learner evidence and the legacy mapping reference them.
+        self.assertEqual(
+            [m['number'] for m in self.pathway['modules']], list(range(1, 10))
+        )
 
     def test_dashboard_loads(self):
         response = self.client.get('/specializations/ai-engineering')

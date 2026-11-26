@@ -172,6 +172,9 @@ class TestPathwayModules:
         assert not any(m['id'] in ('00', '01', '02') for m in modules)
         # The capstone belongs to the AI pathway
         assert any(m['id'] == '12' for m in modules)
+        # Foundations are a separate pathway, so AI modules are numbered 1..10
+        # even though their stable legacy IDs remain 03..12.
+        assert [m['number'] for m in modules] == list(range(1, 11))
     
     def test_ml_engineering_modules(self, app):
         """M2.2: pathway_modules for machine-learning."""
