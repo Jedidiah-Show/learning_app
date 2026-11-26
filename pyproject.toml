@@ -13,7 +13,7 @@ dependencies = [
   "psycopg[binary]==3.3.9",
   "Flask-Login==0.6.3",
   "google-api-python-client==2.108.0",
-  "google-auth-httplib2==0.1.1",
+  "google-auth-httplib2==0.4.4",
   "google-auth-oauthlib==1.1.0",
   "PyYAML==6.0.3",
   "requests==2.32.5",
