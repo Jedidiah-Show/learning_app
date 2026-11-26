@@ -854,11 +854,6 @@ html[data-theme="dark"] .lesson-hero { background:linear-gradient(135deg,#062330
 /* Offline indicator */
 .offline-banner { padding:8px 14px;text-align:center;background:#78350F;color:#FDE68A;font-size:12px;font-weight:700; }
 
-/* PWA install pill */
-.pwa-install { display:inline-flex;align-items:center;gap:6px;padding:8px 12px;border:1px solid var(--app-border);border-radius:12px;background:var(--app-surface);color:var(--app-text);font-size:12px;font-weight:700;cursor:pointer;transition:all .18s ease; }
-.pwa-install:hover { border-color:#A9DED6;background:var(--app-sidebar-hover);color:#155e75; }
-.pwa-install:disabled { opacity:.6;cursor:wait; }
-
 /* Command palette */
 .palette-backdrop { position:fixed;inset:0;z-index:80;display:flex;justify-content:center;align-items:flex-start;padding:12vh 16px 16px;background:rgba(8,51,68,.42);backdrop-filter:blur(2px); }
 .palette-backdrop[hidden] { display:none; }

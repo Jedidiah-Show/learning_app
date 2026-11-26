@@ -766,6 +766,17 @@ def shared_foundations_lesson(lesson_id):
         user_id=current_user.id, lesson_id=lesson_id,
     ).first()
     existing = bool(completed_row and completed_row.completed)
+    chain = shared_foundations_lessons()
+    lesson_position = next(
+        (index + 1 for index, candidate in enumerate(chain)
+         if candidate['id'] == lesson_id), 0,
+    )
+    bookmark = LessonBookmark.query.filter_by(
+        user_id=current_user.id, lesson_id=lesson_id,
+    ).first()
+    note = LessonNote.query.filter_by(
+        user_id=current_user.id, lesson_id=lesson_id,
+    ).first()
 
     if ready and request.method == 'POST':
         try:
@@ -793,10 +804,11 @@ def shared_foundations_lesson(lesson_id):
                 completion.completion_source = 'lesson'
                 from app.leaderboard import refresh_leaderboard_score
                 refresh_leaderboard_score(current_user.id, commit=False)
+            # The legacy completion and its foundation mirror must land in one
+            # transaction; a failure in either leaves the lesson incomplete.
+            mark_foundation_lesson_complete(current_user.id, lesson_id, commit=False)
             db.session.commit()
-            mark_foundation_lesson_complete(current_user.id, lesson_id)
             flash('Lesson complete. Shared Foundations progress has been saved.', 'success')
-            chain = shared_foundations_lessons()
             for position, candidate in enumerate(chain):
                 if candidate['id'] == lesson_id and position + 1 < len(chain):
                     nxt = chain[position + 1]
@@ -805,7 +817,6 @@ def shared_foundations_lesson(lesson_id):
                     break
             return redirect(url_for('main.shared_foundations_lesson', lesson_id=lesson_id))
 
-    chain = shared_foundations_lessons()
     next_lesson, next_open = None, False
     for position, candidate in enumerate(chain):
         if candidate['id'] == lesson_id and position + 1 < len(chain):
@@ -827,6 +838,8 @@ def shared_foundations_lesson(lesson_id):
     return render_template(
         'specializations/shared_foundations_lesson.html',
         lesson=lesson, completed=existing,
+        lesson_position=lesson_position, lesson_total=len(chain),
+        bookmarked=bookmark is not None, lesson_note=note.content if note else '',
         next_lesson=next_lesson, next_open=next_open,
         tutor_greeting=tutor_greeting,
     )
@@ -1282,16 +1295,14 @@ def foundations():
 
     destination = destination_for(current_user)
     modules = pathway_modules('shared-foundations', user_id=current_user.id)
-    from app.foundations_pathway import (
-        foundation_lesson_is_open,
-    )
+    from app.foundations_pathway import foundation_open_lesson_ids
     completed = foundation_completed_lesson_ids(current_user.id)
+    open_ids = foundation_open_lesson_ids(current_user.id)
     for module in modules:
         next_lesson = next(
             (
                 lesson for lesson in module['lessons']
-                if lesson['id'] not in completed
-                and foundation_lesson_is_open(current_user.id, lesson['id'])
+                if lesson['id'] in open_ids and lesson['id'] not in completed
             ),
             None,
         )

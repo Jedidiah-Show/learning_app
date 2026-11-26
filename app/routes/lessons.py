@@ -565,15 +565,28 @@ def _lesson_peripheral_error(lesson_id):
     """Shared guard for lesson bookmarks and notes across both pathways.
 
     Course lessons use the normal sequential unlock check. Namespaced
-    ``mle.*`` lessons are resolved through the pathway's own gate so a locked
-    specialization lesson cannot be bookmarked or annotated out of order.
-    Returns ``None`` when access is allowed, else a ``(status, message)`` pair.
+    ``mle.*`` and ``sf.*`` lessons are resolved through their pathway's own
+    gate so a locked specialization or foundation lesson cannot be bookmarked
+    or annotated out of order. Returns ``None`` when access is allowed, else
+    a ``(status, message)`` pair.
     """
     if lesson_id.startswith('mle.'):
         from app.ml_pathway import machine_learning_lesson_is_open
         # Also False for unknown or unpublished IDs, which reads as 404 here.
         if not machine_learning_lesson_is_open(current_user.id, lesson_id):
             return (404, 'Lesson not found')
+        return None
+    if lesson_id.startswith('sf.'):
+        # Foundations use their own completion table and sequential gate; the
+        # generic course lookup cannot resolve sf.* ids, so notes/bookmarks on
+        # a foundation lesson must be authorised here.
+        from app.foundations_pathway import (
+            foundation_lesson_is_open, get_shared_foundations_lesson,
+        )
+        if get_shared_foundations_lesson(lesson_id) is None:
+            return (404, 'Lesson not found')
+        if not foundation_lesson_is_open(current_user.id, lesson_id):
+            return (403, 'Lesson is locked')
         return None
     lesson = get_lesson(lesson_id)
     if not lesson:

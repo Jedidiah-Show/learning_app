@@ -149,7 +149,8 @@ class TestPathwayModules:
         assert module_ids == {
             'sf.00', 'sf.01', 'sf.02', 'sf.03', 'sf.04', 'sf.05',
         }
-        assert all(len(m['lessons']) == 4 or len(m['lessons']) == 3 for m in modules)
+        assert sum(len(m['lessons']) for m in modules) == 71
+        assert all(len(m['lessons']) >= 3 for m in modules)
 
     def test_shared_foundations_course_view(self, app):
         """The foundations catalog counts only foundation lessons."""

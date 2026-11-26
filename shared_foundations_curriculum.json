@@ -4,7 +4,7 @@
   "name": "Shared Foundations",
   "description": "Core foundational knowledge common to all engineering pathways",
   "domain": "FOUNDATION",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "status": "ACTIVE",
   "learning_objectives": [
     "Understand fundamental programming concepts",
@@ -37,12 +37,65 @@
         {
           "id": "sf.00.04",
           "title": "Data Structures"
+        },
+        {
+          "id": "sf.00.05",
+          "title": "Your first Python program"
+        },
+        {
+          "id": "sf.00.06",
+          "title": "Lists, dictionaries, and loops"
+        },
+        {
+          "id": "sf.00.07",
+          "title": "Functions, inputs, and return values"
+        },
+        {
+          "id": "sf.00.08",
+          "title": "Files, JSON, and the command line"
+        },
+        {
+          "id": "sf.00.09",
+          "title": "Python review: data, loops, and tracebacks"
+        },
+        {
+          "id": "sf.00.10",
+          "title": "Functions"
+        },
+        {
+          "id": "sf.00.11",
+          "title": "Type hints"
+        },
+        {
+          "id": "sf.00.12",
+          "title": "Classes & OOP"
+        },
+        {
+          "id": "sf.00.13",
+          "title": "Dataclasses"
+        },
+        {
+          "id": "sf.00.14",
+          "title": "Pydantic"
+        },
+        {
+          "id": "sf.00.15",
+          "title": "Async Python"
+        },
+        {
+          "id": "sf.00.16",
+          "title": "async / await"
         }
       ],
       "prerequisites": [],
       "competencies": [
         "programming",
         "python"
+      ],
+      "outcomes": [
+        "Model a problem with variables, expressions and well-named functions",
+        "Choose control flow and data structures that match the task",
+        "Trace and explain a program line by line before running it"
       ]
     },
     {
@@ -67,6 +120,38 @@
         {
           "id": "sf.01.04",
           "title": "Error Handling"
+        },
+        {
+          "id": "sf.01.05",
+          "title": "Python project structure"
+        },
+        {
+          "id": "sf.01.06",
+          "title": "Error handling"
+        },
+        {
+          "id": "sf.01.07",
+          "title": "JSON"
+        },
+        {
+          "id": "sf.01.08",
+          "title": "HTTP requests"
+        },
+        {
+          "id": "sf.01.09",
+          "title": "Environment variables"
+        },
+        {
+          "id": "sf.01.10",
+          "title": "Virtual environments"
+        },
+        {
+          "id": "sf.01.11",
+          "title": "Dependencies"
+        },
+        {
+          "id": "sf.01.12",
+          "title": "Testing with pytest"
         }
       ],
       "prerequisites": [
@@ -75,6 +160,11 @@
       "competencies": [
         "python",
         "programming"
+      ],
+      "outcomes": [
+        "Write idiomatic Python with lists, dictionaries and modules",
+        "Handle errors and invalid input without crashing the program",
+        "Structure small scripts into reusable, documented functions"
       ]
     },
     {
@@ -99,6 +189,34 @@
         {
           "id": "sf.02.04",
           "title": "Project Structure"
+        },
+        {
+          "id": "sf.02.05",
+          "title": "Welcome to the Course"
+        },
+        {
+          "id": "sf.02.06",
+          "title": "What Is an AI Engineer?"
+        },
+        {
+          "id": "sf.02.07",
+          "title": "Anatomy of a Modern AI Application"
+        },
+        {
+          "id": "sf.02.08",
+          "title": "AI Engineering Stack"
+        },
+        {
+          "id": "sf.02.09",
+          "title": "Course Roadmap"
+        },
+        {
+          "id": "sf.02.10",
+          "title": "Git and GitHub from zero"
+        },
+        {
+          "id": "sf.02.11",
+          "title": "Git & GitHub essentials"
         }
       ],
       "prerequisites": [
@@ -107,6 +225,11 @@
       "competencies": [
         "git",
         "software engineering"
+      ],
+      "outcomes": [
+        "Work confidently with branches, commits, merges and pull requests",
+        "Write focused, repeatable tests for behaviour that matters",
+        "Organise a project so another engineer can pick it up quickly"
       ]
     },
     {
@@ -127,6 +250,26 @@
         {
           "id": "sf.03.03",
           "title": "Tool Integration"
+        },
+        {
+          "id": "sf.03.04",
+          "title": "Redis"
+        },
+        {
+          "id": "sf.03.05",
+          "title": "Caching"
+        },
+        {
+          "id": "sf.03.06",
+          "title": "Background Jobs"
+        },
+        {
+          "id": "sf.03.07",
+          "title": "Queues"
+        },
+        {
+          "id": "sf.03.08",
+          "title": "Async Backend Architecture"
         }
       ],
       "prerequisites": [
@@ -135,6 +278,11 @@
       "competencies": [
         "ci-cd",
         "debugging"
+      ],
+      "outcomes": [
+        "Automate tests and checks in a repeatable CI pipeline",
+        "Debug systematically with hypotheses, logs and minimal reproductions",
+        "Integrate linters, formatters and editors into one coherent workflow"
       ]
     },
     {
@@ -155,6 +303,54 @@
         {
           "id": "sf.04.03",
           "title": "Backend Basics"
+        },
+        {
+          "id": "sf.04.04",
+          "title": "HTTP and APIs from zero"
+        },
+        {
+          "id": "sf.04.05",
+          "title": "How the Internet Works"
+        },
+        {
+          "id": "sf.04.06",
+          "title": "HTTP"
+        },
+        {
+          "id": "sf.04.07",
+          "title": "REST APIs"
+        },
+        {
+          "id": "sf.04.08",
+          "title": "API Design"
+        },
+        {
+          "id": "sf.04.09",
+          "title": "FastAPI"
+        },
+        {
+          "id": "sf.04.10",
+          "title": "Routes"
+        },
+        {
+          "id": "sf.04.11",
+          "title": "Request Validation"
+        },
+        {
+          "id": "sf.04.12",
+          "title": "Response Models"
+        },
+        {
+          "id": "sf.04.13",
+          "title": "Dependency Injection"
+        },
+        {
+          "id": "sf.04.14",
+          "title": "Authentication"
+        },
+        {
+          "id": "sf.04.15",
+          "title": "Authorization"
         }
       ],
       "prerequisites": [
@@ -163,6 +359,11 @@
       "competencies": [
         "api",
         "backend"
+      ],
+      "outcomes": [
+        "Read and diagnose HTTP requests and responses with curl",
+        "Design predictable REST endpoints with sensible status codes",
+        "Explain the responsibilities of a backend and its data store"
       ]
     },
     {
@@ -183,6 +384,30 @@
         {
           "id": "sf.05.03",
           "title": "Complexity Analysis"
+        },
+        {
+          "id": "sf.05.04",
+          "title": "Reading numbers: averages, percentiles, and cost"
+        },
+        {
+          "id": "sf.05.05",
+          "title": "PostgreSQL"
+        },
+        {
+          "id": "sf.05.06",
+          "title": "SQL"
+        },
+        {
+          "id": "sf.05.07",
+          "title": "Database Design"
+        },
+        {
+          "id": "sf.05.08",
+          "title": "SQLAlchemy"
+        },
+        {
+          "id": "sf.05.09",
+          "title": "Database Migrations"
         }
       ],
       "prerequisites": [
@@ -191,6 +416,11 @@
       "competencies": [
         "algorithms",
         "data structures"
+      ],
+      "outcomes": [
+        "Turn a vague problem into a precise algorithm",
+        "Pick data structures that fit the access pattern",
+        "Compare solutions with complexity analysis rather than guesswork"
       ]
     }
   ],

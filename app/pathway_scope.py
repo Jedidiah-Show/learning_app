@@ -413,7 +413,7 @@ def foundation_course_modules(user_id=None):
             'lessons': lessons,
             'source': 'foundations',
             'badge': f'Foundations · Module {module["number"]}',
-            'outcomes': module.get('competencies') or [],
+            'outcomes': module.get('outcomes') or module.get('competencies') or [],
             'readiness_check': 'Complete the published lessons in order; results stay within Shared Foundations.',
             'resources': {},
             'project': '',
@@ -625,7 +625,7 @@ def _foundation_state_for(modules, completed_lessons, completed_projects):
 def foundation_completion_state(user_id):
     """Canonical Shared Foundations progress, isolated from both specialisations.
 
-    Six sf.* modules, 21 lessons, counted only from FoundationLessonProgress.
+    Six sf.* modules, all canonical sf lessons, counted only from FoundationLessonProgress.
     Legacy 00–02 evidence remains in the database for historical/credential
     record integrity but is not a competing curriculum and cannot satisfy AI
     or ML requirements.

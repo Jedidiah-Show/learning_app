@@ -19,7 +19,7 @@ discarded.**
 
 | Domain | Manifest | Modules | Lessons |
 |---|---|---|---|
-| `shared-foundations` | `shared_foundations_curriculum.json` | 6 (`sf.00`–`sf.05`) | 21 |
+| `shared-foundations` | `shared_foundations_curriculum.json` | 6 (`sf.00`–`sf.05`) | 71 |
 | `ai-engineering` | `ai_engineering_curriculum.json` | 9 (`ai.03`–`ai.11`) | 28 |
 | `machine-learning` | `machine_learning_curriculum.json` | 12 (`mle.*`) | 59 |
 
@@ -43,11 +43,12 @@ discarded.**
 
 ## Lesson-level rule
 
-Legacy lessons (`213` total) inherit their module's mapping. They are mapped
-to the canonical **module**, never to an individual canonical lesson — the
-granularities differ (e.g. legacy `01` has 18 lessons vs `sf.01`'s 4). The
-machine-readable file lists every legacy lesson with its derived mapping and
-a `confidence` field.
+Legacy lessons (`213` total) inherit their module's mapping. The 50 lessons
+from legacy modules 00–02 are also published as canonical `sf.*` lessons, with
+their outcomes, worked examples, common mistakes, key terms and checkpoint
+answers, so Shared Foundations is the richer superset rather than a thinner
+replacement. The machine-readable file lists every legacy lesson with its
+derived mapping and a `confidence` field.
 
 ## Exceptions (explicitly documented, not auto-resolved)
 

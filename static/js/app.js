@@ -435,46 +435,6 @@
     update();
 })();
 
-// PWA install prompt: shown only when the browser reports the app installable
-// and the learner has not dismissed it.
-(() => {
-    const installButton = document.getElementById('pwa-install');
-    if (!installButton) return;
-    let deferredPrompt = null;
-    let dismissed = false;
-    try {
-        dismissed = localStorage.getItem('ruachai-install-dismissed') === '1';
-    } catch (error) {
-        dismissed = false;
-    }
-    const standalone = window.matchMedia('(display-mode: standalone)').matches
-        || window.navigator.standalone === true;
-    if (dismissed || standalone) return;
-    window.addEventListener('beforeinstallprompt', (event) => {
-        event.preventDefault();
-        deferredPrompt = event;
-        installButton.hidden = false;
-    });
-    installButton.addEventListener('click', async () => {
-        if (!deferredPrompt) return;
-        installButton.disabled = true;
-        try {
-            deferredPrompt.prompt();
-            const choice = await deferredPrompt.userChoice;
-            deferredPrompt = null;
-            installButton.hidden = true;
-            if (choice && choice.outcome === 'dismissed') {
-                try { localStorage.setItem('ruachai-install-dismissed', '1'); } catch (error) {}
-            }
-        } finally {
-            installButton.disabled = false;
-        }
-    });
-    window.addEventListener('appinstalled', () => {
-        installButton.hidden = true;
-    });
-})();
-
 // Dashboard leaderboard nudge: one-tap opt-in, remembered dismissal.
 (() => {
     const nudge = document.querySelector('[data-leaderboard-nudge]');

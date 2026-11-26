@@ -195,7 +195,8 @@ class TestTutorResolverOwnership:
 
     def test_app_still_starts_after_the_core_extraction(self):
         app = create_app()
-        assert len(app.blueprints) == 23
+        # Includes the Shared Foundations read API blueprint.
+        assert len(app.blueprints) == 24
         assert 'process-ai-jobs' in app.cli.commands
         assert 'process-submissions' in app.cli.commands
         assert 'judge-worker-health' in app.cli.commands

@@ -6,8 +6,11 @@
   <header class="mt-4 rounded-2xl bg-brand-950 p-6 text-white sm:p-8">
     <p class="text-sm font-semibold uppercase tracking-wide text-emerald-200">Module {{ lesson.module_number }} · {{ lesson.module_title }}</p>
     <h2 class="mt-2 text-3xl font-bold">{{ lesson.title }}</h2>
+    <p class="mt-2 text-xs font-semibold text-emerald-200/80" role="status">
+      Lesson {{ lesson_position }} of {{ lesson_total }}{% if lesson.study_minutes %} · about {{ lesson.study_minutes }} minutes{% endif %}{% if completed %} · completed{% endif %}
+    </p>
     {% if lesson.goal %}<p class="mt-3 text-emerald-50">{{ lesson.goal }}</p>{% endif %}
-    {% if completed %}<p class="mt-3 font-semibold text-emerald-200">Completed · review mode</p>{% endif %}
+    {% if lesson.takeaway %}<p class="mt-3 rounded-xl border border-emerald-400/30 bg-emerald-400/10 p-3 text-sm font-medium text-emerald-100"><span class="font-bold text-emerald-200">Key takeaway · </span>{{ lesson.takeaway }}</p>{% endif %}
   </header>
 
   {% if lesson.status != 'ready' %}
@@ -22,6 +25,42 @@
     {% for paragraph in section.body %}<p class="mt-3 leading-7 text-slate-700">{{ paragraph }}</p>{% endfor %}
   </section>
   {% endfor %}
+
+  {% if lesson.outcomes %}
+  <section class="mt-5 rounded-2xl border border-emerald-200 bg-emerald-50 p-6">
+    <h3 class="text-lg font-bold text-emerald-900">What you will be able to do</h3>
+    <ul class="mt-3 space-y-2 text-sm text-emerald-950">
+      {% for outcome in lesson.outcomes %}<li class="flex gap-2"><span aria-hidden="true">✓</span><span>{{ outcome }}</span></li>{% endfor %}
+    </ul>
+  </section>
+  {% endif %}
+
+  <div class="mt-5 grid gap-4 md:grid-cols-2">
+    {% if lesson.worked_example %}
+    <details class="rounded-2xl border border-slate-200 bg-white p-5">
+      <summary class="cursor-pointer font-bold">Worked example</summary>
+      {% for example in lesson.worked_example %}<p class="mt-3 text-sm leading-7 text-slate-700">{{ example }}</p>{% endfor %}
+    </details>
+    {% endif %}
+    {% if lesson.common_mistakes %}
+    <details class="rounded-2xl border border-slate-200 bg-white p-5">
+      <summary class="cursor-pointer font-bold">Common mistakes</summary>
+      <ul class="mt-3 space-y-2 text-sm text-slate-700">{% for mistake in lesson.common_mistakes %}<li class="flex gap-2"><span aria-hidden="true">⚠</span><span>{{ mistake }}</span></li>{% endfor %}</ul>
+    </details>
+    {% endif %}
+    {% if lesson.key_terms %}
+    <details class="rounded-2xl border border-slate-200 bg-white p-5">
+      <summary class="cursor-pointer font-bold">Key terms</summary>
+      <dl class="mt-3 space-y-2 text-sm text-slate-700">{% for term in lesson.key_terms %}<div><dt class="font-semibold text-slate-900">{{ term.term }}</dt><dd>{{ term.definition }}</dd></div>{% endfor %}</dl>
+    </details>
+    {% endif %}
+    {% if lesson.checkpoint %}
+    <details class="rounded-2xl border border-slate-200 bg-white p-5">
+      <summary class="cursor-pointer font-bold">Checkpoint answers</summary>
+      <dl class="mt-3 space-y-3 text-sm text-slate-700">{% for item in lesson.checkpoint %}<div><dt class="font-semibold text-slate-900">{{ item.question }}</dt><dd class="mt-1">{{ item.answer }}</dd></div>{% endfor %}</dl>
+    </details>
+    {% endif %}
+  </div>
 
   {% if lesson.task %}<section class="mt-5 rounded-2xl border border-indigo-100 bg-indigo-50 p-6">
     <h3 class="text-lg font-bold">Apply it</h3>
@@ -69,14 +108,21 @@
     </form>
   </section>
   {% endif %}
-  {# Shared Foundations uses sf.* lesson ids. The existing /api/lessons/<id>/note
-     and /api/lessons/<id>/bookmark routes only accept curriculum and mle.* ids,
-     so notes/bookmarks cannot be wired here without a new route. Until such a
-     route exists, point learners to the existing practice library instead. #}
-  <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-6">
-    <h3 class="text-lg font-bold">Keep practising</h3>
-    <p class="mt-2 text-sm leading-7 text-slate-700">Notes and bookmarks are available on AI Engineering and Machine Learning lessons. For now, use the practice library to reinforce these foundations with short, runnable exercises.</p>
-    <a class="mt-3 inline-flex rounded-lg border border-indigo-300 px-4 py-2 text-sm font-semibold text-indigo-800 hover:bg-indigo-50" href="{{ url_for('main.practice_catalog') }}">Browse foundation practice →</a>
+  <section class="mt-5 rounded-2xl border border-slate-200 bg-white p-6" aria-labelledby="sf-notes-title">
+    <div class="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <h3 id="sf-notes-title" class="text-lg font-bold">Your notes</h3>
+        <p class="mt-1 text-sm text-slate-600">Private to you and saved with this foundation lesson.</p>
+      </div>
+      <button type="button" data-sf-bookmark aria-pressed="{{ 'true' if bookmarked else 'false' }}" class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">{{ '★ Bookmarked' if bookmarked else '☆ Bookmark this lesson' }}</button>
+    </div>
+    <label class="sr-only" for="sf-note">Notes for this lesson</label>
+    <textarea id="sf-note" data-sf-note rows="4" class="mt-4 w-full rounded-lg border border-slate-300 p-3 text-sm" placeholder="Write a question, an example, or what clicked for you...">{{ lesson_note }}</textarea>
+    <div class="mt-3 flex flex-wrap items-center gap-3">
+      <button type="button" data-sf-note-save class="rounded-lg bg-indigo-700 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-800">Save note</button>
+      <span data-sf-note-status class="text-sm text-slate-600" role="status"></span>
+    </div>
+    <p class="mt-4 text-sm text-slate-600">Want a quick exercise too? <a class="font-semibold text-indigo-700 hover:underline" href="{{ url_for('main.practice_catalog') }}">Browse foundation practice →</a></p>
   </section>
   {% if next_lesson %}
   <nav class="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-5" aria-label="Lesson navigation">
@@ -159,6 +205,49 @@ if (sfTutorForm) {
     sfTutorChat.innerHTML = '';
     sfTutorAppend('assistant', {{ tutor_greeting|tojson }});
     sfTutorStatus.textContent = 'Started a new chat.';
+  });
+}
+
+const sfBookmarkButton = document.querySelector('[data-sf-bookmark]');
+const sfNoteField = document.querySelector('[data-sf-note]');
+const sfNoteSave = document.querySelector('[data-sf-note-save]');
+const sfNoteStatus = document.querySelector('[data-sf-note-status]');
+if (sfBookmarkButton) {
+  sfBookmarkButton.addEventListener('click', async () => {
+    sfBookmarkButton.disabled = true;
+    try {
+      const response = await fetch(`/api/lessons/${encodeURIComponent(sfLessonId)}/bookmark`, {
+        method: 'POST', headers: {'X-CSRF-Token': csrf}
+      });
+      if (!response.ok) throw new Error('Could not update bookmark.');
+      const data = await response.json();
+      sfBookmarkButton.setAttribute('aria-pressed', String(data.bookmarked));
+      sfBookmarkButton.textContent = data.bookmarked ? '★ Bookmarked' : '☆ Bookmark this lesson';
+    } catch (error) {
+      if (sfNoteStatus) sfNoteStatus.textContent = error.message || 'Could not update bookmark.';
+    } finally {
+      sfBookmarkButton.disabled = false;
+    }
+  });
+}
+if (sfNoteSave && sfNoteField) {
+  sfNoteSave.addEventListener('click', async () => {
+    sfNoteSave.disabled = true;
+    if (sfNoteStatus) sfNoteStatus.textContent = 'Saving…';
+    try {
+      const response = await fetch(`/api/lessons/${encodeURIComponent(sfLessonId)}/note`, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json', 'X-CSRF-Token': csrf},
+        body: JSON.stringify({content: sfNoteField.value})
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Could not save the note.');
+      if (sfNoteStatus) sfNoteStatus.textContent = sfNoteField.value.trim() ? 'Note saved.' : 'Note cleared.';
+    } catch (error) {
+      if (sfNoteStatus) sfNoteStatus.textContent = error.message || 'Could not save the note.';
+    } finally {
+      sfNoteSave.disabled = false;
+    }
   });
 }
 </script>{% endblock %}

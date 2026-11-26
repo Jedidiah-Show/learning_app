@@ -152,7 +152,7 @@ class DashboardCurriculumGridTests(DynamicShellTestCase):
     def test_ai_and_unset_destinations_keep_the_full_course(self):
         for destination, expected in (
             ('ai', '10 modules · 163 lessons'),
-            (None, '6 modules · 21 lessons'),
+            (None, '6 modules · 71 lessons'),
         ):
             with self.subTest(destination=destination):
                 self._set_destination(destination)
@@ -319,6 +319,20 @@ class BrandRenameTests(DynamicShellTestCase):
         self.assertEqual(manifest['name'], 'RUACH AI & ML Engineering')
         # The compact wordmark stays as it is.
         self.assertEqual(manifest['short_name'], 'RUACH')
+
+    def test_install_app_affordance_is_gone_but_offline_support_stays(self):
+        root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        for relative in (
+            ('templates', 'base.html'),
+            ('static', 'js', 'app.js'),
+            ('static', 'css', 'style.css'),
+        ):
+            with open(os.path.join(root, *relative), encoding='utf-8') as source:
+                self.assertNotIn('pwa-install', source.read())
+        with open(os.path.join(root, 'templates', 'base.html'), encoding='utf-8') as source:
+            html = source.read()
+        self.assertIn('site.webmanifest', html)
+        self.assertIn('offline-banner', html)
 
 
 if __name__ == '__main__':

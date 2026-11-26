@@ -176,6 +176,7 @@ def _register_blueprints(app):
     from app.routes.main import main_bp
     from app.routes.progress import progress_bp
     from app.routes.lessons import lessons_bp
+    from app.routes.foundations import foundations_bp
     from app.routes.quizzes import quizzes_bp
     from app.routes.calendar import calendar_bp
     from app.routes.admin import admin_bp
@@ -203,6 +204,7 @@ def _register_blueprints(app):
     app.register_blueprint(admin_portal_bp, url_prefix='/admin')
     app.register_blueprint(progress_bp, url_prefix='/api/progress')
     app.register_blueprint(lessons_bp, url_prefix='/api/lessons')
+    app.register_blueprint(foundations_bp)  # owns /api/foundations prefix
     app.register_blueprint(pathway_practice_bp, url_prefix='/api/pathways')
     app.register_blueprint(ai_jobs_bp, url_prefix='/api/ai')
     app.register_blueprint(ml_jobs_bp)  # owns /api/ml-jobs prefix

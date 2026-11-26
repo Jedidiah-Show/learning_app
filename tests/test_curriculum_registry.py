@@ -30,7 +30,7 @@ class RegistrySummaryTests(unittest.TestCase):
     def test_domain_module_and_lesson_counts(self):
         summary = registry.summary()
         self.assertEqual(summary[DOMAIN_SHARED]['module_count'], 6)
-        self.assertEqual(summary[DOMAIN_SHARED]['lesson_count'], 21)
+        self.assertEqual(summary[DOMAIN_SHARED]['lesson_count'], 71)
         self.assertEqual(summary[DOMAIN_AI]['module_count'], 9)
         self.assertEqual(summary[DOMAIN_AI]['lesson_count'], 28)
         self.assertEqual(summary[DOMAIN_ML]['module_count'], 12)
