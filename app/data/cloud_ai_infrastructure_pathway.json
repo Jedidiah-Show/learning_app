@@ -28,7 +28,7 @@
             {
               "heading": "Files, paths, and permissions",
               "body": [
-                "Paths are absolute (starting at /) or relative to the current working directory; `pwd` prints where you are, `cd` takes you elsewhere. Use `ls -la` to see permissions, owner, and group. The ten-character mode `rw-r-----` means owner read/write, group read, others nothing — the correct mode for an `.env` file holding API keys.",
+                "Paths are absolute (starting at /) or relative to the current working directory; `pwd` prints where you are, `cd` takes you elsewhere. Use `ls -la` to see permissions, owner, and group. The ten-character mode `rw-r-----` means owner read/write, group read, others nothing \u2014 the correct mode for an `.env` file holding API keys.",
                 "chmod sets modes; prefer numeric modes for precision (`chmod 640 app.env`, `chmod 755 start.sh`). For an AI service this matters concretely: model weights under /opt/models should be readable by the service account and nobody else, and log files must never be world-writable. Check who you are with `id` before changing anything you did not create."
               ]
             },
@@ -36,18 +36,56 @@
               "heading": "The commands that matter day to day",
               "body": [
                 "Filesystem triage uses `df -h` (is the disk full before the eval starts?), `du -sh *` (which directory ate the checkpoints?), `free -h` (memory pressure), and `ls -lh` (human-readable sizes). Editing config uses `cp` with `-i` when overwriting matters, `mv` for renames, and `rm -i` until you trust a path completely.",
-                "Inspection reads: `cat` for small files, `less` for large logs (search with `/term`, quit with `q`), `head` and `tail` for the first and last lines, `find /path -name \"*.jsonl\"` to locate files, and `grep -r \"error\" .` to search content. A service returning 500s is usually explained by its last thirty lines of logs — learn the shortest path to those thirty lines."
+                "Inspection reads: `cat` for small files, `less` for large logs (search with `/term`, quit with `q`), `head` and `tail` for the first and last lines, `find /path -name \"*.jsonl\"` to locate files, and `grep -r \"error\" .` to search content. A service returning 500s is usually explained by its last thirty lines of logs \u2014 learn the shortest path to those thirty lines."
               ]
             },
             {
               "heading": "Asking the system about itself",
               "body": [
                 "`uname -a` reports kernel and architecture, `lsb_release -a` (or /etc/os-release) the distribution, `uptime` load and session length, and `whoami` / `id` the current identity. When comparing dev, staging, and production, capture these four outputs on each host into your ops notes; half of \"it works on my machine\" is a version or identity difference you can see in seconds.",
-                "Write down the commands you had to look up — a personal runbook grows fastest from the problems you actually had, and it is the first thing a teammate (or future you, at 2 a.m.) will ask for."
+                "Write down the commands you had to look up \u2014 a personal runbook grows fastest from the problems you actually had, and it is the first thing a teammate (or future you, at 2 a.m.) will ask for."
               ]
             }
           ],
           "task": "On a Linux host (a VM, WSL, or a container you own), create a study directory, add three files with different contents and sizes, and set them to 640, 644, and 600. Run id, df -h, du -sh ., free -h, and ls -la. Write down, in two or three sentences, which file mode you would give an .env file and why.",
+          "outcomes": [
+            "Navigate a Linux host with relative paths and explain what each permission bit allows",
+            "Use grep, find, pipes and exit codes to answer a question about the running system",
+            "Read process and log state before changing configuration"
+          ],
+          "mental_model": "The shell is a small language for describing files and processes: every command reads input, transforms it, and writes output you can hand to the next command.",
+          "worked_example": [
+            "At 02:00 a model service logs to /var/log/ai but the dashboard shows nothing. `ls -l /var/log/ai` shows the file owned by root with mode 640 while the service runs as appuser. The group is root, so appuser cannot read it. Adding appuser to the log group, running `chgrp ai-logs` and keeping mode 640 restores `tail -n 50` output. The logging code was fine; the filesystem contract was wrong."
+          ],
+          "common_mistakes": [
+            "Using absolute paths in a script that later runs from a different working directory",
+            "Assuming x on a file and x on a directory mean the same thing",
+            "Forgetting to quote a grep pattern containing shell metacharacters"
+          ],
+          "key_terms": [
+            {
+              "term": "cwd",
+              "definition": "The current working directory that relative paths resolve against."
+            },
+            {
+              "term": "inode",
+              "definition": "The filesystem object behind a filename; ownership and permissions live here."
+            },
+            {
+              "term": "pipeline",
+              "definition": "Commands joined so each one\u2019s stdout becomes the next one\u2019s stdin."
+            }
+          ],
+          "checkpoint": [
+            {
+              "question": "Why can cd .. surprise you after following a symlink?",
+              "answer": "The shell resolves .. through the logical path, so a symlinked directory can lead somewhere unexpected. Use pwd -P to see the physical location."
+            },
+            {
+              "question": "What does directory mode 750 allow?",
+              "answer": "The owner can read, write and traverse; the group can read and traverse; everyone else is denied."
+            }
+          ],
           "quiz": {
             "question": "A colleague needs an .env file to be readable and writable by its owner and readable by the deploy group, but completely closed to everyone else. Which permission does that describe?",
             "choices": [
@@ -77,8 +115,8 @@
             {
               "heading": "Logs tell the operational story",
               "body": [
-                "journald and /var/log are the system’s memory. `journalctl -u ai-api --since \"15 minutes ago\"`, `tail -F /var/log/ai-api/app.log`, and `grep -i error` answer \"what is the service doing right now?\" A useful log line for an AI endpoint includes timestamp, request id, model, latency, and outcome — not a stack trace alone.",
-                "When debugging intermittent 429s or timeouts, grep for the request id across logs rather than reading sequentially; log rotation keeps /var/log from filling the disk, so old errors may live in .gz archives — `zgrep` searches them too."
+                "journald and /var/log are the system\u2019s memory. `journalctl -u ai-api --since \"15 minutes ago\"`, `tail -F /var/log/ai-api/app.log`, and `grep -i error` answer \"what is the service doing right now?\" A useful log line for an AI endpoint includes timestamp, request id, model, latency, and outcome \u2014 not a stack trace alone.",
+                "When debugging intermittent 429s or timeouts, grep for the request id across logs rather than reading sequentially; log rotation keeps /var/log from filling the disk, so old errors may live in .gz archives \u2014 `zgrep` searches them too."
               ]
             },
             {
@@ -92,11 +130,49 @@
               "heading": "Cron, exit codes, and pipes",
               "body": [
                 "cron runs commands on a schedule (`crontab -e`, `*/15 * * * * /opt/checks/disk.sh`); give cron jobs absolute paths and explicit environment, because they get neither your PATH nor your working directory. Read the exit code of your last command with `echo $?`.",
-                "Pipes pass stdout of one command into stdin of the next; `>` writes output to a file (truncating), `>>` appends, `2>&1` merges stderr into stdout — the difference matters when a job fails silently by logging its errors to a different stream than your log collector."
+                "Pipes pass stdout of one command into stdin of the next; `>` writes output to a file (truncating), `>>` appends, `2>&1` merges stderr into stdout \u2014 the difference matters when a job fails silently by logging its errors to a different stream than your log collector."
               ]
             }
           ],
           "task": "Write check.sh with #!/usr/bin/env bash and set -euo pipefail that prints `df -h /` and exits 1 if the root filesystem is more than 90% used, 0 otherwise (parse the Use% column). chmod +x it, run it on a healthy host, and record `echo $?`. Then run it with the threshold forced to a value you know fails, and record that exit code too.",
+          "outcomes": [
+            "Inspect running processes and identify which service owns a port or a spike",
+            "Find the relevant log lines quickly with journalctl, grep and timestamps",
+            "Automate a routine health check with a shell script, cron and meaningful exit codes"
+          ],
+          "mental_model": "A Linux host tells you what it is doing if you ask the right questions: processes show who is running, logs show what happened, and exit codes let automation act on the answer.",
+          "worked_example": [
+            "A nightly batch slows to a crawl. `ps -eo pid,pcpu,pmem,cmd --sort=-pcpu | head` shows a Python worker at 180% CPU; `ss -ltnp` confirms the API on 8080 is healthy. `journalctl -u batch --since \"30 min ago\" | grep -i retry` reveals a retry loop after a 429 from the model gateway. The fix is a bounded backoff, not more CPU."
+          ],
+          "common_mistakes": [
+            "Debugging from metrics alone without reading the logs that explain them",
+            "Writing a cron job that assumes an interactive shell PATH",
+            "Ignoring exit codes so a failed check still reports success"
+          ],
+          "key_terms": [
+            {
+              "term": "exit code",
+              "definition": "A command\u2019s numeric status; zero means success and non-zero means failure."
+            },
+            {
+              "term": "journald",
+              "definition": "The systemd log service; journalctl queries its structured records."
+            },
+            {
+              "term": "cron",
+              "definition": "The scheduler that runs commands at fixed times in a minimal environment."
+            }
+          ],
+          "checkpoint": [
+            {
+              "question": "Why should a health-check script use explicit exit codes?",
+              "answer": "Automation and cron can only branch on status. A script that always exits zero hides failures from every downstream system."
+            },
+            {
+              "question": "Which command shows which process owns a listening port?",
+              "answer": "ss -ltnp (or lsof -i) maps listening ports to process IDs and names."
+            }
+          ],
           "quiz": {
             "question": "What does `set -euo pipefail` give a bash script?",
             "choices": [
@@ -132,33 +208,71 @@
             {
               "heading": "The name comes first",
               "body": [
-                "DNS maps human names to addresses. An A record returns an IPv4 address, AAAA an IPv6 address, and a CNAME aliases one name to another (for example api.example.com → a load balancer name). TTL controls how long resolvers cache the answer; low TTLs make migrations fast, high TTLs make outages shorter for everyone else.",
-                "Query it directly with `dig api.example.com` or `nslookup`; note the ANSWER SECTION and the TTL countdown. When you switch providers behind the same name, the TTL is how long old clients keep calling the old fleet — the reason experienced teams lower TTLs a day before a planned cutover."
+                "DNS maps human names to addresses. An A record returns an IPv4 address, AAAA an IPv6 address, and a CNAME aliases one name to another (for example api.example.com \u2192 a load balancer name). TTL controls how long resolvers cache the answer; low TTLs make migrations fast, high TTLs make outages shorter for everyone else.",
+                "Query it directly with `dig api.example.com` or `nslookup`; note the ANSWER SECTION and the TTL countdown. When you switch providers behind the same name, the TTL is how long old clients keep calling the old fleet \u2014 the reason experienced teams lower TTLs a day before a planned cutover."
               ]
             },
             {
               "heading": "HTTP is a contract of methods, codes, and headers",
               "body": [
-                "Requests carry a method, path, headers, and optional body; responses carry a status code, headers, and a body. Two behaviors define healthy API clients: `curl -v` to see the exchange, and honoring status codes as signals — 2xx success, 3xx redirect, 4xx the caller must change something, 5xx the server failed and may be retried with backoff; 429 tells you to slow down.",
+                "Requests carry a method, path, headers, and optional body; responses carry a status code, headers, and a body. Two behaviors define healthy API clients: `curl -v` to see the exchange, and honoring status codes as signals \u2014 2xx success, 3xx redirect, 4xx the caller must change something, 5xx the server failed and may be retried with backoff; 429 tells you to slow down.",
                 "Headers carry the contract details that matter for AI APIs: Authorization for credentials (never in the query string), Content-Type for the body shape, and Retry-After on 429/503. Long-lived streaming responses (server-sent events for token streams) need client timeouts tuned above your p95 generation latency, not the 30-second defaults from a CRUD app."
               ]
             },
             {
               "heading": "TLS: what the handshake actually proves",
               "body": [
-                "HTTPS is HTTP over TLS. The handshake verifies the server presents a certificate issued by a public CA for the requested name (SNI carries the hostname so one IP can present many certificates), the certificate chain validates up to a trusted root, and the expiry is in the future. What TLS proves is identity and confidentiality — never that the application behind it is correct.",
-                "Termination is a design decision: at the load balancer or reverse proxy (simplest, certificates in one place) or end-to-end at the app (with passthrough). For AI endpoints the common failure is a certificate that expires during a holiday — `openssl s_client -connect host:443 -servername host` shows the chain and NotAfter date in one command."
+                "HTTPS is HTTP over TLS. The handshake verifies the server presents a certificate issued by a public CA for the requested name (SNI carries the hostname so one IP can present many certificates), the certificate chain validates up to a trusted root, and the expiry is in the future. What TLS proves is identity and confidentiality \u2014 never that the application behind it is correct.",
+                "Termination is a design decision: at the load balancer or reverse proxy (simplest, certificates in one place) or end-to-end at the app (with passthrough). For AI endpoints the common failure is a certificate that expires during a holiday \u2014 `openssl s_client -connect host:443 -servername host` shows the chain and NotAfter date in one command."
               ]
             },
             {
               "heading": "Reading a connection end to end",
               "body": [
                 "One command explains most mysteries: `curl -v https://api.example.com/health` prints the resolved IP, the TLS handshake summary, the request line, and every response header including the HTTP status. For a 301/308 redirect, note whether the client follows automatically; for HSTS, browsers refuse plain HTTP afterwards for the max-age period.",
-                "Practice locally with `openssl s_client` and a self-signed cert to see the chain validation failure (unable to get local issuer certificate) — recognizing the three or four common TLS failures by sight (expired, wrong hostname, untrusted issuer, protocol mismatch) is worth an afternoon of setup."
+                "Practice locally with `openssl s_client` and a self-signed cert to see the chain validation failure (unable to get local issuer certificate) \u2014 recognizing the three or four common TLS failures by sight (expired, wrong hostname, untrusted issuer, protocol mismatch) is worth an afternoon of setup."
               ]
             }
           ],
           "task": "Pick any public HTTPS API you use and capture one full exchange: dig the hostname (record IP and TTL), curl -v the endpoint (record status line, content-type, and server header), and openssl s_client or curl to print the certificate issuer and expiry. Write down the one failure among DNS, TLS, or HTTP you would notice first for this API and why.",
+          "outcomes": [
+            "Trace a request from DNS resolution through TCP and TLS to the HTTP response",
+            "Explain what the TLS handshake proves and what it does not",
+            "Diagnose a slow or failing endpoint with dig and curl -v timing output"
+          ],
+          "mental_model": "A name becomes a connection in stages: DNS finds an address, TCP opens a path, TLS authenticates and encrypts it, and only then does HTTP carry your request.",
+          "worked_example": [
+            "A user reports that https://api.example.test is slow only in one region. `dig +short api.example.test` returns the expected address; `curl -v -w \"%{time_connect} %{time_appconnect}\"` shows connect at 40 ms but TLS at 900 ms. The handshake, not the application, is the delay. Checking the CDN configuration reveals a rule routing that region to a distant edge. Moving the edge back drops time_appconnect below 100 ms."
+          ],
+          "common_mistakes": [
+            "Treating a 200 response as proof the connection was encrypted",
+            "Caching DNS forever so failover can never take effect",
+            "Blaming the model for latency that belongs to DNS or the TLS handshake"
+          ],
+          "key_terms": [
+            {
+              "term": "RTT",
+              "definition": "Round-trip time; the minimum cost of every network handshake."
+            },
+            {
+              "term": "SNI",
+              "definition": "Server Name Indication; the TLS field that tells the server which certificate to present."
+            },
+            {
+              "term": "TLS termination",
+              "definition": "The point where encryption ends, often a load balancer or gateway."
+            }
+          ],
+          "checkpoint": [
+            {
+              "question": "What does TLS verify during a handshake?",
+              "answer": "It verifies the server\u2019s certificate chain against a trusted CA and the hostname; it does not prove the application behind it is correct."
+            },
+            {
+              "question": "Which curl flags separate connection cost from server time?",
+              "answer": "-w with time_connect, time_appconnect and time_starttransfer reports each phase separately."
+            }
+          ],
           "quiz": {
             "question": "Which DNS record type aliases one hostname to another name?",
             "choices": [
@@ -168,7 +282,7 @@
               "TXT"
             ],
             "answer": 0,
-            "explanation": "A CNAME points a name at another name (often a provider’s load balancer). A and AAAA return addresses directly; TXT holds arbitrary text such as verification strings."
+            "explanation": "A CNAME points a name at another name (often a provider\u2019s load balancer). A and AAAA return addresses directly; TXT holds arbitrary text such as verification strings."
           }
         },
         {
@@ -181,21 +295,21 @@
             {
               "heading": "Default-deny, then a short allowlist",
               "body": [
-                "A security group is a stateful firewall attached to an instance, container, or service. The correct shape for an AI API is almost always: inbound 443 on the load balancer, inbound 8000 on the app only from the load balancer’s security group, and SSH (if any) only from a bastion CIDR or a VPN. Everything else is refused.",
-                "Treat every extra inbound rule as inventory you must explain. If nobody can say what port 9090 from 0.0.0.0/0 is for, it should not exist — scan for listeners with `ss -tlnp` and compare against your intended rule set; the difference is your audit backlog."
+                "A security group is a stateful firewall attached to an instance, container, or service. The correct shape for an AI API is almost always: inbound 443 on the load balancer, inbound 8000 on the app only from the load balancer\u2019s security group, and SSH (if any) only from a bastion CIDR or a VPN. Everything else is refused.",
+                "Treat every extra inbound rule as inventory you must explain. If nobody can say what port 9090 from 0.0.0.0/0 is for, it should not exist \u2014 scan for listeners with `ss -tlnp` and compare against your intended rule set; the difference is your audit backlog."
               ]
             },
             {
               "heading": "L4 vs L7, and why streaming breaks naive setups",
               "body": [
-                "Layer-4 balancers route TCP flows without reading them — good for raw throughput, opaque to HTTP semantics. Layer-7 balancers (ALB, nginx, Envoy) inspect requests: host/path routing, header rewrites, and per-path rules. For AI APIs you usually want L7 so /v1/predict and /healthz can get different treatment.",
-                "Token streaming over server-sent events or chunked responses outlives typical 30-second idle limits; set proxy read timeouts and client keep-alives above your slowest acceptable generation, and remember that long-lived connections consume a slot each — capacity planning counts connections, not just requests per second."
+                "Layer-4 balancers route TCP flows without reading them \u2014 good for raw throughput, opaque to HTTP semantics. Layer-7 balancers (ALB, nginx, Envoy) inspect requests: host/path routing, header rewrites, and per-path rules. For AI APIs you usually want L7 so /v1/predict and /healthz can get different treatment.",
+                "Token streaming over server-sent events or chunked responses outlives typical 30-second idle limits; set proxy read timeouts and client keep-alives above your slowest acceptable generation, and remember that long-lived connections consume a slot each \u2014 capacity planning counts connections, not just requests per second."
               ]
             },
             {
               "heading": "Health checks decide who receives traffic",
               "body": [
-                "A load balancer that does not check health will keep sending users to a hung process. Point it at a cheap, honest /healthz that verifies the app can actually serve — for an AI service that means the model is loaded and a tiny inference pass succeeds, not just that a TCP port is open.",
+                "A load balancer that does not check health will keep sending users to a hung process. Point it at a cheap, honest /healthz that verifies the app can actually serve \u2014 for an AI service that means the model is loaded and a tiny inference pass succeeds, not just that a TCP port is open.",
                 "Configure the check with a warm-up allowance: a model that takes 40 seconds to load must not be marked unhealthy at second 10 and then receive traffic mid-load (cold-start 502s), nor be left forever unready because the check fires before startup finishes."
               ]
             },
@@ -207,12 +321,50 @@
               ]
             }
           ],
-          "task": "Design (on paper, or in a free-tier cloud account if you have one) an AI inference endpoint: internet → L7 load balancer → private app instances on port 8000. List the exact inbound rules you would set on the load balancer and on the instances, the port the app binds and why, and the one command you would use from outside to verify the path works. Then explain why 8000 must not appear in 0.0.0.0/0 rules.",
+          "task": "Design (on paper, or in a free-tier cloud account if you have one) an AI inference endpoint: internet \u2192 L7 load balancer \u2192 private app instances on port 8000. List the exact inbound rules you would set on the load balancer and on the instances, the port the app binds and why, and the one command you would use from outside to verify the path works. Then explain why 8000 must not appear in 0.0.0.0/0 rules.",
+          "outcomes": [
+            "Design a default-deny ingress rule set with the smallest practical allowlist",
+            "Explain why streaming responses break naive L7 timeouts and buffers",
+            "Verify externally that a load balancer only exposes intended ports"
+          ],
+          "mental_model": "A firewall is a contract with the internet: deny everything, allow only the ports and paths a service needs, and verify the contract from outside the network.",
+          "worked_example": [
+            "A new inference service is unreachable from the outside. The security group allows 443 but the load balancer health check uses port 8000 and the target group marks it unhealthy. Opening 8000 only to the load balancer\u2019s security group \u2014 not to 0.0.0.0/0 \u2014 fixes the health check without exposing the app port publicly. An external nmap scan confirms only 443 is reachable."
+          ],
+          "common_mistakes": [
+            "Allowing 0.0.0.0/0 on an application port to \"fix\" a health check",
+            "Setting an L7 proxy timeout shorter than a streaming model response",
+            "Testing connectivity only from inside the VPC"
+          ],
+          "key_terms": [
+            {
+              "term": "security group",
+              "definition": "A stateful virtual firewall attached to cloud network interfaces."
+            },
+            {
+              "term": "health check",
+              "definition": "A probe that decides whether a target receives traffic."
+            },
+            {
+              "term": "L4 / L7",
+              "definition": "Transport-layer balancing versus application-layer routing with header awareness."
+            }
+          ],
+          "checkpoint": [
+            {
+              "question": "Why must streaming responses change proxy settings?",
+              "answer": "Buffered responses and short idle timeouts can cut a token stream off; the proxy must support streaming with appropriate timeouts."
+            },
+            {
+              "question": "What is the safest way to open a health-check port?",
+              "answer": "Allow it only from the load balancer\u2019s security group, not from the internet."
+            }
+          ],
           "quiz": {
             "question": "An AI inference container listens on port 8000. Which inbound rule set is correct?",
             "choices": [
               "Port 8000 open to 0.0.0.0/0 so clients can reach it directly",
-              "8000 on the instances restricted to the load balancer’s security group, with only 443 exposed on the load balancer",
+              "8000 on the instances restricted to the load balancer\u2019s security group, with only 443 exposed on the load balancer",
               "8000 and 22 both open to 0.0.0.0/0 for convenience",
               "No rules at all; the load balancer bypasses security groups"
             ],
@@ -243,33 +395,71 @@
             {
               "heading": "Images are layered contracts",
               "body": [
-                "Each Dockerfile instruction adds a layer; the image is the sum of layers and the final entrypoint. Multi-stage builds compile in a fat builder image and copy only artifacts into a slim runtime (python:3.12-slim or distroless), which shrinks both size and attack surface. A CUDA base for GPU models can be 6 GB — keep it out of the client image.",
-                "`.dockerignore` (node_modules, .venv, data, .git) keeps build context small; layer ordering (copy lockfile first, install, then copy source) maximises cache reuse so CI builds stay fast. Pin base images by digest (`python:3.12-slim@sha256:…`) when reproducibility matters more than convenience."
+                "Each Dockerfile instruction adds a layer; the image is the sum of layers and the final entrypoint. Multi-stage builds compile in a fat builder image and copy only artifacts into a slim runtime (python:3.12-slim or distroless), which shrinks both size and attack surface. A CUDA base for GPU models can be 6 GB \u2014 keep it out of the client image.",
+                "`.dockerignore` (node_modules, .venv, data, .git) keeps build context small; layer ordering (copy lockfile first, install, then copy source) maximises cache reuse so CI builds stay fast. Pin base images by digest (`python:3.12-slim@sha256:\u2026`) when reproducibility matters more than convenience."
               ]
             },
             {
               "heading": "Where the isolation actually comes from",
               "body": [
-                "Containers share the host kernel; the boundary is namespaces (what a process can see) and cgroups (what it can use). Root inside the container is still uid 0 on the shared kernel unless user namespaces remap it — which is why hardening (non-root user, dropped capabilities, read-only root filesystem) layers controls instead of relying on the word \"container\".",
+                "Containers share the host kernel; the boundary is namespaces (what a process can see) and cgroups (what it can use). Root inside the container is still uid 0 on the shared kernel unless user namespaces remap it \u2014 which is why hardening (non-root user, dropped capabilities, read-only root filesystem) layers controls instead of relying on the word \"container\".",
                 "The practical flags for untrusted or semi-trusted workloads: run as a high non-root uid (65532), `--cap-drop ALL`, `--read-only` rootfs with a small writable /tmp via tmpfs, `--security-opt no-new-privileges`, memory and pid limits, and `--network none` for code that must not touch the network (exactly what the practice sandbox in this app does)."
               ]
             },
             {
               "heading": "Secrets, config, and scanning",
               "body": [
-                "Never bake secrets into images or pass them as build ARGs — build args are recorded in history (`docker history`) and end up in registries. Inject configuration at runtime (env vars or mounted files from your secret store), and keep .env out of the build context.",
+                "Never bake secrets into images or pass them as build ARGs \u2014 build args are recorded in history (`docker history`) and end up in registries. Inject configuration at runtime (env vars or mounted files from your secret store), and keep .env out of the build context.",
                 "Scan in CI with `docker scout cves` or trivy before pushing; fail on critical vulnerabilities in the base packages you actually ship. Rebuild monthly on a fresh base instead of patching running containers; the image is the unit of hygiene, not the host."
               ]
             },
             {
-              "heading": "Build, run, inspect — the feedback loop",
+              "heading": "Build, run, inspect \u2014 the feedback loop",
               "body": [
-                "`docker build`, `docker run --rm -p 8000:8000 --user 65532 --cap-drop ALL --read-only image`, then `docker inspect` to verify ReadonlyRootfs and User, and `docker logs` for output. If the app writes to /, it crashes early and visibly — that is the point of a read-only rootfs and a tmpfs for the few paths that truly need writes.",
+                "`docker build`, `docker run --rm -p 8000:8000 --user 65532 --cap-drop ALL --read-only image`, then `docker inspect` to verify ReadonlyRootfs and User, and `docker logs` for output. If the app writes to /, it crashes early and visibly \u2014 that is the point of a read-only rootfs and a tmpfs for the few paths that truly need writes.",
                 "Verify the hardening with one command each: `docker exec <c> id` prints uid=65532, and a `docker run --rm image cat /etc/shadow` fails with permission denied. Broken-in testing beats theoretical review for container policy."
               ]
             }
           ],
           "task": "Build a small Python echo/Flask app image FROM python:3.12-slim: non-root user (65532), cap-drop all, read-only root filesystem (add a tmpfs /tmp), port 8000. Start it, curl it, then exec inside and confirm id prints uid=65532 and that attempting to write to / fails. Write down the one file the app was allowed to write and why that was necessary.",
+          "outcomes": [
+            "Build a minimal container image that runs as a non-root user",
+            "Explain which kernel features provide container isolation",
+            "Keep secrets out of image layers and scan images before deployment"
+          ],
+          "mental_model": "A container is a process with a private view of the system: the image supplies its filesystem contract, and the kernel supplies the isolation.",
+          "worked_example": [
+            "A base image includes curl and a shell \"just in case\"; a scan flags an outdated OpenSSL in that extra tooling. Rebuilding FROM a slim runtime, copying only the compiled binary, adding a non-root USER and a read-only root filesystem removes the vulnerable package entirely and shrinks the image from 900 MB to 90 MB."
+          ],
+          "common_mistakes": [
+            "Building FROM latest so the image changes without a code change",
+            "Baking an API key into a layer that anyone can inspect",
+            "Running as root inside the container because it \"fixes\" a permission error"
+          ],
+          "key_terms": [
+            {
+              "term": "layer",
+              "definition": "An immutable filesystem diff in an image; deleted files still exist in earlier layers."
+            },
+            {
+              "term": "namespace",
+              "definition": "A kernel feature that gives a process a private view of a resource such as PIDs or mounts."
+            },
+            {
+              "term": "cgroup",
+              "definition": "A kernel feature that limits and accounts for CPU, memory and I/O."
+            }
+          ],
+          "checkpoint": [
+            {
+              "question": "Why does deleting a secret in a later Dockerfile layer not remove it?",
+              "answer": "The earlier layer still contains the secret and can be extracted from the image history."
+            },
+            {
+              "question": "What does a read-only root filesystem buy you?",
+              "answer": "It prevents runtime writes from persisting or hiding a compromise; writable paths must be explicitly declared."
+            }
+          ],
           "quiz": {
             "question": "Why run an inference container with --cap-drop ALL and --read-only instead of just a non-root user?",
             "choices": [
@@ -293,14 +483,14 @@
               "heading": "The object model in ten minutes",
               "body": [
                 "A Pod wraps your containers and is the scheduling unit; a Deployment manages a ReplicaSet that keeps N identical Pods alive; a Service gives Pods a stable virtual address and load-balances across them by label selector. `kubectl get deploy,rs,pods,svc`, `kubectl describe pod <name>` (events tell the truth), and `kubectl logs <pod>` are the three reads you will use daily.",
-                "Manifests are the API: kind, metadata, spec — apply with `kubectl apply -f`, and Git becomes the history of every change to the system. Reconcile drift with the cluster itself: `kubectl diff` before apply."
+                "Manifests are the API: kind, metadata, spec \u2014 apply with `kubectl apply -f`, and Git becomes the history of every change to the system. Reconcile drift with the cluster itself: `kubectl diff` before apply."
               ]
             },
             {
               "heading": "Requests, limits, and probes decide scheduling",
               "body": [
-                "requests are reserved, limits are ceilings: the scheduler binds Pods to nodes that can satisfy requests, and the runtime throttles CPU or OOM-kills the container at its memory limit. For an inference server, size requests from measured usage — a 500m-CPU / 1Gi request with 1500m / 2Gi limits is a common starting point; guessing wrong means starved neighbors or killed pods.",
-                "Two distinct probes: readiness decides who receives traffic (fails → Pod is removed from Service endpoints, stays alive), liveness decides who gets restarted (fails → container is restarted). A model that takes 40 s to load needs a startupProbe or generous initialDelay so the kubelet does not restart it mid-load; a hung event loop needs liveness to fire so it recovers without a human."
+                "requests are reserved, limits are ceilings: the scheduler binds Pods to nodes that can satisfy requests, and the runtime throttles CPU or OOM-kills the container at its memory limit. For an inference server, size requests from measured usage \u2014 a 500m-CPU / 1Gi request with 1500m / 2Gi limits is a common starting point; guessing wrong means starved neighbors or killed pods.",
+                "Two distinct probes: readiness decides who receives traffic (fails \u2192 Pod is removed from Service endpoints, stays alive), liveness decides who gets restarted (fails \u2192 container is restarted). A model that takes 40 s to load needs a startupProbe or generous initialDelay so the kubelet does not restart it mid-load; a hung event loop needs liveness to fire so it recovers without a human."
               ]
             },
             {
@@ -314,13 +504,51 @@
               "heading": "GPU scheduling and node pools",
               "body": [
                 "GPU nodes are expensive and should host only GPU work: taint them (nvidia.com/gpu=true:NoSchedule), tolerate from GPU pods, and request `resources.limits: {nvidia.com/gpu: 1}`. The NVIDIA device plugin advertises available GPUs; without it, GPUs are invisible to the scheduler.",
-                "Scale GPU pools to zero when idle where the cloud allows it; an idle A10 costs a GPU’s-worth hourly for nothing. Pair with pod disruption budgets so voluntary node maintenance does not drain your last replica mid-request."
+                "Scale GPU pools to zero when idle where the cloud allows it; an idle A10 costs a GPU\u2019s-worth hourly for nothing. Pair with pod disruption budgets so voluntary node maintenance does not drain your last replica mid-request."
               ]
             }
           ],
-          "task": "Write a Deployment manifest for an inference container: 3 replicas, requests 250m CPU/512Mi, limits 1 CPU/1Gi, readinessProbe on /healthz (initialDelay 30, period 10), livenessProbe similar, rollingUpdate maxSurge=1 maxUnavailable=0. Then describe — no need to apply — what happens to a Pod whose readiness fails three times in a row, and what kubectl command reverts the last rollout.",
+          "task": "Write a Deployment manifest for an inference container: 3 replicas, requests 250m CPU/512Mi, limits 1 CPU/1Gi, readinessProbe on /healthz (initialDelay 30, period 10), livenessProbe similar, rollingUpdate maxSurge=1 maxUnavailable=0. Then describe \u2014 no need to apply \u2014 what happens to a Pod whose readiness fails three times in a row, and what kubectl command reverts the last rollout.",
+          "outcomes": [
+            "Describe the pod, deployment, service and ingress object model",
+            "Set requests, limits and probes so the scheduler can place AI workloads honestly",
+            "Roll out and roll back an image without dropping traffic"
+          ],
+          "mental_model": "Kubernetes is a controller loop: you declare the desired state, and the control plane keeps replacing objects until reality matches the declaration.",
+          "worked_example": [
+            "An inference pod is OOMKilled whenever a 7B model loads. The manifest sets memory requests to 512 MiB with no limits. Measuring the model at 3.2 GiB, the team sets requests to 4 GiB and limits to 6 GiB, adds a startup probe with a 180-second window, and rolls out with maxUnavailable 0. Pods now schedule only on nodes with room and keep serving during the rollout."
+          ],
+          "common_mistakes": [
+            "Setting CPU limits equal to requests and wondering why inference is throttled",
+            "Using a liveness probe that restarts a model while it is still loading",
+            "Deploying by editing pods directly instead of changing the deployment"
+          ],
+          "key_terms": [
+            {
+              "term": "pod",
+              "definition": "The smallest schedulable unit; one or more containers sharing networking and storage."
+            },
+            {
+              "term": "request",
+              "definition": "Reserved resources used by the scheduler; limits are hard caps."
+            },
+            {
+              "term": "startup probe",
+              "definition": "A probe that delays liveness/readiness checks while slow initialization finishes."
+            }
+          ],
+          "checkpoint": [
+            {
+              "question": "Why do GPU workloads need honest requests?",
+              "answer": "The scheduler places pods based on requests; understating GPU memory leads to OOMKills and node oversubscription."
+            },
+            {
+              "question": "What does maxUnavailable: 0 protect during a rollout?",
+              "answer": "It keeps the old replicas serving until new ones are ready, avoiding a capacity gap."
+            }
+          ],
           "quiz": {
-            "question": "A Pod’s readiness probe fails three consecutive times. What does Kubernetes do?",
+            "question": "A Pod\u2019s readiness probe fails three consecutive times. What does Kubernetes do?",
             "choices": [
               "Removes the Pod from the Service endpoints so it stops receiving traffic, but leaves it running",
               "Restarts the container",
@@ -347,21 +575,21 @@
         {
           "id": "cai.03.01",
           "title": "Terraform & GitOps",
-          "goal": "Make infrastructure reproducible from code that lives in Git, not in someone’s console.",
+          "goal": "Make infrastructure reproducible from code that lives in Git, not in someone\u2019s console.",
           "status": "ready",
           "study_minutes": 90,
           "sections": [
             {
               "heading": "The plan/apply model",
               "body": [
-                "Terraform describes desired state in HCL and reconciles it against the real world. `terraform plan` compares your configuration with the state file and prints the diff (add/change/destroy) without touching anything — the safest review artifact in infrastructure. `terraform apply` executes the approved plan; the state file is the ledger and must live in a remote backend (S3 + lock table, or Terraform Cloud), never in a laptop.",
-                "Variables and outputs parameterize modules; `terraform fmt` and a reviewed `.tfvars` per environment keep dev/staging/prod honest — the difference between environments should be data (CIDRs, sizes, counts), not duplicated resource definitions."
+                "Terraform describes desired state in HCL and reconciles it against the real world. `terraform plan` compares your configuration with the state file and prints the diff (add/change/destroy) without touching anything \u2014 the safest review artifact in infrastructure. `terraform apply` executes the approved plan; the state file is the ledger and must live in a remote backend (S3 + lock table, or Terraform Cloud), never in a laptop.",
+                "Variables and outputs parameterize modules; `terraform fmt` and a reviewed `.tfvars` per environment keep dev/staging/prod honest \u2014 the difference between environments should be data (CIDRs, sizes, counts), not duplicated resource definitions."
               ]
             },
             {
-              "heading": "What belongs in Terraform — and what does not",
+              "heading": "What belongs in Terraform \u2014 and what does not",
               "body": [
-                "Good citizens: networks, subnets, route tables, IAM roles and policies, DNS, clusters, databases, buckets — anything you would be terrified to recreate by hand at 2 a.m. Secret values do not belong in .tf files or state in plain text (use a secret store with data sources); ephemeral one-offs are often cleaner as code written once and discarded.",
+                "Good citizens: networks, subnets, route tables, IAM roles and policies, DNS, clusters, databases, buckets \u2014 anything you would be terrified to recreate by hand at 2 a.m. Secret values do not belong in .tf files or state in plain text (use a secret store with data sources); ephemeral one-offs are often cleaner as code written once and discarded.",
                 "Pin provider versions and constrain root module references by tag or SHA; an unpinned provider is a floating production dependency you never agreed to. Split state pragmatically: one state per environment per component, sized so a bad apply is survivable."
               ]
             },
@@ -380,7 +608,45 @@
               ]
             }
           ],
-          "task": "Write a minimal main.tf (you do not need to apply it) defining a VPC with one public and one private subnet, and a security group allowing 443 from 0.0.0.0/0 and nothing else. Annotate each block with one sentence on why it exists. Then write down what `terraform plan` prints that makes the change safe to review — and what part of the output you would refuse to approve.",
+          "task": "Write a minimal main.tf (you do not need to apply it) defining a VPC with one public and one private subnet, and a security group allowing 443 from 0.0.0.0/0 and nothing else. Annotate each block with one sentence on why it exists. Then write down what `terraform plan` prints that makes the change safe to review \u2014 and what part of the output you would refuse to approve.",
+          "outcomes": [
+            "Explain the plan/apply loop and why plans are reviewed like code",
+            "Decide which resources belong in Terraform and which belong in config or secrets stores",
+            "Review an apply output for drift and destructive changes before approving"
+          ],
+          "mental_model": "Infrastructure as code is a diff machine: Terraform compares desired state with reality, and the plan is the reviewable promise of what it will change.",
+          "worked_example": [
+            "A pull request changes an instance type. The plan shows `~ instance_type = \"t3.large\" -> \"g5.xlarge\"` but also `- security_group.ingress` on an unrelated resource. The reviewer notices the state file was regenerated from a different workspace and asks for a scoped plan. The destructive line disappears, proving the change was drift, not intent."
+          ],
+          "common_mistakes": [
+            "Committing state files or secrets to the repository",
+            "Applying a plan produced from a different state or workspace",
+            "Managing application configuration in Terraform because it is convenient"
+          ],
+          "key_terms": [
+            {
+              "term": "state",
+              "definition": "Terraform\u2019s record of managed resources; it must be remote and locked in teams."
+            },
+            {
+              "term": "drift",
+              "definition": "A difference between declared configuration and live infrastructure."
+            },
+            {
+              "term": "GitOps",
+              "definition": "A workflow where Git is the source of truth and an agent reconciles the cluster to it."
+            }
+          ],
+          "checkpoint": [
+            {
+              "question": "Why must a plan be reviewed before apply?",
+              "answer": "It is the exact set of changes, including deletions, that will hit production; intent alone is not enough."
+            },
+            {
+              "question": "What belongs in a secret store rather than Terraform state?",
+              "answer": "API keys and credentials; state often contains resource metadata and can be read by anyone with state access."
+            }
+          ],
           "quiz": {
             "question": "What does `terraform plan` do?",
             "choices": [
@@ -404,13 +670,13 @@
               "heading": "Stages that earn trust",
               "body": [
                 "A pipeline for an AI service has five meaningful stages: static checks (lint, typecheck, tests), image build, security scan (dependencies and container), staging deploy with a smoke evaluation, and production promotion. Skipping the smoke eval is how a green build ships a model that 500s on the first real document.",
-                "The smoke eval is the AI-specific gate: call the deployed endpoint with fixture inputs, assert status 200, schema of the response, latency below threshold, and — for generative features — a deterministic rubric score against stored expected outputs. Fail the pipeline when the gate fails; that is what the gate is for."
+                "The smoke eval is the AI-specific gate: call the deployed endpoint with fixture inputs, assert status 200, schema of the response, latency below threshold, and \u2014 for generative features \u2014 a deterministic rubric score against stored expected outputs. Fail the pipeline when the gate fails; that is what the gate is for."
               ]
             },
             {
               "heading": "Build once, promote the same artifact",
               "body": [
-                "Build the image exactly once per commit, tag it with the commit SHA (and optionally the pipelinid), and promote the same digest through staging to production. Rebuilding for production means you deployed something staging never saw — the digest is the artifact of record.",
+                "Build the image exactly once per commit, tag it with the commit SHA (and optionally the pipelinid), and promote the same digest through staging to production. Rebuilding for production means you deployed something staging never saw \u2014 the digest is the artifact of record.",
                 "Model artifacts ride the same discipline: the model weights (or their content-addressed URI) are versioned with the code change that depends on them, and the deploy records which pair served which requests. Rolling back means redeploying the previous pair, not reproducing an environment from memory."
               ]
             },
@@ -418,7 +684,7 @@
               "heading": "Promotion with a human (or metric) in the loop",
               "body": [
                 "Production promotion should require either a metric threshold (canary error rate and p95 latency within budget for N minutes) or an explicit approval from an on-call owner. Automatic full rollout from staging is how one bad eval dataset ships to every customer.",
-                "Keep the promotion config declarative — the same pipeline with environment variables deciding targets, not forked YAML per environment. Secrets come from the CI secret store or cloud secret manager at runtime, never from repository files."
+                "Keep the promotion config declarative \u2014 the same pipeline with environment variables deciding targets, not forked YAML per environment. Secrets come from the CI secret store or cloud secret manager at runtime, never from repository files."
               ]
             },
             {
@@ -429,7 +695,45 @@
               ]
             }
           ],
-          "task": "Design a GitHub Actions (or GitLab CI) pipeline for an AI inference repo with four jobs — test, build+scan, staging deploy plus smoke eval, and promote — and write the smoke-eval assertions you would run against staging: expected status, response schema keys, latency budget, and one deterministic quality check for a generative feature. Note which job fails when the eval rubric drops below threshold.",
+          "task": "Design a GitHub Actions (or GitLab CI) pipeline for an AI inference repo with four jobs \u2014 test, build+scan, staging deploy plus smoke eval, and promote \u2014 and write the smoke-eval assertions you would run against staging: expected status, response schema keys, latency budget, and one deterministic quality check for a generative feature. Note which job fails when the eval rubric drops below threshold.",
+          "outcomes": [
+            "Build a pipeline with stages that earn trust in order",
+            "Promote one immutable artifact through environments instead of rebuilding",
+            "Treat rollback as a routine operation backed by tests and metrics"
+          ],
+          "mental_model": "A deployment pipeline is a chain of evidence: each stage answers a question, and promotion should reuse the exact artifact that passed the earlier questions.",
+          "worked_example": [
+            "A pipeline rebuilds the image in staging and again in production, so a dependency update slips in between and changes behavior. The team switches to building once, signing the digest, and promoting that digest with environment-specific configuration. A canary checks latency and 5xx for ten minutes before full rollout; a bad release is rolled back by redeploying the previous digest."
+          ],
+          "common_mistakes": [
+            "Rebuilding per environment so \"the same release\" is not actually the same code",
+            "Running tests after deployment instead of before",
+            "Putting credentials in pipeline logs or environment variables shared across stages"
+          ],
+          "key_terms": [
+            {
+              "term": "artifact",
+              "definition": "The immutable build output that is promoted across environments."
+            },
+            {
+              "term": "canary",
+              "definition": "A small, measured rollout before exposing everyone to the change."
+            },
+            {
+              "term": "rollback",
+              "definition": "Returning to a known-good artifact and configuration quickly."
+            }
+          ],
+          "checkpoint": [
+            {
+              "question": "Why promote a digest rather than rebuilding in each environment?",
+              "answer": "A rebuild can pick up different dependencies, so passing tests would no longer describe what runs in production."
+            },
+            {
+              "question": "Which signals should gate a canary?",
+              "answer": "Error rate, latency percentiles and a business metric that would reveal a behavioral regression."
+            }
+          ],
           "quiz": {
             "question": "Which promotion strategy deploys the same artifact to staging and then production?",
             "choices": [
@@ -439,7 +743,7 @@
               "Keep staging and production as two fully separate codebases"
             ],
             "answer": 0,
-            "explanation": "Build once, promote the identical digest — production then runs exactly what staging validated, and rollback is a digest swap instead of a reconstruction."
+            "explanation": "Build once, promote the identical digest \u2014 production then runs exactly what staging validated, and rollback is a digest swap instead of a reconstruction."
           }
         },
         {
@@ -452,14 +756,14 @@
             {
               "heading": "Three signals, three jobs",
               "body": [
-                "Metrics answer \"how much / how often / how fast\" — rates, errors, durations per route (the golden signals: latency p50/p95/p99, traffic, error rate, saturation). Logs answer \"what exactly happened for this request\" — structured JSON with a request id, model, and latency. Traces answer \"where the time went\" — a span per tool call, retrieval, and model invocation, sampled (e.g., 10% plus all errors).",
+                "Metrics answer \"how much / how often / how fast\" \u2014 rates, errors, durations per route (the golden signals: latency p50/p95/p99, traffic, error rate, saturation). Logs answer \"what exactly happened for this request\" \u2014 structured JSON with a request id, model, and latency. Traces answer \"where the time went\" \u2014 a span per tool call, retrieval, and model invocation, sampled (e.g., 10% plus all errors).",
                 "Start with service-level metrics before dashboards of everything: request rate, error rate, p95 latency, saturation (queue depth or in-flight requests). If you cannot answer \"is /predict healthy right now?\" from one screen, you do not have observability yet."
               ]
             },
             {
               "heading": "SLOs, error budgets, and honest alerts",
               "body": [
-                "Define SLIs users actually feel: availability of /predict, and p95 latency below a budget (say, 800 ms including model time). Convert them to SLOs and error budgets; then alert on burn rate — how fast the budget is being consumed — instead of static thresholds, so a blip does not page and a slow leak does.",
+                "Define SLIs users actually feel: availability of /predict, and p95 latency below a budget (say, 800 ms including model time). Convert them to SLOs and error budgets; then alert on burn rate \u2014 how fast the budget is being consumed \u2014 instead of static thresholds, so a blip does not page and a slow leak does.",
                 "Page on symptoms, ticket on causes: page on \"SLO burn rate high / endpoint down\", ticket on \"node disk filling / cert expiring in 14 days\". Alerting on causes drowns the signal you need during an incident."
               ]
             },
@@ -467,18 +771,56 @@
               "heading": "AI-specific telemetry",
               "body": [
                 "For model-serving specifically, add: tokens in/out per request and cost per request, fallback-model usage (primary failing over), tool-call success rate and retry count, retrieval hit-rate and citation presence for RAG, and guardrail trip counts. These explain the user-visible symptoms (\"slow\", \"wrong\", \"refused\") that generic APM never will.",
-                "Log enough to reproduce without logging secrets or full prompts containing PII — store prompt hashes or redacted prefixes plus the model version and decoding parameters; full payload capture only behind explicit debug flags with short retention."
+                "Log enough to reproduce without logging secrets or full prompts containing PII \u2014 store prompt hashes or redacted prefixes plus the model version and decoding parameters; full payload capture only behind explicit debug flags with short retention."
               ]
             },
             {
               "heading": "Dashboards that end incidents faster",
               "body": [
-                "One top row: SLO status and burn rate. Second: traffic, errors, latency by route. Third: saturation and dependency health (model, vector store, database, queue). Fourth: AI-specific — tokens/cost, fallbacks, guardrail trips. Annotate deploys on every graph; half of postmortems end with \"the spike started at the 14:32 deploy\".",
-                "Every alert links to the dashboard and the last three relevant logs — an alert without a path to diagnosis is an alarm clock, not observability."
+                "One top row: SLO status and burn rate. Second: traffic, errors, latency by route. Third: saturation and dependency health (model, vector store, database, queue). Fourth: AI-specific \u2014 tokens/cost, fallbacks, guardrail trips. Annotate deploys on every graph; half of postmortems end with \"the spike started at the 14:32 deploy\".",
+                "Every alert links to the dashboard and the last three relevant logs \u2014 an alert without a path to diagnosis is an alarm clock, not observability."
               ]
             }
           ],
           "task": "Write five SLI definitions for an AI inference API (availability, p95 latency, error-free rate, token cost per request, guardrail-trip rate), pick one to make an SLO with a concrete target and error budget, and design a single Grafana dashboard row layout (4 panels) that would let you notice a deploy-induced regression within five minutes. Name the one burn-rate alert you would page on.",
+          "outcomes": [
+            "Choose metrics, logs and traces for the question each one answers",
+            "Set an SLO and an error budget that drive actionable alerts",
+            "Instrument AI-specific signals such as tokens, latency by model and fallback rate"
+          ],
+          "mental_model": "Observability is answering questions after the fact: metrics tell you something changed, logs tell you what happened, and traces tell you where the time went.",
+          "worked_example": [
+            "p50 latency looks fine while users complain about slow answers. A histogram shows p99 at 8 seconds; a trace reveals 6 of those seconds in the retrieval call, not the model. Adding per-span timing and a fallback counter shows that a changed embedding endpoint is timing out and the fallback path is slow. The alert is rewritten on p99 and fallback rate instead of average latency."
+          ],
+          "common_mistakes": [
+            "Alerting on averages that hide tail latency",
+            "Logging tokens or prompts that contain personal data",
+            "Building dashboards no alert or runbook ever points to"
+          ],
+          "key_terms": [
+            {
+              "term": "SLO",
+              "definition": "A target level of service, such as 99% of requests under 2 seconds."
+            },
+            {
+              "term": "error budget",
+              "definition": "The allowed unreliability under an SLO, used to decide when to stop shipping."
+            },
+            {
+              "term": "span",
+              "definition": "One timed operation in a distributed trace."
+            }
+          ],
+          "checkpoint": [
+            {
+              "question": "Why is a p99 alert more useful than an average-latency alert?",
+              "answer": "Averages hide the slow requests users actually notice; p99 exposes tail regressions."
+            },
+            {
+              "question": "Which AI signals deserve their own metrics?",
+              "answer": "Tokens in/out, model and provider latency, fallback rate, and cost per request."
+            }
+          ],
           "quiz": {
             "question": "Why alert on error-budget burn rate instead of \"error rate above 1% for 5 minutes\"?",
             "choices": [
@@ -515,7 +857,7 @@
               "heading": "Compute choices and their levers",
               "body": [
                 "Instances, managed Kubernetes, and serverless solve different shapes of problem. Instances give you full control (choose family, sizing, spot vs on-demand); Kubernetes amortizes shared capacity with bin-packing; serverless/edge functions shine for bursty, short, stateless work. For AI serving, the decision usually comes down to model size (memory), sustained QPS, and latency SLOs.",
-                "Spot/preemptible instances cost 60–80% less and are right for batch evals and fine-tuning checkpoints — never for latency-critical online endpoints without a fast fallback. Reserved capacity wins for steady production load; the 1-year commitment typically beats March of on-demand pricing."
+                "Spot/preemptible instances cost 60\u201380% less and are right for batch evals and fine-tuning checkpoints \u2014 never for latency-critical online endpoints without a fast fallback. Reserved capacity wins for steady production load; the 1-year commitment typically beats March of on-demand pricing."
               ]
             },
             {
@@ -529,28 +871,66 @@
               "heading": "Identity beats keys",
               "body": [
                 "Long-lived access keys are a liability; short-lived credentials from IAM roles (instance profiles, IRSA for Kubernetes) are the default. A role scoped to read one model prefix in object storage + write eval reports cannot exfiltrate the whole bucket even if the app is compromised.",
-                "Write the IAM policy from the app’s actual API calls: the inference service needs GetObject/ListBucket on the model prefix; it does not need DeleteBucket, it does not need IAM, and it never needs admin. Conditions (source IP, tag, MFA) tighten further when compliance asks."
+                "Write the IAM policy from the app\u2019s actual API calls: the inference service needs GetObject/ListBucket on the model prefix; it does not need DeleteBucket, it does not need IAM, and it never needs admin. Conditions (source IP, tag, MFA) tighten further when compliance asks."
               ]
             },
             {
               "heading": "SSH alternatives and bastions",
               "body": [
-                "Prefer SSM Session Manager or your cloud’s agent-based access over open SSH: sessions are authenticated by IAM, recorded end to end, and need no inbound 22 at all. If you must use a bastion, single-purpose, tiny, and logged it — never a general-purpose jump box with shared accounts.",
+                "Prefer SSM Session Manager or your cloud\u2019s agent-based access over open SSH: sessions are authenticated by IAM, recorded end to end, and need no inbound 22 at all. If you must use a bastion, single-purpose, tiny, and logged it \u2014 never a general-purpose jump box with shared accounts.",
                 "Whichever path, rotate the credentials it uses, restrict who can open a session, and keep session logs long enough to answer \"who ran what on that host\" after the incident."
               ]
             }
           ],
-          "task": "On paper (or in a free-tier account), draw a 3-AZ VPC for an AI inference API: public subnets for an L7 load balancer, private subnets for the app tier, NAT egress with a stable IP, routes tables per subnet type. List the IAM permissions the app role needs to read model weights from object storage — and the three permissions it must not have (e.g., DeleteBucket, iam:*, admin). Then explain what breaks first if the NAT gateway is removed.",
+          "task": "On paper (or in a free-tier account), draw a 3-AZ VPC for an AI inference API: public subnets for an L7 load balancer, private subnets for the app tier, NAT egress with a stable IP, routes tables per subnet type. List the IAM permissions the app role needs to read model weights from object storage \u2014 and the three permissions it must not have (e.g., DeleteBucket, iam:*, admin). Then explain what breaks first if the NAT gateway is removed.",
+          "outcomes": [
+            "Choose compute by workload shape rather than by habit",
+            "Explain how VPC subnets, route tables and NAT shape reachability",
+            "Prefer workload identity over long-lived keys and bastion access"
+          ],
+          "mental_model": "Cloud networking is a set of boundaries you draw deliberately: private by default, one narrow public edge, and identity that expires instead of keys that live forever.",
+          "worked_example": [
+            "A training job needs to fetch a private dataset but must not be reachable from the internet. It runs in a private subnet with a NAT gateway for outbound HTTPS and no public IP; the dataset bucket is granted access to the job\u2019s workload identity. There is no SSH key to rotate because access is brokered by the cloud IAM role and short-lived session credentials."
+          ],
+          "common_mistakes": [
+            "Giving every instance a public IP for convenience",
+            "Using access keys on instances when a workload identity is available",
+            "Opening a bastion to 0.0.0.0/0 instead of a known operator range"
+          ],
+          "key_terms": [
+            {
+              "term": "VPC",
+              "definition": "A private network region with its own address space and route tables."
+            },
+            {
+              "term": "NAT gateway",
+              "definition": "Allows outbound internet access from private subnets without inbound exposure."
+            },
+            {
+              "term": "workload identity",
+              "definition": "A short-lived, role-based credential assigned to a workload instead of a stored key."
+            }
+          ],
+          "checkpoint": [
+            {
+              "question": "Why is a private subnet plus NAT safer than a public IP?",
+              "answer": "It allows outbound calls while removing any inbound path from the internet to the instance."
+            },
+            {
+              "question": "What does a workload identity remove?",
+              "answer": "Long-lived static keys on disk, along with the rotation and leak risks that come with them."
+            }
+          ],
           "quiz": {
             "question": "How should a GPU node in a private subnet reach artifact storage for model weights?",
             "choices": [
-              "Via an IAM instance profile / IRSA role with least privilege, using a VPC endpoint or NAT — never a shared root credential in the image",
+              "Via an IAM instance profile / IRSA role with least privilege, using a VPC endpoint or NAT \u2014 never a shared root credential in the image",
               "With the provider root access key baked into the container image",
               "Over SSH with a private key copied onto the node",
               "It should not; nodes must be fully offline"
             ],
             "answer": 0,
-            "explanation": "Short-lived IAM role credentials with least privilege over private connectivity — no long-lived secrets in images, no broad permissions, no public exposure."
+            "explanation": "Short-lived IAM role credentials with least privilege over private connectivity \u2014 no long-lived secrets in images, no broad permissions, no public exposure."
           }
         },
         {
@@ -563,14 +943,14 @@
             {
               "heading": "Matching GPUs to the model",
               "body": [
-                "VRAM math first: fp16/bf16 weights need ~2 bytes per parameter (7B model ≈ 14 GB), plus KV cache per token per layer — with long contexts and concurrency, budget 1.3–1.6× the weight size. A 70B model needs either multi-GPU tensor parallelism or offload; measure before you promise it.",
+                "VRAM math first: fp16/bf16 weights need ~2 bytes per parameter (7B model \u2248 14 GB), plus KV cache per token per layer \u2014 with long contexts and concurrency, budget 1.3\u20131.6\u00d7 the weight size. A 70B model needs either multi-GPU tensor parallelism or offload; measure before you promise it.",
                 "Throughput and latency trade on batch size: large batches raise tokens/sec/GPU but add queueing latency. Choose GPU generation for the model you actually run (Ampere/Hopper for big inference, T4/L4-class for small models), and confirm the model fits before the ticket is approved."
               ]
             },
             {
               "heading": "Drivers, images, and scheduling",
               "body": [
-                "GPU nodes need the matching NVIDIA driver, CUDA userspace in the image (or host-mounted), and the Kubernetes device plugin / GPU Operator to advertise nvidia.com/gpu resources. A driver/toolkit mismatch shows up as \"no CUDA-capable device detected\" at runtime — pin versions and smoke-test with nvidia-smi in the image before rollout.",
+                "GPU nodes need the matching NVIDIA driver, CUDA userspace in the image (or host-mounted), and the Kubernetes device plugin / GPU Operator to advertise nvidia.com/gpu resources. A driver/toolkit mismatch shows up as \"no CUDA-capable device detected\" at runtime \u2014 pin versions and smoke-test with nvidia-smi in the image before rollout.",
                 "Isolate GPU workloads with node pools + taints; keep system daemons off the GPU nodes so a driver crash drains nothing else. MIG partitions one A100/H100 into smaller instances when full-GPU tenancy is wasteful for small models."
               ]
             },
@@ -590,6 +970,44 @@
             }
           ],
           "task": "For a 7B parameter model in fp16 serving 25 requests/s with an 8k context: estimate minimum VRAM (weights + KV cache at batch 16), choose between one A10G (24 GB) and two T4s (16 GB each), and justify with rough throughput and cost math. List three DCGM/nvidia-smi metrics you would put on the incident dashboard and why each would get paged.",
+          "outcomes": [
+            "Size GPU capacity from model memory, throughput and concurrency needs",
+            "Explain why drivers, images and schedulers must agree on GPU access",
+            "Watch utilization and cost together so idle capacity is visible"
+          ],
+          "mental_model": "GPU infrastructure is a matching problem: the model\u2019s memory and latency needs meet a pool of accelerators, and every unused gigabyte is a cost you still pay.",
+          "worked_example": [
+            "A 13B-parameter model needs roughly 26 GB in fp16 plus KV cache and overhead; a 24 GB card cannot host it. The team selects 48 GB cards, pins a driver/CUDA image that matches the runtime, and exposes one GPU per pod with a node pool tainted for inference. Utilization and tokens-per-second dashboards reveal that two replicas at 35% utilization are cheaper than four idle ones."
+          ],
+          "common_mistakes": [
+            "Choosing a GPU by name without checking memory for weights plus KV cache",
+            "Mixing driver and CUDA versions across images on the same node pool",
+            "Scaling replicas while ignoring utilization and cost per token"
+          ],
+          "key_terms": [
+            {
+              "term": "KV cache",
+              "definition": "Per-request memory that grows with context length and concurrency."
+            },
+            {
+              "term": "taint / toleration",
+              "definition": "Kubernetes controls that reserve specialized nodes for matching workloads."
+            },
+            {
+              "term": "utilization",
+              "definition": "The fraction of allocated accelerator capacity actually doing work."
+            }
+          ],
+          "checkpoint": [
+            {
+              "question": "What must be included when sizing GPU memory?",
+              "answer": "Model weights, KV cache for expected concurrency and context length, framework overhead and a safety margin."
+            },
+            {
+              "question": "Why track cost per token alongside utilization?",
+              "answer": "High throughput on idle hardware can still be wasteful; cost per useful token reveals the real efficiency."
+            }
+          ],
           "quiz": {
             "question": "A 7B-parameter model in fp16 needs roughly how much VRAM for weights alone?",
             "choices": [
@@ -599,7 +1017,7 @@
               "~128 GB"
             ],
             "answer": 0,
-            "explanation": "fp16/bf16 store 2 bytes per parameter: 7 × 10⁹ × 2 B ≈ 14 GB for weights, then add KV cache (concurrency × context × layers × 2 × 2 bytes) and framework overhead."
+            "explanation": "fp16/bf16 store 2 bytes per parameter: 7 \u00d7 10\u2079 \u00d7 2 B \u2248 14 GB for weights, then add KV cache (concurrency \u00d7 context \u00d7 layers \u00d7 2 \u00d7 2 bytes) and framework overhead."
           }
         }
       ],

@@ -14,6 +14,7 @@ from typing import Any, Dict, List, Optional
 from dataclasses import dataclass, field
 from app.domains.learning.context import (
     DOMAIN_AI_ENGINEERING,
+    DOMAIN_CLOUD_AI_INFRASTRUCTURE,
     DOMAIN_MACHINE_LEARNING,
     DOMAIN_SHARED_FOUNDATIONS,
     resolve_learning_context,
@@ -135,6 +136,24 @@ DOMAIN_PROFILES = {
             'Which metric matches the real cost of a wrong prediction here?',
         ],
     },
+    DOMAIN_CLOUD_AI_INFRASTRUCTURE: {
+        'label': 'Cloud & AI Infrastructure',
+        'greeting': (
+            'Hello! I’m Ruach-AI, your Cloud & AI Infrastructure tutor. '
+            'I can help you with Linux, networking and TLS, containers and Kubernetes, '
+            'Terraform, CI/CD, observability, and GPU capacity planning.'
+        ),
+        'focus': (
+            'Linux operations, DNS/HTTP/TLS, firewalls and load balancing, containers, '
+            'Kubernetes, infrastructure as code, delivery pipelines, observability, '
+            'cloud networking and GPU infrastructure.'
+        ),
+        'socratic_prompts': [
+            'What boundary does this component own, and what is outside it?',
+            'What evidence from logs, metrics or traces would prove the cause?',
+            'How would this behave under failure, and who pays the cost?',
+        ],
+    },
 }
 
 
@@ -186,6 +205,8 @@ def infer_learning_domain(
         return DOMAIN_MACHINE_LEARNING
     if destination == 'ai-engineering':
         return DOMAIN_AI_ENGINEERING
+    if destination == DOMAIN_CLOUD_AI_INFRASTRUCTURE:
+        return DOMAIN_CLOUD_AI_INFRASTRUCTURE
     return DOMAIN_SHARED_FOUNDATIONS
 
 
@@ -203,13 +224,26 @@ def _normalise_domain(value: Optional[str]) -> Optional[str]:
         'foundations': DOMAIN_SHARED_FOUNDATIONS,
         'shared': DOMAIN_SHARED_FOUNDATIONS,
         'shared-foundations': DOMAIN_SHARED_FOUNDATIONS,
+        'cloud': DOMAIN_CLOUD_AI_INFRASTRUCTURE,
+        'cloud-ai': DOMAIN_CLOUD_AI_INFRASTRUCTURE,
+        'cloud_ai_infrastructure': DOMAIN_CLOUD_AI_INFRASTRUCTURE,
+        'cloud-ai-infrastructure': DOMAIN_CLOUD_AI_INFRASTRUCTURE,
     }
     key = aliases.get(key, key)
-    return key if key in (DOMAIN_SHARED_FOUNDATIONS, DOMAIN_AI_ENGINEERING, DOMAIN_MACHINE_LEARNING) else None
+    return key if key in (
+        DOMAIN_SHARED_FOUNDATIONS,
+        DOMAIN_AI_ENGINEERING,
+        DOMAIN_MACHINE_LEARNING,
+        DOMAIN_CLOUD_AI_INFRASTRUCTURE,
+    ) else None
 
 
 def _domain_for_lesson(lesson_id: str) -> Optional[str]:
-    """Resolve a lesson id to its domain via the canonical registry."""
+    """Resolve a lesson id to its domain via the canonical curriculum records."""
+    if str(lesson_id).startswith('cai.'):
+        from app.cloud_ai_infrastructure import get_cloud_ai_infrastructure_lesson
+        if get_cloud_ai_infrastructure_lesson(str(lesson_id)):
+            return DOMAIN_CLOUD_AI_INFRASTRUCTURE
     try:
         from app.curriculum_registry import registry
         domain, _lesson = registry.find_lesson(str(lesson_id))

@@ -1,6 +1,7 @@
 """Routes for the Cloud & AI Infrastructure specialization."""
 
-from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
+from flask import (Blueprint, abort, current_app, flash, redirect,
+                   render_template, request, url_for)
 from flask_login import current_user, login_required
 
 from app import db
@@ -76,8 +77,19 @@ def lesson(lesson_id):
             return redirect(url_for('cloud_ai_infrastructure.index'))
 
     completed = _completions()
+    tutor_greeting = (
+        'Hi, I’m Ruach-AI, your Cloud & AI Infrastructure tutor. I can help with '
+        'Linux, networking, containers, Kubernetes, IaC, CI/CD, observability and GPUs.'
+    )
+    try:
+        from app.services.tutor import pathway_context_for_user
+        tutor_ctx = pathway_context_for_user(current_user.id, lesson_id=lesson_id)
+        tutor_greeting = tutor_ctx.get('tutor_greeting') or tutor_greeting
+    except Exception:
+        current_app.logger.exception('Could not build cloud tutor greeting')
     return render_template(
         'specializations/cloud_ai_infrastructure_lesson.html',
         lesson=lesson, completed=lesson_id in completed,
+        tutor_greeting=tutor_greeting,
         practice_exercises=pathway_exercises_for_lesson(lesson_id),
     )

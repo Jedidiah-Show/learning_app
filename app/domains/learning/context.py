@@ -18,10 +18,12 @@ from typing import Any, Dict, List, Optional
 DOMAIN_SHARED_FOUNDATIONS = 'shared-foundations'
 DOMAIN_AI_ENGINEERING = 'ai-engineering'
 DOMAIN_MACHINE_LEARNING = 'machine-learning'
+DOMAIN_CLOUD_AI_INFRASTRUCTURE = 'cloud-ai-infrastructure'
 PATHWAY_IDS = (
     DOMAIN_SHARED_FOUNDATIONS,
     DOMAIN_AI_ENGINEERING,
     DOMAIN_MACHINE_LEARNING,
+    DOMAIN_CLOUD_AI_INFRASTRUCTURE,
 )
 
 _ALIASES = {
@@ -33,6 +35,10 @@ _ALIASES = {
     'foundations': DOMAIN_SHARED_FOUNDATIONS,
     'shared': DOMAIN_SHARED_FOUNDATIONS,
     'shared-foundations': DOMAIN_SHARED_FOUNDATIONS,
+    'cloud': DOMAIN_CLOUD_AI_INFRASTRUCTURE,
+    'cloud-ai': DOMAIN_CLOUD_AI_INFRASTRUCTURE,
+    'cloud_ai_infrastructure': DOMAIN_CLOUD_AI_INFRASTRUCTURE,
+    'cloud-ai-infrastructure': DOMAIN_CLOUD_AI_INFRASTRUCTURE,
 }
 
 
@@ -142,6 +148,11 @@ def _resolve_lesson(lesson_id: str):
     if domain in PATHWAY_IDS and lesson is not None:
         return domain, lesson, 'curriculum-registry'
 
+    from app.cloud_ai_infrastructure import get_cloud_ai_infrastructure_lesson
+    lesson = get_cloud_ai_infrastructure_lesson(str(lesson_id))
+    if lesson:
+        return DOMAIN_CLOUD_AI_INFRASTRUCTURE, lesson, 'cloud-pathway'
+
     from app.ml_pathway import get_machine_learning_lesson
     lesson = get_machine_learning_lesson(str(lesson_id))
     if lesson:
@@ -181,6 +192,11 @@ def _module_for(domain: str, lesson: Dict[str, Any]) -> Dict[str, Any]:
 
 def _syllabus(pathway_id: str, user_id: Optional[int]):
     """Modules that legitimately scope the resolved activity's pathway."""
+    if pathway_id == DOMAIN_CLOUD_AI_INFRASTRUCTURE:
+        from app.cloud_ai_infrastructure import cloud_ai_infrastructure_pathway
+        modules = cloud_ai_infrastructure_pathway()['modules']
+        return list(modules), [m.get('title', '') for m in modules if m.get('title')]
+
     from app.pathway_scope import course_modules
 
     modules = course_modules(pathway_id, user_id)

@@ -600,6 +600,11 @@ def _lesson_peripheral_error(lesson_id):
         if not machine_learning_lesson_is_open(current_user.id, lesson_id):
             return (404, 'Lesson not found')
         return None
+    if lesson_id.startswith('cai.'):
+        from app.cloud_ai_infrastructure import get_cloud_ai_infrastructure_lesson
+        if get_cloud_ai_infrastructure_lesson(lesson_id) is None:
+            return (404, 'Lesson not found')
+        return None
     if lesson_id.startswith('sf.'):
         # Foundations use their own completion table and sequential gate; the
         # generic course lookup cannot resolve sf.* ids, so notes/bookmarks on
@@ -698,6 +703,10 @@ def update_video_progress():
         from app.foundations_pathway import foundation_lesson_is_open
         if not foundation_lesson_is_open(current_user.id, lesson_id):
             return jsonify({'error': 'Lesson is locked'}), 403
+    elif lesson_kind == 'cai':
+        # Cloud pathway lessons are all published and open; resolution above
+        # already proves the id exists, so no extra lock applies here.
+        pass
     elif not lesson_is_available(current_user, lesson_id):
         return jsonify({'error': 'Lesson is locked'}), 403
     video = lesson.get('video')
@@ -727,6 +736,11 @@ def _resolve_tutor_lesson(lesson_id):
     ml_lesson = get_machine_learning_lesson(lesson_id)
     if ml_lesson:
         return ml_lesson, 'ml'
+    if lesson_id.startswith('cai.'):
+        from app.cloud_ai_infrastructure import get_cloud_ai_infrastructure_lesson
+        cloud_lesson = get_cloud_ai_infrastructure_lesson(lesson_id)
+        if cloud_lesson:
+            return cloud_lesson, 'cai'
     try:
         from app.foundations_pathway import get_shared_foundations_lesson
         sf_lesson = get_shared_foundations_lesson(lesson_id)
@@ -750,6 +764,9 @@ def get_tutor_history(lesson_id):
         from app.foundations_pathway import foundation_lesson_is_open
         if not foundation_lesson_is_open(current_user.id, lesson_id):
             return jsonify({'error': 'Lesson is locked'}), 403
+    elif kind == 'cai':
+        # Cloud pathway lessons are all published and open.
+        pass
     elif not lesson_is_available(current_user, lesson_id):
         return jsonify({'error': 'Lesson is locked'}), 403
     if request.method == 'DELETE':
@@ -778,11 +795,11 @@ def ask_lesson_question():
     problem_id = data.get('problem_id')
     explicit_context = data.get('context')
     if explicit_context is not None and not isinstance(explicit_context, str):
-        return jsonify({'error': 'context must be one of shared-foundations, ai-engineering, machine-learning'}), 400
+        return jsonify({'error': 'context must be one of shared-foundations, ai-engineering, machine-learning, cloud-ai-infrastructure'}), 400
     from app.services.tutor import _normalise_domain
     explicit_domain = _normalise_domain(explicit_context) if explicit_context else None
     if explicit_context and explicit_domain is None:
-        return jsonify({'error': 'context must be one of shared-foundations, ai-engineering, machine-learning'}), 400
+        return jsonify({'error': 'context must be one of shared-foundations, ai-engineering, machine-learning, cloud-ai-infrastructure'}), 400
     learner_code = data.get('code', '')
     error_log = data.get('error_log', '')
     hint_stage = data.get('hint_stage')
@@ -796,6 +813,10 @@ def ask_lesson_question():
         from app.foundations_pathway import foundation_lesson_is_open
         if not foundation_lesson_is_open(current_user.id, lesson_id):
             return jsonify({'error': 'Lesson is locked'}), 403
+    elif lesson_kind == 'cai':
+        # Cloud pathway lessons are all published and open; resolution above
+        # already proves the id exists, so no extra lock applies here.
+        pass
     elif not lesson_is_available(current_user, lesson_id):
         return jsonify({'error': 'Lesson is locked'}), 403
     if not isinstance(question, str) or not question.strip() or len(question) > 2000:
