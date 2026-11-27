@@ -35,7 +35,8 @@
     </article>
     <article class="rounded-xl border border-slate-200 bg-white p-4">
       <h2 class="font-bold">Queues</h2>
-      <p class="mt-1 text-sm text-slate-700">AI: {{ snapshot.queues.ai.queued }} queued · {{ snapshot.queues.ai.running }} running · {{ snapshot.queues.ai.stale_running }} stale leases</p>
+      <p class="mt-1 text-sm text-slate-700">AI: {{ snapshot.queues.ai.queued }} queued · {{ snapshot.queues.ai.running }} running · {{ snapshot.queues.ai.dead_letter }} dead-letter · {{ snapshot.queues.ai.stale_running }} stale leases</p>
+      <p class="text-sm text-slate-700">ML: {{ snapshot.queues.ml.queued }} queued · {{ snapshot.queues.ml.running }} running · {{ snapshot.queues.ml.dead_letter }} dead-letter · {{ snapshot.queues.ml.stale_running }} stale leases</p>
       <p class="text-sm text-slate-700">Judge: {{ snapshot.queues.judge.pending }} pending · {{ snapshot.queues.judge.running }} running</p>
     </article>
     <article class="rounded-xl border border-slate-200 bg-white p-4">

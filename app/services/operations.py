@@ -21,7 +21,7 @@ from flask import current_app, has_app_context
 
 from app import db
 from app.models import (
-    AIBackgroundJob, ProjectArtifact, ServiceHeartbeat, Submission, utcnow,
+    AIBackgroundJob, MLBackgroundJob, ProjectArtifact, ServiceHeartbeat, Submission, utcnow,
 )
 
 SERVICE_NAME_PATTERN = re.compile(r'^[a-z][a-z0-9-]{1,38}$')
@@ -163,6 +163,36 @@ def ai_queue_health(*, stale_seconds=None) -> dict:
     }
 
 
+def ml_queue_health(*, stale_seconds=None) -> dict:
+    stale_seconds = stale_seconds or _config_int('ML_STALE_LEASE_SECONDS', _config_int('AI_STALE_LEASE_SECONDS', 600))
+    now = utcnow()
+    rows = db.session.query(
+        MLBackgroundJob.status, db.func.count(MLBackgroundJob.id)
+    ).group_by(MLBackgroundJob.status).all()
+    counts = {status: int(count) for status, count in rows}
+    oldest_queued = db.session.query(
+        db.func.min(MLBackgroundJob.available_at)
+    ).filter(MLBackgroundJob.status == 'queued').scalar()
+    stale_running = MLBackgroundJob.query.filter(
+        MLBackgroundJob.status == 'running',
+        MLBackgroundJob.locked_at.isnot(None),
+        MLBackgroundJob.locked_at < now - timedelta(seconds=stale_seconds),
+    ).count()
+    return {
+        'queued': counts.get('queued', 0),
+        'running': counts.get('running', 0),
+        'succeeded': counts.get('succeeded', 0),
+        'failed': counts.get('failed', 0),
+        'dead_letter': counts.get('dead_letter', 0),
+        'cancelled': counts.get('cancelled', 0),
+        'stale_running': stale_running,
+        'oldest_queued_age_seconds': (
+            max(0, int((now - _as_utc(oldest_queued)).total_seconds()))
+            if oldest_queued is not None else 0
+        ),
+    }
+
+
 def judge_queue_health() -> dict:
     pending = Submission.query.filter_by(verdict='PENDING').count()
     running = Submission.query.filter_by(verdict='RUNNING').count()
@@ -271,6 +301,28 @@ def evaluate_alerts(snapshot: dict) -> list[dict]:
             'severity': 'warning', 'code': 'ai_job_dead_letter',
             'message': f"{queue['dead_letter']} AI jobs reached the dead letter queue.",
         })
+
+    ml_queue = (snapshot.get('queues') or {}).get('ml') or {}
+    if ml_queue.get('queued', 0) >= depth_limit:
+        alerts.append({
+            'severity': 'warning', 'code': 'ml_queue_backlog',
+            'message': f"ML queue depth is {ml_queue['queued']}.",
+        })
+    if ml_queue.get('oldest_queued_age_seconds', 0) >= age_limit:
+        alerts.append({
+            'severity': 'warning', 'code': 'ml_queue_oldest_pending',
+            'message': 'Oldest queued ML job has waited too long.',
+        })
+    if ml_queue.get('stale_running', 0):
+        alerts.append({
+            'severity': 'warning', 'code': 'ml_lease_stale',
+            'message': f"{ml_queue['stale_running']} ML jobs have stale leases.",
+        })
+    if ml_queue.get('dead_letter', 0):
+        alerts.append({
+            'severity': 'warning', 'code': 'ml_job_dead_letter',
+            'message': f"{ml_queue['dead_letter']} ML jobs reached the dead letter queue.",
+        })
     return alerts
 
 
@@ -296,6 +348,7 @@ def operations_snapshot(app=None) -> dict:
             'requests': request_metrics(),
             'queues': {
                 'ai': ai_queue_health(),
+                'ml': ml_queue_health(),
                 'judge': judge_queue_health(),
             },
             'workers': {
