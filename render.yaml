@@ -275,6 +275,8 @@ services:
         value: json
       - key: HEARTBEAT_STALE_SECONDS
         value: "300"
+      - key: ML_STALE_LEASE_SECONDS
+        value: "600"
 
   # M5: scheduled maintenance process. It reuses the existing durable queue
   # and leaderboard CLI; it is not a second job system. Judge submissions stay

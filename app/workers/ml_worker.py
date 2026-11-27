@@ -27,9 +27,18 @@ def _heartbeat(app, status):
         logger.warning('Could not record ML worker heartbeat', exc_info=True)
 
 
+def _stale_lease_seconds(app):
+    config = getattr(app, 'config', {}) or {}
+    raw = config.get('ML_STALE_LEASE_SECONDS') or config.get('AI_STALE_LEASE_SECONDS')
+    try:
+        return max(30, int(raw))
+    except (TypeError, ValueError):
+        return 600
+
+
 def process_one_job(app):
     """Process at most one ML job; return whether work was found."""
-    claimed = claim_next_job(app)
+    claimed = claim_next_job(app, stale_seconds=_stale_lease_seconds(app))
     if claimed is None:
         return False
     job_id, lease = claimed
