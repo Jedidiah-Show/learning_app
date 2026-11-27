@@ -9,8 +9,11 @@ from werkzeug.security import generate_password_hash
 
 from app import create_app, db
 from app.models import AIBackgroundJob, MLBackgroundJob, User, utcnow
+from datetime import timedelta
+
+from app.models import utcnow as model_utcnow
 from app.services.ml_jobs import (
-    MLJobError, claim_next_job, enqueue_ml_job, job_status, queue_depth,
+    MLJobError, cancel_job, claim_next_job, enqueue_ml_job, finish_job, job_status, queue_depth,
 )
 from app.workers.ml_worker import process_one_job, run_worker
 from app.workers.lifecycle import WorkerStop
@@ -128,3 +131,122 @@ def test_api_enqueue_and_owner_scoping(app, user_id):
     assert client.post(f'/api/ml-jobs/jobs/{job_id}/cancel').status_code == 200
     client.post('/logout', follow_redirects=True)
     assert client.get(f'/api/ml-jobs/jobs/{job_id}').status_code in (302, 401)
+
+
+def test_cancelled_job_cannot_be_overwritten_by_stale_worker(app, user_id):
+    job, _ = enqueue_ml_job(user_id, 'ml_dataset_profile', 'cancel-1', {'values': [1, 2, 3]})
+    claimed = claim_next_job(app)
+    assert claimed is not None
+    job_id, lease = claimed
+
+    status = cancel_job(job_id, user_id)
+    assert status['status'] == 'cancelled'
+
+    # Stale worker attempts to finalize with its old lease.
+    finish_job(job_id, lease, result={'mean': 2.0, 'count': 3})
+    db.session.expire_all()
+    status = job_status(job_id, user_id)
+    assert status['status'] == 'cancelled'
+    assert status['result'] is None
+
+
+def test_cancelled_job_cannot_be_retried_by_stale_worker_error(app, user_id):
+    job, _ = enqueue_ml_job(user_id, 'ml_dataset_profile', 'cancel-2', {'values': [1, 2, 3]})
+    job_id, lease = claim_next_job(app)
+    cancel_job(job_id, user_id)
+
+    finish_job(job_id, lease, error=RuntimeError('boom'), retry=True)
+    db.session.expire_all()
+    status = job_status(job_id, user_id)
+    assert status['status'] == 'cancelled'
+    assert status['result'] is None
+
+
+def test_stale_recovery_requeues_when_attempts_remain(app, user_id):
+    job, _ = enqueue_ml_job(user_id, 'ml_dataset_profile', 'stale-1', {'values': [1, 2, 3]})
+    job_id, lease = claim_next_job(app)
+    db.session.expire_all()
+    job_row = db.session.get(MLBackgroundJob, job_id)
+    job_row.locked_at = model_utcnow() - timedelta(seconds=1200)
+    job_row.max_attempts = 3
+    db.session.commit()
+
+    claimed = claim_next_job(app, stale_seconds=600)
+    assert claimed is not None
+    new_id, new_lease = claimed
+    assert new_id == job_id
+    assert new_lease != lease
+    db.session.expire_all()
+    refreshed = db.session.get(MLBackgroundJob, job_id)
+    assert refreshed.status == 'running'
+    assert refreshed.attempts == 2
+
+
+def test_stale_recovery_dead_letters_exhausted_jobs(app, user_id):
+    job, _ = enqueue_ml_job(user_id, 'ml_dataset_profile', 'stale-2', {'values': [1, 2, 3]})
+    job_id, _lease = claim_next_job(app)
+    db.session.expire_all()
+    job_row = db.session.get(MLBackgroundJob, job_id)
+    job_row.locked_at = model_utcnow() - timedelta(seconds=1200)
+    job_row.attempts = job_row.max_attempts
+    db.session.commit()
+
+    claimed = claim_next_job(app, stale_seconds=600)
+    assert claimed is None
+    db.session.expire_all()
+    refreshed = db.session.get(MLBackgroundJob, job_id)
+    assert refreshed.status == 'dead_letter'
+    assert refreshed.completed_at is not None
+    assert refreshed.lease_token is None
+
+
+def test_retry_exhaustion_dead_letters(app, user_id):
+    job, _ = enqueue_ml_job(user_id, 'ml_dataset_profile', 'retry-1', {'values': [1, 2, 3]})
+    job_id, lease = claim_next_job(app)
+    db.session.expire_all()
+    job_row = db.session.get(MLBackgroundJob, job_id)
+    job_row.attempts = job_row.max_attempts
+    db.session.commit()
+
+    finish_job(job_id, lease, error=RuntimeError('transient'), retry=True)
+    db.session.expire_all()
+    refreshed = db.session.get(MLBackgroundJob, job_id)
+    assert refreshed.status == 'dead_letter'
+    assert refreshed.completed_at is not None
+
+
+def test_user_scoped_idempotency_allows_same_key_for_different_users(app, user_id):
+    other = User(username='mlother', email='mlother@example.test', password_hash=generate_password_hash('secure-pass-123'))
+    db.session.add(other)
+    db.session.commit()
+
+    job1, existed1 = enqueue_ml_job(user_id, 'ml_dataset_profile', 'shared-key', {'values': [1, 2]})
+    job2, existed2 = enqueue_ml_job(other.id, 'ml_dataset_profile', 'shared-key', {'values': [3, 4]})
+
+    assert not existed1
+    assert not existed2
+    assert job1.id != job2.id
+    assert job1.user_id == user_id
+    assert job2.user_id == other.id
+
+
+def test_job_status_is_user_scoped(app, user_id):
+    other = User(username='mlspy', email='mlspy@example.test', password_hash=generate_password_hash('secure-pass-123'))
+    db.session.add(other)
+    db.session.commit()
+    job, _ = enqueue_ml_job(user_id, 'ml_dataset_profile', 'scoped-1', {'values': [1]})
+
+    with pytest.raises(Exception):
+        # first_or_404 raises werkzeug NotFound
+        job_status(job.id, other.id)
+
+
+def test_duplicate_delivery_cannot_create_duplicate_result(app, user_id):
+    job, _ = enqueue_ml_job(user_id, 'ml_dataset_profile', 'dup-delivery', {'values': [1, 2, 3]})
+    job_id, lease = claim_next_job(app)
+    finish_job(job_id, lease, result={'mean': 2.0})
+    finish_job(job_id, lease, result={'mean': 999.0})
+    db.session.expire_all()
+    status = job_status(job_id, user_id)
+    assert status['status'] == 'succeeded'
+    assert status['result']['mean'] == 2.0

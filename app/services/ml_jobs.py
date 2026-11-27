@@ -5,12 +5,17 @@ No AI imports: the ML queue, handlers and worker are independent of
 """
 
 import json
+import logging
 import secrets
 from datetime import timedelta
 from typing import Optional
 
+from sqlalchemy.exc import IntegrityError
+
 from app import db
 from app.models import MLBackgroundJob, MLJobResult, utcnow
+
+logger = logging.getLogger(__name__)
 
 MAX_PAYLOAD_LENGTH = 20000
 ACTIVE_STATUSES = frozenset({'queued', 'running'})
@@ -25,7 +30,8 @@ class MLJobError(ValueError):
 def enqueue_ml_job(user_id, job_type, job_key, payload, module_id=None):
     """Create or reuse one bounded ML job for a learner.
 
-    Idempotent on ``job_key`` — retries by a client never create a second job.
+    Idempotent on ``(user_id, job_key)`` — retries by a client never create a
+    second job, and different learners may safely reuse the same key.
     """
     if not isinstance(job_type, str) or job_type not in {'ml_dataset_profile', 'ml_metrics_compare'}:
         raise MLJobError('unknown job_type')
@@ -51,7 +57,14 @@ def enqueue_ml_job(user_id, job_type, job_key, payload, module_id=None):
         available_at=utcnow(),
     )
     db.session.add(job)
-    db.session.commit()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        existing = MLBackgroundJob.query.filter_by(job_key=job_key, user_id=user_id).first()
+        if existing is not None:
+            return existing, True
+        raise
     return job, False
 
 
@@ -69,32 +82,67 @@ def job_status(job_id, user_id):
 
 
 def cancel_job(job_id, user_id):
+    """Cancel an active job durably.
+
+    Cancellation invalidates the active lease so a stale worker cannot
+    overwrite the terminal cancelled state with a late success/failure.
+    """
     job = MLBackgroundJob.query.filter_by(id=job_id, user_id=user_id).first_or_404()
+    if job.status in TERMINAL_STATUSES:
+        return job_status(job_id, user_id)
     if job.status not in ACTIVE_STATUSES:
         return job_status(job_id, user_id)
+    now = utcnow()
     job.status = 'cancelled'
-    job.completed_at = utcnow()
+    job.completed_at = now
+    job.locked_at = None
+    job.lease_token = None
+    job.last_error = 'Cancelled by user'
     db.session.commit()
     return job_status(job_id, user_id)
+
+
+def _recover_stale_jobs(now, stale_seconds):
+    """Requeue or dead-letter expired running jobs.
+
+    Stale recovery enforces the retry ceiling: jobs that have exhausted
+    attempts become dead_letter, never silently requeued forever.
+    """
+    stale_cutoff = now - timedelta(seconds=max(1, stale_seconds))
+    stale_jobs = MLBackgroundJob.query.filter(
+        MLBackgroundJob.status == 'running',
+        MLBackgroundJob.locked_at.isnot(None),
+        MLBackgroundJob.locked_at < stale_cutoff,
+    ).all()
+    recovered = 0
+    dead_lettered = 0
+    for job in stale_jobs:
+        job.locked_at = None
+        job.lease_token = None
+        if job.attempts >= job.max_attempts:
+            job.status = 'dead_letter'
+            job.completed_at = now
+            job.last_error = (job.last_error or 'Stale lease recovered; attempts exhausted')[:2000]
+            dead_lettered += 1
+        else:
+            job.status = 'queued'
+            job.available_at = now
+            job.last_error = (job.last_error or 'Stale lease recovered; requeued')[:2000]
+            recovered += 1
+    if stale_jobs:
+        db.session.commit()
+        logger.warning(
+            'Recovered stale ML jobs: requeued=%s dead_lettered=%s',
+            recovered, dead_lettered,
+        )
+    return recovered, dead_lettered
 
 
 def claim_next_job(app, stale_seconds: int = 600) -> Optional[tuple]:
     """Atomically claim one due ML job; return ``(id, lease_token)``."""
     with app.app_context():
         now = utcnow()
-        stale_cutoff = now - timedelta(seconds=max(1, stale_seconds))
-        # Recover leases from crashed ML workers before claiming.
-        MLBackgroundJob.query.filter(
-            MLBackgroundJob.status == 'running',
-            MLBackgroundJob.locked_at.isnot(None),
-            MLBackgroundJob.locked_at < stale_cutoff,
-        ).update({
-            MLBackgroundJob.status: 'queued',
-            MLBackgroundJob.locked_at: None,
-            MLBackgroundJob.lease_token: None,
-            MLBackgroundJob.available_at: now,
-        }, synchronize_session=False)
-        db.session.commit()
+        _recover_stale_jobs(now, stale_seconds)
 
         job = (
             MLBackgroundJob.query
@@ -121,9 +169,17 @@ def claim_next_job(app, stale_seconds: int = 600) -> Optional[tuple]:
 
 
 def finish_job(job_id, lease, *, result=None, error=None, retry=False):
-    """Finalize a claimed job; lease mismatch is a no-op (duplicate delivery)."""
+    """Finalize a claimed job.
+
+    Lease mismatch or terminal current state is a no-op, preventing stale
+    workers from overwriting cancellation or producing duplicate authoritative
+    results.
+    """
     job = db.session.get(MLBackgroundJob, job_id)
     if job is None or job.lease_token != lease:
+        db.session.rollback()
+        return
+    if job.status in TERMINAL_STATUSES:
         db.session.rollback()
         return
     now = utcnow()
@@ -132,7 +188,7 @@ def finish_job(job_id, lease, *, result=None, error=None, retry=False):
     if retry and job.attempts < job.max_attempts:
         job.status = 'queued'
         job.available_at = now + timedelta(seconds=15 * (2 ** (job.attempts - 1)))
-        job.last_error = str(error) if error else None
+        job.last_error = str(error)[:2000] if error else None
     elif error is not None:
         job.status = 'dead_letter' if job.attempts >= job.max_attempts else 'failed'
         job.last_error = str(error)[:2000]

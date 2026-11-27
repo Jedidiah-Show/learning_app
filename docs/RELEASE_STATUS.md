@@ -38,6 +38,23 @@
 
 Release gate (per `milestones.md`): M0–M6 completed, M7–M10 mandatory requirements met, M11 green, M12 documented, no critical migration issue, learner functionality preserved, production deploy + rollback verified. **No Architecture Evolution release until then.**
 
+## Release Closure Board (goals.md / milestones.md / implementation_plan.md, 2026-11-27)
+
+The closure plan defines M0–M9 for release closure. This section maps those milestones to existing evidence and records closure work. The legacy M0–M12 board above remains as historical evidence; closure milestones below are the active gate for the next major release.
+
+| Closure ID | Milestone | Status | Evidence / Notes | Outstanding |
+|---|---|---|---|---|
+| C-M0 | Security and Credential Remediation | PARTIAL | `.env`/`.env.local` present locally but gitignored and untracked; no tracked secret files found via `git ls-files`; `.gitignore` covers env/client_secret/key/db/venv/cache patterns; `.env.example` placeholders only; `scripts/export_release_source.sh` has prohibited-path + secret-content scan and fail-closed dirty-tree behavior. Supplied archives `/home/jedidiah/ruach-lms.zip`, `/home/jedidiah/ruach-learning.zip` quarantined to `/home/jedidiah/archive_quarantine/` (both contained `.env` and `.venv`). Security report reconciled against current workspace facts. | Owner confirmation of credential rotation/revocation for values present in local `.env`/`.env.local`; external secret-store verification; CI secret-scan confirmation on approved commit. |
+| C-M1 | Git and Release Artifact Integrity | EXIT REVIEW | Baseline was `745d053a0d1dab693e0902d86278d09a3ad0b1cf` (`main`); closure changes committed on `main` (see git HEAD). `scripts/export_release_source.sh` passed on clean tree in `/tmp/opencode/release-export-test` (manifest + SHA-256 generated). Migration graph verified single-headed (`flask db heads` -> `n3o4p5q6r7s8`). | Verify extracted archive smoke test, reconcile release version/notes/tag, owner confirmation of approved release commit. |
+| C-M2 | ML Queue Lifecycle Corrections | EXIT REVIEW | Fixed `app/services/ml_jobs.py`: cancellation clears lease and persists terminal cancelled state; `finish_job` refuses terminal/lease-mismatch overwrites; stale recovery dead-letters exhausted attempts and requeues only when attempts remain; enqueue is idempotent on `(user_id, job_key)` with IntegrityError handling. Updated `app/models.py` MLBackgroundJob uniqueness to `uq_ml_job_user_key (user_id, job_key)`. Added migration `migrations/versions/n3o4p5q6r7s8_fix_ml_job_idempotency_scope.py`. Added regression tests in `tests/test_ml_jobs.py` (15 passed, 2026-11-27). | Full CI on approved commit; PostgreSQL migration verification; worker integration/deployment verification. |
+| C-M3 | Deployment and Worker Operational Readiness | NOT STARTED | Existing `render.yaml` declares web, `ruach-ai-worker`, `ruach-ml-worker`, `ruach-scheduler`; all worker plans currently `free`. | Verify hosting plan support/cost, env var matrix, DB connection budget, deploy and heartbeat verification, independent AI/ML job processing evidence. Owner dependency. |
+| C-M4 | Migration and Database Recovery Verification | NOT STARTED | Existing migration history includes `m2n3o4p5q6r7_add_ml_job_queue.py`; new idempotency-scope migration added. Prior status noted production at `m2n3o4p5q6r7`. | Reconcile production/head history, fresh PostgreSQL upgrade, production-equivalent upgrade, backup/restore drill, `/readyz` migration-state verification. Owner dependency. |
+| C-M5 | Full Integration and Regression Verification | NOT STARTED | Prior CI evidence exists for earlier commits; not valid for new closure commit. | Commit-specific CI (3.12/3.13), browser E2E journeys, AI/ML isolation regression, skipped-test review. |
+| C-M6 | Performance and Security Acceptance | NOT STARTED | Prior load report exists but not owner-approved as production benchmark. | Agreed thresholds, staging load test, security residual-risk decisions. Owner dependency. |
+| C-M7 | Observability and Operations Closure | PARTIAL | Heartbeat/operations infrastructure exists in codebase per legacy M8 evidence. | Worker correlation IDs, queue-age/dead-letter metrics, alert ownership, recovery drills. |
+| C-M8 | Architecture Documentation and Technical Debt Review | NOT STARTED | Existing docs present; known contradictions previously tracked. | Reconcile docs to actual deployment/source, record debt owners, record exit decisions. |
+| C-M9 | Production Release and Owner Approval | NOT STARTED | — | All C-M0–C-M8 exit decisions, clean export, verified deployment, owner approval/tag. |
+
 ## Evidence index
 
 | Milestone | Evidence already present | Outstanding |

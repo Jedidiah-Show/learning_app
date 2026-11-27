@@ -94,3 +94,11 @@ Owner confirmed credential rotation is complete. The two local `client_secret_*.
 3. Confirm production (Render/Vercel) env holds the rotated values.
 4. Confirm token/key material is absent from any external archive previously
    shared; if such an archive was shared, rotation is mandatory, not optional.
+
+## 2026-11-27 Workspace Reconciliation (Release Closure C-M0)
+
+- **Supplied archives quarantined:** `/home/jedidiah/ruach-lms.zip` and `/home/jedidiah/ruach-learning.zip` moved to `/home/jedidiah/archive_quarantine/`. Both archives contained `.env` and `.venv` paths; they are not approved release artifacts.
+- **Local credential files present:** `.env` and `.env.local` exist in the workspace, are gitignored, and are not tracked by Git. Key names were inventoried without printing values. Owner confirmation is still required that any credentials whose exposure cannot be ruled out have been rotated/revoked in issuing consoles and production secret stores.
+- **Tracked secret sweep:** `git ls-files` found no tracked `.env`, `.env.local`, client secret, credential JSON, private key, or database files. No `client_secret*.json` files are present in the workspace.
+- **Ignore/export controls:** `.gitignore` and `scripts/export_release_source.sh` remain in place; exporter enforces clean-tree export, prohibited-path scan, and secret-content scan.
+- **Outstanding owner action:** Confirm rotation/revocation status for credentials present in local env files and verify production secret-store values. This workspace cannot verify external console state.

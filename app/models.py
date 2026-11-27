@@ -1759,7 +1759,7 @@ class MLBackgroundJob(db.Model):
     __tablename__ = 'ml_background_job'
 
     id = db.Column(db.Integer, primary_key=True)
-    job_key = db.Column(db.String(160), unique=True, nullable=False)
+    job_key = db.Column(db.String(160), nullable=False)
     job_type = db.Column(db.String(40), nullable=False)
     user_id = db.Column(
         db.Integer, db.ForeignKey('user.id', ondelete='CASCADE'), nullable=False
@@ -1781,6 +1781,7 @@ class MLBackgroundJob(db.Model):
         db.DateTime(timezone=True), nullable=False, default=utcnow, onupdate=utcnow
     )
     __table_args__ = (
+        db.UniqueConstraint('user_id', 'job_key', name='uq_ml_job_user_key'),
         db.Index('idx_ml_job_status_available', 'status', 'available_at'),
         db.Index('idx_ml_job_user', 'user_id'),
         db.Index('idx_ml_job_locked_at', 'locked_at'),
